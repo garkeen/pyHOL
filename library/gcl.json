@@ -1,0 +1,120 @@
+{
+    "content": [
+        {
+            "args": [],
+            "constrs": [
+                {
+                    "args": [
+                        "n"
+                    ],
+                    "name": "Ident",
+                    "type": "nat => varType"
+                },
+                {
+                    "args": [
+                        "v",
+                        "x"
+                    ],
+                    "name": "Para",
+                    "type": "varType => nat => varType"
+                }
+            ],
+            "name": "varType",
+            "ty": "type.ind"
+        },
+        {
+            "args": [],
+            "constrs": [
+                {
+                    "args": [
+                        "n"
+                    ],
+                    "name": "NatV",
+                    "type": "nat => scalarValue"
+                },
+                {
+                    "args": [
+                        "b"
+                    ],
+                    "name": "BoolV",
+                    "type": "bool => scalarValue"
+                }
+            ],
+            "name": "scalarValue",
+            "ty": "type.ind"
+        },
+        {
+            "name": "scalar_is_nat",
+            "rules": [
+                {
+                    "prop": "scalar_is_nat (NatV n) ⟷ true"
+                },
+                {
+                    "prop": "scalar_is_nat (BoolV b) ⟷ false"
+                }
+            ],
+            "ty": "def.ind",
+            "type": "scalarValue ⇒ bool"
+        },
+        {
+            "name": "scalar_is_bool",
+            "rules": [
+                {
+                    "prop": "scalar_is_bool (NatV n) ⟷ false"
+                },
+                {
+                    "prop": "scalar_is_bool (BoolV b) ⟷ true"
+                }
+            ],
+            "ty": "def.ind",
+            "type": "scalarValue ⇒ bool"
+        },
+        {
+            "name": "scalar_of_nat",
+            "rules": [
+                {
+                    "prop": "scalar_of_nat (NatV n) = n"
+                },
+                {
+                    "prop": "scalar_of_nat (BoolV b) = 0"
+                }
+            ],
+            "ty": "def.ind",
+            "type": "scalarValue ⇒ nat"
+        },
+        {
+            "name": "scalar_of_bool",
+            "rules": [
+                {
+                    "prop": "scalar_of_bool (NatV n) ⟷ false"
+                },
+                {
+                    "prop": "scalar_of_bool (BoolV b) ⟷ b"
+                }
+            ],
+            "ty": "def.ind",
+            "type": "scalarValue ⇒ bool"
+        },
+        {
+            "name": "scalar_of_nat_id",
+            "prop": "scalar_is_nat s ⟶ NatV (scalar_of_nat s) = s",
+            "ty": "thm",
+            "vars": {
+                "s": "scalarValue"
+            }
+        },
+        {
+            "name": "scalar_of_bool_id",
+            "prop": "scalar_is_bool s ⟶ BoolV (scalar_of_bool s) = s",
+            "ty": "thm",
+            "vars": {
+                "s": "scalarValue"
+            }
+        }
+    ],
+    "description": "Guarded command language.",
+    "imports": [
+        "function"
+    ],
+    "name": "gcl"
+}

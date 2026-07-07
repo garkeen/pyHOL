@@ -1,0 +1,60 @@
+{
+    "content": [
+        {
+            "depth": 0,
+            "name": "Set type and basic operations",
+            "ty": "header"
+        },
+        {
+            "args": [
+                "a"
+            ],
+            "name": "set",
+            "ty": "type.ax"
+        },
+        {
+            "name": "member",
+            "ty": "def.ax",
+            "type": "'a \u21d2 'a set \u21d2 bool"
+        },
+        {
+            "name": "empty_set",
+            "ty": "def.ax",
+            "type": "'a set"
+        },
+        {
+            "name": "insert",
+            "ty": "def.ax",
+            "type": "'a \u21d2 'a set \u21d2 'a set"
+        },
+        {
+            "name": "member_empty_simp",
+            "prop": "x \u2208 \u2205 \u27fa false",
+            "ty": "thm.ax",
+            "vars": {
+                "x": "'a"
+            },
+            "attributes": [
+                "hint_rewrite"
+            ]
+        },
+        {
+            "name": "member_insert",
+            "prop": "x \u2208 insert y A \u27fa x = y \u2228 x \u2208 A",
+            "ty": "thm.ax",
+            "vars": {
+                "x": "'a",
+                "y": "'a",
+                "A": "'a set"
+            },
+            "attributes": [
+                "hint_rewrite"
+            ]
+        }
+    ],
+    "description": "Set theory",
+    "imports": [
+        "nat"
+    ],
+    "name": "set"
+}

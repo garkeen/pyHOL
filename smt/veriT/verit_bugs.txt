@@ -1,0 +1,70 @@
+1. 
+file_name: UF\\20170428-Barrett\\cdt-cade2015\\nada\\afp\\abstract_completeness\\x2015_09_10_16_59_39_090_1045351.smt_in.smt2
+step: t9 bind
+reason: step t9 uses t9.t1 but doesn't include it in premises
+2.
+file_name: QF_UFLIA\\wisas\\xs_5_5.smt2
+step: t213 resolution
+reason: resolving one proof term for twice
+3.
+file_name: QF_UFLIA\\wisas\\xs_5_10.smt2
+step: t27 sum_simplify
+reason:  rhs side has zero on the right
+4.
+filename: files in QF_UFLRA\\cpachecker-induction-svcomp14
+problem: output empty proof
+5.
+file_name: QF_UFLRA\\mathsat\\RandomCoupled\\pb_real_10_0200_10_14.smt2
+step: minus_simplify
+problem: -12 == -12 should be proved by uminus_simplify rule rather than minus_simplify rule
+6.
+file_name: QF_UFLRA\\mathsat\\RandomDecoupled\\pb_real_30_60_45_06.smt2
+step: minus_simplify
+problem: -17 * x5 - 16 * x17 ==  -17 * x5 - 16 * x17 - 0
+7.
+file_name: UFLIA\\misc\\list5.smt2
+step: t140 (resolution)
+problem: extra double negation in the result.
+8.
+file_name: UFLIA/sledgehammer/TwoSquares/smtlib.832972.smt2
+step t183 (ite_intro)
+problem: expected rhs has fewer conjuncts.
+step t201 (ite_intro)
+problem: expected rhs has no extra conjuncts.
+9.
+file_name: UFLIA/sledgehammer/Fundamental_Theorem_Algebra/smtlib.1438328.smt2
+step t292 (th_resolution)
+problem: repeated clauses hindering resolution getting correct result.
+10.
+file_name: UF/sledgehammer/Arrow_Order/smtlib.617784.smt2
+step 31 (bind)
+problem: suspected variable name conflict
+11.
+file_name: QF_AUFLIA/cvc/add5.smt2
+step 213 (ite_simplify)
+problem: `if ~P then Q else true <--> P | Q` is not included in the ite_simplify rule
+step 214 (trans)
+(step t211 (cl (= @p_411 (! (ite @p_449 @p_590 true) :named @p_591))) :rule cong :premises (t44 t210))
+
+(step t212 (cl (= (not @p_449) @p_447)) :rule not_simplify)
+
+(step t213 (cl (= @p_591 (! (or @p_447 @p_590) :named @p_592))) :rule ite_simplify)
+
+(step t214 (cl (= @p_411 @p_592)) :rule trans :premises (t211 t212 t213))
+problem: to obtain p_411 = p_592, we should connect t211's rhs with t213's lhs, t212 is not supposed to be added in premises.
+12.
+file_name: UF/sledgehammer/Fundamental_Theorem_Algebra
+rule: ite_simplify
+problem: f15 = (if true then f15 else f3 (f12 (f13 f14 f15) f6) f15)
+13.
+file_name: LRA/keymaera/intersection-example-simple.proof-node6512.smt2
+rule: qnt_simplify
+problem: qnt_simplify is applied to an existential quantifier, but in the document, it can only be applied to forall quantifier.
+14.
+file_name: UF/sledgehammer/Fundamental_Theorem_Algebra/uf.560771.smt2
+rule: th_resolution
+problem: input is of the form A, ~~A <--> B.
+15.
+file_name: QF_LIA/calypto/problem-004353.cvc.1.smt2
+rule: ite_simplify
+problem: `ite ~P false Q <--> P & Q` is not included in `ite_simplify` rule

@@ -1,0 +1,72 @@
+{
+    "content": [
+        {
+            "args": [],
+            "name": "rat",
+            "ty": "type.ax"
+        },
+        {
+            "name": "of_nat",
+            "ty": "def.ax",
+            "type": "nat ⇒ rat"
+        },
+        {
+            "name": "plus",
+            "ty": "def.ax",
+            "type": "rat ⇒ rat ⇒ rat"
+        },
+        {
+            "name": "minus",
+            "ty": "def.ax",
+            "type": "rat ⇒ rat ⇒ rat"
+        },
+        {
+            "name": "times",
+            "ty": "def.ax",
+            "type": "rat ⇒ rat ⇒ rat"
+        },
+        {
+            "name": "rat_add_assoc",
+            "prop": "x + (y + z) = x + y + z",
+            "ty": "thm",
+            "vars": {
+                "x": "rat",
+                "y": "rat",
+                "z": "rat"
+            }
+        },
+        {
+            "name": "rat_add_comm",
+            "prop": "x + y = y + x",
+            "ty": "thm",
+            "vars": {
+                "x": "rat",
+                "y": "rat"
+            }
+        },
+        {
+            "name": "rat_mult_assoc",
+            "prop": "x * (y * z) = x * y * z",
+            "ty": "thm",
+            "vars": {
+                "x": "rat",
+                "y": "rat",
+                "z": "rat"
+            }
+        },
+        {
+            "name": "rat_mult_comm",
+            "prop": "x * y = y * x",
+            "ty": "thm",
+            "vars": {
+                "x": "rat",
+                "y": "rat"
+            }
+        }
+    ],
+    "description": "rational numbers",
+    "imports": [
+        "int"
+    ],
+    "name": "rat"
+}

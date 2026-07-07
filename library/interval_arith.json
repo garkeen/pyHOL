@@ -1,0 +1,1265 @@
+{
+    "content": [
+        {
+            "attributes": [
+                "hint_rewrite"
+            ],
+            "name": "interval_arith",
+            "prop": "interval_arith x lo hi ⟷ lo ≤ x ∧ x ≤ hi",
+            "ty": "def",
+            "type": "real ⇒ real ⇒ real ⇒ bool"
+        },
+        {
+            "attributes": [
+                "hint_rewrite"
+            ],
+            "name": "iabs",
+            "prop": "iabs x_lo x_hi = max x_hi (-x_lo)",
+            "ty": "def",
+            "type": "real ⇒ real ⇒ real"
+        },
+        {
+            "attributes": [
+                "hint_rewrite"
+            ],
+            "name": "interval_not_zero",
+            "prop": "interval_not_zero lo hi ⟷ 0 < lo ∨ hi < 0",
+            "ty": "def",
+            "type": "real ⇒ real ⇒ bool"
+        },
+        {
+            "attributes": [
+                "hint_rewrite"
+            ],
+            "name": "interval_pos",
+            "prop": "interval_pos lo hi ⟷ 0 < lo",
+            "ty": "def",
+            "type": "real ⇒ real ⇒ bool"
+        },
+        {
+            "attributes": [
+                "hint_rewrite"
+            ],
+            "name": "interval_neg",
+            "prop": "interval_neg lo hi ⟷ hi < 0",
+            "ty": "def",
+            "type": "real ⇒ real ⇒ bool"
+        },
+        {
+            "attributes": [
+                "hint_rewrite"
+            ],
+            "name": "interval_gt",
+            "prop": "interval_gt f lo hi ⟷ f < lo",
+            "ty": "def",
+            "type": "real ⇒ real ⇒ real ⇒ bool"
+        },
+        {
+            "attributes": [
+                "hint_backward"
+            ],
+            "name": "const_interval",
+            "num_gaps": 0,
+            "proof": [
+                {
+                    "args": "real_le_antisym, x ≤ x ∧ x ≤ x",
+                    "id": "0",
+                    "prevs": [],
+                    "rule": "rewrite_goal",
+                    "th": "⊢ x ≤ x ∧ x ≤ x"
+                },
+                {
+                    "args": "in_real_closed_interval, x ∈ real_closed_interval x x",
+                    "id": "1",
+                    "prevs": [
+                        "0"
+                    ],
+                    "rule": "rewrite_goal",
+                    "th": "⊢ x ∈ real_closed_interval x x"
+                },
+                {
+                    "args": "",
+                    "id": "2",
+                    "prevs": [
+                        "1"
+                    ],
+                    "rule": "intros",
+                    "th": "⊢ x ∈ real_closed_interval x x"
+                }
+            ],
+            "prop": "x ∈ real_closed_interval x x",
+            "steps": [
+                {
+                    "goal_id": "0",
+                    "method_name": "rewrite_goal",
+                    "sym": "false",
+                    "theorem": "interval_arith_def"
+                },
+                {
+                    "goal_id": "0",
+                    "method_name": "rewrite_goal",
+                    "sym": "false",
+                    "theorem": "real_le_antisym"
+                },
+                {
+                    "goal_id": "0",
+                    "method_name": "rewrite_goal",
+                    "sym": "false",
+                    "theorem": "in_real_closed_interval"
+                },
+                {
+                    "goal_id": "0",
+                    "method_name": "rewrite_goal",
+                    "sym": "false",
+                    "theorem": "real_le_antisym"
+                }
+            ],
+            "ty": "thm",
+            "vars": {
+                "x": "real"
+            }
+        },
+        {
+            "name": "add_interval_closed",
+            "num_gaps": 0,
+            "proof": [
+                {
+                    "args": "x ∈ real_closed_interval a b",
+                    "id": "0",
+                    "prevs": [],
+                    "rule": "assume",
+                    "th": "x ∈ real_closed_interval a b ⊢ x ∈ real_closed_interval a b"
+                },
+                {
+                    "args": "y ∈ real_closed_interval c d",
+                    "id": "1",
+                    "prevs": [],
+                    "rule": "assume",
+                    "th": "y ∈ real_closed_interval c d ⊢ y ∈ real_closed_interval c d"
+                },
+                {
+                    "args": "in_real_closed_interval",
+                    "id": "2",
+                    "prevs": [
+                        "0"
+                    ],
+                    "rule": "rewrite_fact",
+                    "th": "x ∈ real_closed_interval a b ⊢ a ≤ x ∧ x ≤ b"
+                },
+                {
+                    "args": "conjD1",
+                    "id": "3",
+                    "prevs": [
+                        "2"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "x ∈ real_closed_interval a b ⊢ a ≤ x"
+                },
+                {
+                    "args": "in_real_closed_interval",
+                    "id": "4",
+                    "prevs": [
+                        "1"
+                    ],
+                    "rule": "rewrite_fact",
+                    "th": "y ∈ real_closed_interval c d ⊢ c ≤ y ∧ y ≤ d"
+                },
+                {
+                    "args": "conjD1",
+                    "id": "5",
+                    "prevs": [
+                        "4"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "y ∈ real_closed_interval c d ⊢ c ≤ y"
+                },
+                {
+                    "args": "real_le_add2",
+                    "id": "6",
+                    "prevs": [
+                        "3",
+                        "5"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "x ∈ real_closed_interval a b, y ∈ real_closed_interval c d ⊢ a + c ≤ x + y"
+                },
+                {
+                    "args": "conjD2",
+                    "id": "7",
+                    "prevs": [
+                        "2"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "x ∈ real_closed_interval a b ⊢ x ≤ b"
+                },
+                {
+                    "args": "conjD2",
+                    "id": "8",
+                    "prevs": [
+                        "4"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "y ∈ real_closed_interval c d ⊢ y ≤ d"
+                },
+                {
+                    "args": "real_le_add2",
+                    "id": "9",
+                    "prevs": [
+                        "7",
+                        "8"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "x ∈ real_closed_interval a b, y ∈ real_closed_interval c d ⊢ x + y ≤ b + d"
+                },
+                {
+                    "args": "conjI",
+                    "id": "10",
+                    "prevs": [
+                        "6",
+                        "9"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "x ∈ real_closed_interval a b, y ∈ real_closed_interval c d ⊢ a + c ≤ x + y ∧ x + y ≤ b + d"
+                },
+                {
+                    "args": "in_real_closed_interval, x + y ∈ real_closed_interval (a + c) (b + d)",
+                    "id": "11",
+                    "prevs": [
+                        "10"
+                    ],
+                    "rule": "rewrite_goal",
+                    "th": "x ∈ real_closed_interval a b, y ∈ real_closed_interval c d ⊢ x + y ∈ real_closed_interval (a + c) (b + d)"
+                },
+                {
+                    "args": "",
+                    "id": "12",
+                    "prevs": [
+                        "0",
+                        "1",
+                        "11"
+                    ],
+                    "rule": "intros",
+                    "th": "⊢ x ∈ real_closed_interval a b ⟶ y ∈ real_closed_interval c d ⟶ x + y ∈ real_closed_interval (a + c) (b + d)"
+                }
+            ],
+            "prop": [
+                "x ∈ real_closed_interval a b ",
+                "⟶ y ∈ real_closed_interval c d ⟶ x + y ∈ real_closed_interval (a + c) (b + d)"
+            ],
+            "steps": [
+                {
+                    "goal_id": "1",
+                    "method_name": "rewrite_goal",
+                    "sym": "false",
+                    "theorem": "interval_arith_def"
+                },
+                {
+                    "fact_ids": [
+                        "0"
+                    ],
+                    "goal_id": "1",
+                    "method_name": "rewrite_fact",
+                    "sym": "false",
+                    "theorem": "interval_arith_def"
+                },
+                {
+                    "fact_ids": [
+                        "1"
+                    ],
+                    "goal_id": "2",
+                    "method_name": "z3"
+                },
+                {
+                    "goal_id": "2",
+                    "method_name": "rewrite_goal",
+                    "sym": "false",
+                    "theorem": "in_real_closed_interval"
+                },
+                {
+                    "goal_id": "2",
+                    "method_name": "apply_backward_step",
+                    "theorem": "conjI"
+                },
+                {
+                    "goal_id": "2",
+                    "method_name": "apply_backward_step",
+                    "theorem": "real_le_add2"
+                },
+                {
+                    "fact_ids": [
+                        "0"
+                    ],
+                    "goal_id": "2",
+                    "method_name": "rewrite_fact",
+                    "sym": "false",
+                    "theorem": "in_real_closed_interval"
+                },
+                {
+                    "fact_ids": [
+                        "2"
+                    ],
+                    "goal_id": "3",
+                    "method_name": "apply_backward_step",
+                    "theorem": "conjD1"
+                },
+                {
+                    "fact_ids": [
+                        "1"
+                    ],
+                    "goal_id": "4",
+                    "method_name": "rewrite_fact",
+                    "sym": "false",
+                    "theorem": "in_real_closed_interval"
+                },
+                {
+                    "fact_ids": [
+                        "4"
+                    ],
+                    "goal_id": "5",
+                    "method_name": "apply_backward_step",
+                    "theorem": "conjD1"
+                },
+                {
+                    "goal_id": "7",
+                    "method_name": "apply_backward_step",
+                    "theorem": "real_le_add2"
+                },
+                {
+                    "fact_ids": [
+                        "2"
+                    ],
+                    "goal_id": "7",
+                    "method_name": "apply_backward_step",
+                    "theorem": "conjD2"
+                },
+                {
+                    "fact_ids": [
+                        "4"
+                    ],
+                    "goal_id": "8",
+                    "method_name": "apply_backward_step",
+                    "theorem": "conjD2"
+                }
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "add_interval_open",
+            "prop": [
+                "x ∈ real_open_interval a b ",
+                "⟶ y ∈ real_open_interval c d ⟶ x + y ∈ real_open_interval (a + c) (b + d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "add_interval_open_closed",
+            "prop": [
+                "x ∈ real_open_interval a b ",
+                "⟶ y ∈ real_closed_interval c d ⟶ x + y ∈ real_open_interval (a + c) (b + d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "add_interval_closed_open",
+            "prop": [
+                "x ∈ real_closed_interval a b ",
+                "⟶ y ∈ real_open_interval c d ⟶ x + y ∈ real_open_interval (a + c) (b + d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "add_interval_closed_lopen",
+            "prop": [
+                "x ∈ real_closed_interval a b ",
+                "⟶ y ∈ real_lopen_interval c d ⟶ x + y ∈ real_lopen_interval (a + c) (b + d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "add_interval_closed_ropen",
+            "prop": [
+                "x ∈ real_closed_interval a b ",
+                "⟶ y ∈ real_ropen_interval c d ⟶ x + y ∈ real_ropen_interval (a + c) (b + d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "neg_interval_closed",
+            "num_gaps": 0,
+            "proof": [
+                {
+                    "args": "x ∈ real_closed_interval a b",
+                    "id": "0",
+                    "prevs": [],
+                    "rule": "assume",
+                    "th": "x ∈ real_closed_interval a b ⊢ x ∈ real_closed_interval a b"
+                },
+                {
+                    "args": "in_real_closed_interval",
+                    "id": "1",
+                    "prevs": [
+                        "0"
+                    ],
+                    "rule": "rewrite_fact",
+                    "th": "x ∈ real_closed_interval a b ⊢ a ≤ x ∧ x ≤ b"
+                },
+                {
+                    "args": "conjD2",
+                    "id": "2",
+                    "prevs": [
+                        "1"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "x ∈ real_closed_interval a b ⊢ x ≤ b"
+                },
+                {
+                    "args": "real_le_lneg2, -b ≤ -x",
+                    "id": "3",
+                    "prevs": [
+                        "2"
+                    ],
+                    "rule": "rewrite_goal",
+                    "th": "x ∈ real_closed_interval a b ⊢ -b ≤ -x"
+                },
+                {
+                    "args": "conjD1",
+                    "id": "4",
+                    "prevs": [
+                        "1"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "x ∈ real_closed_interval a b ⊢ a ≤ x"
+                },
+                {
+                    "args": "real_le_lneg2, -x ≤ -a",
+                    "id": "5",
+                    "prevs": [
+                        "4"
+                    ],
+                    "rule": "rewrite_goal",
+                    "th": "x ∈ real_closed_interval a b ⊢ -x ≤ -a"
+                },
+                {
+                    "args": "conjI",
+                    "id": "6",
+                    "prevs": [
+                        "3",
+                        "5"
+                    ],
+                    "rule": "apply_theorem",
+                    "th": "x ∈ real_closed_interval a b ⊢ -b ≤ -x ∧ -x ≤ -a"
+                },
+                {
+                    "args": "in_real_closed_interval, -x ∈ real_closed_interval (-b) (-a)",
+                    "id": "7",
+                    "prevs": [
+                        "6"
+                    ],
+                    "rule": "rewrite_goal",
+                    "th": "x ∈ real_closed_interval a b ⊢ -x ∈ real_closed_interval (-b) (-a)"
+                },
+                {
+                    "args": "",
+                    "id": "8",
+                    "prevs": [
+                        "0",
+                        "7"
+                    ],
+                    "rule": "intros",
+                    "th": "⊢ x ∈ real_closed_interval a b ⟶ -x ∈ real_closed_interval (-b) (-a)"
+                }
+            ],
+            "prop": "x ∈ real_closed_interval a b ⟶ -x ∈ real_closed_interval (-b) (-a)",
+            "steps": [
+                {
+                    "goal_id": "1",
+                    "method_name": "rewrite_goal",
+                    "sym": "false",
+                    "theorem": "in_real_closed_interval"
+                },
+                {
+                    "goal_id": "1",
+                    "method_name": "apply_backward_step",
+                    "theorem": "conjI"
+                },
+                {
+                    "goal_id": "1",
+                    "method_name": "rewrite_goal",
+                    "sym": "false",
+                    "theorem": "real_le_lneg2"
+                },
+                {
+                    "fact_ids": [
+                        "0"
+                    ],
+                    "goal_id": "1",
+                    "method_name": "rewrite_fact",
+                    "sym": "false",
+                    "theorem": "in_real_closed_interval"
+                },
+                {
+                    "fact_ids": [
+                        "1"
+                    ],
+                    "goal_id": "2",
+                    "method_name": "apply_backward_step",
+                    "theorem": "conjD2"
+                },
+                {
+                    "goal_id": "4",
+                    "method_name": "rewrite_goal",
+                    "sym": "false",
+                    "theorem": "real_le_lneg2"
+                },
+                {
+                    "fact_ids": [
+                        "1"
+                    ],
+                    "goal_id": "4",
+                    "method_name": "apply_backward_step",
+                    "theorem": "conjD1"
+                }
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "neg_interval_open",
+            "prop": "x ∈ real_open_interval a b ⟶ -x ∈ real_open_interval (-b) (-a)",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "inverse_interval_pos_closed",
+            "prop": [
+                "a > 0 ",
+                "⟶ x ∈ real_closed_interval a b ",
+                "   ⟶ real_inverse x ∈ real_closed_interval (real_inverse b) (real_inverse a)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "inverse_interval_neg_closed",
+            "prop": [
+                "b < 0 ",
+                "⟶ x ∈ real_closed_interval a b ",
+                "   ⟶ real_inverse x ∈ real_closed_interval (real_inverse b) (real_inverse a)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "inverse_interval_pos_open",
+            "prop": [
+                "a > 0 ",
+                "⟶ x ∈ real_open_interval a b ",
+                "   ⟶ real_inverse x ∈ real_open_interval (real_inverse b) (real_inverse a)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "inverse_interval_neg_open",
+            "prop": [
+                "b < 0 ",
+                "⟶ x ∈ real_open_interval a b ",
+                "   ⟶ real_inverse x ∈ real_open_interval (real_inverse b) (real_inverse a)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "mult_interval_pos_pos_open",
+            "prop": [
+                "a ≥ 0 ",
+                "⟶ c ≥ 0 ",
+                "   ⟶ x ∈ real_open_interval a b ",
+                "      ⟶ y ∈ real_open_interval c d ⟶ x * y ∈ real_open_interval (a * c) (b * d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "mult_interval_pos_pos_closed",
+            "prop": [
+                "a ≥ 0 ",
+                "⟶ c ≥ 0 ",
+                "   ⟶ x ∈ real_closed_interval a b ",
+                "      ⟶ y ∈ real_closed_interval c d ⟶ x * y ∈ real_closed_interval (a * c) (b * d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "mult_interval_pos_pos_lopen_ropen",
+            "prop": [
+                "a ≥ 0 ",
+                "⟶ c ≥ 0 ",
+                "   ⟶ x ∈ real_lopen_interval a b ",
+                "      ⟶ y ∈ real_ropen_interval c d ⟶ x * y ∈ real_open_interval (a * c) (b * d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "mult_interval_neg_pos_open",
+            "prop": [
+                "b ≤ 0 ",
+                "⟶ c ≥ 0 ",
+                "   ⟶ x ∈ real_open_interval a b ",
+                "      ⟶ y ∈ real_open_interval c d ⟶ x * y ∈ real_open_interval (a * d) (b * c)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "mult_interval_pos_closed",
+            "prop": [
+                "c ≥ 0 ",
+                "⟶ x ∈ real_closed_interval a b ⟶ c * x ∈ real_closed_interval (c * a) (c * b)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "mult_interval_pos_open",
+            "prop": "c ≥ 0 ⟶ x ∈ real_open_interval a b ⟶ c * x ∈ real_open_interval (c * a) (c * b)",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real",
+                "x": "real",
+                "y": "real"
+            }
+        },
+        {
+            "name": "mult_interval_pos_lopen",
+            "prop": [
+                "c ≥ 0 ",
+                "⟶ x ∈ real_lopen_interval a b ⟶ c * x ∈ real_lopen_interval (c * a) (c * b)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "mult_interval_pos_ropen",
+            "prop": [
+                "c ≥ 0 ",
+                "⟶ x ∈ real_ropen_interval a b ⟶ c * x ∈ real_ropen_interval (c * a) (c * b)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "mult_interval_neg_closed",
+            "prop": [
+                "c < 0 ",
+                "⟶ x ∈ real_closed_interval a b ⟶ c * x ∈ real_closed_interval (c * b) (c * a)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "mult_interval_neg_open",
+            "prop": "c < 0 ⟶ x ∈ real_open_interval a b ⟶ c * x ∈ real_open_interval (c * b) (c * a)",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "mult_interval_neg_lopen",
+            "prop": [
+                "c < 0 ",
+                "⟶ x ∈ real_lopen_interval a b ⟶ c * x ∈ real_ropen_interval (c * b) (c * a)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "mult_interval_neg_ropen",
+            "prop": [
+                "c < 0 ",
+                "⟶ x ∈ real_ropen_interval a b ⟶ c * x ∈ real_lopen_interval (c * b) (c * a)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "nat_power_interval_pos_closed",
+            "prop": [
+                "a ≥ 0 ",
+                "⟶ x ∈ real_closed_interval a b ⟶ x ^ n ∈ real_closed_interval (a ^ n) (b ^ n)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "n": "nat",
+                "x": "real"
+            }
+        },
+        {
+            "name": "nat_power_interval_pos_open",
+            "prop": "a ≥ 0 ⟶ x ∈ real_open_interval a b ⟶ x ^ n ∈ real_open_interval (a ^ n) (b ^ n)",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "n": "nat",
+                "x": "real"
+            }
+        },
+        {
+            "name": "nat_power_interval_pos_lopen",
+            "prop": [
+                "a ≥ 0 ",
+                "⟶ x ∈ real_lopen_interval a b ⟶ x ^ n ∈ real_lopen_interval (a ^ n) (b ^ n)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "n": "nat",
+                "x": "real"
+            }
+        },
+        {
+            "name": "nat_power_interval_pos_ropen",
+            "prop": [
+                "a ≥ 0 ",
+                "⟶ x ∈ real_ropen_interval a b ⟶ x ^ n ∈ real_ropen_interval (a ^ n) (b ^ n)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "n": "nat",
+                "x": "real"
+            }
+        },
+        {
+            "name": "nat_power_interval_neg_even_closed",
+            "prop": [
+                "b ≤ 0 ",
+                "⟶ even n ",
+                "   ⟶ x ∈ real_closed_interval a b ⟶ x ^ n ∈ real_closed_interval (b ^ n) (a ^ n)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "n": "nat",
+                "x": "real"
+            }
+        },
+        {
+            "name": "nat_power_interval_neg_odd_closed",
+            "prop": [
+                "b ≤ 0 ",
+                "⟶ odd n ",
+                "   ⟶ x ∈ real_closed_interval a b ⟶ x ^ n ∈ real_closed_interval (a ^ n) (b ^ n)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "n": "nat",
+                "x": "real"
+            }
+        },
+        {
+            "name": "nat_power_interval_neg_even_open",
+            "prop": [
+                "b ≤ 0 ",
+                "⟶ even n ⟶ x ∈ real_open_interval a b ⟶ x ^ n ∈ real_open_interval (b ^ n) (a ^ n)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "n": "nat",
+                "x": "real"
+            }
+        },
+        {
+            "name": "nat_power_interval_neg_odd_open",
+            "prop": [
+                "b ≤ 0 ",
+                "⟶ odd n ⟶ x ∈ real_open_interval a b ⟶ x ^ n ∈ real_open_interval (a ^ n) (b ^ n)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "n": "nat",
+                "x": "real"
+            }
+        },
+        {
+            "name": "real_power_interval_pos_closed",
+            "prop": [
+                "p ≥ 0 ",
+                "⟶ a ≥ 0 ",
+                "   ⟶ x ∈ real_closed_interval a b ⟶ x ^ p ∈ real_closed_interval (a ^ p) (b ^ p)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "p": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "real_power_interval_pos_open",
+            "prop": [
+                "p ≥ 0 ",
+                "⟶ a ≥ 0 ⟶ x ∈ real_open_interval a b ⟶ x ^ p ∈ real_open_interval (a ^ p) (b ^ p)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "p": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "real_power_interval_neg_closed",
+            "prop": [
+                "p < 0 ",
+                "⟶ a > 0 ",
+                "   ⟶ x ∈ real_closed_interval a b ⟶ x ^ p ∈ real_closed_interval (b ^ p) (a ^ p)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "p": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "real_power_interval_neg_open",
+            "prop": [
+                "p < 0 ",
+                "⟶ a ≥ 0 ⟶ x ∈ real_open_interval a b ⟶ x ^ p ∈ real_open_interval (b ^ p) (a ^ p)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "p": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "real_power_interval_neg_lopen",
+            "prop": [
+                "p < 0 ",
+                "⟶ a ≥ 0 ",
+                "   ⟶ x ∈ real_lopen_interval a b ⟶ x ^ p ∈ real_ropen_interval (b ^ p) (a ^ p)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "p": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "log_interval_closed",
+            "prop": [
+                "a > 0 ",
+                "⟶ x ∈ real_closed_interval a b ⟶ log x ∈ real_closed_interval (log a) (log b)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "log_interval_open",
+            "prop": "a ≥ 0 ⟶ x ∈ real_open_interval a b ⟶ log x ∈ real_open_interval (log a) (log b)",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "attributes": [
+                "hint_backward"
+            ],
+            "name": "exp_interval_closed",
+            "prop": "x ∈ real_closed_interval a b ⟶ exp x ∈ real_closed_interval (exp a) (exp b)",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "exp_interval_open",
+            "prop": "x ∈ real_open_interval a b ⟶ exp x ∈ real_open_interval (exp a) (exp b)",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "sin_interval_main_closed",
+            "prop": [
+                "a ≥ -pi / 2 ",
+                "⟶ b ≤ pi / 2 ",
+                "   ⟶ x ∈ real_closed_interval a b ⟶ sin x ∈ real_closed_interval (sin a) (sin b)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "sin_interval_main_open",
+            "prop": [
+                "a ≥ -pi / 2 ",
+                "⟶ b ≤ pi / 2 ",
+                "   ⟶ x ∈ real_open_interval a b ⟶ sin x ∈ real_open_interval (sin a) (sin b)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "sin_interval_pos_closed",
+            "prop": "a ≥ 0 ⟶ b ≤ pi ⟶ x ∈ real_closed_interval a b ⟶ sin x ∈ real_closed_interval 0 1",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "sin_interval_pos_open",
+            "prop": "a ≥ 0 ⟶ b ≤ pi ⟶ x ∈ real_open_interval a b ⟶ sin x ∈ real_closed_interval 0 1",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "cos_interval_main_closed",
+            "prop": [
+                "a ≥ 0 ",
+                "⟶ b ≤ pi ",
+                "   ⟶ x ∈ real_closed_interval a b ⟶ cos x ∈ real_closed_interval (cos b) (cos a)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "cos_interval_main_open",
+            "prop": [
+                "a ≥ 0 ",
+                "⟶ b ≤ pi ⟶ x ∈ real_open_interval a b ⟶ cos x ∈ real_open_interval (cos b) (cos a)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "cos_interval_pos_closed",
+            "prop": [
+                "a ≥ -pi / 2 ",
+                "⟶ b ≤ pi / 2 ⟶ x ∈ real_closed_interval a b ⟶ cos x ∈ real_closed_interval 0 1"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "cos_interval_pos_open",
+            "prop": [
+                "a ≥ -pi / 2 ",
+                "⟶ b ≤ pi / 2 ⟶ x ∈ real_open_interval a b ⟶ cos x ∈ real_lopen_interval 0 1"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "atn_interval_closed",
+            "prop": "x ∈ real_closed_interval a b ⟶ atn x ∈ real_closed_interval (atn a) (atn b)",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "atn_interval_open",
+            "prop": "x ∈ real_open_interval a b ⟶ atn x ∈ real_open_interval (atn a) (atn b)",
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "split_interval_closed",
+            "prop": [
+                "a ≤ c ",
+                "⟶ c ≤ b ",
+                "   ⟶ (x ∈ real_closed_interval a c ⟶ f x ∈ I1) ",
+                "      ⟶ (x ∈ real_closed_interval c b ⟶ f x ∈ I2) ",
+                "         ⟶ x ∈ real_closed_interval a b ⟶ f x ∈ I1 ∪ I2"
+            ],
+            "ty": "thm",
+            "vars": {
+                "I1": "real set",
+                "I2": "real set",
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "f": "real ⇒ real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "split_interval_open",
+            "prop": [
+                "a ≤ c ",
+                "⟶ c ≤ b ",
+                "   ⟶ (x ∈ real_open_interval a c ⟶ f x ∈ I1) ",
+                "      ⟶ (x ∈ real_ropen_interval c b ⟶ f x ∈ I2) ",
+                "         ⟶ x ∈ real_open_interval a b ⟶ f x ∈ I1 ∪ I2"
+            ],
+            "ty": "thm",
+            "vars": {
+                "I1": "real set",
+                "I2": "real set",
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "f": "real ⇒ real",
+                "x": "real"
+            }
+        },
+        {
+            "name": "closed_interval_union",
+            "prop": [
+                "real_closed_interval a b ∪ real_closed_interval c d ⊆ ",
+                "real_closed_interval (min a c) (max b d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real"
+            }
+        },
+        {
+            "name": "open_ropen_interval_union1",
+            "prop": [
+                "c ≤ a ",
+                "⟶ real_open_interval a b ∪ real_ropen_interval c d ⊆ ",
+                "   real_ropen_interval c (max b d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real"
+            }
+        },
+        {
+            "name": "open_ropen_interval_union2",
+            "prop": [
+                "a < c ",
+                "⟶ real_open_interval a b ∪ real_ropen_interval c d ⊆ ",
+                "   real_open_interval a (max b d)"
+            ],
+            "ty": "thm",
+            "vars": {
+                "a": "real",
+                "b": "real",
+                "c": "real",
+                "d": "real"
+            }
+        }
+    ],
+    "description": "Theoretical results for interval arithmetic.",
+    "imports": [
+        "realgamma"
+    ],
+    "name": "interval_arith"
+}

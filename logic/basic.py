@@ -1,0 +1,243 @@
+# Author: Bohua Zhan
+import io
+import os
+import json
+
+from kernel import term
+from kernel.term import Var
+from kernel import theory
+from kernel.theory import Theory, TheoryException
+from kernel.thm import Thm
+from kernel import extension
+from server import items
+
+import sys
+
+"""
+Cache of parsed theories.
+
+Each theory stores a 'timestamp' field, for the last modification
+time of the corresponding file.
+
+In the contents, instead of each item is the parsed item as
+well as the corresponding extension.
+
+"""
+theory_cache = dict()
+
+"""
+Cache of item mapping.
+
+A mapping from (ty, name) to (theory_name, timestamp, index).
+
+"""
+item_index = dict()
+
+dirname = os.path.dirname(__file__)
+
+def user_dir():
+    """Returns directory for the user."""
+    return os.path.join(dirname, '../library/')
+
+def user_file(filename):
+    """Return json file for the user and given filename."""
+    return os.path.join(dirname, '../library/' + filename + '.json')
+
+def load_json_data(filename):
+    """Load json data for the given theory name."""
+    with open(user_file(filename), encoding='utf-8') as f:
+        return json.load(f)
+
+def load_metadata():
+    """Load metadata for all theory files."""
+    theory_cache.clear()
+    item_index.clear()
+    for f in os.listdir(user_dir()):
+        if f.endswith('.json'):
+            filename = f[:-5]
+            data = load_json_data(filename)
+            timestamp = os.path.getmtime(user_file(filename))
+            theory_cache[filename] = {
+                'imports': data['imports'],
+                'description': data['description']
+            }
+
+    # Immediately check for topological order.
+    check_topological_sort()
+
+def check_topological_sort():
+    """Check the import relations have no cycles."""
+    for name in theory_cache.keys():
+        theory_cache[name]['visited'] = False
+    
+    count = 0
+    def dfs(name, path):
+        """Perform depth-first search.
+
+        name - current theory name.
+        path - list of theory names on the current search path,
+               not including the current theory.
+
+        """
+        nonlocal count
+        if theory_cache[name]['visited']:
+            return
+
+        if name in path:
+            id = path.index(name)
+            cycle = path[id:] + (name,)
+            raise TheoryException("Cycle in imports: %s" % (', '.join(cycle)))
+
+        for import_name in theory_cache[name]['imports']:
+            dfs(import_name, path + (name,))
+        theory_cache[name]['order'] = count
+        theory_cache[name]['visited'] = True
+        count += 1
+
+    for name in sorted(theory_cache.keys()):
+        if not theory_cache[name]['visited']:
+            dfs(name, tuple())
+
+def get_import_order(filenames):
+    """Obtain the order of loading theories for fulfilling
+    the imports in the theory given by the list of filenames.
+
+    """
+    if not theory_cache:
+        load_metadata()
+
+    depend_list = []
+    def dfs(name):
+        if name in depend_list:
+            return
+        else:
+            for import_name in theory_cache[name]['imports']:
+                dfs(import_name)
+            depend_list.append(name)
+    
+    for name in filenames:
+        dfs(name)
+
+    return depend_list
+
+def load_theory_cache(filename):
+    """Load the content of the given theory into cache.
+    
+    Return the theory cache as a dictionary.
+
+    """
+    if not theory_cache:
+        load_metadata()
+
+    cache = theory_cache[filename]
+    timestamp = os.path.getmtime(user_file(filename))
+
+    if 'timestamp' in cache and timestamp == cache['timestamp']:
+        # No need to update cache
+        return cache
+
+    # Load all required macros and methods for this file.
+    if filename == 'logic':
+        from prover import z3wrapper
+    if filename == 'expr':
+        from data import expr
+    if filename == 'real':
+        from data import real
+    if filename == 'hoare':
+        from imperative import imp
+
+    # Load all imported theories
+    depend_list = get_import_order(cache['imports'])
+
+    with theory.fresh_theory():
+        for prev_name in depend_list:
+            prev_cache = load_theory_cache(prev_name)
+            for item in prev_cache['content']:
+                if item.error is None:
+                    try:
+                        theory.thy.unchecked_extend(item.get_extension())
+                    except TheoryException:
+                        pass  # Skip duplicates
+
+        # Use this theory to parse the content of current theory
+        cache['timestamp'] = timestamp
+        data = load_json_data(filename)
+        cache['content'] = []
+        for index, item in enumerate(data['content']):
+            item = items.parse_item(item)
+            cache['content'].append(item)
+            if item.error is None:
+                try:
+                    exts = item.get_extension()
+                    theory.thy.unchecked_extend(exts)
+                    for ext in exts:
+                        if ext.is_constant():
+                            name = ext.ref_name
+                        else:
+                            name = ext.name
+                        item_index[(ext.ty, name)] = (filename, timestamp, index)
+                except TheoryException:
+                    pass  # Skip duplicates
+
+    return cache
+
+def query_item_index(filename, ext_ty, name):
+    """Query the item index."""
+
+    # Make sure the theory (and all its dependencies) are indexed
+    load_theory_cache(filename)
+
+    if (ext_ty, name) in item_index:
+        filename, timestamp, index = item_index[(ext_ty, name)]
+        if timestamp == os.path.getmtime(user_file(filename)):
+            return filename, index
+        else:
+            return None
+    else:
+        return None
+
+def load_theory(filename: str, *, limit=None):
+    """Load the theory with the given theory name.
+    
+    Optional limit is a pair (ty, name) specifying the first item
+    that should not be loaded.
+    
+    """
+    load_theory_cache(filename)
+    
+    cache = theory_cache[filename]
+
+    # Load imported theories
+    depend_list = get_import_order(cache['imports'])
+
+    theory.thy = theory.EmptyTheory()
+    for prev_name in depend_list:
+        prev_cache = load_theory_cache(prev_name)
+        for item in prev_cache['content']:
+            if item.error is None:
+                try:
+                    theory.thy.unchecked_extend(item.get_extension())
+                except TheoryException:
+                    pass  # Skip duplicates
+
+    if limit == 'start':
+        return None
+
+    # Take the portion of content up to (and not including) limit
+    content = cache['content']
+    found_limit = False
+    for item in content:
+        if limit and item.ty == limit[0] and item.name == limit[1]:
+            found_limit = True
+            break
+
+        if item.error is None:
+            try:
+                theory.thy.unchecked_extend(item.get_extension())
+            except TheoryException:
+                pass  # Skip duplicates
+
+    if limit and not found_limit:
+        raise TheoryException("load_theory: limit %s not found" % str(limit))
+
+    return None
