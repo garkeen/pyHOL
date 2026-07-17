@@ -139,6 +139,7 @@ def load_theory_cache(filename):
         return cache
 
     # Load all required macros and methods for this file.
+    from logic.macros import core  # Always load core macros
     if filename == 'logic':
         from logic.macros import z3
     if filename == 'expr':
