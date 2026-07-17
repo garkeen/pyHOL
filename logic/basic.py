@@ -140,11 +140,11 @@ def load_theory_cache(filename):
 
     # Load all required macros and methods for this file.
     if filename == 'logic':
-        from prover import z3wrapper
+        from logic.macros import z3
     if filename == 'expr':
-        from data import expr
+        from logic.macros import expr
     if filename == 'real':
-        from data import real
+        from logic.macros import real
     if filename == 'hoare':
         from imperative import imp
 
