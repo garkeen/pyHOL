@@ -1,3 +1,7 @@
-# logic/macros/expr.py - Thin wrapper for expr macros
-# Actual implementation in data/expr.py
-from data.expr import *
+# logic/macros/expr.py - Expr macros interface
+# Re-exports macros from data.expr for the new folder structure
+
+from data.expr import (
+    # Macro classes
+    prove_avalI_macro,
+)

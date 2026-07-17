@@ -1,3 +1,7 @@
-# server/methods/real.py - Thin wrapper for real methods
-# Actual implementation in data/real.py
-from data.real import real_norm_method
+# server/methods/real.py - Real methods interface
+# Re-exports methods from data.real for the new folder structure
+
+from data.real import (
+    # Method classes
+    real_norm_method,
+)

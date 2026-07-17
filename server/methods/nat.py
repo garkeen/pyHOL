@@ -1,3 +1,8 @@
-# server/methods/nat.py - Thin wrapper for nat methods
-# Actual implementation in data/nat.py
-from data.nat import nat_norm_method, nat_const_ineq_method
+# server/methods/nat.py - Nat methods interface
+# Re-exports methods from data.nat for the new folder structure
+
+from data.nat import (
+    # Method classes
+    nat_norm_method,
+    nat_const_ineq_method,
+)

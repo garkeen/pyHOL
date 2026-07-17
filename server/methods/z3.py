@@ -1,3 +1,7 @@
-# server/methods/z3.py - Thin wrapper for z3 methods
-# Actual implementation in prover/z3wrapper.py
-from prover.z3wrapper import Z3Method
+# server/methods/z3.py - Z3 methods interface
+# Re-exports methods from prover.z3wrapper for the new folder structure
+
+from prover.z3wrapper import (
+    # Method classes
+    Z3Method,
+)
