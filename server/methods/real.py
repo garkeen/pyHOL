@@ -1,7 +1,6 @@
-# server/methods/real.py - Real methods interface
-# Re-exports methods from data.real for the new folder structure
+# server/methods/real.py - Real Method classes
+# Re-exports from data.real
 
 from data.real import (
-    # Method classes
     real_norm_method,
 )

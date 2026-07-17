@@ -1,8 +1,7 @@
-# logic/macros/integer.py - Integer macros interface
-# Re-exports macros from data.integer for the new folder structure
+# logic/macros/integer.py - Integer Macro classes
+# Re-exports from data.integer
 
 from data.integer import (
-    # Macro classes
     int_eval_macro,
     int_eq_macro,
     int_ineq_macro,

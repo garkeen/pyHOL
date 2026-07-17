@@ -24,7 +24,7 @@ from logic.conv import rewr_conv, binop_conv, arg1_conv, arg_conv, try_conv, Con
 from logic.tactic import MacroTactic
 from kernel.proofterm import refl, ProofTerm
 from syntax import pprint
-from server.method import Method, register_method
+from server.methods.core import Method, register_method
 from util import poly
 import functools
 

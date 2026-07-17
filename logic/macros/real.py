@@ -1,8 +1,7 @@
-# logic/macros/real.py - Real macros interface
-# Re-exports macros from data.real for the new folder structure
+# logic/macros/real.py - Real Macro classes
+# Re-exports from data.real
 
 from data.real import (
-    # Macro classes
     real_eval_macro,
     real_norm_macro,
     RealEqMacro,

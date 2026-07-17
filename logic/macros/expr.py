@@ -1,7 +1,6 @@
-# logic/macros/expr.py - Expr macros interface
-# Re-exports macros from data.expr for the new folder structure
+# logic/macros/expr.py - Expr Macro classes
+# Re-exports from data.expr
 
 from data.expr import (
-    # Macro classes
     prove_avalI_macro,
 )

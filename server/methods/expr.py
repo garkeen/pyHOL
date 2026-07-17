@@ -1,7 +1,6 @@
-# server/methods/expr.py - Expr methods interface
-# Re-exports methods from data.expr for the new folder structure
+# server/methods/expr.py - Expr Method classes
+# Re-exports from data.expr
 
 from data.expr import (
-    # Method classes
     prove_avalI_method,
 )
