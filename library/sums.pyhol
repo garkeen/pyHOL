@@ -1,0 +1,3026 @@
+theory sums
+imports iterate
+description "Sums of natural numbers and real numbers."
+
+def nsum :: 'a set ⇒ ('a ⇒ nat) ⇒ nat = (nsum::'a set ⇒ ('a ⇒ nat) ⇒ nat) = iterate plus [hint_rewrite]
+
+theorem neutral_nat_add
+  prop neutral plus = (0::nat)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal neutral_def sym=false
+    0: rewrite_goal eq_add_lcancel_0 sym=false
+    0: rewrite_goal add_comm sym=false
+    0: rewrite_goal eq_add_lcancel_0 sym=false
+    0: apply_forward_step theI param_P="(%x::nat. ∀y::nat. x = 0 ∧ x = 0)" param_a="(0::nat)"
+    1: cut "(∀y::nat. (0::nat) = 0 ∧ (0::nat) = 0)"
+    1: introduction y
+    1.1: apply_backward_step conjI
+    1.1: apply_backward_step eq_refl
+    2: apply_fact @0,1
+    3: cut "(∀x::nat. (∀y::nat. x = 0 ∧ x = 0) ⟶ x = 0)"
+    3: introduction x
+    3.2: forall_elim x @3.1
+    3.3: apply_backward_step conjD1 @3.2
+    4: apply_fact @2,3
+    5: apply_prev @3
+  qed
+
+theorem monoidal_nat_add
+  prop monoidal (plus::nat ⇒ nat ⇒ nat)
+  [hint_backward]
+  proof
+    0: rewrite_goal monoidal_def sym=false
+    0: apply_backward_step conjI
+    0: z3
+    1: apply_backward_step conjI
+    1: z3
+    2: rewrite_goal neutral_nat_add sym=false
+    2: z3
+  qed
+
+theorem nsum_degenerate
+  fixes f :: 'a ⇒ nat, s :: 'a set
+  prop ¬(finite ({x. x ∈ s ∧ ¬(f x = 0)})) ⟶ nsum s f = 0
+  [hint_backward]
+  proof
+    1: rewrite_goal nsum_def sym=false
+    1: rewrite_goal iterate_def sym=false
+    1: rewrite_goal support_def sym=false
+    1: rewrite_goal neutral_nat_add sym=false
+    1: rewrite_goal if_not_P @0 sym=false
+  qed
+
+theorem nsum_empty
+  fixes f :: 'a ⇒ nat
+  prop nsum ∅ f = 0
+  [hint_rewrite]
+  proof
+    0: rewrite_goal nsum_def sym=false
+    0: rewrite_goal neutral_nat_add sym=true
+    0: apply_backward_step iterate_empty
+    0: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_insert
+  fixes f :: 'a ⇒ nat, s :: 'a set, x :: 'a
+  prop finite s ⟶ nsum (insert x s) f = (if x ∈ s then nsum s f else f x + nsum s f)
+  [hint_backward]
+  proof
+    1: rewrite_goal nsum_def sym=false
+    1: apply_backward_step iterate_insert
+    1: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_union
+  fixes f :: 'a ⇒ nat, s :: 'a set, t :: 'a set
+  prop finite s ⟶ finite t ⟶ disjoint s t ⟶ nsum (s ∪ t) f = nsum s f + nsum t f
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_goal nsum_def sym=false
+    3: apply_backward_step iterate_union
+    3: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_diff
+  fixes f :: 'a ⇒ nat, s :: 'a set, t :: 'a set
+  prop finite s ⟶ t ⊆ s ⟶ nsum (diff s t) f = nsum s f - nsum t f
+  [hint_backward]
+  proof
+    2: rewrite_goal nsum_def sym=false
+    2: cut "!x. !y. !z::nat. (x + z = y) --> (x = y - z)"
+    2: z3
+    3: apply_prev @2
+    3: apply_backward_step iterate_diff
+    3: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_incl_excl
+  fixes f :: 'a ⇒ nat, s :: 'a set, t :: 'a set
+  prop finite s ⟶ finite t ⟶ nsum s f + nsum t f = nsum (s ∪ t) f + nsum (s ∩ t) f
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal nsum_def sym=false
+    2: apply_forward_step monoidal_nat_add
+    3: apply_backward_step iterate_incl_excl @2,0,1
+  qed
+
+theorem nsum_support
+  fixes f :: 'a ⇒ nat, s :: 'a set
+  prop nsum (support plus f s) f = nsum s f
+  [hint_rewrite]
+  proof
+    0: rewrite_goal nsum_def sym=false
+    0: rewrite_goal iterate_support sym=false
+  qed
+
+theorem nsum_add
+  fixes f :: 'a ⇒ nat, g :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ nsum s (λx. f x + g x) = nsum s f + nsum s g
+  [hint_backward]
+  proof
+    1: rewrite_goal nsum_def sym=false
+    1: apply_backward_step iterate_op
+    1: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_add_gen
+  fixes f :: 'a ⇒ nat, g :: 'a ⇒ nat, s :: 'a set
+  prop finite ({x. x ∈ s ∧ ¬(f x = 0)}) ⟶ finite ({x. x ∈ s ∧ ¬(g x = 0)}) ⟶ nsum s (λx. f x + g x) = nsum s f + nsum s g
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal nsum_def sym=false
+    2: apply_backward_step iterate_op_gen
+    2: apply_backward_step monoidal_nat_add
+    3: rewrite_goal support_def sym=false
+    3: rewrite_goal neutral_nat_add sym=false
+    5: rewrite_goal support_def sym=false
+    5: rewrite_goal neutral_nat_add sym=false
+  qed
+
+theorem nsum_eq_0
+  fixes f :: 'a ⇒ nat, s :: 'a set
+  prop (∀x. x ∈ s ⟶ f x = 0) ⟶ nsum s f = 0
+  [hint_backward,hint_backward1]
+  proof
+    1: rewrite_goal nsum_def sym=false
+    1: rewrite_goal neutral_nat_add sym=true
+    1: apply_backward_step iterate_eq_neutral
+    1: apply_backward_step monoidal_nat_add
+    2: rewrite_goal neutral_nat_add sym=false
+  qed
+
+theorem nsum_0
+  fixes s :: 'a set
+  prop nsum s (λn. 0) = 0
+  [hint_rewrite]
+  proof
+    0: apply_backward_step nsum_eq_0
+    0: introduction x
+    0.2: apply_backward_step eq_refl
+  qed
+
+theorem nsum_lmul
+  fixes c :: nat, f :: 'a ⇒ nat, s :: 'a set
+  prop nsum s (λx. c * f x) = c * nsum s f
+  [hint_rewrite]
+  proof
+    0: cases "c=0"
+    0: introduction
+    0.1: rewrite_goal_with_prev @0.0
+    0.1: rewrite_goal nat_times_def_1 sym=false
+    0.1: rewrite_goal nsum_0 sym=false
+    1: introduction
+    1.1: rewrite_goal nsum_def sym=false
+    1.1: rewrite_goal iterate_expand_cases sym=false
+    1.1: cut "support plus (λx. c * f x) s = support plus f s"
+    1.1: rewrite_goal support_def sym=false
+    1.1: rewrite_goal neutral_nat_add sym=false
+    1.1: z3 @1.0
+    1.4: rewrite_goal_with_prev @1.3
+    1.4: cases "finite (support plus f s)"
+    1.4: introduction
+    1.4.1: rewrite_goal if_P @1.4.0 sym=false
+    1.4.1: rewrite_goal nsum_def sym=true
+    1.4.1: apply_forward_step finite_induct_strong @1.4.0 param_P="(%s. nsum s (λx. c * f x) = c * nsum s f)"
+    1.4.2: apply_prev @1.4.1
+    1.4.2: rewrite_goal nsum_empty sym=false
+    1.4.2: rewrite_goal mult_0_right sym=false
+    1.4.4: introduction a,s1
+    1.4.4.5: apply_forward_step nsum_insert @1.4.4.4 param_f=f param_x=a
+    1.4.4.6: rewrite_fact if_not_P @1.4.4.5,1.4.4.3 sym=false
+    1.4.4.7: rewrite_goal_with_prev @1.4.4.6
+    1.4.4.7: apply_forward_step nsum_insert @1.4.4.4 param_f="(λx. c * f x)" param_x=a
+    1.4.4.8: rewrite_fact if_not_P @1.4.4.7,1.4.4.3 sym=false
+    1.4.4.9: rewrite_goal_with_prev @1.4.4.8
+    1.4.4.9: rewrite_goal_with_prev @1.4.4.2
+    1.4.4.9: rewrite_goal distrib_l sym=false
+    1.5: introduction
+    1.5.1: rewrite_goal if_not_P @1.5.0 sym=false
+    1.5.1: rewrite_goal neutral_nat_add sym=false
+    1.5.1: rewrite_goal mult_0_right sym=false
+  qed
+
+theorem nsum_rmul
+  fixes c :: nat, f :: 'a ⇒ nat, s :: 'a set
+  prop nsum s (λx. f x * c) = nsum s f * c
+  [hint_rewrite]
+  proof
+    0: rewrite_goal mult_comm sym=false
+    0: rewrite_goal nsum_lmul sym=false
+  qed
+
+theorem nsum_le
+  fixes f :: 'a ⇒ nat, g :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ f x ≤ g x) ⟶ nsum s f ≤ nsum s g
+  [hint_backward,hint_backward1]
+  proof
+    2: revert_intro @1
+    1: apply_backward_step finite_induct_strong @0
+    1: rewrite_goal nsum_empty sym=false
+    1: introduction
+    1.1: apply_backward_step less_eq_refl
+    3: introduction x,s
+    3.5: apply_forward_step nsum_insert @0 param_f=f param_x=x
+    3.6: rewrite_fact if_not_P @3.5,3.3 sym=false
+    3.7: apply_forward_step nsum_insert @0 param_f=g param_x=x
+    3.8: rewrite_fact if_not_P @3.7,3.3 sym=false
+    3.9: rewrite_goal_with_prev @3.8
+    3.9: rewrite_goal_with_prev @3.6
+    3.9: apply_backward_step le_add2
+    3.9: apply_prev @3.4
+    3.9: rewrite_goal member_insert sym=false
+    3.9: apply_backward_step disjI1
+    3.9: apply_backward_step eq_refl
+    3.13: apply_prev @3.2
+    3.13: introduction x1
+    3.13.2: apply_prev @3.4
+    3.13.2: rewrite_goal member_insert sym=false
+    3.13.2: apply_backward_step disjI2
+  qed
+
+theorem nsum_lt
+  fixes f :: 'a ⇒ nat, g :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ f x ≤ g x) ⟶ (∃x. x ∈ s ∧ f x < g x) ⟶ nsum s f < nsum s g
+  [hint_backward,hint_backward1]
+  proof
+    3: exists_elim a @2
+    5: apply_forward_step conjD1 @4
+    6: apply_forward_step conjD2 @4
+    7: cut "s = insert a (delete s a)"
+    7: rewrite_goal eq_sym_eq sym=false
+    7: apply_backward_step insert_delete @5
+    9: rewrite_goal_with_prev @8
+    9: cut "finite (delete s a)" @8
+    9: apply_backward_step finite_subset param_t=s
+    9: rewrite_goal delete_def sym=false
+    9: z3
+    12: apply_forward_step nsum_insert @11 param_f=f param_x=a
+    13: cut "~(a ∈ delete s a) "
+    13: rewrite_goal member_delete sym=false
+    13: z3
+    15: rewrite_fact if_not_P @12,14 sym=false
+    16: apply_forward_step nsum_insert @11 param_f=g param_x=a
+    17: rewrite_fact if_not_P @16,14 sym=false
+    18: rewrite_goal_with_prev @17
+    18: rewrite_goal_with_prev @15
+    18: rewrite_goal add_comm sym=false
+    18: apply_backward_step let_add2
+    18: apply_backward_step nsum_le
+    18: introduction x
+    18.2: apply_prev @1
+    18.2: rewrite_fact member_delete @18.1 sym=false
+    18.3: apply_backward_step conjD2 @18.2
+  qed
+
+theorem nsum_lt_all
+  fixes f :: 'a ⇒ nat, g :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ f x < g x) ⟶ nsum s f < nsum s g
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step nsum_lt
+    3: introduction x
+    3.2: apply_backward_step lt_imp_le
+    3.2: apply_prev @2
+    4: rewrite_fact set_equal_iff @1 sym=false
+    5: rewrite_fact not_all @4 sym=false
+    6: exists_elim a @5
+    8: inst_exists_goal a
+    8: apply_backward_step conjI
+    8: z3 @7
+    9: apply_prev @2,8
+  qed
+
+theorem nsum_eq
+  fixes f :: 'a ⇒ nat, g :: 'a ⇒ nat, s :: 'a set
+  prop (∀x. x ∈ s ⟶ f x = g x) ⟶ nsum s f = nsum s g
+  [hint_backward]
+  proof
+    1: rewrite_goal nsum_def sym=false
+    1: apply_backward_step iterate_eq
+    1: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_const
+  fixes c :: nat, s :: 'a set
+  prop finite s ⟶ nsum s (λn. c) = card s * c
+  [hint_backward]
+  proof
+    1: apply_backward_step finite_induct_strong @0
+    1: rewrite_goal nsum_empty sym=false
+    1: rewrite_goal card_empty sym=false
+    1: rewrite_goal nat_times_def_1 sym=false
+    4: introduction a,s
+    4.4: apply_forward_step card_insert @0 param_x=a
+    4.5: rewrite_fact if_not_P @4.4,4.3 sym=false
+    4.6: rewrite_goal_with_prev @4.5
+    4.6: apply_forward_step nsum_insert @0 param_f="(λn::'a. c)" param_x=a
+    4.7: rewrite_fact if_not_P @4.6,4.3 sym=false
+    4.8: rewrite_goal_with_prev @4.7
+    4.8: rewrite_goal_with_prev @4.2
+    4.8: rewrite_goal nat_times_def_2 sym=false
+  qed
+
+theorem nsum_pos_bound
+  fixes b :: nat, f :: 'a ⇒ nat, s :: 'a set, x :: 'a
+  prop finite s ⟶ nsum s f ≤ b ⟶ x ∈ s ⟶ f x ≤ b
+  [hint_backward,hint_backward1]
+  proof
+    3: revert_intro @2
+    2: revert_intro @1
+    1: apply_backward_step finite_induct_strong @0
+    1: introduction
+    1.2: apply_resolve_step member_empty @1.1
+    2: introduction a,s
+    2.6: rewrite_fact member_insert @2.5 sym=false
+    2.7: apply_forward_step nsum_insert @0 param_f=f param_x=a
+    2.8: rewrite_fact if_not_P @2.7,2.3 sym=false
+    2.9: rewrite_fact_with_prev @2.8,2.4
+    2.10: apply_backward_step disjE @2.6
+    2.10: introduction
+    2.10.1: rewrite_goal_with_prev @2.10.0
+    2.10.1: apply_backward_step less_eq_trans param_m="f a + nsum s f"
+    2.10.1: apply_backward_step le_add
+    2.11: introduction
+    2.11.1: apply_prev @2.2
+    2.11.1: apply_backward_step less_eq_trans param_m="f a + nsum s f"
+    2.11.1: rewrite_goal add_comm sym=false
+    2.11.1: apply_backward_step le_add
+  qed
+
+theorem nsum_eq_0_iff
+  fixes f :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ nsum s f = 0 ⟷ (∀x. x ∈ s ⟶ f x = 0)
+  [hint_backward]
+  proof
+    1: apply_backward_step iffI
+    1: introduction
+    1.1: introduction x
+    1.1.2: cut "!n::nat. n = 0 <--> n <= 0" @1.0
+    1.1.2: z3
+    1.1.3: rewrite_goal_with_prev @1.1.2
+    1.1.3: rewrite_fact_with_prev @1.1.2,1.0
+    1.1.4: apply_backward_step nsum_pos_bound param_s=s
+    2: introduction
+    2.1: apply_backward_step nsum_eq_0
+  qed
+
+theorem nsum_pos_lt
+  fixes f :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ (∃x. x ∈ s ∧ 0 < f x) ⟶ 0 < nsum s f
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step le_1_1
+    2: apply_forward_step nsum_eq_0_iff @0 param_f=f
+    3: rewrite_goal_with_prev @2
+    3: rewrite_goal not_all sym=false
+    3: rewrite_goal not_imp sym=false
+    3: z3 @1
+  qed
+
+theorem nsum_pos_lt_all
+  fixes f :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀i. i ∈ s ⟶ 0 < f i) ⟶ 0 < nsum s f
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step nsum_pos_lt
+    3: rewrite_fact set_equal_iff @1 sym=false
+    4: rewrite_fact not_all @3 sym=false
+    5: exists_elim a @4
+    7: inst_exists_goal a
+    7: apply_backward_step conjI
+    7: z3 @6
+    8: apply_prev @2,7
+  qed
+
+theorem nsum_delete
+  fixes a :: 'a, f :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ a ∈ s ⟶ f a + nsum (delete s a) f = nsum s f
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal nsum_def sym=false
+    2: apply_forward_step monoidal_nat_add
+    3: apply_backward_step iterate_delete @2,0,1
+  qed
+
+theorem nsum_sing
+  fixes f :: 'a ⇒ nat, x :: 'a
+  prop nsum ({x}) f = f x
+  [hint_rewrite]
+  proof
+    0: cut "finite({}::'a set)"
+    0: apply_backward_step finite_empty
+    1: apply_forward_step nsum_insert @0 param_f=f param_x=x
+    2: cut "~(x ∈ ∅)"
+    2: apply_backward_step member_empty
+    3: rewrite_fact if_not_P @1,2 sym=false
+    4: rewrite_fact nsum_empty @3 sym=false
+    5: rewrite_fact add_0_right @4 sym=false
+  qed
+
+theorem nsum_delta
+  fixes a :: 'a, b :: nat, s :: 'a set
+  prop nsum s (λx. if x = a then b else 0) = (if a ∈ s then b else 0)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal nsum_def sym=false
+    0: rewrite_goal neutral_nat_add sym=true
+    0: apply_backward_step iterate_delta
+    0: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_swap
+  fixes f :: 'b ⇒ 'c ⇒ nat, s :: 'b set, t :: 'c set
+  prop finite s ⟶ finite t ⟶ nsum s (λi. nsum t (f i)) = nsum t (λj. nsum s (λi. f i j))
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step finite_induct_strong @0
+    2: rewrite_goal nsum_empty sym=false
+    2: rewrite_goal nsum_0 sym=false
+    4: introduction a,s
+    4.4: apply_forward_step nsum_insert @0 param_f="(λi. f i j)" param_x=a
+    4.5: rewrite_fact if_not_P @4.4,4.3 sym=false
+    4.6: rewrite_goal_with_prev @4.5
+    4.6: apply_forward_step nsum_insert @0 param_f="(λi. nsum t (f i))" param_x=a
+    4.7: rewrite_fact if_not_P @4.6,4.3 sym=false
+    4.8: rewrite_goal_with_prev @4.7
+    4.8: rewrite_goal_with_prev @4.2
+    4.8: rewrite_goal eq_sym_eq sym=false
+    4.8: apply_backward_step nsum_add
+  qed
+
+theorem nsum_image
+  fixes f :: 'a ⇒ 'b, g :: 'b ⇒ nat, s :: 'a set
+  prop (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y) ⟶ nsum (image f s) g = nsum s (g ∘ f)
+  [hint_backward]
+  proof
+    1: rewrite_goal nsum_def sym=false
+    1: apply_backward_step iterate_image
+    1: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_superset
+  fixes f :: 'b ⇒ nat, u :: 'b set, v :: 'b set
+  prop u ⊆ v ⟶ (∀x. x ∈ v ⟶ ¬(x ∈ u) ⟶ f x = 0) ⟶ nsum v f = nsum u f
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal nsum_def sym=false
+    2: apply_backward_step iterate_superset
+    2: apply_backward_step monoidal_nat_add
+    3: rewrite_goal neutral_nat_add sym=false
+  qed
+
+theorem nsum_univ
+  fixes f :: 'a ⇒ nat, s :: 'a set
+  prop support plus f univ ⊆ s ⟶ nsum s f = nsum univ f
+  [hint_backward]
+  proof
+    1: rewrite_goal nsum_def sym=false
+    1: apply_backward_step iterate_univ
+    1: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_union_rzero
+  fixes f :: 'b ⇒ nat, u :: 'b set, v :: 'b set
+  prop finite u ⟶ (∀x. x ∈ v ⟶ ¬(x ∈ u) ⟶ f x = 0) ⟶ nsum (u ∪ v) f = nsum u f
+  [hint_backward,hint_backward1]
+  proof
+    2: cut "u ∪ v = u ∪ (diff v u)"
+    2: rewrite_goal diff_def sym=false
+    2: z3
+    4: rewrite_goal_with_prev @3
+    4: apply_backward_step nsum_superset
+    4: apply_backward_step subset_union_id
+    5: introduction x
+    5.3: apply_prev @1
+    5.3: rewrite_fact diff_def @5.1 sym=false
+    5.4: rewrite_fact member_union_iff @5.3 sym=false
+    5.5: rewrite_fact member_collect @5.4 sym=false
+    5.6: apply_backward_step disjE @5.5
+    5.6: introduction
+    5.6.1: apply_backward_step negE_gen @5.2,5.6.0
+    5.7: introduction
+    5.7.1: apply_backward_step conjD1 @5.7.0
+  qed
+
+theorem nsum_union_lzero
+  fixes f :: 'b ⇒ nat, u :: 'b set, v :: 'b set
+  prop finite u ⟶ (∀x. x ∈ v ⟶ ¬(x ∈ u) ⟶ f x = 0) ⟶ nsum (v ∪ u) f = nsum u f
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal union_comm sym=false
+    2: apply_backward_step nsum_union_rzero
+  qed
+
+theorem nsum_restrict
+  fixes f :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ nsum s (λx. if x ∈ s then f x else 0) = nsum s f
+  [hint_backward]
+  proof
+    1: apply_backward_step nsum_eq
+    1: introduction x
+    1.2: rewrite_goal if_P @1.1 sym=false
+  qed
+
+theorem nsum_bound
+  fixes b :: nat, f :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ f x ≤ b) ⟶ nsum s f ≤ card s * b
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step nsum_const @0 param_c=b
+    3: rewrite_fact eq_sym_eq @2 sym=false
+    4: rewrite_goal_with_prev @3
+    4: apply_backward_step nsum_le
+  qed
+
+theorem nsum_bound_gen
+  fixes b :: nat, f :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ f x ≤ b DIV card s) ⟶ nsum s f ≤ b
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_forward_step card_eq_0 @0
+    4: rewrite_fact eq_sym_eq @3 sym=false
+    5: rewrite_fact_with_prev @4,1
+    6: cut "nsum s (%x. card s * f x) <= card s * b"
+    6: apply_backward_step nsum_bound
+    6: introduction x
+    6.2: apply_forward_step le_rdiv_eq @5 param_b=b param_n="f x"
+    6.3: rewrite_fact eq_sym_eq @6.2 sym=false
+    6.4: rewrite_goal_with_prev @6.3
+    6.4: apply_prev @2
+    8: rewrite_fact nsum_lmul @7 sym=false
+    9: rewrite_fact mult_comm @8 sym=false
+    10: rewrite_fact le_mult_rcancel @9 sym=false
+    11: apply_backward_step disjE @10
+    12: introduction
+    12.1: apply_backward_step negE_gen @5,12.0
+  qed
+
+theorem nsum_bound_lt
+  fixes b :: nat, f :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ f x ≤ b) ⟶ (∃x. x ∈ s ∧ f x < b) ⟶ nsum s f < card s * b
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step lte_trans param_m="nsum s (%x::'a. b)"
+    3: apply_backward_step nsum_lt
+    4: apply_forward_step nsum_const @0 param_c=b
+    5: rewrite_goal_with_prev @4
+    5: apply_backward_step less_eq_refl
+  qed
+
+theorem nsum_union_eq
+  fixes f :: 'b ⇒ nat, s :: 'b set, t :: 'b set, u :: 'b set
+  prop finite u ⟶ s ∩ t = ∅ ⟶ s ∪ t = u ⟶ nsum s f + nsum t f = nsum u f
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_fact eq_sym_eq @2 sym=false
+    4: rewrite_goal_with_prev @3
+    4: rewrite_goal eq_sym_eq sym=false
+    4: apply_backward_step nsum_union
+    4: apply_backward_step finite_subset param_t=u
+    4: rewrite_goal_with_prev @3
+    4: apply_backward_step subset_union_id
+    7: apply_backward_step finite_subset param_t=u
+    7: rewrite_goal_with_prev @3
+    7: rewrite_goal union_comm sym=false
+    7: apply_backward_step subset_union_id
+    11: rewrite_goal disjoint_def sym=false
+  qed
+
+theorem nsum_eq_superset
+  fixes f :: 'b ⇒ nat, g :: 'b ⇒ nat, s :: 'b set, t :: 'b set
+  prop finite t ⟶ t ⊆ s ⟶ (∀x. x ∈ t ⟶ f x = g x) ⟶ (∀x. x ∈ s ⟶ ¬(x ∈ t) ⟶ f x = 0) ⟶ nsum s f = nsum t g
+  [hint_backward,hint_backward1]
+  proof
+    4: apply_forward_step nsum_superset @1,3
+    5: rewrite_goal_with_prev @4
+    5: apply_backward_step nsum_eq
+  qed
+
+theorem nsum_restrict_set
+  fixes P :: 'b ⇒ bool, f :: 'b ⇒ nat, s :: 'b set
+  prop nsum ({x. x ∈ s ∧ P x}) f = nsum s (λx. if P x then f x else 0)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal nsum_def sym=false
+    0: rewrite_goal neutral_nat_add sym=true
+    0: apply_backward_step iterate_restrict_set
+    0: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_nsum_restrict
+  fixes R :: 'a ⇒ 'b ⇒ bool, f :: 'a ⇒ 'b ⇒ nat, s :: 'a set, t :: 'b set
+  prop finite s ⟶ finite t ⟶ nsum s (λx. nsum ({y. y ∈ t ∧ R x y}) (λy. f x y)) = nsum t (λy. nsum ({x. x ∈ s ∧ R x y}) (λx. f x y))
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal nsum_restrict_set sym=false
+    2: apply_backward_step nsum_swap
+  qed
+
+theorem card_eq_nsum
+  fixes s :: 'a set
+  prop finite s ⟶ card s = nsum s (λx. 1)
+  [hint_backward]
+  proof
+    1: apply_forward_step nsum_const @0 param_c="(1::nat)"
+    2: rewrite_goal_with_prev @1
+    2: rewrite_goal mult_1_right sym=false
+  qed
+
+theorem nsum_multicount_gen
+  fixes R :: 'a ⇒ 'b ⇒ bool, f :: 'a ⇒ 'b ⇒ nat, k :: 'b ⇒ nat, s :: 'a set, t :: 'b set
+  prop finite s ⟶ finite t ⟶ (∀j. j ∈ t ⟶ card ({i. i ∈ s ∧ R i j}) = k j) ⟶ nsum s (λi. card ({j. j ∈ t ∧ R i j})) = nsum t (λi. k i)
+  [hint_backward,hint_backward1]
+  proof
+    3: cut "nsum s (λi. card ({j. j ∈ t ∧ R i j})) =nsum s (%i. nsum {j. j ∈ t ∧ R i j} (%j. 1))"
+    3: apply_backward_step nsum_eq
+    3: introduction x
+    3.2: apply_backward_step card_eq_nsum
+    3.2: apply_backward_step finite_subset param_t=t
+    3.2: apply_backward_step subsetI
+    3.2: rewrite_goal member_collect sym=false
+    3.2: introduction x1
+    3.2.2: apply_backward_step conjD1 @3.2.1
+    5: rewrite_goal_with_prev @4
+    5: apply_forward_step nsum_nsum_restrict @0,1 param_R=R param_f="(%i::'a. %j::'b. (1::nat))"
+    6: rewrite_goal_with_prev @5
+    6: apply_backward_step nsum_eq
+    6: introduction x
+    6.2: cut "finite ({x1. x1 ∈ s ∧ R x1 x})"
+    6.2: apply_backward_step finite_subset param_t=s
+    6.2: apply_backward_step subsetI
+    6.2: rewrite_goal member_collect sym=false
+    6.2: introduction x1
+    6.2.2: apply_backward_step conjD1 @6.2.1
+    6.6: apply_forward_step card_eq_nsum @6.5
+    6.7: rewrite_fact eq_sym_eq @6.6 sym=false
+    6.8: rewrite_goal_with_prev @6.7
+    6.8: apply_prev @2
+  qed
+
+theorem nsum_multicount
+  fixes R :: 'a ⇒ 'b ⇒ bool, f :: 'a ⇒ 'b ⇒ nat, k :: nat, s :: 'a set, t :: 'b set
+  prop finite s ⟶ finite t ⟶ (∀j. j ∈ t ⟶ card ({i. i ∈ s ∧ R i j}) = k) ⟶ nsum s (λi. card ({j. j ∈ t ∧ R i j})) = k * card t
+  [hint_backward,hint_backward1]
+  proof
+    3: cut "nsum s (λi. card ({j. j ∈ t ∧ R i j})) = nsum t (%i. k)"
+    3: apply_backward_step nsum_multicount_gen
+    4: rewrite_goal_with_prev @3
+    4: rewrite_goal mult_comm sym=false
+    4: apply_backward_step nsum_const
+  qed
+
+theorem nsum_image_gen
+  fixes f :: 'b ⇒ 'a, g :: 'b ⇒ nat, s :: 'b set
+  prop finite s ⟶ nsum s g = nsum (image f s) (λy. nsum ({x. x ∈ s ∧ f x = y}) g)
+  [hint_backward]
+  proof
+    1: rewrite_goal nsum_def sym=false
+    1: apply_backward_step iterate_image_gen
+    1: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_group
+  fixes f :: 'b ⇒ 'a, g :: 'b ⇒ nat, s :: 'b set, t :: 'a set
+  prop finite s ⟶ image f s ⊆ t ⟶ nsum t (λy. nsum ({x. x ∈ s ∧ f x = y}) g) = nsum s g
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step nsum_image_gen param_f=f param_g=g param_s=s
+    3: apply_fact @2,0
+    4: rewrite_goal_with_prev @3
+    4: apply_backward_step nsum_superset
+    4: introduction x
+    4.3: apply_backward_step nsum_eq_0
+    4.3: rewrite_goal member_collect sym=false
+    4.3: introduction x1
+    4.3.2: rewrite_fact in_image @4.2 sym=false
+    4.3.3: apply_backward_step negE_gen @4.3.2
+    4.3.3: rewrite_goal conj_comm sym=false
+    4.3.3: rewrite_goal eq_sym_eq sym=false
+    4.3.3: apply_backward_step exI @4.3.1
+  qed
+
+theorem nsum_group_relation
+  fixes R :: 'b ⇒ 'a ⇒ bool, g :: 'b ⇒ nat, s :: 'b set, t :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ (∃!y. y ∈ t ∧ R x y)) ⟶ nsum t (λy. nsum ({x. x ∈ s ∧ R x y}) g) = nsum s g
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step nsum_group @0 param_f="(%x. (THE y. y ∈ t ∧ R x y))" param_g=g param_t=t
+    3: cut "image (λx. THE y. y ∈ t ∧ R x y) s ⊆ t"
+    3: apply_backward_step subsetI
+    3: rewrite_goal in_image sym=false
+    3: introduction x
+    3.2: exists_elim x1 @3.1
+    3.4: apply_forward_step conjD1 @3.3
+    3.5: apply_forward_step conjD2 @3.3
+    3.6: apply_fact @1,3.5
+    3.7: apply_forward_step theI' @3.6
+    3.8: apply_forward_step conjD1 @3.7
+    3.9: rewrite_goal_with_prev @3.4
+    6: apply_fact @2,5
+    7: rewrite_fact eq_sym_eq @6 sym=false
+    8: rewrite_goal_with_prev @7
+    8: apply_backward_step nsum_eq
+    8: introduction x
+    8.2: cut "{x1. x1 ∈ s ∧ R x1 x} = {x1. x1 ∈ s ∧ (THE y. y ∈ t ∧ R x1 y) = x}"
+    8.2: apply_backward_step member_ext
+    8.2: rewrite_goal member_collect sym=false
+    8.2: introduction x1
+    8.2.1: apply_backward_step iffI
+    8.2.1: introduction
+    8.2.1.1: apply_forward_step conjD1 @8.2.1.0
+    8.2.1.2: apply_forward_step conjD2 @8.2.1.0
+    8.2.1.3: apply_backward_step conjI
+    8.2.1.3: apply_fact @1,8.2.1.1
+    8.2.1.4: rewrite_fact exists1_def @8.2.1.3 sym=""
+    8.2.1.5: exists_elim x2 @8.2.1.4
+    8.2.1.7: apply_forward_step conjD1 @8.2.1.6
+    8.2.1.8: apply_forward_step conjD2 @8.2.1.6
+    8.2.1.9: apply_forward_step theI' @8.2.1.3
+    8.2.1.10: apply_fact @8.2.1.8,8.2.1.9
+    8.2.1.11: rewrite_goal_with_prev @8.2.1.10
+    8.2.1.11: rewrite_goal eq_sym_eq sym=false
+    8.2.1.11: apply_prev @8.2.1.8
+    8.2.1.11: apply_backward_step conjI
+    8.2.2: introduction
+    8.2.2.1: apply_forward_step conjD1 @8.2.2.0
+    8.2.2.2: apply_forward_step conjD2 @8.2.2.0
+    8.2.2.3: apply_backward_step conjI
+    8.2.2.3: apply_fact @1,8.2.2.1
+    8.2.2.4: apply_forward_step theI' @8.2.2.3
+    8.2.2.5: apply_forward_step conjD2 @8.2.2.4
+    8.2.2.6: rewrite_fact_with_prev @8.2.2.2,8.2.2.5
+    8.5: rewrite_goal_with_prev @8.4
+  qed
+
+theorem nsum_subset
+  fixes f :: 'a ⇒ nat, u :: 'a set, v :: 'a set
+  prop finite u ⟶ finite v ⟶ (∀x. x ∈ diff u v ⟶ f x = 0) ⟶ nsum u f ≤ nsum v f
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_forward_step nsum_union param_f=f param_s="inter u v" param_t=""
+    4: cut "finite (u ∩ v)"
+    4: apply_backward_step finite_subset param_t=u
+    4: apply_backward_step inter_subset_id
+    6: apply_fact @3,5
+    7: forall_elim "diff u v" @6
+    8: forall_elim "diff v u" @6
+    9: cut "finite (diff u v)" @7
+    9: apply_backward_step finite_diff
+    10: apply_fact @7,9
+    11: cut "finite (diff v u)"
+    11: apply_backward_step finite_diff
+    12: apply_fact @8,11
+    13: cut "!s::'a set. !t. disjoint (s ∩ t) (diff s t)"
+    13: rewrite_goal disjoint_def sym=false
+    13: rewrite_goal diff_def sym=false
+    13: z3
+    16: forall_elim u @15
+    17: forall_elim v @16
+    18: apply_fact @10,17
+    19: forall_elim v @15
+    20: forall_elim u @19
+    21: rewrite_fact inter_comm @20 sym=false
+    22: apply_fact @12,21
+    23: cut "!s::'a set. !t. s ∩ t ∪ diff s t = s"
+    23: rewrite_goal diff_def sym=false
+    23: z3
+    25: forall_elim u @24
+    26: forall_elim v @25
+    27: rewrite_fact_with_prev @26,18
+    28: forall_elim v @24
+    29: forall_elim u @28
+    30: rewrite_fact inter_comm @29 sym=false
+    31: rewrite_fact_with_prev @30,22
+    32: cut "nsum (diff u v) f = 0"
+    32: apply_backward_step nsum_eq_0
+    33: rewrite_fact_with_prev @32,27
+    34: rewrite_fact add_0_right @33 sym=false
+    35: rewrite_goal_with_prev @34
+    35: rewrite_goal_with_prev @31
+    35: apply_backward_step le_add
+  qed
+
+theorem nsum_subset_simple
+  fixes f :: 'a ⇒ nat, u :: 'a set, v :: 'a set
+  prop finite v ⟶ u ⊆ v ⟶ nsum u f ≤ nsum v f
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step nsum_subset
+    2: apply_backward_step finite_subset param_t=v
+    3: introduction x
+    3.2: rewrite_fact diff_def @3.1 sym=false
+    3.3: z3 @3.2,1
+  qed
+
+theorem nsum_le_gen
+  fixes f :: 'b ⇒ nat, g :: 'b ⇒ nat, s :: 'b set
+  prop (∀x. x ∈ s ⟶ f x ≤ g x) ⟶ finite ({x. x ∈ s ∧ ¬(g x = 0)}) ⟶ nsum s f ≤ nsum s g
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal nsum_support sym=true
+    2: rewrite_goal support_def sym=false
+    2: rewrite_goal neutral_nat_add sym=false
+    2: apply_backward_step less_eq_trans param_m="nsum ({x. x ∈ s ∧ ¬(g x = 0)}) f"
+    2: apply_backward_step nsum_subset
+    2: apply_backward_step finite_subset @1
+    2: apply_backward_step subsetI
+    2: rewrite_goal member_collect sym=false
+    2: introduction x
+    2.2: apply_forward_step conjD1 @2.1
+    2.3: apply_forward_step conjD2 @2.1
+    2.4: apply_backward_step conjI
+    2.4: apply_fact @0,2.2
+    2.5: apply_backward_step contrapositive @2.3
+    2.5: rewrite_goal double_neg sym=false
+    2.5: introduction
+    2.5.1: rewrite_fact_with_prev @2.5.0,2.4
+    2.5.2: apply_forward_step nat_le_zero @2.5.1
+    6: introduction x
+    6.2: rewrite_fact diff_def @6.1 sym=false
+    6.3: rewrite_fact member_collect @6.2 sym=false
+    6.4: rewrite_fact member_collect @6.3 sym=false
+    6.5: apply_forward_step conjD1 @6.4
+    6.6: apply_forward_step conjD2 @6.4
+    6.7: apply_forward_step conjD1 @6.5
+    6.8: apply_forward_step conjD2 @6.5
+    6.9: apply_fact @0,6.7
+    6.10: apply_backward_step negE_gen @6.6
+    6.10: apply_backward_step conjI
+    6.10: apply_backward_step contrapositive @6.8
+    6.10: rewrite_goal double_neg sym=false
+    6.10: introduction
+    6.10.1: rewrite_fact_with_prev @6.10.0,6.9
+    6.10.2: rewrite_fact nat_less_eq_def_1 @6.10.1 sym=false
+    8: apply_backward_step nsum_le
+    8: rewrite_goal member_collect sym=false
+    8: introduction x
+    8.2: apply_prev @0
+    8.2: apply_backward_step conjD1 @8.1
+  qed
+
+theorem nsum_mul_bound
+  fixes a :: 'a ⇒ nat, b :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ nsum s (λi. a i * b i) ≤ nsum s a * nsum s b
+  [hint_backward]
+  proof
+    1: rewrite_goal nsum_lmul sym=true
+    1: apply_backward_step nsum_le
+    1: introduction x
+    1.2: apply_backward_step le_mult2
+    1.2: cut "a x = nsum {x} a"
+    1.2: rewrite_goal nsum_sing sym=false
+    1.3: rewrite_goal_with_prev @1.2
+    1.3: apply_backward_step nsum_subset_simple
+    1.3: z3 @1.1
+    1.6: apply_backward_step less_eq_refl
+  qed
+
+theorem nsum_image_nonzero
+  fixes d :: 'a ⇒ nat, i :: 'b ⇒ 'a, s :: 'b set
+  prop finite s ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ ¬(x = y) ⟶ i x = i y ⟶ d (i x) = 0) ⟶ nsum (image i s) d = nsum s (d ∘ i)
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal nsum_def sym=false
+    2: apply_backward_step iterate_image_nonzero
+    2: apply_backward_step monoidal_nat_add
+    3: rewrite_goal neutral_nat_add sym=false
+  qed
+
+theorem nsum_bijection
+  fixes f :: 'b ⇒ nat, p :: 'b ⇒ 'b, s :: 'b set
+  prop (∀x. x ∈ s ⟶ p x ∈ s) ⟶ (∀y. y ∈ s ⟶ (∃!x. x ∈ s ∧ p x = y)) ⟶ nsum s f = nsum s (f ∘ p)
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal nsum_def sym=false
+    2: apply_backward_step iterate_bijection
+    2: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_eq_general
+  fixes f :: 'b ⇒ nat, g :: 'a ⇒ nat, h :: 'b ⇒ 'a, s :: 'b set, t :: 'a set
+  prop (∀y. y ∈ t ⟶ (∃!x. x ∈ s ∧ h x = y)) ⟶ (∀x. x ∈ s ⟶ h x ∈ t ∧ g (h x) = f x) ⟶ nsum s f = nsum t g
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal nsum_def sym=false
+    2: apply_backward_step iterate_eq_general param_h=h
+    2: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_eq_general_inverse
+  fixes f :: 'b ⇒ nat, g :: 'a ⇒ nat, h :: 'b ⇒ 'a, k :: 'a ⇒ 'b, s :: 'b set, t :: 'a set
+  prop (∀y. y ∈ t ⟶ k y ∈ s ∧ h (k y) = y) ⟶ (∀x. x ∈ s ⟶ h x ∈ t ∧ k (h x) = x ∧ g (h x) = f x) ⟶ nsum s f = nsum t g
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal nsum_def sym=false
+    2: apply_backward_step iterate_eq_general_inverses param_h=h param_k=k
+    2: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_injection
+  fixes f :: 'b ⇒ nat, p :: 'b ⇒ 'b, s :: 'b set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ p x ∈ s) ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ p x = p y ⟶ x = y) ⟶ nsum s (f ∘ p) = nsum s f
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_goal nsum_def sym=false
+    3: apply_backward_step iterate_injection
+    3: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_union_nonzero
+  fixes f :: 'b ⇒ nat, s :: 'b set, t :: 'b set
+  prop finite s ⟶ finite t ⟶ (∀x. x ∈ s ∩ t ⟶ f x = 0) ⟶ nsum (s ∪ t) f = nsum s f + nsum t f
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_goal nsum_def sym=false
+    3: apply_backward_step iterate_union_nonzero
+    3: apply_backward_step monoidal_nat_add
+    4: rewrite_goal neutral_nat_add sym=false
+  qed
+
+theorem nsum_cases
+  fixes P :: 'b ⇒ bool, f :: 'b ⇒ nat, g :: 'b ⇒ nat, s :: 'b set
+  prop finite s ⟶ nsum s (λx. if P x then f x else g x) = nsum ({x. x ∈ s ∧ P x}) f + nsum ({x. x ∈ s ∧ ¬(P x)}) g
+  [hint_backward,hint_backward1]
+  proof
+    1: rewrite_goal nsum_def sym=false
+    1: apply_backward_step iterate_cases
+    1: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_closed
+  fixes P :: nat ⇒ bool, f :: 'b ⇒ nat, s :: 'b set
+  prop P 0 ⟶ (∀x. ∀y. P x ⟶ P y ⟶ P (x + y)) ⟶ (∀a. a ∈ s ⟶ P (f a)) ⟶ P (nsum s f)
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_goal nsum_def sym=false
+    3: apply_backward_step iterate_closed
+    3: apply_backward_step monoidal_nat_add
+    4: rewrite_goal neutral_nat_add sym=false
+    5: introduction x
+    5.2: apply_prev @2
+    5.2: apply_backward_step conjD1 @5.1
+  qed
+
+theorem nsum_related
+  fixes R :: nat ⇒ nat ⇒ bool, f :: 'b ⇒ nat, g :: 'b ⇒ nat, s :: 'b set
+  prop R 0 0 ⟶ (∀m. ∀n. ∀m1. ∀n1. R m n ⟶ R m1 n1 ⟶ R (m + m1) (n + n1)) ⟶ finite s ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (nsum s f) (nsum s g)
+  [hint_backward,hint_backward1]
+  proof
+    4: rewrite_goal nsum_def sym=false
+    4: apply_forward_step iterate_related param_R=R param_f=f param_g=g param_op="(plus::nat⇒nat⇒nat)" param_s=s
+    5: apply_prev @4
+    5: apply_backward_step monoidal_nat_add
+    6: rewrite_goal neutral_nat_add sym=false
+    7: introduction x1,y1,x2,y2
+    7.6: apply_prev @1
+  qed
+
+theorem nsum_closed_nonempty
+  fixes P :: nat ⇒ bool, f :: 'b ⇒ nat, s :: 'b set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀x. ∀y. P x ⟶ P y ⟶ P (x + y)) ⟶ (∀a. a ∈ s ⟶ P (f a)) ⟶ P (nsum s f)
+  [hint_backward,hint_backward1]
+  proof
+    4: rewrite_goal nsum_def sym=false
+    4: apply_backward_step iterate_closed_nonempty
+    4: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_related_nonempty
+  fixes R :: nat ⇒ nat ⇒ bool, f :: 'b ⇒ nat, g :: 'b ⇒ nat, s :: 'b set
+  prop (∀m. ∀n. ∀m1. ∀n1. R m n ⟶ R m1 n1 ⟶ R (m + m1) (n + n1)) ⟶ finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (nsum s f) (nsum s g)
+  [hint_backward,hint_backward1]
+  proof
+    4: rewrite_goal nsum_def sym=false
+    4: apply_forward_step iterate_related_nonempty param_R=R param_f=f param_g=g param_op="(plus::nat⇒nat⇒nat)" param_s=s
+    5: apply_prev @4
+    5: apply_backward_step monoidal_nat_add
+    6: introduction x1,y1,x2,y2
+    6.6: apply_prev @0
+  qed
+
+theorem nsum_add_natseg
+  fixes f :: nat ⇒ nat, g :: nat ⇒ nat, m :: nat, n :: nat
+  prop nsum ({m..n}) (λi. f i + g i) = nsum ({m..n}) f + nsum ({m..n}) g
+  [hint_rewrite]
+  proof
+    0: apply_backward_step nsum_add
+    0: apply_backward_step finite_natseg
+  qed
+
+theorem nsum_le_natseg
+  fixes f :: nat ⇒ nat, g :: nat ⇒ nat, m :: nat, n :: nat
+  prop (∀i. m ≤ i ⟶ i ≤ n ⟶ f i ≤ g i) ⟶ nsum ({m..n}) f ≤ nsum ({m..n}) g
+  [hint_backward]
+  proof
+    1: apply_backward_step nsum_le
+    1: apply_backward_step finite_natseg
+    2: rewrite_goal member_natseg sym=false
+    2: introduction i
+    2.2: apply_prev @0
+    2.2: apply_backward_step conjD1 @2.1
+    2.3: apply_backward_step conjD2 @2.1
+  qed
+
+theorem nsum_eq_natseg
+  fixes f :: nat ⇒ nat, g :: nat ⇒ nat, m :: nat, n :: nat
+  prop (∀i. m ≤ i ⟶ i ≤ n ⟶ f i = g i) ⟶ nsum ({m..n}) f = nsum ({m..n}) g
+  [hint_backward]
+  proof
+    1: apply_backward_step nsum_eq
+    1: rewrite_goal member_natseg sym=false
+    1: introduction i
+    1.2: apply_prev @0
+    1.2: apply_backward_step conjD1 @1.1
+    1.3: apply_backward_step conjD2 @1.1
+  qed
+
+theorem nsum_const_natseg
+  fixes c :: nat, m :: nat, n :: nat
+  prop nsum ({m..n}) (λn1. c) = (n + 1 - m) * c
+  [hint_rewrite]
+  proof
+    0: rewrite_goal card_natseg sym=true
+    0: apply_backward_step nsum_const
+    0: apply_backward_step finite_natseg
+  qed
+
+theorem nsum_eq_0_natseg
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat
+  prop (∀i. m ≤ i ⟶ i ≤ n ⟶ f i = 0) ⟶ nsum ({m..n}) f = 0
+  [hint_backward]
+  proof
+    1: apply_backward_step nsum_eq_0
+    1: rewrite_goal member_natseg sym=false
+    1: introduction i
+    1.2: apply_prev @0
+    1.2: apply_backward_step conjD1 @1.1
+    1.3: apply_backward_step conjD2 @1.1
+  qed
+
+theorem nsum_eq_0_iff_natseg
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat
+  prop nsum ({m..n}) f = 0 ⟷ (∀i. m ≤ i ⟶ i ≤ n ⟶ f i = 0)
+  [hint_rewrite]
+  proof
+    0: cut "finite {m..n}"
+    0: apply_backward_step finite_natseg
+    1: apply_forward_step nsum_eq_0_iff @0 param_f=f
+    2: rewrite_goal_with_prev @1
+    2: rewrite_goal member_natseg sym=false
+    2: z3
+  qed
+
+theorem nsum_triv_natseg
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat
+  prop n < m ⟶ nsum ({m..n}) f = 0
+  [hint_backward]
+  proof
+    1: rewrite_goal nsum_eq_0_iff_natseg sym=false
+    1: introduction i
+    1.3: z3 @0,1.1,1.2
+  qed
+
+theorem nsum_sing_natseg
+  fixes f :: nat ⇒ nat, n :: nat
+  prop nsum ({n..n}) f = f n
+  [hint_rewrite]
+  proof
+    0: rewrite_goal natseg_sing sym=false
+    0: rewrite_goal nsum_sing sym=false
+  qed
+
+theorem nsum_0_natseg
+  fixes f :: nat ⇒ nat, m :: nat
+  prop nsum ({m..0}) f = (if m = 0 then f 0 else 0)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal nsum_def sym=false
+    0: apply_forward_step monoidal_nat_add
+    1: apply_forward_step iterate_natseg_0 @0 param_f=f param_m=m
+    2: rewrite_fact neutral_nat_add @1 sym=false
+  qed
+
+theorem nsum_Suc_natseg
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat
+  prop nsum ({m..Suc n}) f = (if m ≤ Suc n then nsum ({m..n}) f + f (Suc n) else nsum ({m..n}) f)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal nsum_def sym=false
+    0: apply_backward_step iterate_natseg_Suc
+    0: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_0_natseg_lt
+  fixes f :: nat ⇒ nat
+  prop nsum ({i. i < 0}) f = 0
+  [hint_rewrite]
+  proof
+    0: rewrite_goal natseg_clauses_lt_1 sym=false
+    0: rewrite_goal nsum_empty sym=false
+  qed
+
+theorem nsum_Suc_natseg_lt
+  fixes f :: nat ⇒ nat, k :: nat
+  prop nsum ({i. i < Suc k}) f = nsum ({i. i < k}) f + f k
+  [hint_rewrite]
+  proof
+    0: rewrite_goal nsum_def sym=false
+    0: apply_backward_step iterate_natseg_Suc_lt
+    0: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_0_natseg_le
+  fixes f :: nat ⇒ nat
+  prop nsum ({i. i ≤ 0}) f = f 0
+  [hint_rewrite]
+  proof
+    0: rewrite_goal natseg_clauses_le_1 sym=false
+    0: rewrite_goal nsum_sing sym=false
+  qed
+
+theorem nsum_Suc_natseg_le
+  fixes f :: nat ⇒ nat, k :: nat
+  prop nsum ({i. i ≤ Suc k}) f = nsum ({i. i ≤ k}) f + f (Suc k)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal nsum_def sym=false
+    0: apply_backward_step iterate_natseg_Suc_le
+    0: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_swap_natseg
+  fixes a :: nat, b :: nat, c :: nat, d :: nat, f :: nat ⇒ nat ⇒ nat
+  prop nsum ({a..b}) (λi. nsum ({c..d}) (f i)) = nsum ({c..d}) (λj. nsum ({a..b}) (λi. f i j))
+  [hint_rewrite]
+  proof
+    0: apply_backward_step nsum_swap
+    0: apply_backward_step finite_natseg
+    1: apply_backward_step finite_natseg
+  qed
+
+theorem nsum_add_split
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat, p :: nat
+  prop m ≤ n + 1 ⟶ nsum ({m..n + p}) f = nsum ({m..n}) f + nsum ({n + 1..n + p}) f
+  [hint_backward]
+  proof
+    1: apply_forward_step natseg_add_split @0 param_p=p
+    2: rewrite_goal_with_prev @1
+    2: apply_backward_step nsum_union
+    2: apply_backward_step finite_natseg
+    3: apply_backward_step finite_natseg
+    4: rewrite_goal disjoint_natseg sym=false
+    4: apply_backward_step disjI1
+    4: z3
+  qed
+
+theorem nsum_offset
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat, p :: nat
+  prop nsum ({m + p..n + p}) f = nsum ({m..n}) (λi. f (i + p))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal natseg_offset_image sym=false
+    0: cut "(λi. f (i + p)) = f O (λi. i + p)"
+    0: rewrite_goal comp_fun_def sym=false
+    1: rewrite_goal_with_prev @0
+    1: apply_backward_step nsum_image
+    1: introduction x,y
+    1.5: apply_backward_step add_cancel_right @1.4
+  qed
+
+theorem nsum_offset_0
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat
+  prop m ≤ n ⟶ nsum ({m..n}) f = nsum ({0..n - m}) (λi. f (i + m))
+  [hint_backward]
+  proof
+    1: rewrite_goal nsum_offset sym=true
+    1: rewrite_goal nat_plus_def_1 sym=false
+    1: apply_forward_step sub_add @0
+    2: rewrite_goal_with_prev @1
+  qed
+
+theorem nsum_clauses_left
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat
+  prop m ≤ n ⟶ nsum ({m..n}) f = f m + nsum ({m + 1..n}) f
+  [hint_backward]
+  proof
+    1: apply_forward_step natseg_lrec @0
+    2: rewrite_goal_with_prev @1
+    2: cut "finite {m + 1..n}"
+    2: apply_backward_step finite_natseg
+    3: apply_forward_step nsum_insert @2 param_f=f param_x=m
+    4: cut "~(m ∈ {m + 1..n})"
+    4: rewrite_goal member_natseg sym=false
+    4: rewrite_goal de_morgan_thm1 sym=false
+    4: apply_backward_step disjI1
+    4: rewrite_goal not_le sym=false
+    4: z3
+    9: rewrite_fact if_not_P @3,8 sym=false
+  qed
+
+theorem nsum_clauses_right
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat
+  prop 0 < n ⟶ m ≤ n ⟶ nsum ({m..n}) f = nsum ({m..n - 1}) f + f n
+  [hint_backward,hint_backward1]
+  proof
+    2: revert_intro @1
+    1: revert_intro @0
+    0: induction n nat_induct
+    0: introduction
+    0.2: z3 @0.0
+    1: introduction n
+    1.4: rewrite_goal suc_sub1 sym=false
+    1.4: rewrite_goal nsum_Suc_natseg sym=false
+    1.4: rewrite_goal if_P @1.3 sym=false
+  qed
+
+theorem nsum_pair
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat
+  prop nsum ({2 * m..2 * n + 1}) f = nsum ({m..n}) (λi. f (2 * i) + f (2 * i + 1))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal nsum_def sym=false
+    0: apply_backward_step iterate_pair
+    0: apply_backward_step monoidal_nat_add
+  qed
+
+theorem nsum_reflect
+  fixes m :: nat, n :: nat, x :: nat ⇒ nat
+  prop nsum ({m..n}) x = (if n < m then 0 else nsum ({0..n - m}) (λi. x (n - i)))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal nsum_def sym=false
+    0: apply_forward_step iterate_reflect param_m=m param_n=n param_op="(plus::nat⇒nat⇒nat)" param_x=x
+    1: cut "monoidal (plus::nat ⇒ nat ⇒ nat)"
+    1: apply_backward_step monoidal_nat_add
+    2: apply_fact @0,1
+    3: rewrite_fact neutral_nat_add @2 sym=false
+  qed
+
+theorem mod_nsum_mod
+  fixes f :: 'a ⇒ nat, n :: nat, s :: 'a set
+  prop finite s ⟶ nsum s f MOD n = nsum s (λi. f i MOD n) MOD n
+  [hint_backward]
+  proof
+    1: cases "n=0"
+    1: introduction
+    1.1: rewrite_goal_with_prev @1.0
+    1.1: rewrite_goal mod_zero sym=false
+    1.1: rewrite_goal mod_zero sym=false
+    1.1: rewrite_goal eta_conversion sym=false
+    2: introduction
+    2.1: apply_backward_step finite_induct_strong @0
+    2.1: rewrite_goal nsum_empty sym=false
+    2.2: introduction x,s
+    2.2.4: apply_forward_step nsum_insert @0 param_f="(λi. f i MOD n)" param_x=x
+    2.2.5: rewrite_fact if_not_P @2.2.4,2.2.3 sym=false
+    2.2.6: rewrite_goal_with_prev @2.2.5
+    2.2.6: apply_forward_step nsum_insert @0 param_f=f param_x=x
+    2.2.7: rewrite_fact if_not_P @2.2.6,2.2.3 sym=false
+    2.2.8: rewrite_goal_with_prev @2.2.7
+    2.2.8: rewrite_goal mod_add_mod sym=true
+    2.2.8: rewrite_goal mod_mod_refl sym=false
+    2.2.8: rewrite_goal_with_prev @2.2.2
+  qed
+
+theorem mod_nsum_mod_natseg
+  fixes a :: nat, b :: nat, f :: nat ⇒ nat, n :: nat
+  prop nsum ({a..b}) f MOD n = nsum ({a..b}) (λi. f i MOD n) MOD n
+  [hint_rewrite]
+  proof
+    0: apply_backward_step mod_nsum_mod
+    0: apply_backward_step finite_natseg
+  qed
+
+def sum :: 'a set ⇒ ('a ⇒ real) ⇒ real = (sum::'a set ⇒ ('a ⇒ real) ⇒ real) = iterate plus [hint_rewrite]
+
+theorem neutral_real_add
+  prop neutral plus = (0::real)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal neutral_def sym=false
+    0: apply_forward_step theI param_P="(%x::real. ∀y. x + y = y ∧ y + x = y)" param_a="(0::real)"
+    1: cut "(∀y::real. 0 + y = y ∧ y + 0 = y)"
+    1: introduction y
+    1.1: apply_backward_step conjI
+    1.1: rewrite_goal real_add_lid sym=false
+    1.2: rewrite_goal real_add_rid sym=false
+    2: apply_fact @0,1
+    3: cut "(∀x::real. (∀y. x + y = y ∧ y + x = y) ⟶ x = 0)" @2
+    3: z3
+    4: apply_fact @2,3
+    5: apply_prev @3
+  qed
+
+theorem neutral_real_mul
+  prop neutral times = (1::real)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal neutral_def sym=false
+    0: apply_forward_step theI param_P="(%x::real. ∀y. x * y = y ∧ y * x = y)" param_a="(1::real)"
+    1: cut "(∀y::real. 1 * y = y ∧ y * 1 = y)"
+    1: z3
+    2: apply_fact @0,1
+    3: cut "(∀x::real. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1)"
+    3: z3
+    4: apply_fact @2,3
+    5: apply_prev @3
+  qed
+
+theorem monoidal_real_add
+  prop monoidal (plus::real ⇒ real ⇒ real)
+  [hint_backward]
+  proof
+    0: rewrite_goal monoidal_def sym=false
+    0: rewrite_goal neutral_real_add sym=false
+    0: z3
+  qed
+
+theorem monoidal_real_mul
+  prop monoidal (times::real ⇒ real ⇒ real)
+  [hint_backward]
+  proof
+    0: rewrite_goal monoidal_def sym=false
+    0: rewrite_goal neutral_real_mul sym=false
+    0: z3
+  qed
+
+theorem sum_degenerate
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop ¬(finite ({x. x ∈ s ∧ ¬(f x = 0)})) ⟶ sum s f = 0
+  [hint_backward,hint_forward]
+  proof
+    1: rewrite_goal sum_def sym=false
+    1: rewrite_goal iterate_def sym=false
+    1: rewrite_goal support_def sym=false
+    1: rewrite_goal neutral_real_add sym=false
+    1: rewrite_goal if_not_P @0 sym=false
+  qed
+
+theorem sum_empty
+  fixes f :: 'a ⇒ real
+  prop sum ∅ f = 0
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: rewrite_goal neutral_real_add sym=true
+    0: apply_backward_step iterate_empty
+    0: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_insert
+  fixes f :: 'a ⇒ real, s :: 'a set, x :: 'a
+  prop finite s ⟶ sum (insert x s) f = (if x ∈ s then sum s f else f x + sum s f)
+  [hint_backward,hint_forward]
+  proof
+    1: rewrite_goal sum_def sym=false
+    1: apply_backward_step iterate_insert
+    1: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_union
+  fixes f :: 'a ⇒ real, s :: 'a set, t :: 'a set
+  prop finite s ⟶ finite t ⟶ disjoint s t ⟶ sum (s ∪ t) f = sum s f + sum t f
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    3: rewrite_goal sum_def sym=false
+    3: apply_backward_step iterate_union
+    3: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_diff
+  fixes f :: 'a ⇒ real, s :: 'a set, t :: 'a set
+  prop finite s ⟶ t ⊆ s ⟶ sum (diff s t) f = sum s f - sum t f
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: cut "!x::real. !y. !z. (x = y - z) <--> (x + z = y)"
+    2: z3
+    3: rewrite_goal_with_prev @2
+    3: rewrite_goal sum_def sym=false
+    3: apply_backward_step iterate_diff
+    3: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_incl_excl
+  fixes f :: 'a ⇒ real, s :: 'a set, t :: 'a set
+  prop finite s ⟶ finite t ⟶ sum s f + sum t f = sum (s ∪ t) f + sum (s ∩ t) f
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: rewrite_goal sum_def sym=false
+    2: apply_forward_step iterate_incl_excl param_f=f param_op="(plus::real⇒real⇒real)" param_s=s param_t=t
+    3: apply_prev @2
+    3: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_support
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop sum (support plus f s) f = sum s f
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: rewrite_goal iterate_def sym=false
+    0: rewrite_goal support_support sym=false
+  qed
+
+theorem sum_add
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ sum s (λx. f x + g x) = sum s f + sum s g
+  [hint_backward,hint_forward]
+  proof
+    1: rewrite_goal sum_def sym=false
+    1: apply_backward_step iterate_op
+    1: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_add_gen
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop finite ({x. x ∈ s ∧ ¬(f x = 0)}) ⟶ finite ({x. x ∈ s ∧ ¬(g x = 0)}) ⟶ sum s (λx. f x + g x) = sum s f + sum s g
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: rewrite_goal sum_def sym=false
+    2: apply_backward_step iterate_op_gen
+    2: apply_backward_step monoidal_real_add
+    3: rewrite_goal support_def sym=false
+    3: rewrite_goal neutral_real_add sym=false
+    5: rewrite_goal support_def sym=false
+    5: rewrite_goal neutral_real_add sym=false
+  qed
+
+theorem sum_eq_0
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop (∀x. x ∈ s ⟶ f x = 0) ⟶ sum s f = 0
+  [hint_backward,hint_forward]
+  proof
+    1: rewrite_goal sum_def sym=false
+    1: rewrite_goal neutral_real_add sym=true
+    1: apply_backward_step iterate_eq_neutral
+    1: apply_backward_step monoidal_real_add
+    2: rewrite_goal neutral_real_add sym=false
+  qed
+
+theorem sum_0
+  fixes s :: 'a set
+  prop sum s (λx. 0) = 0
+  [hint_rewrite]
+  proof
+    0: apply_backward_step sum_eq_0
+    0: z3
+  qed
+
+theorem sum_lmul
+  fixes c :: real, f :: 'a ⇒ real, s :: 'a set
+  prop sum s (λx. c * f x) = c * sum s f
+  [hint_rewrite]
+  proof
+    0: cases "c=0"
+    0: introduction
+    0.1: rewrite_goal_with_prev @0.0
+    0.1: rewrite_goal real_mul_lzero sym=false
+    0.1: rewrite_goal sum_0 sym=false
+    1: introduction
+    1.1: rewrite_goal sum_def sym=false
+    1.1: rewrite_goal iterate_expand_cases sym=false
+    1.1: cut "support plus (λx. c * f x) s = support plus f s"
+    1.1: apply_backward_step member_ext
+    1.1: rewrite_goal in_support sym=false
+    1.1: introduction x
+    1.1.1: rewrite_goal neutral_real_add sym=false
+    1.1.1: apply_backward_step iffI
+    1.1.1: introduction
+    1.1.1.1: apply_forward_step conjD1 @1.1.1.0
+    1.1.1.2: apply_forward_step conjD2 @1.1.1.0
+    1.1.1.3: rewrite_fact real_entire @1.1.1.2 sym=false
+    1.1.1.4: rewrite_fact de_morgan_thm2 @1.1.1.3 sym=false
+    1.1.1.5: apply_forward_step conjD2 @1.1.1.4
+    1.1.1.6: apply_backward_step conjI
+    1.1.2: introduction
+    1.1.2.1: apply_forward_step conjD1 @1.1.2.0
+    1.1.2.2: apply_forward_step conjD2 @1.1.2.0
+    1.1.2.3: apply_backward_step conjI
+    1.1.2.3: rewrite_goal real_entire sym=false
+    1.1.2.3: rewrite_goal de_morgan_thm2 sym=false
+    1.1.2.3: apply_backward_step conjI
+    1.4: rewrite_goal_with_prev @1.3
+    1.4: cases "finite (support plus f s)"
+    1.4: introduction
+    1.4.1: rewrite_goal if_P @1.4.0 sym=false
+    1.4.1: rewrite_goal sum_def sym=true
+    1.4.1: apply_forward_step finite_induct_strong @1.4.0 param_P="(%s. sum s (λx. c * f x) = c * sum s f)"
+    1.4.2: apply_prev @1.4.1
+    1.4.2: rewrite_goal sum_empty sym=false
+    1.4.2: rewrite_goal real_mul_rzero sym=false
+    1.4.4: introduction a,s1
+    1.4.4.5: apply_forward_step sum_insert @1.4.4.4 param_f=f param_x=a
+    1.4.4.6: rewrite_fact if_not_P @1.4.4.5,1.4.4.3 sym=false
+    1.4.4.7: apply_forward_step sum_insert @1.4.4.4 param_f="(λx. c * f x)" param_x=a
+    1.4.4.8: rewrite_fact if_not_P @1.4.4.7,1.4.4.3 sym=false
+    1.4.4.9: rewrite_goal_with_prev @1.4.4.8
+    1.4.4.9: rewrite_goal_with_prev @1.4.4.6
+    1.4.4.9: rewrite_goal real_add_ldistrib sym=false
+    1.4.4.9: rewrite_goal real_eq_add_lcancel sym=false
+    1.5: introduction
+    1.5.1: rewrite_goal if_not_P @1.5.0 sym=false
+    1.5.1: rewrite_goal neutral_real_add sym=false
+    1.5.1: rewrite_goal real_mul_rzero sym=false
+  qed
+
+theorem sum_rmul
+  fixes c :: real, f :: 'a ⇒ real, s :: 'a set
+  prop sum s (λx. f x * c) = sum s f * c
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_mult_comm sym=false
+    0: rewrite_goal sum_lmul sym=false
+  qed
+
+theorem sum_neg
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop sum s (λx. -(f x)) = -(sum s f)
+  [hint_rewrite]
+  proof
+    0: cut "!x::real. -x = -1 * x"
+    0: z3
+    1: forall_elim "(sum s f)" @0
+    2: rewrite_goal_with_prev @1
+    2: cut "(λx. -(f x)) = (λx. -1 * (f x))"
+    2: apply_backward_step extension
+    2: z3 @0
+    4: rewrite_goal_with_prev @3
+    4: rewrite_goal sum_lmul sym=false
+  qed
+
+theorem sum_sub
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ sum s (λx. f x - g x) = sum s f - sum s g
+  [hint_backward,hint_forward]
+  proof
+    1: rewrite_goal real_minus_def sym=false
+    1: apply_forward_step sum_add @0 param_f=f param_g="(%x. -g x)"
+    2: rewrite_fact sum_neg @1 sym=false
+  qed
+
+theorem sum_le
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ f x ≤ g x) ⟶ sum s f ≤ sum s g
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: revert_intro @1
+    1: apply_backward_step finite_induct_strong @0
+    1: introduction
+    1.1: rewrite_goal sum_empty sym=false
+    1.1: apply_backward_step real_le_refl
+    2: introduction x,s
+    2.5: apply_forward_step sum_insert @0 param_f=f param_x=x
+    2.6: rewrite_fact if_not_P @2.5,2.3 sym=false
+    2.7: apply_forward_step sum_insert @0 param_f=g param_x=x
+    2.8: rewrite_fact if_not_P @2.7,2.3 sym=false
+    2.9: rewrite_goal_with_prev @2.8
+    2.9: rewrite_goal_with_prev @2.6
+    2.9: cut "f x <= g x"
+    2.9: apply_prev @2.4
+    2.9: rewrite_goal member_insert sym=false
+    2.9: apply_backward_step disjI1
+    2.9: apply_backward_step eq_refl
+    2.13: cut "sum s f ≤ sum s g"
+    2.13: apply_prev @2.2
+    2.13: introduction x1
+    2.13.2: apply_prev @2.4
+    2.13.2: rewrite_goal member_insert sym=false
+    2.13.2: apply_backward_step disjI2
+    2.15: apply_backward_step real_le_trans param_y="f x + sum s g"
+    2.15: apply_backward_step real_le_ladd_imp
+    2.16: rewrite_goal real_add_comm sym=false
+    2.16: apply_backward_step real_le_ladd_imp
+  qed
+
+theorem sum_lt
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ f x ≤ g x) ⟶ (∃x. x ∈ s ∧ f x < g x) ⟶ sum s f < sum s g
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    3: exists_elim a @2
+    5: cut "s= insert a (delete s a)"
+    5: apply_forward_step conjD1 @4
+    6: apply_forward_step conjD2 @4
+    7: rewrite_goal eq_sym_eq sym=false
+    7: apply_backward_step insert_delete
+    9: rewrite_goal_with_prev @8
+    9: cut "finite(delete s a)"
+    9: rewrite_goal finite_delete sym=false
+    10: apply_forward_step sum_insert @9 param_f=f param_x=a
+    11: cut "~(a ∈ delete s a)" @10
+    11: rewrite_goal member_delete sym=false
+    11: z3
+    13: rewrite_fact if_not_P @10,12 sym=false
+    14: apply_forward_step sum_insert @9 param_f=g param_x=a
+    15: rewrite_fact if_not_P @14,12 sym=false
+    16: rewrite_goal_with_prev @15
+    16: rewrite_goal_with_prev @13
+    16: cut "!a::real. !b. !c. !d. a < b --> c <= d --> a + c < b + d"
+    16: z3
+    17: apply_prev @16
+    17: apply_backward_step sum_le
+    17: introduction x1
+    17.2: apply_prev @1
+    17.2: rewrite_fact member_delete @17.1 sym=false
+    17.3: apply_backward_step conjD2 @17.2
+  qed
+
+theorem sum_lt_all
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ f x < g x) ⟶ sum s f < sum s g
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    3: apply_backward_step sum_lt
+    3: introduction x
+    3.2: apply_backward_step real_lt_imp_le
+    3.2: apply_prev @2
+    4: z3 @2
+  qed
+
+theorem sum_pos_lt
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ 0 ≤ f x) ⟶ (∃x. x ∈ s ⟶ 0 < f x) ⟶ 0 < sum s f
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    3: apply_backward_step real_let_trans param_y="sum s (%x. 0)"
+    3: rewrite_goal sum_0 sym=false
+    3: apply_backward_step real_le_refl
+    5: apply_backward_step sum_lt
+  qed
+
+theorem sum_pos_lt_all
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ 0 < f x) ⟶ 0 < sum s f
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    3: apply_backward_step sum_pos_lt
+    3: z3 @2
+    4: z3 @2
+  qed
+
+theorem sum_eq
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop (∀x. x ∈ s ⟶ f x = g x) ⟶ sum s f = sum s g
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    1: rewrite_goal sum_def sym=false
+    1: apply_backward_step iterate_eq
+    1: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_abs
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ abs (sum s f) ≤ sum s (λx. abs (f x))
+  [hint_backward]
+  proof
+    1: apply_backward_step finite_induct_strong @0
+    1: rewrite_goal sum_empty sym=false
+    1: rewrite_goal real_abs_0 sym=false
+    1: apply_backward_step real_le_refl
+    4: introduction x,s
+    4.4: apply_forward_step sum_insert @0 param_f=f param_x=x
+    4.5: rewrite_fact if_not_P @4.4,4.3 sym=false
+    4.6: apply_forward_step sum_insert @0 param_f="(λx1. abs (f x1))" param_x=x
+    4.7: rewrite_fact if_not_P @4.6,4.3 sym=false
+    4.8: rewrite_goal_with_prev @4.7
+    4.8: rewrite_goal_with_prev @4.5
+    4.8: cut "!a::real. !b. abs(a) <= b --> abs(f x + a) <= abs(f x) + b"
+    4.8: z3
+    4.9: apply_prev @4.8
+  qed
+
+theorem sum_abs_le
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ abs (f x) ≤ g x) ⟶ abs (sum s f) ≤ sum s g
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step real_le_trans param_y="sum s (%x. abs(f x))"
+    2: apply_backward_step sub_abs
+    3: apply_backward_step sum_le
+  qed
+
+theorem sum_const
+  fixes c :: real, s :: 'a set
+  prop finite s ⟶ sum s (λn. c) = of_nat (card s) * c
+  [hint_backward]
+  proof
+    1: apply_backward_step finite_induct_strong @0
+    1: rewrite_goal sum_empty sym=false
+    1: rewrite_goal card_empty sym=false
+    1: rewrite_goal real_zero_def sym=true
+    1: rewrite_goal real_mul_lzero sym=false
+    5: introduction x,s
+    5.4: apply_forward_step sum_insert @0 param_f="(λn::'a. c)" param_x=x
+    5.5: rewrite_fact if_not_P @5.4,5.3 sym=false
+    5.6: rewrite_goal_with_prev @5.5
+    5.6: apply_forward_step card_insert @0 param_x=x
+    5.7: rewrite_fact if_not_P @5.6,5.3 sym=false
+    5.8: rewrite_goal_with_prev @5.7
+    5.8: rewrite_goal add_1_right sym=true
+    5.8: rewrite_goal real_of_nat_add sym=true
+    5.8: rewrite_goal real_add_rdistrib sym=false
+    5.8: rewrite_goal real_one_def sym=true
+    5.8: rewrite_goal real_mul_lid sym=false
+    5.8: rewrite_goal_with_prev @5.2
+    5.8: real_norm
+  qed
+
+theorem sum_pos_le
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop (∀x. x ∈ s ⟶ 0 ≤ f x) ⟶ 0 ≤ sum s f
+  [hint_backward]
+  proof
+    1: cases "finite {x. x ∈ s & ~(f x = 0)}"
+    1: introduction
+    1.1: rewrite_goal sum_support sym=true
+    1.1: rewrite_goal support_def sym=false
+    1.1: apply_forward_step sum_le @1.0 param_f="(%x::'a. (0::real))" param_g=f
+    1.2: rewrite_fact sum_0 @1.1 sym=false
+    1.3: rewrite_goal neutral_real_add sym=false
+    1.3: apply_prev @1.2
+    1.3: introduction x
+    1.3.2: apply_prev @0
+    1.3.2: rewrite_fact member_collect @1.3.1 sym=false
+    1.3.3: apply_backward_step conjD1 @1.3.2
+    2: introduction
+    2.1: apply_forward_step sum_degenerate @2.0
+    2.2: rewrite_goal_with_prev @2.1
+    2.2: apply_backward_step real_le_refl
+  qed
+
+theorem sum_pos_bound
+  fixes b :: real, f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ 0 ≤ f x) ⟶ sum s f ≤ b ⟶ (∀x. x ∈ s ⟶ f x ≤ b)
+  proof
+    3: revert_intro @2
+    2: revert_intro @1
+    1: apply_backward_step finite_induct_strong @0
+    1: introduction
+    1.2: introduction x
+    1.2.2: apply_resolve_step member_empty @1.2.1
+    2: introduction x,s
+    2.6: introduction x1
+    2.6.2: rewrite_fact member_insert @2.6.1 sym=false
+    2.6.3: apply_forward_step sum_insert @0 param_f=f param_x=x
+    2.6.4: rewrite_fact if_not_P @2.6.3,2.3 sym=false
+    2.6.5: rewrite_fact_with_prev @2.6.4,2.5
+    2.6.6: cut "!x. !y. 0 <= x --> 0 <= y --> x + y <= b --> x <= b & y <= b"
+    2.6.6: z3
+    2.6.7: cut "0 <= f x"
+    2.6.7: apply_prev @2.4
+    2.6.7: rewrite_goal member_insert sym=false
+    2.6.7: apply_backward_step disjI1
+    2.6.7: apply_backward_step eq_refl
+    2.6.11: cut "0 <= sum s f" @2.6.5
+    2.6.11: apply_backward_step sum_pos_le
+    2.6.11: introduction x2
+    2.6.11.2: apply_prev @2.4
+    2.6.11.2: rewrite_goal member_insert sym=false
+    2.6.11.2: apply_backward_step disjI2
+    2.6.13: apply_fact @2.6.6,2.6.10,2.6.12,2.6.5
+    2.6.14: apply_forward_step conjD2 @2.6.13
+    2.6.15: apply_fact @2.2,2.6.11,2.6.14
+    2.6.16: apply_backward_step disjE @2.6.2
+    2.6.16: introduction
+    2.6.16.1: rewrite_goal_with_prev @2.6.16.0
+    2.6.16.1: apply_backward_step conjD1 @2.6.13
+    2.6.17: introduction
+    2.6.17.1: apply_prev @2.6.15
+  qed
+
+theorem sum_pos_eq_0
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ 0 ≤ f x) ⟶ sum s f = 0 ⟶ (∀x. x ∈ s ⟶ f x = 0)
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_fact real_le_antisym @2 sym=true
+    4: apply_forward_step conjD1 @3
+    5: apply_forward_step conjD2 @3
+    6: apply_forward_step sum_pos_bound @0,1,4
+    7: introduction x
+    7.2: rewrite_goal real_le_antisym sym=true
+    7.2: apply_backward_step conjI
+    7.2: apply_prev @6
+    7.3: apply_prev @1
+  qed
+
+theorem sum_zero_exists
+  fixes s :: 'a set, u :: 'a ⇒ real
+  prop finite s ⟶ sum s u = 0 ⟶ (∀i. i ∈ s ⟶ u i = 0) ∨ (∃j. ∃k. j ∈ s ∧ u j < 0 ∧ k ∈ s ∧ u k > 0)
+  [hint_backward,hint_backward1]
+  proof
+    2: cut "!u::real. 0 <= -u <--> ~(u > 0)"
+    2: z3
+    3: cut "∀u::real. 0 <= u <--> ~(u < 0)"
+    3: z3
+    4: cut "(?j. ?k. j ∈ s ∧ u j < 0 ∧ k ∈ s ∧ u k > 0) |\n      (!i. i ∈ s ⟶ 0 <= u i) | (!i. i ∈ s ⟶ 0 <= -(u i))"
+    4: z3
+    5: apply_backward_step disjE @4
+    5: introduction
+    5.1: apply_backward_step disjI2
+    6: introduction
+    6.1: apply_backward_step disjI1
+    6.1: apply_backward_step disjE @6.0
+    6.1: introduction
+    6.1.1: apply_backward_step sum_pos_eq_0
+    6.2: introduction
+    6.2.1: cut "!x::real. x = 0 <--> -x = 0"
+    6.2.1: z3
+    6.2.2: rewrite_goal_with_prev @6.2.1
+    6.2.2: apply_backward_step sum_pos_eq_0
+    6.2.2: rewrite_goal sum_neg sym=false
+    6.2.2: rewrite_fact_with_prev @6.2.1,1
+  qed
+
+theorem sum_delete
+  fixes a :: 'a, f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ a ∈ s ⟶ sum (delete s a) f = sum s f - f a
+  [hint_backward,hint_backward1]
+  proof
+    2: cut "!x. !y. !z::real. y = z - x <--> x + y = z"
+    2: z3
+    3: rewrite_goal_with_prev @2
+    3: rewrite_goal sum_def sym=false
+    3: apply_backward_step iterate_delete
+    3: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_sing
+  fixes f :: 'a ⇒ real, x :: 'a
+  prop sum ({x}) f = f x
+  [hint_rewrite]
+  proof
+    0: cut "finite ({}::'a set)"
+    0: apply_backward_step finite_empty
+    1: apply_forward_step sum_insert @0 param_f=f param_x=x
+    2: cut "~(x ∈ ∅ )" @1
+    2: apply_backward_step member_empty
+    3: rewrite_fact if_not_P @1,2 sym=false
+    4: rewrite_fact sum_empty @3 sym=false
+    5: rewrite_fact real_add_rid @4 sym=false
+  qed
+
+theorem sum_delete_cases
+  fixes a :: 'a, f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ sum (delete s a) f = (if a ∈ s then sum s f - f a else sum s f)
+  [hint_backward]
+  proof
+    1: cases "a ∈ s"
+    1: introduction
+    1.1: rewrite_goal if_P @1.0 sym=false
+    1.1: apply_backward_step sum_delete
+    2: introduction
+    2.1: rewrite_goal if_not_P @2.0 sym=false
+    2.1: cut "delete s a = s"
+    2.1: apply_backward_step member_ext
+    2.1: rewrite_goal member_delete sym=false
+    2.1: z3 @2.0
+    2.4: rewrite_goal_with_prev @2.3
+  qed
+
+theorem sum_delta
+  fixes a :: 'a, b :: real, s :: 'a set
+  prop sum s (λx. if x = a then b else 0) = (if a ∈ s then b else 0)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: rewrite_goal neutral_real_add sym=true
+    0: apply_backward_step iterate_delta
+    0: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_swap
+  fixes f :: 'a ⇒ 'b ⇒ real, s :: 'a set, t :: 'b set
+  prop finite s ⟶ finite t ⟶ sum s (λi. sum t (f i)) = sum t (λj. sum s (λi. f i j))
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step finite_induct_strong @0
+    2: rewrite_goal sum_empty sym=false
+    2: rewrite_goal sum_0 sym=false
+    4: introduction x,s
+    4.4: apply_forward_step sum_insert @0 param_f="(λi. sum t (f i))" param_x=x
+    4.5: rewrite_fact if_not_P @4.4,4.3 sym=false
+    4.6: apply_forward_step sum_insert @0 param_f="(λi. f i j)" param_x=x
+    4.7: rewrite_fact if_not_P @4.6,4.3 sym=false
+    4.8: rewrite_goal_with_prev @4.7
+    4.8: rewrite_goal_with_prev @4.5
+    4.8: rewrite_goal eq_sym_eq sym=false
+    4.8: rewrite_goal_with_prev @4.2
+    4.8: apply_backward_step sum_add
+  qed
+
+theorem sum_image
+  fixes f :: 'a ⇒ 'b, g :: 'b ⇒ real, s :: 'a set
+  prop (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y) ⟶ sum (image f s) g = sum s (g ∘ f)
+  [hint_backward]
+  proof
+    1: rewrite_goal sum_def sym=false
+    1: apply_backward_step iterate_image
+    1: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_superset
+  fixes f :: 'a ⇒ real, u :: 'a set, v :: 'a set
+  prop u ⊆ v ⟶ (∀x. x ∈ v ⟶ ¬(x ∈ u) ⟶ f x = 0) ⟶ sum v f = sum u f
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal sum_def sym=false
+    2: apply_backward_step iterate_superset
+    2: apply_backward_step monoidal_real_add
+    3: rewrite_goal neutral_real_add sym=false
+  qed
+
+theorem sum_univ
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop support plus f univ ⊆ s ⟶ sum s f = sum univ f
+  [hint_backward]
+  proof
+    1: rewrite_goal sum_def sym=false
+    1: apply_backward_step iterate_univ
+    1: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_union_rzero
+  fixes f :: 'a ⇒ real, u :: 'a set, v :: 'a set
+  prop finite u ⟶ (∀x. x ∈ v ⟶ ¬(x ∈ u) ⟶ f x = 0) ⟶ sum (u ∪ v) f = sum u f
+  [hint_backward,hint_backward1]
+  proof
+    2: cut "u ∪ v = u ∪ (diff v u)"
+    2: rewrite_goal diff_def sym=false
+    2: z3
+    4: rewrite_goal_with_prev @3
+    4: apply_backward_step sum_superset
+    4: apply_backward_step subset_union_id
+    5: introduction x
+    5.3: apply_prev @1
+    5.3: rewrite_fact member_union_iff @5.1 sym=false
+    5.4: rewrite_fact diff_def @5.3 sym=false
+    5.5: rewrite_fact member_collect @5.4 sym=false
+    5.6: z3 @5.5,5.2
+  qed
+
+theorem sum_union_lzero
+  fixes f :: 'a ⇒ real, u :: 'a set, v :: 'a set
+  prop finite v ⟶ (∀x. x ∈ u ⟶ ¬(x ∈ v) ⟶ f x = 0) ⟶ sum (u ∪ v) f = sum v f
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal union_comm sym=false
+    2: apply_backward_step sum_union_rzero
+  qed
+
+theorem sum_restrict
+  fixes f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ sum s (λx. if x ∈ s then f x else 0) = sum s f
+  [hint_backward]
+  proof
+    1: apply_backward_step sum_eq
+    1: introduction x
+    1.2: rewrite_goal if_P @1.1 sym=false
+  qed
+
+theorem sum_bound
+  fixes b :: real, f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ f x ≤ b) ⟶ sum s f ≤ of_nat (card s) * b
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step sum_const @0 param_c=b
+    3: rewrite_fact eq_sym_eq @2 sym=false
+    4: rewrite_goal_with_prev @3
+    4: apply_backward_step sum_le
+  qed
+
+theorem sum_bound_gen
+  fixes b :: real, f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ f x ≤ b / of_nat (card s)) ⟶ sum s f ≤ b
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_forward_step sum_bound @0,2
+    4: cut "of_nat (card s) * (b / of_nat (card s)) = b"
+    4: apply_backward_step real_div_lmul
+    4: apply_backward_step contrapositive @1
+    4: rewrite_goal double_neg sym=false
+    4: rewrite_goal real_zero_def sym=false
+    4: rewrite_goal real_of_nat_eq sym=false
+    4: introduction
+    4.1: apply_forward_step card_eq_0 @0
+    4.2: rewrite_fact_with_prev @4.1,4.0
+    10: rewrite_fact_with_prev @9,3
+  qed
+
+theorem sum_abs_bound
+  fixes b :: real, f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ abs (f x) ≤ b) ⟶ abs (sum s f) ≤ of_nat (card s) * b
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step real_le_trans param_y="sum s (%x. abs(f x))"
+    2: apply_backward_step sum_abs
+    3: apply_backward_step sum_bound
+  qed
+
+theorem sum_bound_lt
+  fixes b :: real, f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ f x ≤ b) ⟶ (∃x. x ∈ s ∧ f x < b) ⟶ sum s f < of_nat (card s) * b
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step real_lte_trans param_y="sum s (%x. b)"
+    3: apply_backward_step sum_lt
+    4: apply_backward_step sum_bound
+    4: introduction x
+    4.2: apply_backward_step real_le_refl
+  qed
+
+theorem sum_bound_lt_all
+  fixes b :: real, f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ f x < b) ⟶ sum s f < of_nat (card s) * b
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step sum_bound_lt
+    3: cut "?a. a ∈ s"
+    3: z3 @1
+    4: exists_elim a @3
+    6: apply_fact @2,5
+    7: introduction x
+    7.2: apply_backward_step real_lt_imp_le
+    7.2: apply_prev @2
+    8: inst_exists_goal a
+    8: apply_backward_step conjI
+  qed
+
+theorem sum_bound_lt_gen
+  fixes b :: real, f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ f x < b / of_nat (card s)) ⟶ sum s f < b
+  [hint_backward,hint_backward1]
+  proof
+    3: cut "b = of_nat (card s) * (b / of_nat (card s))"
+    3: rewrite_goal eq_sym_eq sym=false
+    3: apply_backward_step real_div_lmul
+    3: rewrite_goal real_zero_def sym=false
+    3: rewrite_goal real_of_nat_eq sym=false
+    3: apply_forward_step card_eq_0 @0
+    4: rewrite_goal_with_prev @3
+    9: rewrite_goal_with_prev @8
+    9: apply_backward_step sum_bound_lt_all
+  qed
+
+theorem sum_union_eq
+  fixes f :: 'a ⇒ real, s :: 'a set, t :: 'a set, u :: 'a set
+  prop finite u ⟶ s ∩ t = ∅ ⟶ s ∪ t = u ⟶ sum s f + sum t f = sum u f
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_fact eq_sym_eq @2 sym=false
+    4: rewrite_goal_with_prev @3
+    4: rewrite_goal eq_sym_eq sym=false
+    4: apply_backward_step sum_union
+    4: apply_backward_step finite_subset param_t=u
+    4: rewrite_goal_with_prev @3
+    4: apply_backward_step subset_union_id
+    7: apply_backward_step finite_subset param_t=u
+    7: rewrite_goal_with_prev @3
+    7: rewrite_goal union_comm sym=false
+    7: apply_backward_step subset_union_id
+    11: rewrite_goal disjoint_def sym=false
+  qed
+
+theorem sum_eq_superset
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set, t :: 'a set
+  prop finite t ⟶ t ⊆ s ⟶ (∀x. x ∈ t ⟶ f x = g x) ⟶ (∀x. x ∈ s ⟶ ¬(x ∈ t) ⟶ f x = 0) ⟶ sum s f = sum t g
+  [hint_backward,hint_backward1]
+  proof
+    4: cut "sum s f = sum t f"
+    4: apply_backward_step sum_superset
+    5: rewrite_goal_with_prev @4
+    5: apply_backward_step sum_eq
+  qed
+
+theorem sum_restrict_set
+  fixes P :: 'a ⇒ bool, f :: 'a ⇒ real, s :: 'a set
+  prop sum ({x. x ∈ s ∧ P x}) f = sum s (λx. if P x then f x else 0)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: rewrite_goal neutral_real_add sym=true
+    0: apply_backward_step iterate_restrict_set
+    0: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_sum_restrict
+  fixes R :: 'a ⇒ 'b ⇒ bool, f :: 'a ⇒ 'b ⇒ real, s :: 'a set, t :: 'b set
+  prop finite s ⟶ finite t ⟶ sum s (λx. sum ({y. y ∈ t ∧ R x y}) (λy. f x y)) = sum t (λy. sum ({x. x ∈ s ∧ R x y}) (λx. f x y))
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal sum_restrict_set sym=false
+    2: apply_backward_step sum_swap
+  qed
+
+theorem card_eq_sum
+  fixes s :: 'a set
+  prop finite s ⟶ of_nat (card s) = sum s (λx. 1)
+  [hint_backward]
+  proof
+    1: apply_forward_step sum_const @0 param_c="(1::real)"
+    2: rewrite_goal_with_prev @1
+    2: rewrite_goal real_mul_rid sym=false
+  qed
+
+theorem sum_multicount_gen
+  fixes R :: 'a ⇒ 'b ⇒ bool, k :: 'b ⇒ nat, s :: 'a set, t :: 'b set
+  prop finite s ⟶ finite t ⟶ (∀j. j ∈ t ⟶ card ({i. i ∈ s ∧ R i j}) = k j) ⟶ sum s (λi. of_nat (card ({j. j ∈ t ∧ R i j}))) = sum t (λi. of_nat (k i))
+  [hint_backward,hint_backward1]
+  proof
+    3: cut "sum s (λi. of_nat (card ({j. j ∈ t ∧ R i j}))) = sum s (%i. sum {j. j ∈ t ∧ R i j} (%j. 1))"
+    3: apply_backward_step sum_eq
+    3: introduction x
+    3.2: apply_backward_step card_eq_sum
+    3.2: apply_backward_step finite_restrict
+    5: rewrite_goal_with_prev @4
+    5: apply_forward_step sum_sum_restrict @0,1 param_R=R param_f="(%x::'a. %y::'b. (1::real))"
+    6: rewrite_goal_with_prev @5
+    6: apply_backward_step sum_eq
+    6: introduction x
+    6.2: cut "finite {x1. x1 ∈ s ∧ R x1 x}"
+    6.2: apply_backward_step finite_restrict
+    6.3: apply_forward_step sum_const @6.2 param_c="(1::real)"
+    6.4: rewrite_goal_with_prev @6.3
+    6.4: rewrite_goal real_mul_rid sym=false
+    6.4: rewrite_goal real_of_nat_eq sym=false
+    6.4: apply_prev @2
+  qed
+
+theorem sum_multicount
+  fixes R :: 'a ⇒ 'b ⇒ bool, k :: nat, s :: 'a set, t :: 'b set
+  prop finite s ⟶ finite t ⟶ (∀j. j ∈ t ⟶ card ({i. i ∈ s ∧ R i j}) = k) ⟶ sum s (λi. of_nat (card ({j. j ∈ t ∧ R i j}))) = of_nat (k * card t)
+  [hint_backward,hint_backward1]
+  proof
+    3: cut "sum s (λi. of_nat (card ({j. j ∈ t ∧ R i j}))) = sum t (%i. of_nat k)"
+    3: apply_backward_step sum_multicount_gen
+    4: rewrite_goal_with_prev @3
+    4: apply_forward_step sum_const @1 param_c="(of_nat::nat⇒real) k"
+    5: rewrite_goal_with_prev @4
+    5: rewrite_goal real_of_nat_mul sym=false
+    5: rewrite_goal real_of_nat_eq sym=false
+    5: nat_norm
+  qed
+
+theorem sum_image_gen
+  fixes f :: 'a ⇒ 'b, g :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ sum s g = sum (image f s) (λy. sum ({x. x ∈ s ∧ f x = y}) g)
+  [hint_backward]
+  proof
+    1: rewrite_goal sum_def sym=false
+    1: apply_backward_step iterate_image_gen
+    1: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_group
+  fixes f :: 'a ⇒ 'b, g :: 'a ⇒ real, s :: 'a set, t :: 'b set
+  prop finite s ⟶ image f s ⊆ t ⟶ sum t (λy. sum ({x. x ∈ s ∧ f x = y}) g) = sum s g
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step sum_image_gen param_f=f param_g=g param_s=s
+    3: apply_fact @2,0
+    4: rewrite_goal_with_prev @3
+    4: apply_backward_step sum_superset
+    4: introduction x
+    4.3: apply_backward_step sum_eq_0
+    4.3: introduction x1
+    4.3.2: rewrite_fact member_collect @4.3.1 sym=false
+    4.3.3: apply_forward_step conjD1 @4.3.2
+    4.3.4: apply_forward_step conjD2 @4.3.2
+    4.3.5: rewrite_fact in_image @4.2 sym=false
+    4.3.6: apply_backward_step negE_gen @4.3.5
+    4.3.6: inst_exists_goal x1
+    4.3.6: apply_backward_step conjI
+    4.3.6: rewrite_goal_with_prev @4.3.4
+  qed
+
+theorem sum_group_relation
+  fixes R :: 'a ⇒ 'b ⇒ bool, g :: 'a ⇒ real, s :: 'a set, t :: 'b set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ (∃!y. y ∈ t ∧ R x y)) ⟶ sum t (λy. sum ({x. x ∈ s ∧ R x y}) g) = sum s g
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step sum_group @0 param_f="(%x. THE y. y ∈ t ∧ R x y)" param_g=g param_t=t
+    3: cut "image (λx. THE y. y ∈ t ∧ R x y) s ⊆ t"
+    3: apply_backward_step subsetI
+    3: rewrite_goal in_image sym=false
+    3: introduction x
+    3.2: exists_elim x1 @3.1
+    3.4: apply_forward_step conjD1 @3.3
+    3.5: apply_forward_step conjD2 @3.3
+    3.6: apply_fact @1,3.5
+    3.7: apply_forward_step theI' @3.6
+    3.8: rewrite_goal_with_prev @3.4
+    3.8: apply_backward_step conjD1 @3.7
+    6: apply_fact @2,5
+    7: rewrite_fact eq_sym_eq @6 sym=false
+    8: rewrite_goal_with_prev @7
+    8: apply_backward_step sum_eq
+    8: introduction x
+    8.2: cut "{x1. x1 ∈ s ∧ R x1 x} = {x1. x1 ∈ s ∧ (THE y. y ∈ t ∧ R x1 y) = x}"
+    8.2: apply_backward_step member_ext
+    8.2: rewrite_goal member_collect sym=false
+    8.2: introduction x1
+    8.2.1: apply_backward_step iffI
+    8.2.1: introduction
+    8.2.1.1: apply_forward_step conjD1 @8.2.1.0
+    8.2.1.2: apply_forward_step conjD2 @8.2.1.0
+    8.2.1.3: apply_backward_step conjI
+    8.2.1.3: apply_fact @1,8.2.1.1
+    8.2.1.4: rewrite_fact exists1_def @8.2.1.3 sym=""
+    8.2.1.5: exists_elim x2 @8.2.1.4
+    8.2.1.7: apply_forward_step conjD1 @8.2.1.6
+    8.2.1.8: apply_forward_step conjD2 @8.2.1.6
+    8.2.1.9: apply_forward_step theI' @8.2.1.3
+    8.2.1.10: apply_fact @8.2.1.8,8.2.1.9
+    8.2.1.11: rewrite_goal_with_prev @8.2.1.10
+    8.2.1.11: rewrite_goal eq_sym_eq sym=false
+    8.2.1.11: apply_prev @8.2.1.8
+    8.2.1.11: apply_backward_step conjI
+    8.2.2: introduction
+    8.2.2.1: apply_forward_step conjD1 @8.2.2.0
+    8.2.2.2: apply_forward_step conjD2 @8.2.2.0
+    8.2.2.3: apply_backward_step conjI
+    8.2.2.3: apply_fact @1,8.2.2.1
+    8.2.2.4: apply_forward_step theI' @8.2.2.3
+    8.2.2.5: apply_forward_step conjD2 @8.2.2.4
+    8.2.2.6: rewrite_fact_with_prev @8.2.2.2,8.2.2.5
+    8.5: rewrite_goal_with_prev @8.4
+  qed
+
+theorem real_of_nat_sum
+  fixes f :: 'a ⇒ nat, s :: 'a set
+  prop finite s ⟶ of_nat (nsum s f) = sum s (λx. of_nat (f x))
+  [hint_backward]
+  proof
+    1: apply_backward_step finite_induct_strong @0
+    1: rewrite_goal sum_empty sym=false
+    1: rewrite_goal nsum_empty sym=false
+    1: rewrite_goal real_zero_def sym=false
+    4: introduction x,s
+    4.4: apply_forward_step sum_insert @0 param_f="(λx1. (of_nat::nat⇒real) (f x1))" param_x=x
+    4.5: rewrite_fact if_not_P @4.4,4.3 sym=false
+    4.6: rewrite_goal_with_prev @4.5
+    4.6: rewrite_fact eq_sym_eq @4.2 sym=false
+    4.7: rewrite_goal_with_prev @4.6
+    4.7: rewrite_goal real_of_nat_add sym=false
+    4.7: rewrite_goal real_of_nat_eq sym=false
+    4.7: apply_forward_step nsum_insert @0 param_f=f param_x=x
+    4.8: rewrite_fact if_not_P @4.7,4.3 sym=false
+  qed
+
+theorem sum_subset
+  fixes f :: 'a ⇒ real, u :: 'a set, v :: 'a set
+  prop finite u ⟶ finite v ⟶ (∀x. x ∈ diff u v ⟶ f x ≤ 0) ⟶ (∀x. x ∈ diff v u ⟶ 0 ≤ f x) ⟶ sum u f ≤ sum v f
+  [hint_backward,hint_backward1]
+  proof
+    4: apply_forward_step sum_union param_f=f param_s="inter u v" param_t=""
+    5: cut "finite (u ∩ v)"
+    5: apply_backward_step finite_inter
+    5: apply_backward_step disjI1
+    7: apply_fact @4,6
+    8: forall_elim "diff v u" @7
+    9: forall_elim "diff u v" @7
+    10: cut "finite (diff v u)" @8
+    10: apply_backward_step finite_diff
+    11: cut "finite (diff u v)"
+    11: apply_backward_step finite_diff
+    12: apply_fact @8,10
+    13: apply_fact @9,11
+    14: cut "disjoint (u ∩ v) (diff v u)"
+    14: rewrite_goal disjoint_def sym=false
+    14: rewrite_goal diff_def sym=false
+    14: z3
+    17: apply_fact @12,16
+    18: cut "disjoint (u ∩ v) (diff u v)"
+    18: rewrite_goal disjoint_def sym=false
+    18: rewrite_goal diff_def sym=false
+    18: z3
+    21: apply_fact @13,20
+    22: cut "u ∩ v ∪ diff v u = v" @17
+    22: rewrite_goal diff_def sym=false
+    22: z3
+    24: rewrite_fact_with_prev @23,17
+    25: cut "u ∩ v ∪ diff u v = u"
+    25: rewrite_goal diff_def sym=false
+    25: z3
+    27: rewrite_fact_with_prev @26,21
+    28: rewrite_goal_with_prev @27
+    28: rewrite_goal_with_prev @24
+    28: apply_backward_step real_le_ladd_imp
+    28: apply_backward_step real_le_trans param_y="(0::real)"
+    28: cut "!a::real. a <=0  <--> 0 <= -a"
+    28: z3
+    29: rewrite_goal_with_prev @28
+    29: rewrite_goal sum_neg sym=true
+    29: apply_backward_step sum_pos_le
+    29: rewrite_fact_with_prev @28,2
+    33: apply_backward_step sum_pos_le
+  qed
+
+theorem sum_subset_simple
+  fixes f :: 'a ⇒ real, u :: 'a set, v :: 'a set
+  prop finite v ⟶ u ⊆ v ⟶ (∀x. x ∈ diff v u ⟶ 0 ≤ f x) ⟶ sum u f ≤ sum v f
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step sum_subset
+    3: apply_backward_step finite_subset param_t=v
+    4: introduction x
+    4.2: rewrite_fact diff_def @4.1 sym=false
+    4.3: rewrite_fact member_collect @4.2 sym=false
+    4.4: z3 @1,4.3
+  qed
+
+theorem sum_mul_bound
+  fixes a :: 'a ⇒ real, b :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀i. i ∈ s ⟶ 0 ≤ a i ∧ 0 ≤ b i) ⟶ sum s (λi. a i * b i) ≤ sum s a * sum s b
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal sum_lmul sym=true
+    2: apply_backward_step sum_le
+    2: introduction x
+    2.2: rewrite_goal real_mult_comm sym=false
+    2.2: apply_backward_step real_le_lmul
+    2.2: apply_fact @1,2.1
+    2.3: apply_backward_step conjD2 @2.2
+    2.4: cut "a x = sum {x} a"
+    2.4: rewrite_goal sum_sing sym=false
+    2.5: rewrite_goal_with_prev @2.4
+    2.5: apply_backward_step sum_subset_simple
+    2.5: z3 @2.1
+    2.6: introduction x1
+    2.6.2: rewrite_fact diff_def @2.6.1 sym=false
+    2.6.3: rewrite_fact member_collect @2.6.2 sym=false
+    2.6.4: apply_forward_step conjD1 @2.6.3
+    2.6.5: apply_fact @1,2.6.4
+    2.6.6: apply_backward_step conjD1 @2.6.5
+  qed
+
+theorem sum_image_nonzero
+  fixes d :: 'b ⇒ real, i :: 'a ⇒ 'b, s :: 'a set
+  prop finite s ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ ¬(x = y) ⟶ i x = i y ⟶ d (i x) = 0) ⟶ sum (image i s) d = sum s (d ∘ i)
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal sum_def sym=false
+    2: apply_backward_step iterate_image_nonzero
+    2: apply_backward_step monoidal_real_add
+    3: rewrite_goal neutral_real_add sym=false
+  qed
+
+theorem sum_bijection
+  fixes f :: 'a ⇒ real, p :: 'a ⇒ 'a, s :: 'a set
+  prop (∀x. x ∈ s ⟶ p x ∈ s) ⟶ (∀y. y ∈ s ⟶ (∃!x. x ∈ s ∧ p x = y)) ⟶ sum s f = sum s (f ∘ p)
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal sum_def sym=false
+    2: apply_backward_step iterate_bijection
+    2: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_eq_general
+  fixes f :: 'a ⇒ real, g :: 'b ⇒ real, h :: 'a ⇒ 'b, s :: 'a set, t :: 'b set
+  prop (∀y. y ∈ t ⟶ (∃!x. x ∈ s ∧ h x = y)) ⟶ (∀x. x ∈ s ⟶ h x ∈ t ∧ g (h x) = f x) ⟶ sum s f = sum t g
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal sum_def sym=false
+    2: apply_backward_step iterate_eq_general param_h=h
+    2: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_eq_general_inverses
+  fixes f :: 'a ⇒ real, g :: 'b ⇒ real, h :: 'a ⇒ 'b, k :: 'b ⇒ 'a, s :: 'a set, t :: 'b set
+  prop (∀y. y ∈ t ⟶ k y ∈ s ∧ h (k y) = y) ⟶ (∀x. x ∈ s ⟶ h x ∈ t ∧ k (h x) = x ∧ g (h x) = f x) ⟶ sum s f = sum t g
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal sum_def sym=false
+    2: apply_backward_step iterate_eq_general_inverses param_h=h param_k=k
+    2: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_injection
+  fixes f :: 'a ⇒ real, p :: 'a ⇒ 'a, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ p x ∈ s) ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ p x = p y ⟶ x = y) ⟶ sum s (f ∘ p) = sum s f
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_goal sum_def sym=false
+    3: apply_backward_step iterate_injection
+    3: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_union_nonzero
+  fixes f :: 'a ⇒ real, s :: 'a set, t :: 'a set
+  prop finite s ⟶ finite t ⟶ (∀x. x ∈ s ∩ t ⟶ f x = 0) ⟶ sum (s ∪ t) f = sum s f + sum t f
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_goal sum_def sym=false
+    3: apply_backward_step iterate_union_nonzero
+    3: apply_backward_step monoidal_real_add
+    4: rewrite_goal neutral_real_add sym=false
+  qed
+
+theorem sum_cases
+  fixes P :: 'a ⇒ bool, f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ sum s (λx. if P x then f x else g x) = sum ({x. x ∈ s ∧ P x}) f + sum ({x. x ∈ s ∧ ¬(P x)}) g
+  [hint_backward,hint_backward1]
+  proof
+    1: rewrite_goal sum_def sym=false
+    1: apply_backward_step iterate_cases
+    1: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_cases_1
+  fixes a :: 'a, f :: 'a ⇒ real, s :: 'a set, y :: real
+  prop finite s ⟶ a ∈ s ⟶ sum s (λx. if x = a then y else f x) = sum s f + (y - f a)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step sum_cases @0 param_P="(%x. x = a)" param_f="(%x::'a. y)" param_g=f
+    3: cut "{x. x ∈ s ∧ ¬(x = a)} = delete s a" @2
+    3: rewrite_goal delete_def sym=false
+    3: z3
+    5: rewrite_fact_with_prev @4,2
+    6: apply_forward_step sum_delete @0,1 param_f=f
+    7: cut "{x. x ∈ s ∧ x = a} = {a}"
+    7: z3 @1
+    8: rewrite_fact_with_prev @7,5
+    9: rewrite_fact sum_sing @8 sym=false
+    10: rewrite_goal_with_prev @9
+    10: rewrite_goal_with_prev @6
+    10: real_norm
+  qed
+
+theorem sum_le_included
+  fixes f :: 'a ⇒ real, g :: 'b ⇒ real, i :: 'b ⇒ 'a, s :: 'a set, t :: 'b set
+  prop finite s ⟶ finite t ⟶ (∀y. y ∈ t ⟶ 0 ≤ g y) ⟶ (∀x. x ∈ s ⟶ (∃y. y ∈ t ∧ i y = x ∧ f x ≤ g y)) ⟶ sum s f ≤ sum t g
+  [hint_backward,hint_backward1]
+  proof
+    4: apply_backward_step real_le_trans param_y="sum (image (i) t) (%y. sum {x. x ∈ t ∧ i x = y} g)"
+    4: apply_backward_step real_le_trans param_y="sum s (%y. sum {x. x ∈ t ∧ i x = y} g)"
+    4: apply_backward_step sum_le
+    4: introduction x
+    4.2: apply_fact @3,4.1
+    4.3: exists_elim y @4.2
+    4.5: apply_backward_step real_le_trans param_y="sum {y} g"
+    4.5: apply_forward_step conjD1 @4.4
+    4.6: apply_forward_step conjD2 @4.4
+    4.7: apply_forward_step conjD1 @4.6
+    4.8: apply_forward_step conjD2 @4.6
+    4.9: rewrite_goal sum_sing sym=false
+    4.10: apply_backward_step sum_subset_simple
+    4.10: apply_backward_step finite_restrict
+    4.11: apply_backward_step subsetI
+    4.11: rewrite_goal member_collect sym=false
+    4.11: rewrite_goal member_insert sym=false
+    4.11: introduction x1
+    4.11.2: apply_backward_step disjE @4.11.1
+    4.11.2: introduction
+    4.11.2.1: apply_backward_step conjI
+    4.11.2.1: rewrite_goal_with_prev @4.11.2.0
+    4.11.2.2: rewrite_goal_with_prev @4.11.2.0
+    4.11.3: introduction
+    4.11.3.1: apply_resolve_step member_empty @4.11.3.0
+    4.15: rewrite_goal diff_def sym=false
+    4.15: rewrite_goal member_collect sym=false
+    4.15: rewrite_goal member_collect sym=false
+    4.15: introduction x1
+    4.15.2: apply_forward_step conjD1 @4.15.1
+    4.15.3: apply_forward_step conjD1 @4.15.2
+    4.15.4: apply_prev @2
+    6: apply_backward_step sum_subset_simple
+    6: apply_backward_step finite_image
+    7: apply_backward_step subsetI
+    7: rewrite_goal in_image sym=false
+    7: introduction x
+    7.2: apply_fact @3,7.1
+    7.3: exists_elim y @7.2
+    7.5: inst_exists_goal y
+    7.5: rewrite_fact conj_assoc @7.4 sym=false
+    7.6: apply_forward_step conjD1 @7.5
+    7.7: rewrite_goal conj_comm sym=false
+    7.7: rewrite_goal eq_sym_eq sym=false
+    10: introduction x
+    10.2: apply_backward_step sum_pos_le
+    10.2: rewrite_goal member_collect sym=false
+    10.2: introduction x1
+    10.2.2: apply_prev @2
+    10.2.2: apply_backward_step conjD1 @10.2.1
+    13: rewrite_goal real_le_lt sym=false
+    13: apply_backward_step disjI2
+    13: rewrite_goal eq_sym_eq sym=false
+    13: apply_backward_step sum_image_gen
+  qed
+
+theorem sum_image_le
+  fixes f :: 'a ⇒ 'b, g :: 'b ⇒ real, s :: 'a set
+  prop finite s ⟶ (∀x. x ∈ s ⟶ 0 ≤ g (f x)) ⟶ sum (image f s) g ≤ sum s (g ∘ f)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step sum_le_included param_i=f
+    2: apply_backward_step finite_image
+    3: rewrite_goal comp_fun_eval sym=false
+    4: introduction x
+    4.2: rewrite_fact in_image @4.1 sym=false
+    4.3: exists_elim x1 @4.2
+    4.5: inst_exists_goal x1
+    4.5: apply_forward_step conjD1 @4.4
+    4.6: apply_forward_step conjD2 @4.4
+    4.7: apply_backward_step conjI
+    4.7: apply_backward_step conjI
+    4.7: rewrite_goal_with_prev @4.5
+    4.8: rewrite_goal comp_fun_eval sym=false
+    4.8: rewrite_goal_with_prev @4.7
+    4.8: apply_backward_step real_le_refl
+  qed
+
+theorem sum_closed
+  fixes P :: real ⇒ bool, f :: 'a ⇒ real, s :: 'a set
+  prop P 0 ⟶ (∀x. ∀y. P x ⟶ P y ⟶ P (x + y)) ⟶ (∀a. a ∈ s ⟶ P (f a)) ⟶ P (sum s f)
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_goal sum_def sym=false
+    3: apply_backward_step iterate_closed
+    3: apply_backward_step monoidal_real_add
+    4: rewrite_goal neutral_real_add sym=false
+    5: rewrite_goal neutral_real_add sym=false
+    5: introduction x
+    5.2: apply_prev @2
+    5.2: apply_backward_step conjD1 @5.1
+  qed
+
+theorem sum_related
+  fixes R :: real ⇒ real ⇒ bool, f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop R 0 0 ⟶ (∀m. ∀n. ∀m1. ∀n1. R m n ⟶ R m1 n1 ⟶ R (m + m1) (n + n1)) ⟶ finite s ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (sum s f) (sum s g)
+  [hint_backward,hint_backward1]
+  proof
+    4: rewrite_goal sum_def sym=false
+    4: apply_forward_step iterate_related param_R=R param_f=f param_g=g param_op="(plus::real⇒real⇒real)" param_s=s
+    5: apply_prev @4
+    5: apply_backward_step monoidal_real_add
+    6: rewrite_goal neutral_real_add sym=false
+    7: introduction m,n,m1,n1
+    7.6: apply_prev @1
+  qed
+
+theorem sum_closed_nonempty
+  fixes P :: real ⇒ bool, f :: 'a ⇒ real, s :: 'a set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀x. ∀y. P x ⟶ P y ⟶ P (x + y)) ⟶ (∀a. a ∈ s ⟶ P (f a)) ⟶ P (sum s f)
+  [hint_backward,hint_backward1]
+  proof
+    4: rewrite_goal sum_def sym=false
+    4: apply_backward_step iterate_closed_nonempty
+    4: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_related_nonempty
+  fixes R :: real ⇒ real ⇒ bool, f :: 'a ⇒ real, g :: 'a ⇒ real, s :: 'a set
+  prop (∀m. ∀n. ∀m1. ∀n1. R m n ⟶ R m1 n1 ⟶ R (m + m1) (n + n1)) ⟶ finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (sum s f) (sum s g)
+  [hint_backward,hint_backward1]
+  proof
+    4: rewrite_goal sum_def sym=false
+    4: apply_forward_step iterate_related_nonempty param_R=R param_f=f param_g=g param_op="(plus::real⇒real⇒real)" param_s=s
+    5: apply_prev @4
+    5: apply_backward_step monoidal_real_add
+    6: introduction m,n,m1,n1
+    6.6: apply_prev @0
+  qed
+
+theorem real_of_nat_sum_gen
+  fixes f :: 'a ⇒ nat, s :: 'a set
+  prop finite ({i. i ∈ s ∧ ¬(f i = 0)}) ⟶ of_nat (nsum s f) = sum s (λx. of_nat (f x))
+  [hint_backward]
+  proof
+    1: rewrite_goal sum_support sym=true
+    1: rewrite_goal nsum_support sym=true
+    1: rewrite_goal support_def sym=false
+    1: rewrite_goal neutral_nat_add sym=false
+    1: rewrite_goal neutral_real_add sym=false
+    1: rewrite_goal real_zero_def sym=false
+    1: rewrite_goal real_of_nat_eq sym=false
+    1: apply_backward_step real_of_nat_sum
+  qed
+
+theorem sum_add_natseg
+  fixes f :: nat ⇒ real, g :: nat ⇒ real, m :: nat, n :: nat
+  prop sum ({m..n}) (λi. f i + g i) = sum ({m..n}) f + sum ({m..n}) g
+  [hint_rewrite]
+  proof
+    0: apply_backward_step sum_add
+    0: apply_backward_step finite_natseg
+  qed
+
+theorem sum_sub_natseg
+  fixes f :: nat ⇒ real, g :: nat ⇒ real, m :: nat, n :: nat
+  prop sum ({m..n}) (λi. f i - g i) = sum ({m..n}) f - sum ({m..n}) g
+  [hint_rewrite]
+  proof
+    0: apply_backward_step sum_sub
+    0: apply_backward_step finite_natseg
+  qed
+
+theorem sum_le_natseg
+  fixes f :: nat ⇒ real, g :: nat ⇒ real, m :: nat, n :: nat
+  prop (∀i. m ≤ i ⟶ i ≤ n ⟶ f i ≤ g i) ⟶ sum ({m..n}) f ≤ sum ({m..n}) g
+  [hint_backward]
+  proof
+    1: apply_backward_step sum_le
+    1: apply_backward_step finite_natseg
+    2: rewrite_goal member_natseg sym=false
+    2: introduction i
+    2.2: apply_prev @0
+    2.2: apply_backward_step conjD1 @2.1
+    2.3: apply_backward_step conjD2 @2.1
+  qed
+
+theorem sum_eq_natseg
+  fixes f :: nat ⇒ real, g :: nat ⇒ real, m :: nat, n :: nat
+  prop (∀i. m ≤ i ⟶ i ≤ n ⟶ f i = g i) ⟶ sum ({m..n}) f = sum ({m..n}) g
+  [hint_backward]
+  proof
+    1: apply_backward_step sum_eq
+    1: introduction i
+    1.2: apply_prev @0
+    1.2: rewrite_fact member_natseg @1.1 sym=false
+    1.3: apply_backward_step conjD1 @1.2
+    1.4: apply_backward_step conjD2 @1.2
+  qed
+
+theorem sum_abs_natseg
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop abs (sum ({m..n}) f) ≤ sum ({m..n}) (λi. abs (f i))
+  [hint_backward]
+  proof
+    0: apply_backward_step sum_abs
+    0: apply_backward_step finite_natseg
+  qed
+
+theorem sum_const_natseg
+  fixes c :: real, m :: nat, n :: nat
+  prop sum ({m..n}) (λn1. c) = of_nat (n + 1 - m) * c
+  [hint_rewrite]
+  proof
+    0: cut "finite {m..n}"
+    0: apply_backward_step finite_natseg
+    1: apply_forward_step sum_const @0 param_c=c
+    2: rewrite_fact card_natseg @1 sym=false
+  qed
+
+theorem sum_eq_0_natseg
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop (∀i. m ≤ i ⟶ i ≤ n ⟶ f i = 0) ⟶ sum ({m..n}) f = 0
+  [hint_backward]
+  proof
+    1: apply_backward_step sum_eq_0
+    1: introduction i
+    1.2: apply_prev @0
+    1.2: rewrite_fact member_natseg @1.1 sym=false
+    1.3: apply_backward_step conjD1 @1.2
+    1.4: apply_backward_step conjD2 @1.2
+  qed
+
+theorem sum_triv_natseg
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop n < m ⟶ sum ({m..n}) f = 0
+  [hint_backward]
+  proof
+    1: apply_backward_step sum_eq_0_natseg
+    1: introduction i
+    1.3: apply_backward_step contrapositive @0
+    1.3: introduction
+    1.3.1: rewrite_goal not_lt sym=false
+    1.3.1: apply_backward_step less_eq_trans @1.1,1.2
+  qed
+
+theorem sum_pos_le_natseg
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop (∀p. m ≤ p ⟶ p ≤ n ⟶ 0 ≤ f p) ⟶ 0 ≤ sum ({m..n}) f
+  [hint_backward]
+  proof
+    1: apply_backward_step sum_pos_le
+    1: introduction p
+    1.2: apply_prev @0
+    1.2: rewrite_fact member_natseg @1.1 sym=false
+    1.3: apply_backward_step conjD1 @1.2
+    1.4: apply_backward_step conjD2 @1.2
+  qed
+
+theorem sum_pos_eq_0_natseg
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop (∀p. m ≤ p ⟶ p ≤ n ⟶ 0 ≤ f p) ⟶ sum ({m..n}) f = 0 ⟶ (∀p. m ≤ p ⟶ p ≤ n ⟶ f p = 0)
+  [hint_backward,hint_backward1]
+  proof
+    2: cut "(∀x. x ∈ {m..n} ⟶ f x = 0)"
+    2: apply_backward_step sum_pos_eq_0
+    2: apply_backward_step finite_natseg
+    3: introduction p
+    3.2: apply_prev @0
+    3.2: rewrite_fact member_natseg @3.1 sym=false
+    3.3: apply_backward_step conjD1 @3.2
+    3.4: apply_backward_step conjD2 @3.2
+    5: introduction p
+    5.3: apply_prev @4
+    5.3: rewrite_goal member_natseg sym=false
+    5.3: apply_backward_step conjI
+  qed
+
+theorem sum_sing_natseg
+  fixes f :: nat ⇒ real, n :: nat
+  prop sum ({n..n}) f = f n
+  [hint_rewrite]
+  proof
+    0: rewrite_goal natseg_sing sym=false
+    0: rewrite_goal sum_sing sym=false
+  qed
+
+theorem sum_0_natseg
+  fixes f :: nat ⇒ real, m :: nat
+  prop sum ({m..0}) f = (if m = 0 then f 0 else 0)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: apply_forward_step iterate_natseg_0 param_f=f param_m=m param_op="(plus::real⇒real⇒real)"
+    1: rewrite_fact neutral_real_add @0 sym=false
+    2: apply_prev @1
+    2: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_Suc_natseg
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop sum ({m..Suc n}) f = (if m ≤ Suc n then sum ({m..n}) f + f (Suc n) else sum ({m..n}) f)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: apply_backward_step iterate_natseg_Suc
+    0: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_0_natseg_lt
+  fixes f :: nat ⇒ real
+  prop sum ({i. i < 0}) f = 0
+  [hint_rewrite]
+  proof
+    0: rewrite_goal natseg_clauses_lt_1 sym=false
+    0: rewrite_goal sum_empty sym=false
+  qed
+
+theorem sum_Suc_natseg_lt
+  fixes f :: nat ⇒ real, k :: nat
+  prop sum ({i. i < Suc k}) f = sum ({i. i < k}) f + f k
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: apply_backward_step iterate_natseg_Suc_lt
+    0: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_0_natseg_le
+  fixes f :: nat ⇒ real
+  prop sum ({i. i ≤ 0}) f = f 0
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: apply_backward_step iterate_natseg_0_le
+    0: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_Suc_natseg_le
+  fixes f :: nat ⇒ real, k :: nat
+  prop sum ({i. i ≤ Suc k}) f = sum ({i. i ≤ k}) f + f (Suc k)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: apply_backward_step iterate_natseg_Suc_le
+    0: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_swap_natseg
+  fixes a :: nat, b :: nat, c :: nat, d :: nat, f :: nat ⇒ nat ⇒ real
+  prop sum ({a..b}) (λi. sum ({c..d}) (f i)) = sum ({c..d}) (λj. sum ({a..b}) (λi. f i j))
+  [hint_rewrite]
+  proof
+    0: apply_backward_step sum_swap
+    0: apply_backward_step finite_natseg
+    1: apply_backward_step finite_natseg
+  qed
+
+theorem sum_add_split
+  fixes f :: nat ⇒ real, m :: nat, n :: nat, p :: nat
+  prop m ≤ n + 1 ⟶ sum ({m..n + p}) f = sum ({m..n}) f + sum ({n + 1..n + p}) f
+  [hint_backward]
+  proof
+    1: apply_forward_step natseg_add_split @0 param_p=p
+    2: rewrite_goal_with_prev @1
+    2: apply_backward_step sum_union
+    2: apply_backward_step finite_natseg
+    3: apply_backward_step finite_natseg
+    4: rewrite_goal disjoint_natseg sym=false
+    4: apply_backward_step disjI1
+    4: z3
+  qed
+
+theorem sum_offset
+  fixes f :: nat ⇒ real, m :: nat, n :: nat, p :: nat
+  prop sum ({m + p..n + p}) f = sum ({m..n}) (λi. f (i + p))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal natseg_offset_image sym=false
+    0: apply_forward_step sum_image param_f="(λi. i + p)" param_g=f param_s={m..n}
+    1: rewrite_fact comp_fun_def @0 sym=false
+    2: apply_prev @1
+    2: introduction x,y
+    2.5: apply_backward_step add_cancel_right @2.4
+  qed
+
+theorem sum_offset_0
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop m ≤ n ⟶ sum ({m..n}) f = sum ({0..n - m}) (λi. f (i + m))
+  [hint_backward]
+  proof
+    1: rewrite_goal sum_offset sym=true
+    1: rewrite_goal nat_plus_def_1 sym=false
+    1: cut "n - m + m = n"
+    1: apply_backward_step sub_add
+    2: rewrite_goal_with_prev @1
+  qed
+
+theorem sum_clauses_left
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop m ≤ n ⟶ sum ({m..n}) f = f m + sum ({m + 1..n}) f
+  [hint_backward]
+  proof
+    1: apply_forward_step natseg_lrec @0
+    2: rewrite_goal_with_prev @1
+    2: cut "finite {m + 1..n}"
+    2: apply_backward_step finite_natseg
+    3: apply_forward_step sum_insert @2 param_f=f param_x=m
+    4: cut "~(m ∈ {m + 1..n})"
+    4: rewrite_goal member_natseg sym=false
+    4: rewrite_goal de_morgan_thm1 sym=false
+    4: apply_backward_step disjI1
+    4: z3
+    8: rewrite_fact if_not_P @3,7 sym=false
+  qed
+
+theorem sum_clauses_right
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop 0 < n ⟶ m ≤ n ⟶ sum ({m..n}) f = sum ({m..n - 1}) f + f n
+  [hint_backward,hint_backward1]
+  proof
+    2: revert_intro @1
+    1: revert_intro @0
+    0: induction n nat_induct
+    0: introduction
+    0.2: z3 @0.0
+    1: introduction n
+    1.4: rewrite_goal suc_sub1 sym=false
+    1.4: rewrite_goal sum_Suc_natseg sym=false
+    1.4: rewrite_goal if_P @1.3 sym=false
+  qed
+
+theorem sum_pair
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop sum ({2 * m..2 * n + 1}) f = sum ({m..n}) (λi. f (2 * i) + f (2 * i + 1))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: apply_backward_step iterate_pair
+    0: apply_backward_step monoidal_real_add
+  qed
+
+theorem sum_reflect
+  fixes m :: nat, n :: nat, x :: nat ⇒ real
+  prop sum ({m..n}) x = (if n < m then 0 else sum ({0..n - m}) (λi. x (n - i)))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal sum_def sym=false
+    0: apply_forward_step iterate_reflect param_m=m param_n=n param_op="(plus::real⇒real⇒real)" param_x=x
+    1: rewrite_fact neutral_real_add @0 sym=false
+    2: apply_prev @1
+    2: apply_backward_step monoidal_real_add
+  qed
+
+theorem real_of_nat_sum_natseg
+  fixes f :: nat ⇒ nat, m :: nat, n :: nat
+  prop of_nat (nsum ({m..n}) f) = sum ({m..n}) (λi. of_nat (f i))
+  [hint_rewrite]
+  proof
+    0: apply_backward_step real_of_nat_sum
+    0: apply_backward_step finite_natseg
+  qed
+
+theorem sum_partial_Suc
+  fixes f :: nat ⇒ real, g :: nat ⇒ real, m :: nat, n :: nat
+  prop sum ({m..n}) (λk. f k * (g (k + 1) - g k)) = (if m ≤ n then f (n + 1) * g (n + 1) - f m * g m - sum ({m..n}) (λk. g (k + 1) * (f (k + 1) - f k)) else 0)
+  [hint_rewrite]
+  proof
+    0: induction n nat_induct
+    0: cases "m ≤ 0 "
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: rewrite_goal sum_0_natseg sym=false
+    0.1: cases "m = 0"
+    0.1: introduction
+    0.1.1: rewrite_goal if_P @0.1.0 sym=false
+    0.1.1: rewrite_goal nat_plus_def_1 sym=false
+    0.1.1: rewrite_goal_with_prev @0.1.0
+    0.1.1: z3
+    0.2: introduction
+    0.2.1: z3 @0.2.0,0.0
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+    1.1: rewrite_fact not_le @1.0 sym=false
+    1.2: apply_backward_step sum_triv_natseg @1.1
+    3: introduction n
+    3.2: cases "m ≤ Suc n"
+    3.2: introduction
+    3.2.1: rewrite_goal if_P @3.2.0 sym=false
+    3.2.1: rewrite_goal sum_Suc_natseg sym=false
+    3.2.1: rewrite_goal if_P @3.2.0 sym=false
+    3.2.1: rewrite_fact nat_less_eq_def_2 @3.2.0 sym=false
+    3.2.2: apply_backward_step disjE @3.2.1
+    3.2.2: introduction
+    3.2.2.1: rewrite_goal_with_prev @3.2.2.0
+    3.2.2.1: cut "n < Suc n"
+    3.2.2.1: rewrite_goal nat_less_def_2 sym=false
+    3.2.2.1: apply_backward_step disjI1
+    3.2.2.1: apply_backward_step eq_refl
+    3.2.2.4: apply_forward_step sum_triv_natseg @3.2.2.3 param_f="(λk. f k * (g (k + 1) - g k))"
+    3.2.2.5: apply_forward_step sum_triv_natseg @3.2.2.3 param_f="(λk. g (k + 1) * (f (k + 1) - f k))"
+    3.2.2.6: rewrite_goal_with_prev @3.2.2.4
+    3.2.2.6: rewrite_goal_with_prev @3.2.2.5
+    3.2.2.6: real_norm
+    3.2.3: introduction
+    3.2.3.1: rewrite_fact if_P @3.1,3.2.3.0 sym=false
+    3.2.3.2: rewrite_goal_with_prev @3.2.3.1
+    3.2.3.2: rewrite_goal add_1_right sym=true
+    3.2.3.2: real_norm
+    3.3: introduction
+    3.3.1: rewrite_goal if_not_P @3.3.0 sym=false
+    3.3.1: apply_backward_step sum_triv_natseg
+    3.3.1: rewrite_fact not_le @3.3.0 sym=false
+  qed
+
+theorem sum_partial_Pre
+  fixes f :: nat ⇒ real, g :: nat ⇒ real, m :: nat, n :: nat
+  prop sum ({m..n}) (λk. f k * (g k - g (k - 1))) = (if m ≤ n then f (n + 1) * g n - f m * g (m - 1) - sum ({m..n}) (λk. g k * (f (k + 1) - f k)) else 0)
+  [hint_rewrite]
+  proof
+    0: apply_forward_step sum_partial_Suc param_f=f param_g="(%k. g(k - 1))" param_m=m param_n=n
+    1: rewrite_fact nat_plus_minus @0 sym=false
+  qed
+
+theorem sum_diffs
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop sum ({m..n}) (λk. f k - f (k + 1)) = (if m ≤ n then f m - f (n + 1) else 0)
+  [hint_rewrite]
+  proof
+    0: cut "!a::real. !b. a-b = -1 * (b-a)"
+    0: z3
+    1: rewrite_goal_with_prev @0
+    1: rewrite_goal sum_partial_Suc sym=false
+    1: rewrite_goal real_sub_refl sym=false
+    1: rewrite_goal real_mul_rzero sym=false
+    1: rewrite_goal sum_0 sym=false
+    1: rewrite_goal real_sub_rzero sym=false
+    1: z3
+  qed
+
+theorem sum_diffs_alt
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop sum ({m..n}) (λk. f (k + 1) - f k) = (if m ≤ n then f (n + 1) - f m else 0)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_neg_sub sym=true
+    0: rewrite_goal sum_neg sym=false
+    0: rewrite_goal sum_diffs sym=false
+    0: z3
+  qed
+
+theorem sum_combine_r
+  fixes f :: nat ⇒ real, m :: nat, n :: nat, p :: nat
+  prop m ≤ n + 1 ⟶ n ≤ p ⟶ sum ({m..n}) f + sum ({n + 1..p}) f = sum ({m..p}) f
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step sum_union_eq
+    2: apply_backward_step finite_natseg
+    3: rewrite_goal add_1_right sym=false
+    3: apply_backward_step member_ext
+    3: rewrite_goal member_inter_iff sym=false
+    3: rewrite_goal member_natseg sym=false
+    3: rewrite_goal lesseq_Suc_less sym=false
+    3: z3
+    9: apply_backward_step natseg_combine_r
+  qed
+
+theorem sum_combine_l
+  fixes f :: nat ⇒ real, m :: nat, n :: nat, p :: nat
+  prop 0 < n ⟶ m ≤ n ⟶ n ≤ p + 1 ⟶ sum ({m..n - 1}) f + sum ({n..p}) f = sum ({m..p}) f
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step sum_union_eq
+    3: apply_backward_step finite_natseg
+    4: apply_backward_step member_ext
+    4: rewrite_goal member_inter_iff sym=false
+    4: rewrite_goal member_natseg sym=false
+    4: z3 @0
+    8: apply_backward_step natseg_combine_l
+  qed
+
+def polynomial_function :: (real ⇒ real) ⇒ bool = polynomial_function p ⟷ (∃m. ∃c. ∀x. p x = sum ({0..m}) (λi. c i * x ^ i))

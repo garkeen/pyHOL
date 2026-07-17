@@ -2,23 +2,23 @@
   <form>
     <span>
       <label class="keyword">definition</label>
-      <ExpressionEdit v-model="item.name" min-width="50" single-line/>
+      <ExpressionEdit v-model="local.name" min-width="50" single-line/>
       <span class="form-element">::</span>
-      <ExpressionEdit v-model="item.type" min-width="50" single-line/>
+      <ExpressionEdit v-model="local.type" min-width="50" single-line/>
       <label class="keyword" style="margin-left:10px">where</label>
     </span>
     <div style="margin-top:3px">
-      <ExpressionEdit v-model="item.prop"/>
+      <ExpressionEdit v-model="local.prop"/>
     </div>
     <div style="margin-top:10px">
       <span class="hint-element">
         <input type="checkbox" :id="'rewrite-check' + id" value="hint_rewrite"
-               v-model="item.attributes">
+               v-model="local.attributes">
         <label :for="'rewrite-check' + id">Rewrite</label>
       </span>
       <span class="hint-element">
         <input type="checkbox" :id="'rewrite-sym-check' + id" value="hint_rewrite_sym"
-               v-model="item.attributes">
+               v-model="local.attributes">
         <label :for="'rewrite-sym-check' + id">Rewrite (sym)</label>
       </span>
     </div>
@@ -31,34 +31,33 @@ import { reactive, computed } from 'vue'
 import ExpressionEdit from '../util/ExpressionEdit.vue'
 
 const props = defineProps({
-  old_item: {
-    type: Object,
-    required: true
-  },
-  ext: {
-    type: [String, Array],
-    default: ''
-  }
+  item: { type: Object, required: true },
+  old_item: { type: Object, default: null },
+  ext: { type: [String, Array], default: '' }
 })
 
-const item = reactive(
-  Object.assign(
-    {
-      attributes: [],
-      name: "",
-      type: "",
-      prop: ""
-    },
-    JSON.parse(JSON.stringify(props.old_item))
-  )
-)
+const source = props.item || props.old_item
 
-const id = computed(() => {
-  return props.old_item.ty + '.' + props.old_item.name
+// Ensure field is string for ExpressionEdit
+const toStr = (v) => {
+  if (typeof v === 'string') return v
+  if (Array.isArray(v)) return v.map(item => item.text || String(item)).join('\n')
+  if (v == null) return ''
+  return String(v)
+}
+
+const local = reactive({
+  ty: source.ty || 'def',
+  name: toStr(source.name),
+  type: toStr(source.type),
+  prop: toStr(source.prop),
+  attributes: Array.isArray(source.attributes) ? [...source.attributes] : []
 })
+
+const id = computed(() => { return (source.ty || 'def') + '.' + (source.name || '') })
 
 defineExpose({
-  getData: () => JSON.parse(JSON.stringify(item))
+  getData: () => ({ ty: local.ty, name: local.name, type: local.type, prop: local.prop, attributes: local.attributes })
 })
 </script>
 

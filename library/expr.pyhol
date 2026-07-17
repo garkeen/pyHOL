@@ -1,0 +1,55 @@
+theory expr
+imports function
+description "Expressions"
+
+header "Arithmetic expressions"
+
+datatype aexp =
+  | N (n :: nat) :: aexp
+  | V (x :: nat) :: aexp
+  | Plus (a1 :: aexp) (a2 :: aexp) :: aexp
+  | Times (c1 :: aexp) (c2 :: aexp) :: aexp
+
+fun aval :: aexp ⇒ (nat ⇒ nat) ⇒ nat
+  | aval (N n) s = n
+  | aval (V x) s = s x
+  | aval (Plus a1 a2) s = aval a1 s + aval a2 s
+  | aval (Times c1 c2) s = aval c1 s * aval c2 s
+
+theorem aval_test1
+  prop aval (Plus (V 1) (N 5)) ((λx. 0)(1 := 7)) = 12
+  proof
+    0: rewrite_goal aval_def_3
+    0: rewrite_goal aval_def_1
+    0: rewrite_goal aval_def_2
+    0: rewrite_goal fun_upd_def
+    0: cut "(1::nat) = 1"
+    0: apply_backward_step eq_refl
+    1: rewrite_goal if_P @0
+    1: nat_norm
+  qed
+
+theorem aval_test2
+  prop aval (Plus (V 0) (N 5)) ((λx. 0)(1 := 7)) = 5
+  proof
+    0: rewrite_goal aval_def_3
+    0: rewrite_goal aval_def_1
+    0: rewrite_goal aval_def_2
+    0: rewrite_goal fun_upd_def
+    0: cut "~(0::nat) = 1"
+    0: nat_const_ineq
+    1: rewrite_goal if_not_P @0
+    1: rewrite_goal nat_plus_def_1
+  qed
+
+inductive avalI :: (nat ⇒ nat) ⇒ aexp ⇒ nat ⇒ bool
+  | avalI_const: avalI s (N n) n
+  | avalI_var: avalI s (V x) (s x)
+  | avalI_plus: avalI s a1 n1 ⟶ avalI s a2 n2 ⟶ avalI s (Plus a1 a2) (n1 + n2)
+  | avalI_times: avalI s a1 n1 ⟶ avalI s a2 n2 ⟶ avalI s (Times a1 a2) (n1 * n2)
+
+theorem avalI_test1
+  prop avalI ((λx. 0)(1 := 7)) (Plus (V 1) (N 5)) 12
+
+theorem avalI_test2
+  prop avalI ((λx. 0)(1 := 7)) (Plus (V 0) (N 5)) 5

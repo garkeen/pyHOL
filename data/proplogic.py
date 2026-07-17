@@ -8,7 +8,6 @@ from logic import basic
 from collections import deque
 import functools
 
-basic.load_theory('int')
 
 class nnf_conv(Conv):
     """

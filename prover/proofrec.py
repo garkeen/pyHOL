@@ -828,8 +828,9 @@ def rewrite_real_second_level(tm):
     return ProofTerm.sorry(Thm(tm))
 
 def _rewrite(tm):
-    with open('library/smt.json', 'r', encoding='utf-8') as f:
-        f_data = json.load(f)
+    from format import pyhol
+    with open('library/smt.pyhol', 'r', encoding='utf-8') as f:
+        f_data = pyhol.parse_pyhol(f.read())
     th_name = sorted([f_data['content'][i]['name'] for i in range(len(f_data['content'])) if f_data['content'][i]['name'][0]=='r'])
     if tm.lhs == tm.rhs:
         return refl(tm.lhs)
@@ -1045,8 +1046,9 @@ def beta_norm_lambda_eq(pt):
 
 def schematic_rules_def_axiom(axiom):
     """Rewrite by instantiating def_axiom schematic theorems."""
-    with open('library/smt.json', 'r', encoding='utf-8') as f:
-        f_data = json.load(f)
+    from format import pyhol
+    with open('library/smt.pyhol', 'r', encoding='utf-8') as f:
+        f_data = pyhol.parse_pyhol(f.read())
     thms = [f_data['content'][i]['name'] for i in range(len(f_data['content'])) if f_data['content'][i]['name'][0]=='d']
     for thm in thms:
         pt = ProofTerm.theorem(thm)

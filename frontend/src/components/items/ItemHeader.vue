@@ -19,11 +19,12 @@
         &#9998;
       </button>
       <button v-if="canProve"
-              class="btn-icon"
-              :class="{active: isProving}"
+              class="btn-prove"
+              :class="{active: isProving, 'btn-prove-unproved': status === 'UNPROVED'}"
               @click.stop="$emit('toggle-prove')"
               :title="proofTitle">
-        {{ proofIcon }}
+        <span class="prove-icon">{{ proofIcon }}</span>
+        <span v-if="status === 'UNPROVED'" class="prove-label">Prove</span>
       </button>
     </div>
   </div>
@@ -89,8 +90,9 @@ const canProve = computed(() => {
 const statusIcon = computed(() => {
   switch (props.status) {
     case 'VALID': return '✓'
-    case 'DIRTY': return '⚠'
-    case 'INVALID': return '✗'
+    case 'STEP_FAILED': return '✗'
+    case 'DEP_FAILED': return '⚠'
+    case 'PENDING': return '⏳'
     case 'UNPROVED': return '○'
     case 'AXIOM': return '□'
     default: return ''
@@ -98,15 +100,25 @@ const statusIcon = computed(() => {
 })
 
 const proofIcon = computed(() => {
-  if (!props.item.proof) return '✗'
-  if (props.item.num_gaps > 0) return '✗'
-  return '✓'
+  switch (props.status) {
+    case 'VALID': return '✓'
+    case 'STEP_FAILED': return '✗'
+    case 'DEP_FAILED': return '⚠'
+    case 'PENDING': return '⏳'
+    case 'UNPROVED': return '○'
+    default: return '○'
+  }
 })
 
 const proofTitle = computed(() => {
-  if (!props.item.proof) return 'No proof'
-  if (props.item.num_gaps > 0) return `${props.item.num_gaps} gap(s)`
-  return 'Proof complete'
+  switch (props.status) {
+    case 'VALID': return 'Proof complete'
+    case 'STEP_FAILED': return 'Proof has errors'
+    case 'DEP_FAILED': return 'Dependency failed'
+    case 'PENDING': return 'Validating...'
+    case 'UNPROVED': return 'No proof'
+    default: return ''
+  }
 })
 </script>
 
@@ -174,6 +186,18 @@ const proofTitle = computed(() => {
   color: #17a2b8;
 }
 
+.status-step_failed {
+  color: #dc3545;
+}
+
+.status-dep_failed {
+  color: #fd7e14;
+}
+
+.status-pending {
+  color: #6c757d;
+}
+
 .item-right {
   display: flex;
   gap: 4px;
@@ -200,5 +224,46 @@ const proofTitle = computed(() => {
   background-color: #007bff;
   border-color: #007bff;
   color: white;
+}
+
+.btn-prove {
+  background: none;
+  border: 1px solid transparent;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 3px;
+  color: #6c757d;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-prove:hover {
+  background-color: #e9ecef;
+  border-color: #ced4da;
+  color: #495057;
+}
+
+.btn-prove.active {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.btn-prove-unproved {
+  border: 1px dashed #007bff;
+  color: #007bff;
+}
+
+.btn-prove-unproved:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.prove-label {
+  font-size: 12px;
+  font-weight: 500;
 }
 </style>

@@ -1,0 +1,35 @@
+theory gcl
+imports function
+description "Guarded command language."
+
+datatype varType =
+  | Ident (n :: nat) :: varType
+  | Para (v :: varType) (x :: nat) :: varType
+
+datatype scalarValue =
+  | NatV (n :: nat) :: scalarValue
+  | BoolV (b :: bool) :: scalarValue
+
+fun scalar_is_nat :: scalarValue ⇒ bool
+  | scalar_is_nat (NatV n) ⟷ true
+  | scalar_is_nat (BoolV b) ⟷ false
+
+fun scalar_is_bool :: scalarValue ⇒ bool
+  | scalar_is_bool (NatV n) ⟷ false
+  | scalar_is_bool (BoolV b) ⟷ true
+
+fun scalar_of_nat :: scalarValue ⇒ nat
+  | scalar_of_nat (NatV n) = n
+  | scalar_of_nat (BoolV b) = 0
+
+fun scalar_of_bool :: scalarValue ⇒ bool
+  | scalar_of_bool (NatV n) ⟷ false
+  | scalar_of_bool (BoolV b) ⟷ b
+
+theorem scalar_of_nat_id
+  fixes s :: scalarValue
+  prop scalar_is_nat s ⟶ NatV (scalar_of_nat s) = s
+
+theorem scalar_of_bool_id
+  fixes s :: scalarValue
+  prop scalar_is_bool s ⟶ BoolV (scalar_of_bool s) = s

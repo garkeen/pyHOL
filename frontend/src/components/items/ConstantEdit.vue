@@ -2,9 +2,9 @@
   <form>
     <span>
       <label class="keyword">constant</label>
-      <ExpressionEdit v-model="item.name" min-width="50" single-line/>
+      <ExpressionEdit v-model="local.name" min-width="50" single-line/>
       <span class="form-element">::</span>
-      <ExpressionEdit v-model="item.type" min-width="100" single-line/>
+      <ExpressionEdit v-model="local.type" min-width="100" single-line/>
     </span>
   </form>
 </template>
@@ -14,24 +14,18 @@ import { reactive } from 'vue'
 import ExpressionEdit from '../util/ExpressionEdit.vue'
 
 const props = defineProps({
-  old_item: {
-    type: Object,
-    required: true
-  }
+  item: { type: Object, required: true },
+  old_item: { type: Object, default: null }
 })
 
-const item = reactive(
-  Object.assign(
-    {
-      name: "",
-      type: ""
-    },
-    JSON.parse(JSON.stringify(props.old_item))
-  )
-)
+const source = props.item || props.old_item
+const local = reactive({
+  name: typeof source.name === 'string' ? source.name : '',
+  type: typeof source.type === 'string' ? source.type : ''
+})
 
 defineExpose({
-  getData: () => JSON.parse(JSON.stringify(item))
+  getData: () => ({ ty: 'def.ax', name: local.name, type: local.type })
 })
 </script>
 

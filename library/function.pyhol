@@ -1,0 +1,201 @@
+theory function
+imports nat
+description "Functions"
+
+header "Function update"
+
+def fun_upd :: ('a ⇒ 'b) ⇒ 'a ⇒ 'b ⇒ 'a ⇒ 'b = (f)(a := b) x = (if x = a then b else f x) [hint_rewrite]
+
+theorem fun_upd_same
+  fixes a :: 'a, b :: 'b, f :: 'a ⇒ 'b
+  prop (f)(a := b) a = b
+  [hint_rewrite]
+  proof
+    0: rewrite_goal fun_upd_def
+    0: cut "a = a"
+    0: apply_backward_step eq_refl
+    1: rewrite_goal if_P @0 sym=false
+  qed
+
+theorem fun_upd_other
+  fixes a :: 'a, b :: 'b, c :: 'a, f :: 'a ⇒ 'b
+  prop ¬(c = a) ⟶ (f)(a := b) c = f c
+  [hint_rewrite]
+  proof
+    1: rewrite_goal fun_upd_def
+    1: rewrite_goal if_not_P @0 sym=false
+  qed
+
+theorem fun_upd_triv
+  fixes a :: 'a, f :: 'a ⇒ 'b
+  prop (f)(a := f a) = f
+  proof
+    0: apply_backward_step extension
+    0: introduction x
+    0.1: rewrite_goal fun_upd_def
+    0.1: cases "x= a"
+    0.1: introduction
+    0.1.1: rewrite_goal if_P @0.1.0
+    0.1.1: rewrite_goal_with_prev @0.1.0
+    0.2: introduction
+    0.2.1: rewrite_goal if_not_P @0.2.0
+  qed
+
+theorem fun_upd_upd
+  fixes a :: 'a, b :: 'b, c :: 'b, f :: 'a ⇒ 'b
+  prop (f)(a := b, a := c) = (f)(a := c)
+  proof
+    0: apply_backward_step extension
+    0: introduction x
+    0.1: cases "x = a"
+    0.1: introduction
+    0.1.1: rewrite_goal_with_prev @0.1.0
+    0.1.1: rewrite_goal fun_upd_same
+    0.2: introduction
+    0.2.1: rewrite_goal fun_upd_other @0.2.0
+    0.2.1: rewrite_goal fun_upd_other @0.2.0
+  qed
+
+theorem fun_upd_twist
+  fixes a :: 'a, b :: 'b, c :: 'a, d :: 'b, f :: 'a ⇒ 'b
+  prop ¬(c = a) ⟶ (f)(a := b, c := d) = (f)(c := d, a := b)
+  proof
+    1: apply_backward_step extension
+    1: introduction x
+    1.1: cases "x = a"
+    1.1: introduction
+    1.1.1: rewrite_goal_with_prev @1.1.0
+    1.1.1: rewrite_goal fun_upd_same
+    1.1.1: cut "~a = c"
+    1.1.1: apply_backward_step ineq_sym @0
+    1.1.2: rewrite_goal fun_upd_other @1.1.1
+    1.1.2: rewrite_goal fun_upd_same
+    1.2: introduction
+    1.2.1: cases "x = c"
+    1.2.1: introduction
+    1.2.1.1: rewrite_goal_with_prev @1.2.1.0
+    1.2.1.1: rewrite_goal fun_upd_same
+    1.2.1.1: rewrite_goal fun_upd_other @0
+    1.2.1.1: rewrite_goal fun_upd_same
+    1.2.2: introduction
+    1.2.2.1: rewrite_goal fun_upd_other @1.2.0
+    1.2.2.1: rewrite_goal fun_upd_other @1.2.2.0
+    1.2.2.1: rewrite_goal fun_upd_other @1.2.0
+  qed
+
+theorem fun_upd_eval_test1
+  prop (λx::nat. (0::nat))(1 := 5) 0 = 0
+  proof
+    0: cut "~((0::nat) = 1)"
+    0: nat_const_ineq
+    1: rewrite_goal fun_upd_other @0 sym=false
+  qed
+
+theorem fun_upd_eval_test2
+  prop (λx::nat. (0::nat))(1 := 5) 1 = 5
+  proof
+    0: rewrite_goal fun_upd_same
+  qed
+
+def id_fun :: 'a ⇒ 'a = id_fun = (λx::'a. x) [hint_rewrite]
+
+def comp_fun :: ('b ⇒ 'c) ⇒ ('a ⇒ 'b) ⇒ 'a ⇒ 'c = f ∘ g = (λx. f (g x)) [hint_rewrite]
+
+theorem comp_fun_eval
+  fixes f :: 'b ⇒ 'c, g :: 'a ⇒ 'b, x :: 'a
+  prop (f ∘ g) x = f (g x)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal comp_fun_def
+  qed
+
+theorem comp_fun_assoc
+  fixes f :: 'c ⇒ 'd, g :: 'b ⇒ 'c, h :: 'a ⇒ 'b
+  prop (f ∘ g) ∘ h = f ∘ g ∘ h
+  proof
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal comp_fun_def sym=false
+  qed
+
+def injective :: ('a ⇒ 'b) ⇒ bool = injective f ⟷ (∀x. ∀y. f x = f y ⟶ x = y)
+
+theorem injectiveI
+  fixes f :: 'a ⇒ 'b
+  prop (∀x. ∀y. f x = f y ⟶ x = y) ⟶ injective f
+  [hint_backward]
+  proof
+    1: rewrite_goal injective_def
+  qed
+
+theorem injectiveD
+  fixes f :: 'a ⇒ 'b, x :: 'a, y :: 'a
+  prop injective f ⟶ f x = f y ⟶ x = y
+  [hint_forward]
+  proof
+    2: rewrite_fact injective_def @0
+    3: apply_prev @2,1
+  qed
+
+def surjective :: ('a ⇒ 'b) ⇒ bool = surjective f ⟷ (∀y. ∃x. f x = y)
+
+theorem surjectiveI
+  fixes f :: 'a ⇒ 'b
+  prop (∀y. ∃x. f x = y) ⟶ surjective f
+  [hint_backward]
+  proof
+    1: rewrite_goal surjective_def
+  qed
+
+theorem surjectiveD
+  fixes f :: 'a ⇒ 'b, y :: 'b
+  prop surjective f ⟶ (∃x. f x = y)
+  [hint_backward]
+  proof
+    1: rewrite_fact surjective_def @0
+    2: apply_prev @1
+  qed
+
+theorem injective_id_fun
+  prop injective (id_fun::'a ⇒ 'a)
+  proof
+    0: rewrite_goal id_fun_def
+    0: apply_backward_step injectiveI
+  qed
+
+theorem surjective_id_fun
+  prop surjective (id_fun::'a ⇒ 'a)
+  proof
+    0: rewrite_goal id_fun_def
+    0: apply_backward_step surjectiveI
+    0: introduction y
+    0.1: inst_exists_goal y
+    0.1: apply_backward_step eq_refl
+  qed
+
+theorem injective_comp_fun
+  fixes f :: 'a ⇒ 'b, g :: 'b ⇒ 'c
+  prop injective f ⟶ injective g ⟶ injective (g ∘ f)
+  proof
+    2: apply_backward_step injectiveI
+    2: introduction "x, y"
+    2.3: rewrite_fact comp_fun_eval @2.2
+    2.4: apply_forward_step injectiveD @1,2.3
+    2.5: apply_forward_step injectiveD @0,2.4
+  qed
+
+theorem surjective_comp_fun
+  fixes f :: 'a ⇒ 'b, g :: 'b ⇒ 'c
+  prop surjective f ⟶ surjective g ⟶ surjective (g ∘ f)
+  proof
+    2: apply_backward_step surjectiveI
+    2: introduction y
+    2.1: cut "?z. g z = y"
+    2.1: apply_backward_step surjectiveD @1
+    2.2: rewrite_goal comp_fun_eval
+    2.2: exists_elim z @2.1
+    2.4: cut "?x. f x = z"
+    2.4: apply_backward_step surjectiveD
+    2.5: exists_elim x @2.4
+    2.7: inst_exists_goal x
+    2.7: rewrite_goal_with_prev @2.6
+  qed

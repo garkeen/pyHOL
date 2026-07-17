@@ -1,0 +1,29 @@
+theory rat
+imports int
+description "rational numbers"
+
+type rat
+
+const of_nat :: nat ⇒ rat
+
+const plus :: rat ⇒ rat ⇒ rat
+
+const minus :: rat ⇒ rat ⇒ rat
+
+const times :: rat ⇒ rat ⇒ rat
+
+theorem rat_add_assoc
+  fixes x :: rat, y :: rat, z :: rat
+  prop x + (y + z) = x + y + z
+
+theorem rat_add_comm
+  fixes x :: rat, y :: rat
+  prop x + y = y + x
+
+theorem rat_mult_assoc
+  fixes x :: rat, y :: rat, z :: rat
+  prop x * (y * z) = x * y * z
+
+theorem rat_mult_comm
+  fixes x :: rat, y :: rat
+  prop x * y = y * x

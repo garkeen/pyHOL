@@ -1,0 +1,9 @@
+theory string
+imports nat, list
+description "Strings"
+
+datatype char =
+  | Char (v :: nat) :: char
+
+datatype string =
+  | String (s :: char list) :: string

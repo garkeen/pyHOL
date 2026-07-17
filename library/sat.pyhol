@@ -1,0 +1,23 @@
+theory sat
+imports logic, int
+description "SAT solver"
+
+theorem encode_conj
+  fixes l :: bool, r1 :: bool, r2 :: bool
+  prop (l ⟷ r1 ∧ r2) ⟷ (¬l ∨ r1) ∧ (¬l ∨ r2) ∧ (¬r1 ∨ ¬r2 ∨ l)
+
+theorem encode_disj
+  fixes l :: bool, r1 :: bool, r2 :: bool
+  prop (l ⟷ r1 ∨ r2) ⟷ (¬l ∨ r1 ∨ r2) ∧ (¬r1 ∨ l) ∧ (¬r2 ∨ l)
+
+theorem encode_imp
+  fixes l :: bool, r1 :: bool, r2 :: bool
+  prop (l ⟷ (r1 ⟶ r2)) ⟷ (¬l ∨ ¬r1 ∨ r2) ∧ (r1 ∨ l) ∧ (¬r2 ∨ l)
+
+theorem encode_eq
+  fixes l :: bool, r1 :: bool, r2 :: bool
+  prop (l ⟷ r1 ⟷ r2) ⟷ (¬l ∨ ¬r1 ∨ r2) ∧ (¬l ∨ r1 ∨ ¬r2) ∧ (l ∨ ¬r1 ∨ ¬r2) ∧ (l ∨ r1 ∨ r2)
+
+theorem encode_not
+  fixes l :: bool, r :: bool
+  prop (l ⟷ ¬r) ⟷ (l ∨ r) ∧ (¬l ∨ ¬r)

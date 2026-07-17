@@ -1,0 +1,41 @@
+theory set
+imports nat
+description "Set theory"
+
+header "Set type and basic operations"
+
+type set 'a
+
+const member :: 'a ⇒ 'a set ⇒ bool
+
+const empty_set :: 'a set
+
+const insert :: 'a ⇒ 'a set ⇒ 'a set
+
+const subset :: 'a set ⇒ 'a set ⇒ bool
+
+const inter :: 'a set ⇒ 'a set ⇒ 'a set
+
+const union :: 'a set ⇒ 'a set ⇒ 'a set
+
+const diff :: 'a set ⇒ 'a set ⇒ 'a set
+
+const collect :: ('a ⇒ bool) ⇒ 'a set
+
+const countable :: 'a set ⇒ bool
+
+const Union :: 'a set set ⇒ 'a set
+
+const Inter :: 'a set set ⇒ 'a set
+
+const comp_fun :: ('a ⇒ 'b) ⇒ ('b ⇒ 'c) ⇒ ('a ⇒ 'c)
+
+axiom member_empty_simp
+  fixes x :: 'a
+  prop x ∈ ∅ ⟷ false
+  [hint_rewrite]
+
+axiom member_insert
+  fixes x :: 'a, y :: 'a, A :: 'a set
+  prop x ∈ insert y A ⟷ x = y ∨ x ∈ A
+  [hint_rewrite]

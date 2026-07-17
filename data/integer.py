@@ -1,6 +1,7 @@
 from kernel.type import TFun, IntType
 from kernel.term import Var, Int, Eq, Term, Sum, Prod, equals, Const, less, less_eq, greater, greater_eq, Not, int_power, Nat
 from kernel import term_ord
+from kernel import theory
 from kernel.proofterm import ProofTerm, refl
 from kernel.macro import Macro
 from kernel.theory import check_proof, register_macro, get_theorem
@@ -17,7 +18,6 @@ from math import gcd
 from logic import matcher
 from util import poly
 import functools
-basic.load_theory('real')
 
 
 def strip_plus(t):

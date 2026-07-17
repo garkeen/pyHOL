@@ -18,6 +18,7 @@ from logic import logic
 from logic import context
 from logic import tactic
 from logic.tactic import Tactic
+from logic import conv
 from syntax import parser, printer, pprint
 from syntax.settings import settings, global_setting
 
@@ -194,6 +195,18 @@ class ProofState():
         assert cur_item.rule == "sorry", "apply_tactic: id is not a gap"
 
         pt = tactic.get_proof_term(cur_item.th, args=args, prevs=prevs)
+        
+        # When the tactic returns an atom, the fact directly proves the goal.
+        # Find the fact's proof item and replace the sorry with it.
+        if pt.rule == 'atom':
+            fact_id = pt.args  # ItemID of the fact
+            # Set the sorry line's theorem to match, then replace
+            self.set_line(id, 'sorry', th=pt.th)
+            fact_item = self.get_proof_item(fact_id)
+            if fact_item.th is not None and fact_item.th.can_prove(cur_item.th):
+                self.replace_id(id, fact_id)
+            return
+        
         new_prf = pt.export(prefix=id, subproof=False)
 
         self.add_line_before(id, len(new_prf.items) - 1)
@@ -284,6 +297,28 @@ def register_method(name):
         global_methods[name] = method_cls()
         return method_cls
     return decorator
+
+
+def _loc_to_conv(loc, base_cv):
+    """Convert a location string to a conv combinator.
+    
+    loc format:
+    - "0": go to function part of f(x) → fun_conv
+    - "1": go to argument part of f(x) → arg_conv
+    - "0.1": argument of function → fun_conv(arg_conv(...))
+    - "1.0": function of argument → arg_conv(fun_conv(...))
+    
+    Each digit selects which part of a Comb(f, a) to descend into.
+    """
+    cv = base_cv
+    for digit in reversed(loc.split('.')):
+        if digit == '0':
+            cv = conv.fun_conv(cv)
+        elif digit == '1':
+            cv = conv.arg_conv(cv)
+        else:
+            raise AssertionError("loc: invalid digit '%s', expected 0 or 1" % digit)
+    return cv
 
 
 class Method:
@@ -462,7 +497,21 @@ class rewrite_goal(Method):
             sym_b = True
         else:
             sym_b = False
-        state.apply_tactic(id, tactic.rewrite_goal(sym=sym_b), args=data['theorem'], prevs=prevs)
+        
+        loc = data.get('loc', '')
+        
+        if loc:
+            # Position-specific rewriting using conv combinators
+            # loc format: "0" = function part, "1" = argument part
+            # "0.1" = argument of function, etc.
+            thm = theory.thy.get_theorem(data['theorem'])
+            base_cv = conv.rewr_conv(thm, sym=sym_b)
+            cv = _loc_to_conv(loc, base_cv)
+            cv = conv.then_conv(cv, conv.beta_norm_conv())
+            state.apply_tactic(id, tactic.rewrite_goal_with_conv(cv), prevs=prevs)
+        else:
+            # Full goal rewriting (original behavior)
+            state.apply_tactic(id, tactic.rewrite_goal(sym=sym_b), args=data['theorem'], prevs=prevs)
 
 
 @register_method('rewrite_fact')
@@ -998,6 +1047,513 @@ class apply_fact(Method):
     def apply(self, state: ProofState, id, data, prevs):
         state.add_line_before(id, 1)
         state.set_line(id, 'apply_fact', prevs=prevs)
+
+
+# ==================== New generic methods ====================
+
+@register_method('call_tactic')
+class call_tactic_method(Method):
+    """Directly invoke any registered tactic by name.
+    Escape hatch when no method works.
+    """
+    def __init__(self):
+        self.sig = ['tactic_name']
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("tactic " + data.get('tactic_name', '?'))
+
+    def apply(self, state, id, data, prevs):
+        tactic_name = data.get('tactic_name')
+        if not tactic_name:
+            raise AssertionError("call_tactic: tactic_name required")
+        
+        if tactic_name == 'rule':
+            thm_name = data.get('theorem')
+            if not thm_name:
+                raise AssertionError("call_tactic rule: theorem required")
+            state.apply_tactic(id, tactic.rule(thm_name), prevs=prevs)
+        elif tactic_name == 'rewrite_goal':
+            thm_name = data.get('theorem')
+            sym = data.get('sym', 'false') == 'true'
+            if not thm_name:
+                raise AssertionError("call_tactic rewrite_goal: theorem required")
+            state.apply_tactic(id, tactic.rewrite_goal(thm_name, sym=sym), prevs=prevs)
+        elif tactic_name == 'apply_prev':
+            state.apply_tactic(id, tactic.apply_prev(), prevs=prevs)
+        elif tactic_name == 'intros':
+            state.apply_tactic(id, tactic.intros(), prevs=prevs)
+        elif tactic_name == 'assumption':
+            state.apply_tactic(id, tactic.assumption(), prevs=prevs)
+        elif tactic_name == 'resolve':
+            thm_name = data.get('theorem')
+            if not thm_name:
+                raise AssertionError("call_tactic resolve: theorem required")
+            state.apply_tactic(id, tactic.resolve(thm_name), prevs=prevs)
+        elif tactic_name == 'cases':
+            case_expr = data.get('case')
+            if not case_expr:
+                raise AssertionError("call_tactic cases: case required")
+            with context.fresh_context(vars=state.get_vars(id)):
+                case_term = parser.parse_term(case_expr)
+            state.apply_tactic(id, tactic.cases(case_term), prevs=prevs)
+        else:
+            raise AssertionError("call_tactic: unknown tactic '%s'" % tactic_name)
+
+
+@register_method('call_macro')
+class call_macro_method(Method):
+    """Directly invoke any registered macro by name.
+    Escape hatch when no method works.
+    """
+    def __init__(self):
+        self.sig = ['macro_name']
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("macro " + data.get('macro_name', '?'))
+
+    def apply(self, state, id, data, prevs):
+        macro_name = data.get('macro_name')
+        if not macro_name:
+            raise AssertionError("call_macro: macro_name required")
+        
+        if not theory.has_macro(macro_name):
+            raise AssertionError("call_macro: macro '%s' not found" % macro_name)
+        
+        macro_obj = theory.get_macro(macro_name)
+        prev_ths = [state.get_proof_item(p).th for p in prevs]
+        
+        result_th = macro_obj.eval(None, prev_ths)
+        state.set_line(id, macro_name, prevs=prevs, th=result_th)
+
+
+@register_method('simp')
+class simp_method(Method):
+    """Generic simplifier: rewrite goal using all hint_rewrite theorems."""
+    def __init__(self):
+        self.sig = []
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        if len(prevs) > 0:
+            return []
+        try:
+            attrs = theory.thy.get_data('attributes')
+            rewrite_thms = [n for n, a in attrs.items() if 'hint_rewrite' in a]
+            if not rewrite_thms:
+                return []
+            return [{}]
+        except Exception:
+            return []
+
+    def display_step(self, state, data):
+        return pprint.N("simp")
+
+    def apply(self, state, id, data, prevs):
+        attrs = theory.thy.get_data('attributes')
+        rewrite_thms = []
+        for name, a in attrs.items():
+            if 'hint_rewrite' in a:
+                try:
+                    thm = theory.thy.get_theorem(name)
+                    rewrite_thms.append((name, thm))
+                except theory.TheoryException:
+                    pass
+        
+        if not rewrite_thms:
+            raise AssertionError("simp: no rewrite theorems available")
+        
+        cur_item = state.get_proof_item(id)
+        goal_prop = cur_item.th.prop
+        
+        # Try each rewrite and build combined conv
+        best_cv = conv.all_conv()
+        for name, thm in rewrite_thms:
+            try:
+                cv = conv.rewr_conv(thm)
+                cv.get_proof_term(goal_prop)
+                best_cv = conv.then_conv(best_cv, conv.top_conv(cv))
+            except Exception:
+                continue
+        
+        if isinstance(best_cv, conv.all_conv):
+            raise AssertionError("simp: no rewrite applicable to this goal")
+        
+        state.apply_tactic(id, tactic.rewrite_goal_with_conv(best_cv), prevs=prevs)
+
+
+@register_method('norm')
+class norm_method(Method):
+    """Generic normalization: dispatch to domain-specific normalizer
+    based on the type of the goal.
+    """
+    def __init__(self):
+        self.sig = []
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        if len(prevs) > 0:
+            return []
+        try:
+            cur_item = state.get_proof_item(id)
+            goal_prop = cur_item.th.prop
+            # Check if goal is an equality
+            if not goal_prop.is_equals():
+                return []
+            return [{}]
+        except Exception:
+            return []
+
+    def display_step(self, state, data):
+        return pprint.N("norm")
+
+    def apply(self, state, id, data, prevs):
+        cur_item = state.get_proof_item(id)
+        goal_prop = cur_item.th.prop
+        
+        # Detect type from the equality's LHS
+        if goal_prop.is_equals():
+            T = goal_prop.lhs.get_type()
+        else:
+            T = goal_prop.get_type()
+        
+        # Dispatch based on type
+        from kernel.type import NatType, RealType
+        
+        if T == NatType:
+            if theory.has_macro('nat_norm'):
+                state.apply_tactic(id, tactic.MacroTactic('nat_norm'))
+                return
+        elif T == RealType:
+            if theory.has_macro('real_norm'):
+                state.apply_tactic(id, tactic.MacroTactic('real_norm'))
+                return
+        
+        raise AssertionError("norm: unsupported type %s or no normalizer available" % str(T))
+
+
+@register_method('eval')
+class eval_method(Method):
+    """Generic evaluation: dispatch to domain-specific evaluator
+    based on the type of the goal.
+    """
+    def __init__(self):
+        self.sig = []
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        if len(prevs) > 0:
+            return []
+        try:
+            cur_item = state.get_proof_item(id)
+            goal_prop = cur_item.th.prop
+            # Check if goal is an equality with constant expressions
+            if not goal_prop.is_equals():
+                return []
+            return [{}]
+        except Exception:
+            return []
+
+    def display_step(self, state, data):
+        return pprint.N("eval")
+
+    def apply(self, state, id, data, prevs):
+        cur_item = state.get_proof_item(id)
+        goal_prop = cur_item.th.prop
+        
+        if goal_prop.is_equals():
+            T = goal_prop.lhs.get_type()
+        else:
+            T = goal_prop.get_type()
+        
+        from kernel.type import NatType, RealType, IntType
+        
+        if T == NatType:
+            if theory.has_macro('nat_eval'):
+                state.apply_tactic(id, tactic.MacroTactic('nat_eval'))
+                return
+        elif T == IntType:
+            if theory.has_macro('int_eval'):
+                state.apply_tactic(id, tactic.MacroTactic('int_eval'))
+                return
+        elif T == RealType:
+            if theory.has_macro('real_eval'):
+                state.apply_tactic(id, tactic.MacroTactic('real_eval'))
+                return
+        
+        raise AssertionError("eval: unsupported type %s or no evaluator available" % str(T))
+
+
+@register_method('sym')
+class sym_method(Method):
+    """Apply symmetry to an equality goal. If goal is a = b, produces b = a."""
+    def __init__(self):
+        self.sig = []
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        if len(prevs) > 0:
+            return []
+        cur_item = state.get_proof_item(id)
+        if cur_item.th.prop.is_equals():
+            return [{}]
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("sym")
+
+    def apply(self, state, id, data, prevs):
+        cur_item = state.get_proof_item(id)
+        goal_th = cur_item.th
+        assert goal_th.prop.is_equals(), "sym: goal must be an equality"
+        a, b = goal_th.prop.args
+        new_prop = term.equals(a.get_type())(b, a)
+        state.set_line(id, 'sorry', th=Thm(new_prop, goal_th.hyps))
+
+
+@register_method('subst')
+class subst_method(Method):
+    """Substitute using an equality theorem: replace LHS with RHS in goal."""
+    def __init__(self):
+        self.sig = ['theorem']
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("subst " + data.get('theorem', '?'))
+
+    def apply(self, state, id, data, prevs):
+        thm_name = data.get('theorem')
+        if not thm_name:
+            raise AssertionError("subst: theorem required")
+        thm = theory.thy.get_theorem(thm_name)
+        assert thm.prop.is_equals(), "subst: theorem must be an equality"
+        cv = conv.then_conv(conv.top_sweep_conv(conv.rewr_conv(thm)), conv.beta_norm_conv())
+        state.apply_tactic(id, tactic.rewrite_goal_with_conv(cv), prevs=prevs)
+
+
+@register_method('unfold')
+class unfold_method(Method):
+    """Unfold a definition: replace the defined constant with its body."""
+    def __init__(self):
+        self.sig = ['theorem']
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("unfold " + data.get('theorem', '?'))
+
+    def apply(self, state, id, data, prevs):
+        thm_name = data.get('theorem')
+        if not thm_name:
+            raise AssertionError("unfold: theorem required")
+        thm = theory.thy.get_theorem(thm_name)
+        cv = conv.then_conv(conv.top_conv(conv.rewr_conv(thm)), conv.beta_norm_conv())
+        state.apply_tactic(id, tactic.rewrite_goal_with_conv(cv), prevs=prevs)
+
+
+@register_method('fold')
+class fold_method(Method):
+    """Fold a definition: replace the body with the defined constant."""
+    def __init__(self):
+        self.sig = ['theorem']
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("fold " + data.get('theorem', '?'))
+
+    def apply(self, state, id, data, prevs):
+        thm_name = data.get('theorem')
+        if not thm_name:
+            raise AssertionError("fold: theorem required")
+        thm = theory.thy.get_theorem(thm_name)
+        cv = conv.then_conv(conv.top_conv(conv.rewr_conv(thm, sym=True)), conv.beta_norm_conv())
+        state.apply_tactic(id, tactic.rewrite_goal_with_conv(cv), prevs=prevs)
+
+
+@register_method('thin')
+class thin_method(Method):
+    """Delete an assumption from the goal.
+    
+    If goal is A1, ..., An |- C, thin(1) removes A1, giving A2, ..., An |- C.
+    """
+    def __init__(self):
+        self.sig = ['index']
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("thin " + str(data.get('index', '?')))
+
+    def apply(self, state, id, data, prevs):
+        idx = int(data.get('index', 0))
+        cur_item = state.get_proof_item(id)
+        goal_th = cur_item.th
+        
+        if idx < 0 or idx >= len(goal_th.hyps):
+            raise AssertionError("thin: index %d out of range (0-%d)" % (idx, len(goal_th.hyps) - 1))
+        
+        # Remove the assumption at index idx
+        new_hyps = list(goal_th.hyps)
+        removed = new_hyps.pop(idx)
+        new_th = Thm(goal_th.prop, tuple(new_hyps))
+        state.set_line(id, 'sorry', th=new_th)
+
+
+@register_method('insert')
+class insert_method(Method):
+    """Insert a named theorem as a new line in the proof."""
+    def __init__(self):
+        self.sig = ['theorem']
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("insert " + data.get('theorem', '?'))
+
+    def apply(self, state, id, data, prevs):
+        thm_name = data.get('theorem')
+        if not thm_name:
+            raise AssertionError("insert: theorem required")
+        thm = theory.thy.get_theorem(thm_name)
+        state.add_line_before(id, 1)
+        state.set_line(id, 'theorem', args=thm_name, prevs=[])
+
+
+@register_method('drule')
+class drule_method(Method):
+    """Forward reasoning: consume a fact to derive a new fact.
+    
+    If fact is A ⟶ B and we have A, derive B (removing the fact).
+    If fact is ∀x. P x, instantiate with a given term.
+    """
+    def __init__(self):
+        self.sig = ['theorem']
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("drule " + data.get('theorem', '?'))
+
+    def apply(self, state, id, data, prevs):
+        thm_name = data.get('theorem')
+        if not thm_name:
+            raise AssertionError("drule: theorem required")
+        
+        # Apply the theorem forward using the facts
+        thm = theory.thy.get_theorem(thm_name)
+        prev_ths = [state.get_proof_item(p).th for p in prevs]
+        
+        # Use apply_theorem_macro for forward reasoning
+        macro_obj = logic.apply_theorem_macro()
+        result_th = macro_obj.eval(thm_name, prev_ths)
+        
+        state.add_line_before(id, 1)
+        state.set_line(id, 'apply_theorem', args=thm_name, prevs=prevs, th=result_th)
+
+
+@register_method('frule')
+class frule_method(Method):
+    """Forward reasoning: keep the fact and derive a new fact.
+    
+    Similar to drule but does not consume the original fact.
+    """
+    def __init__(self):
+        self.sig = ['theorem']
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("frule " + data.get('theorem', '?'))
+
+    def apply(self, state, id, data, prevs):
+        thm_name = data.get('theorem')
+        if not thm_name:
+            raise AssertionError("frule: theorem required")
+        
+        thm = theory.thy.get_theorem(thm_name)
+        prev_ths = [state.get_proof_item(p).th for p in prevs]
+        
+        macro_obj = logic.apply_theorem_macro()
+        result_th = macro_obj.eval(thm_name, prev_ths)
+        
+        state.add_line_before(id, 1)
+        state.set_line(id, 'apply_theorem', args=thm_name, prevs=prevs, th=result_th)
+
+
+@register_method('linarith')
+class linarith_method(Method):
+    """Generic linear arithmetic: dispatch to nat or real normalizer."""
+    def __init__(self):
+        self.sig = []
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        if len(prevs) > 0:
+            return []
+        try:
+            cur_item = state.get_proof_item(id)
+            goal_prop = cur_item.th.prop
+            if goal_prop.is_equals() or goal_prop.is_less_eq() or goal_prop.is_less():
+                return [{}]
+            return []
+        except Exception:
+            return []
+
+    def display_step(self, state, data):
+        return pprint.N("linarith")
+
+    def apply(self, state, id, data, prevs):
+        cur_item = state.get_proof_item(id)
+        goal_prop = cur_item.th.prop
+        
+        if goal_prop.is_equals():
+            T = goal_prop.lhs.get_type()
+        elif goal_prop.is_less_eq() or goal_prop.is_less():
+            T = goal_prop.arg1.get_type()
+        else:
+            T = goal_prop.get_type()
+        
+        from kernel.type import NatType, RealType, IntType
+        
+        # Try nat first, then real, then int
+        if T == NatType:
+            if theory.has_macro('nat_norm'):
+                state.apply_tactic(id, tactic.MacroTactic('nat_norm'))
+                return
+        elif T == RealType:
+            if theory.has_macro('real_norm'):
+                state.apply_tactic(id, tactic.MacroTactic('real_norm'))
+                return
+        elif T == IntType:
+            # For integers, try omega or simplex
+            if theory.has_macro('int_norm'):
+                state.apply_tactic(id, tactic.MacroTactic('int_norm'))
+                return
+        
+        raise AssertionError("linarith: unsupported type %s" % str(T))
 
 
 def apply_method(state: ProofState, step):

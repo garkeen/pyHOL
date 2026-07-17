@@ -1,0 +1,1769 @@
+theory trig_series
+imports realgamma
+description "Formal inequalities for trig about series."
+
+theorem abs_neg_pow
+  fixes n :: nat, x :: real
+  prop abs (-x ^ n) = abs x ^ n
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_abs_pow sym=false
+    0: rewrite_goal real_abs_neg sym=false
+  qed
+
+theorem abs_neg_one_pow
+  fixes n :: nat
+  prop abs (-(1::real) ^ n) = 1
+  [hint_rewrite]
+  proof
+    0: rewrite_goal abs_neg_pow sym=false
+    0: rewrite_goal real_abs_pow sym=true
+    0: rewrite_goal real_pow_one sym=false
+    0: z3
+  qed
+
+theorem real_infsum_offset
+  fixes f :: nat ⇒ real, k :: nat, m :: nat
+  prop real_summable (from m) f ⟶ m ≤ k ⟶ real_infsum (from m) f = sum ({m..k}) f + real_infsum (from (k + 1)) f
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step real_summable_from_elsewhere @0 param_n=k+1
+    3: rewrite_fact real_summable_def @0 sym=false
+    4: exists_elim l @3
+    6: apply_backward_step real_infsum_unique
+    6: apply_forward_step real_sums_offset @5 param_n=k+1
+    7: rewrite_fact nat_plus_minus @6 sym=false
+    8: cut "m < k + 1"
+    8: z3 @1
+    9: apply_fact @7,8
+    10: apply_forward_step real_infsum_unique @9
+    11: rewrite_goal_with_prev @10
+    11: cut "sum ({m..k}) f + (l - sum ({m..k}) f) = l"
+    11: real_norm
+    12: rewrite_goal_with_prev @11
+  qed
+
+theorem real_infsum_offset_alt
+  fixes f :: nat ⇒ real, k :: nat, m :: nat
+  prop real_summable (from m) f ⟶ m < k ⟶ real_infsum (from m) f = sum ({m..k - 1}) f + real_infsum (from k) f
+  [hint_backward,hint_backward1]
+  proof
+    2: cut "m <= k - 1"
+    2: z3 @1
+    3: apply_forward_step real_infsum_offset @0,2
+    4: cut "k-1+1=k"
+    4: apply_backward_step sub_add
+    4: z3 @1
+    6: rewrite_fact_with_prev @5,3
+  qed
+
+theorem power_series_simple_bound
+  fixes a :: nat ⇒ real, m :: nat, u :: real, x :: real
+  prop real_summable (from m) (λi. a i * x ^ i) ⟶ (∀i. m ≤ i ⟶ abs (a i) ≤ u) ⟶ abs x < 1 ⟶ abs (real_infsum (from m) (λi. a i * x ^ i)) ≤ u * abs x ^ m / (1 - abs x)
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step real_series_bound param_f="(λi. a i * x ^ i)" param_g="(λi::nat. u * abs x ^ i)" param_s="from m"
+    3: rewrite_goal real_sums_infsum sym=false
+    4: rewrite_goal real_divide_def sym=false
+    4: rewrite_goal real_mult_assoc sym=true
+    4: apply_backward_step real_series_lmul
+    4: rewrite_goal real_divide_def sym=true
+    4: apply_backward_step real_sums_gp
+    4: rewrite_goal real_abs_abs sym=false
+    10: rewrite_goal in_from sym=false
+    10: introduction i
+    10.2: rewrite_goal real_abs_mul sym=false
+    10.2: rewrite_goal real_abs_pow sym=false
+    10.2: rewrite_goal real_mult_comm sym=false
+    10.2: apply_backward_step real_le_lmul
+    10.2: apply_backward_step real_pow_le
+    10.2: apply_backward_step real_abs_pos
+    10.4: apply_prev @1
+  qed
+
+theorem power_series_simple_bound2
+  fixes a :: nat ⇒ real, m :: nat, x :: real
+  prop real_summable (from m) (λi. a i * x ^ i) ⟶ (∀i. m ≤ i ⟶ abs (a (Suc i)) ≤ abs (a i)) ⟶ abs x < 1 ⟶ abs (real_infsum (from m) (λi. a i * x ^ i)) ≤ abs (a m) * abs x ^ m / (1 - abs x)
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step power_series_simple_bound
+    3: introduction i
+    3.2: revert_intro @3.1
+    3.1: induction i nat_induct
+    3.1: introduction
+    3.1.1: apply_forward_step nat_le_zero @3.1.0
+    3.1.2: rewrite_goal_with_prev @3.1.1
+    3.1.2: apply_backward_step real_le_refl
+    3.2: introduction n
+    3.2.3: rewrite_fact nat_less_eq_def_2 @3.2.2 sym=false
+    3.2.4: apply_backward_step disjE @3.2.3
+    3.2.4: introduction
+    3.2.4.1: rewrite_goal_with_prev @3.2.4.0
+    3.2.4.1: apply_backward_step real_le_refl
+    3.2.5: introduction
+    3.2.5.1: apply_backward_step real_le_trans param_y="abs (a n)"
+    3.2.5.1: apply_prev @1
+    3.2.5.2: apply_prev @3.2.1
+  qed
+
+theorem real_sums_simple_bound
+  fixes a :: nat ⇒ real, m :: nat, n :: nat, t :: real, u :: real, x :: real
+  prop real_sums (λi. a i * x ^ i) t (from n) ⟶ n < m ⟶ (∀i. m ≤ i ⟶ abs (a i) ≤ u) ⟶ abs x < 1 ⟶ abs (t - sum ({n..m - 1}) (λi. a i * x ^ i)) ≤ u * abs x ^ m / (1 - abs x)
+  [hint_backward,hint_backward1]
+  proof
+    4: apply_forward_step real_sums_summable @0
+    5: apply_forward_step real_infsum_unique @0
+    6: apply_forward_step real_infsum_offset_alt @4,1
+    7: rewrite_fact_with_prev @5,6
+    8: cut "!a::real. !b. !c. a = b + c --> a - b = c"
+    8: z3
+    9: apply_fact @8,7
+    10: rewrite_goal_with_prev @9
+    10: apply_backward_step power_series_simple_bound
+    10: apply_forward_step real_summable_from_elsewhere @4 param_n=m
+  qed
+
+theorem real_sums_simple_bound2
+  fixes a :: nat ⇒ real, m :: nat, n :: nat, t :: real, u :: real, x :: real
+  prop real_sums (λi. a i * x ^ i) t (from n) ⟶ n < m ⟶ (∀i. m ≤ i ⟶ abs (a (Suc i)) ≤ abs (a i)) ⟶ abs x < 1 ⟶ abs (t - sum ({n..m - 1}) (λi. a i * x ^ i)) ≤ abs (a m) * abs x ^ m / (1 - abs x)
+  [hint_backward,hint_backward1]
+  proof
+    4: apply_forward_step real_sums_summable @0
+    5: apply_forward_step real_infsum_unique @0
+    6: apply_forward_step real_infsum_offset_alt @4,1
+    7: rewrite_fact_with_prev @5,6
+    8: cut "∀a::real. ∀b. ∀c. a = b + c ⟶ a - b = c"
+    8: z3
+    9: apply_fact @8,7
+    10: rewrite_goal_with_prev @9
+    10: apply_backward_step power_series_simple_bound2
+    10: apply_forward_step real_summable_from_elsewhere @4 param_n=m
+  qed
+
+theorem abs_sum_lemma_pos
+  fixes a :: real, b :: real
+  prop 0 ≤ a * b ⟶ abs (a + b) = abs a + abs b
+  [hint_backward]
+  proof
+    1: z3 @0
+  qed
+
+theorem abs_sum_lemma_neg
+  fixes a :: real, b :: real
+  prop a * b ≤ 0 ⟶ abs (a + b) = abs (abs a - abs b)
+  [hint_backward]
+  proof
+    1: z3 @0
+  qed
+
+theorem sign_mul_lemma
+  fixes a :: real, b :: real, c :: real
+  prop a * b ≤ 0 ⟶ 0 ≤ b * c ⟶ ¬(b = 0) ⟶ a * c ≤ 0
+  [hint_backward,hint_backward1]
+  proof
+    3: z3 @0,1,2
+  qed
+
+theorem sum_bound_lemma
+  fixes f :: nat ⇒ real, m :: nat, n :: nat
+  prop (∀k. abs (f (k + 1)) ≤ abs (f k) ∧ f (k + 1) * f k ≤ 0) ⟶ abs (sum ({m..n}) f) ≤ abs (f m) ∧ 0 ≤ sum ({m..n}) f * f m
+  [hint_backward]
+  proof
+    1: induction n nat_induct
+    1: rewrite_goal sum_0_natseg sym=false
+    1: cases "m=0"
+    1: introduction
+    1.1: rewrite_goal if_P @1.0 sym=false
+    1.1: rewrite_goal_with_prev @1.0
+    1.1: apply_backward_step conjI
+    1.1: apply_backward_step real_le_refl
+    1.2: apply_backward_step real_le_square
+    2: introduction
+    2.1: rewrite_goal if_not_P @2.0 sym=false
+    2.1: apply_backward_step conjI
+    2.1: rewrite_goal real_abs_0 sym=false
+    2.1: apply_backward_step real_abs_pos
+    2.3: rewrite_goal real_mul_lzero sym=false
+    2.3: apply_backward_step real_le_refl
+    5: introduction n
+    5.2: apply_forward_step conjD1 @5.1
+    5.3: apply_forward_step conjD2 @5.1
+    5.4: rewrite_goal sum_Suc_natseg sym=false
+    5.4: cases "m ≤ Suc n"
+    5.4: introduction
+    5.4.1: rewrite_goal if_P @5.4.0 sym=false
+    5.4.1: apply_backward_step conjI
+  qed
+
+theorem alt_sign_converges
+  fixes f :: nat ⇒ real, k :: nat
+  prop (∀n. abs (f (n + 1)) ≤ abs (f n) ∧ f (n + 1) * f n ≤ 0) ⟶ tendsto_real f 0 sequentially ⟶ (∃l. real_sums f l (from k))
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal real_series_cauchy sym=""
+    2: rewrite_fact reallim_sequentially @1 sym=false
+    3: rewrite_fact real_sub_rzero @2 sym=false
+    4: introduction e
+    4.2: rewrite_goal from_inter_natseg_gen sym=false
+    4.2: apply_fact @3,4.1
+    4.3: exists_elim N @4.2
+    4.5: inst_exists_goal N
+    4.5: introduction m,n
+    4.5.3: apply_forward_step sum_bound_lemma @0 param_m="" param_n=""
+    4.5.4: cases "m < k"
+    4.5.4: introduction
+    4.5.4.1: rewrite_goal if_P @4.5.4.0 sym=false
+    4.5.4.1: forall_elim k @4.5.3
+    4.5.4.2: forall_elim n @4.5.4.1
+    4.5.4.3: apply_backward_step real_let_trans param_y="abs (f k)"
+    4.5.4.3: apply_backward_step conjD1 @4.5.4.2
+    4.5.4.4: apply_prev @4.4
+    4.5.4.4: z3 @4.5.2,4.5.4.0
+    4.5.5: introduction
+    4.5.5.1: rewrite_goal if_not_P @4.5.5.0 sym=false
+    4.5.5.1: forall_elim m @4.5.3
+    4.5.5.2: forall_elim n @4.5.5.1
+    4.5.5.3: apply_backward_step real_let_trans param_y="abs (f m)"
+    4.5.5.3: apply_backward_step conjD1 @4.5.5.2
+    4.5.5.4: apply_prev @4.4
+    4.5.5.4: rewrite_fact greater_eq_def @4.5.2 sym=false
+  qed
+
+theorem alt_sign_summable
+  fixes f :: nat ⇒ real, k :: nat
+  prop (∀n. abs (f (n + 1)) ≤ abs (f n) ∧ f (n + 1) * f n ≤ 0) ⟶ tendsto_real f 0 sequentially ⟶ real_summable (from k) f
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal real_summable_def sym=false
+    2: apply_backward_step alt_sign_converges
+  qed
+
+theorem alt_sign_converges2
+  fixes f :: nat ⇒ real, k :: nat
+  prop (∀n. abs (f (n + 1)) ≤ abs (f n) ∧ f (n + 1) * f n ≤ 0) ⟶ tendsto_real f 0 sequentially ⟶ (∃l. real_sums f l (from k) ∧ abs l ≤ abs (f k) ∧ 0 ≤ l * f k)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step alt_sign_converges @0,1 param_k=k
+    3: exists_elim l @2
+    5: inst_exists_goal l
+    5: apply_backward_step conjI
+    5: rewrite_fact real_sums_def @4 sym=false
+    6: rewrite_fact from_inter_natseg @5 sym=false
+    7: apply_forward_step reallim_ubound @6 param_b=""
+    8: apply_forward_step reallim_lbound @6 param_b=""
+    9: apply_forward_step reallim_rmul @6 param_c="f k"
+    10: apply_forward_step reallim_lbound @9 param_b="(0::real)"
+    11: cut "¬(trivial_limit sequentially)" @10
+    11: apply_backward_step trivial_limit_sequentially
+    12: apply_fact @7,11
+    13: apply_fact @8,11
+    14: apply_fact @10,11
+    15: forall_elim "abs (f k)" @12
+    16: forall_elim "-abs (f k)" @13
+    17: apply_forward_step sum_bound_lemma @0 param_m=k param_n=""
+    18: apply_backward_step conjI
+    18: rewrite_goal real_abs_bounds sym=false
+    18: apply_backward_step conjI
+    18: apply_prev @16
+    18: rewrite_goal eventually_sequentially sym=false
+    18: inst_exists_goal "(0::nat)"
+    18: introduction n
+    18.2: forall_elim n @17
+    18.3: apply_forward_step conjD1 @18.2
+    18.4: rewrite_fact real_abs_bounds @18.3 sym=false
+    18.5: apply_backward_step conjD1 @18.4
+    22: apply_prev @12
+    22: rewrite_goal eventually_sequentially sym=false
+    22: inst_exists_goal "(0::nat)"
+    22: introduction n
+    22.2: forall_elim n @17
+    22.3: apply_forward_step conjD1 @22.2
+    22.4: rewrite_fact real_abs_bounds @22.3 sym=false
+    22.5: apply_backward_step conjD2 @22.4
+    28: apply_prev @14
+    28: rewrite_goal eventually_sequentially sym=false
+    28: inst_exists_goal "(0::nat)"
+    28: introduction n
+    28.2: forall_elim n @17
+    28.3: apply_backward_step conjD2 @28.2
+  qed
+
+theorem alt_sign_bound
+  fixes f :: nat ⇒ real, k :: nat
+  prop (∀n. abs (f (n + 1)) ≤ abs (f n) ∧ f (n + 1) * f n ≤ 0) ⟶ tendsto_real f 0 sequentially ⟶ abs (real_infsum (from k) f) ≤ abs (f k)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step alt_sign_converges2 @0,1 param_k=k
+    3: exists_elim l @2
+    5: apply_forward_step conjD1 @4
+    6: apply_forward_step real_infsum_unique @5
+    7: rewrite_goal_with_prev @6
+    7: apply_forward_step conjD2 @4
+    8: apply_backward_step conjD1 @7
+  qed
+
+theorem alt_sign_abs_bound
+  fixes f :: nat ⇒ real, k :: nat, m :: nat
+  prop (∀n. abs (f (n + 1)) ≤ abs (f n) ∧ f (n + 1) * f n ≤ 0) ⟶ tendsto_real f 0 sequentially ⟶ m < k ⟶ abs (real_infsum (from m) f - sum ({m..k - 1}) f) ≤ abs (f k)
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_forward_step alt_sign_summable @0,1 param_k=m
+    4: apply_forward_step real_infsum_offset_alt @3,2
+    5: apply_forward_step alt_sign_bound @0,1 param_k=k
+    6: cut "real_infsum (from m) f - sum ({m..k - 1}) f = real_infsum (from k) f"
+    6: rewrite_goal_with_prev @4
+    6: real_norm
+    8: rewrite_goal_with_prev @7
+  qed
+
+theorem alt_sign_upper_bound
+  fixes f :: nat ⇒ real, k :: nat, m :: nat
+  prop (∀n. abs (f (n + 1)) ≤ abs (f n) ∧ f (n + 1) * f n ≤ 0) ⟶ tendsto_real f 0 sequentially ⟶ m < k ⟶ real_infsum (from m) f ≤ sum ({m..k - 1}) f + abs (f k)
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_forward_step alt_sign_abs_bound @0,1,2
+    4: cut "!a::real. !b. !c. abs (a -b) <= c --> a <= b + c"
+    4: z3
+    5: apply_prev @4
+  qed
+
+theorem alt_sign_lower_bound
+  fixes f :: nat ⇒ real, k :: nat, m :: nat
+  prop (∀n. abs (f (n + 1)) ≤ abs (f n) ∧ f (n + 1) * f n ≤ 0) ⟶ tendsto_real f 0 sequentially ⟶ m < k ⟶ sum ({m..k - 1}) f - abs (f k) ≤ real_infsum (from m) f
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_forward_step alt_sign_abs_bound @0,1,2
+    4: cut "∀a::real. ∀b. ∀c. abs (a - b) ≤ c ⟶ b -c ≤ a"
+    4: z3
+    5: apply_prev @4
+  qed
+
+theorem integral_uniform_limit
+  fixes a :: real, b :: real, f :: nat ⇒ real ⇒ real, g :: real ⇒ real, s :: nat ⇒ real
+  prop (∀e. 0 < e ⟶ (∃N. ∀n. ∀x. N ≤ n ⟶ x ∈ real_closed_interval a b ⟶ abs (f n x - g x) < e)) ⟶ (∀n. has_real_integral (f n) (s n) (real_closed_interval a b)) ⟶ (∃r. has_real_integral g r (real_closed_interval a b) ∧ tendsto_real s r sequentially)
+  [hint_rewrite,hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step real_integrable_uniform_limit param_a=a param_b=b param_f=g
+    3: cut "(∀e. 0 < e ⟶ (∃g1. (∀x. x ∈ real_closed_interval a b ⟶ abs (g x - g1 x) ≤ e) ∧ real_integrable_on g1 (real_closed_interval a b)))"
+    3: introduction e
+    3.2: apply_fact @0,3.1
+    3.3: exists_elim N @3.2
+    3.5: inst_exists_goal "f N"
+    3.5: apply_backward_step conjI
+    3.5: introduction x
+    3.5.2: apply_backward_step real_lt_imp_le
+    3.5.2: cut "!a::real. !b. abs (a - b) = abs (b - a)"
+    3.5.2: z3
+    3.5.3: rewrite_goal_with_prev @3.5.2
+    3.5.3: apply_prev @3.4
+    3.5.3: apply_backward_step less_eq_refl
+    3.6: rewrite_goal real_integrable_on_def sym=false
+    3.6: inst_exists_goal "s N"
+    3.6: apply_prev @1
+    4: apply_fact @2,3
+    5: rewrite_fact real_integrable_on_def @4 sym=false
+    6: exists_elim r @5
+    8: inst_exists_goal r
+    8: apply_backward_step conjI
+    8: rewrite_goal reallim_sequentially sym=false
+    8: introduction e
+    8.2: cases "b <= a"
+    8.2: introduction
+    8.2.1: inst_exists_goal "(0::nat)"
+    8.2.1: introduction n
+    8.2.1.2: forall_elim n @1
+    8.2.1.3: apply_forward_step has_real_integral_null_eq @8.2.0 param_f="" param_i=""
+    8.2.1.4: rewrite_fact_with_prev @8.2.1.3,8.2.1.2
+    8.2.1.5: rewrite_fact_with_prev @8.2.1.3,7
+    8.2.1.6: z3 @8.2.1.4,8.2.1.5,8.1
+    8.3: introduction
+    8.3.1: forall_elim "(e/2)/(b-a)" @0
+    8.3.2: cut "0 < e / 2 / (b - a)" @8.3.1
+    8.3.2: z3 @8.3.0,8.1
+    8.3.3: apply_fact @8.3.1,8.3.2
+    8.3.4: exists_elim N @8.3.3
+    8.3.6: inst_exists_goal N
+    8.3.6: introduction n
+    8.3.6.2: apply_fact @8.3.5,8.3.6.1
+    8.3.6.3: apply_backward_step real_let_trans param_y=e/2
+    8.3.6.3: cut "e / 2 = ((e / 2) / (b - a)) * (b - a)"
+    8.3.6.3: z3 @8.3.0
+    8.3.6.4: rewrite_goal_with_prev @8.3.6.3
+    8.3.6.4: apply_backward_step has_real_integral_bound param_f="(%x. f n x - (g x))"
+    8.3.6.4: z3 @8.1,8.3.0
+    8.3.6.5: z3 @8.3.0
+    8.3.6.6: apply_backward_step has_real_integral_sub
+    8.3.6.6: apply_prev @1
+    8.3.6.8: introduction x
+    8.3.6.8.2: apply_fact @8.3.6.2,8.3.6.8.1
+    8.3.6.8.3: apply_backward_step real_lt_imp_le
+    8.3.6.11: z3 @8.1
+  qed
+
+theorem integral_series
+  fixes a :: real, b :: real, f :: nat ⇒ real ⇒ real, g :: real ⇒ real, r :: nat ⇒ real, s :: nat set
+  prop (∀e. 0 < e ⟶ (∃N. ∀n. ∀x. N ≤ n ⟶ x ∈ real_closed_interval a b ⟶ abs (sum (s ∩ {0..n}) (λi. f i x) - g x) < e)) ⟶ (∀n. has_real_integral (f n) (r n) (real_closed_interval a b)) ⟶ (∃v. has_real_integral g v (real_closed_interval a b) ∧ real_sums r v s)
+  proof
+    2: rewrite_goal real_sums_def sym=false
+    2: apply_backward_step integral_uniform_limit param_f="(%n. %x. sum (s ∩ {0..n}) (%i. f i x))"
+    2: introduction n
+    2.1: apply_backward_step has_real_integral_sum
+    2.1: apply_backward_step finite_inter_natseg
+    2.2: introduction a1
+    2.2.2: apply_prev @1
+  qed
+
+theorem power_series_uniform
+  fixes a :: nat ⇒ real, s :: nat set, t :: real, y :: real
+  prop real_summable s (λi. a i * y ^ i) ⟶ abs t < abs y ⟶ (∀e. 0 < e ⟶ (∃N. ∀n. ∀x. N ≤ n ⟶ x ∈ real_closed_interval (-(abs t)) (abs t) ⟶ abs (sum (s ∩ {0..n}) (λi. a i * x ^ i) - real_infsum s (λi. a i * x ^ i)) < e))
+  [hint_backward,hint_backward1]
+  proof
+    2: cut "0 < (abs y + abs t) / (abs y - abs t) & (abs y + abs t) / (abs y - abs t) * (abs y - abs t) = abs y + abs t"
+    2: apply_backward_step conjI
+    2: z3 @1
+    3: z3 @1
+  qed
+
+theorem has_real_integral_pow_pos
+  fixes a :: real, n :: nat
+  prop 0 ≤ a ⟶ has_real_integral (λx. x ^ n) (a ^ (n + 1) / of_nat (n + 1)) (real_closed_interval 0 a)
+  [hint_backward]
+  proof
+    1: apply_forward_step real_fundamental_theorem_of_calculus @0 param_f="(λx::real. x ^ (n + 1) / of_nat (n + 1))" param_f1="(λx::real. x ^ n)"
+    2: rewrite_fact real_pow_zero @1 sym=false
+    3: cut "~n + 1 = 0"
+    3: z3
+    4: rewrite_fact if_not_P @2,3 sym=false
+    5: cut "0 / of_nat (n + 1) = 0"
+    5: rewrite_goal real_div_eq_0 sym=false
+    5: apply_backward_step disjI1
+    5: apply_backward_step eq_refl
+    8: rewrite_fact_with_prev @7,4
+    9: rewrite_fact real_sub_rzero @8 sym=false
+    10: apply_prev @9
+    10: introduction x
+    10.2: apply_backward_step has_real_derivative_atreal_within
+    10.2: cut "x ^ n = of_nat (n + 1) * x ^ n / of_nat (n + 1) "
+    10.2: rewrite_goal real_mult_comm sym=false
+    10.2: rewrite_goal real_divide_def sym=false
+    10.2: rewrite_goal real_mult_assoc sym=true
+    10.2: cut "(of_nat (n + 1) * real_inverse (of_nat (n + 1))) = 1"
+    10.2: rewrite_goal real_mult_comm sym=false
+    10.2: apply_backward_step real_mul_linv
+    10.2: rewrite_goal real_zero_def sym=false
+    10.2: rewrite_goal real_of_nat_eq sym=false
+    10.6: rewrite_goal_with_prev @10.5
+    10.6: rewrite_goal real_mul_rid sym=false
+    10.11: rewrite_goal_with_prev @10.10
+    10.11: apply_backward_step has_real_derivative_cdiv_atreal
+    10.11: apply_forward_step has_real_derivative_pow_atreal param_f="(%x::real. x)" param_f1="(1::real)" param_n=n+1 param_x=x
+    10.12: rewrite_fact real_mul_rid @10.11 sym=false
+    10.13: rewrite_fact nat_plus_minus @10.12 sym=false
+    10.14: apply_prev @10.13
+    10.14: apply_backward_step has_real_derivative_id
+  qed
+
+theorem has_real_integral_pow_neg
+  fixes a :: real, n :: nat
+  prop a ≤ 0 ⟶ has_real_integral (λx. x ^ n) (-(a ^ (n + 1) / of_nat (n + 1))) (real_closed_interval a 0)
+  [hint_backward,hint_backward1]
+  proof
+    1: apply_forward_step real_fundamental_theorem_of_calculus @0 param_f="(λx::real. x ^ (n + 1) / of_nat (n + 1))" param_f1="(λx::real. x ^ n)"
+    2: cut "0 ^ (n + 1) / of_nat (n + 1) = 0"
+    2: rewrite_goal real_div_eq_0 sym=false
+    2: apply_backward_step disjI1
+    2: rewrite_goal real_pow_eq_0 sym=false
+    2: apply_backward_step conjI
+    2: apply_backward_step eq_refl
+    3: z3
+    8: rewrite_fact_with_prev @7,1
+    9: rewrite_fact real_minus_def @8 sym=false
+    10: rewrite_fact real_add_lid @9 sym=false
+    11: apply_prev @10
+    11: introduction x
+    11.2: apply_backward_step has_real_derivative_atreal_within
+    11.2: cut "x ^ n = of_nat (n + 1) * x ^ n / of_nat (n + 1)"
+    11.2: rewrite_goal real_mult_comm sym=false
+    11.2: rewrite_goal real_divide_def sym=false
+    11.2: rewrite_goal real_mult_assoc sym=true
+    11.2: cut "(of_nat (n + 1) * real_inverse (of_nat (n + 1))) = 1"
+    11.2: rewrite_goal real_mult_comm sym=false
+    11.2: apply_backward_step real_mul_linv
+    11.2: rewrite_goal real_zero_def sym=false
+    11.2: rewrite_goal real_of_nat_eq sym=false
+    11.6: rewrite_goal_with_prev @11.5
+    11.6: rewrite_goal real_mul_rid sym=false
+    11.11: rewrite_goal_with_prev @11.10
+    11.11: apply_backward_step has_real_derivative_cdiv_atreal
+    11.11: apply_forward_step has_real_derivative_pow_atreal param_f="(%x::real. x)" param_f1="(1::real)" param_n=n+1 param_x=x
+    11.12: rewrite_fact nat_plus_minus @11.11 sym=false
+    11.13: rewrite_fact real_mul_rid @11.12 sym=false
+    11.14: apply_prev @11.13
+    11.14: apply_backward_step has_real_derivative_id
+  qed
+
+theorem power_series_integral
+  fixes a :: nat ⇒ real, f :: real ⇒ real, r :: real, s :: nat set
+  prop (∀x. abs x < r ⟶ real_sums (λi. a i * x ^ i) (f x) s) ⟶ (∀x. abs x < r ⟶ real_sums (λi. a i * x ^ (i + 1) / of_nat (i + 1)) (if x < 0 then -(real_integral (real_closed_interval x 0) f) else real_integral (real_closed_interval 0 x) f) s)
+  [hint_backward]
+  proof
+    1: introduction x
+    1.2: apply_forward_step integral_series param_a="min x 0" param_b="max x 0" param_f="(%i. %x::real. a i * x ^ i)" param_g=f param_r="(%i. a i * (if x < 0 then (-1) else 1) * x ^ (i + 1) / of_nat (i + 1))" param_s=s
+    1.3: cut "(∀e. 0 < e ⟶ (∃N. ∀n. ∀x1. N ≤ n ⟶ x1 ∈ real_closed_interval (min x 0) (max x 0) ⟶ abs (sum (s ∩ {0..n}) (λi. a i * x1 ^ i) - f x1) < e))"
+    1.3: apply_forward_step power_series_uniform param_a=a param_s=s param_t=x param_y="abs x + (r - abs x) / 2"
+    1.4: cut "real_summable s (λi. a i * (abs x + (r - abs x) / 2) ^ i)"
+    1.4: rewrite_goal real_summable_def sym=false
+    1.4: inst_exists_goal "f (abs x + (r - abs x) / 2)"
+    1.4: apply_prev @0
+    1.4: z3 @1.1
+    1.8: cut "abs x < abs (abs x + (r - abs x) / 2)" @1.3
+    1.8: z3 @1.1
+    1.9: apply_fact @1.3,1.7,1.8
+    1.10: introduction e
+    1.10.2: apply_fact @1.9,1.10.1
+    1.10.3: exists_elim N @1.10.2
+    1.10.5: inst_exists_goal N
+    1.10.5: introduction n,x1
+    1.10.5.4: rewrite_fact real_closed_interval_def @1.10.5.3 sym=false
+    1.10.5.5: rewrite_fact member_collect @1.10.5.4 sym=false
+    1.10.5.6: cut "x1 ∈ real_closed_interval (-(abs x)) (abs x)"
+    1.10.5.6: rewrite_goal real_closed_interval_def sym=false
+    1.10.5.6: rewrite_goal member_collect sym=false
+    1.10.5.6: z3 @1.10.5.5
+    1.10.5.9: apply_fact @1.10.4,1.10.5.2,1.10.5.8
+    1.10.5.10: cut "real_infsum s (λi. a i * x1 ^ i) = f x1" @1.10.5.9
+    1.10.5.10: apply_backward_step real_infsum_unique
+    1.10.5.10: apply_prev @0
+    1.10.5.10: z3 @1.10.5.5,1.1
+    1.10.5.13: rewrite_fact_with_prev @1.10.5.12,1.10.5.9
+    1.11: apply_fact @1.2,1.10
+    1.12: cut "(∀n. has_real_integral (λx1. a n * x1 ^ n) (a n * (if x < 0 then -1 else 1) * x ^ (n + 1) / of_nat (n + 1)) (real_closed_interval (min x 0) (max x 0)))"
+    1.12: introduction n
+    1.12.1: cut "(a n * (if x < 0 then -1 else 1) * x ^ (n + 1) / of_nat (n + 1)) = (a n * ((if x < 0 then -1 else 1) * x ^ (n + 1) / of_nat (n + 1)))"
+    1.12.1: rewrite_goal real_divide_def sym=false
+    1.12.1: real_norm
+    1.12.3: rewrite_goal_with_prev @1.12.2
+    1.12.3: apply_backward_step has_real_integral_lmul
+    1.12.3: cases "x < 0"
+    1.12.3: introduction
+    1.12.3.1: rewrite_goal if_P @1.12.3.0 sym=false
+    1.12.3.1: cut "min x (0) = x"
+    1.12.3.1: z3 @1.12.3.0
+    1.12.3.2: rewrite_goal_with_prev @1.12.3.1
+    1.12.3.2: cut "max x 0 = 0"
+    1.12.3.2: z3 @1.12.3.0
+    1.12.3.3: rewrite_goal_with_prev @1.12.3.2
+    1.12.3.3: cut "(-1 * x ^ (n + 1) / of_nat (n + 1)) = -(x ^ (n + 1) / of_nat (n + 1))"
+    1.12.3.3: rewrite_goal real_divide_def sym=false
+    1.12.3.3: real_norm
+    1.12.3.5: rewrite_goal_with_prev @1.12.3.4
+    1.12.3.5: apply_backward_step has_real_integral_pow_neg
+    1.12.3.5: apply_backward_step real_lt_imp_le @1.12.3.0
+    1.12.4: introduction
+    1.12.4.1: rewrite_goal if_not_P @1.12.4.0 sym=false
+    1.12.4.1: cut "(min x 0) = 0"
+    1.12.4.1: z3 @1.12.4.0
+    1.12.4.2: rewrite_goal_with_prev @1.12.4.1
+    1.12.4.2: cut "(max x 0) = x"
+    1.12.4.2: z3 @1.12.4.0
+    1.12.4.3: rewrite_goal_with_prev @1.12.4.2
+    1.12.4.3: rewrite_goal real_mul_lid sym=false
+    1.12.4.3: apply_backward_step has_real_integral_pow_pos
+    1.12.4.3: rewrite_fact real_not_lt @1.12.4.0 sym=false
+    1.13: apply_fact @1.11,1.12
+    1.14: exists_elim v @1.13
+    1.16: apply_forward_step conjD1 @1.15
+    1.17: apply_forward_step conjD2 @1.15
+    1.18: cases "x < 0"
+    1.18: introduction
+    1.18.1: rewrite_goal if_P @1.18.0 sym=false
+    1.18.1: cut "min x 0 = x"
+    1.18.1: z3 @1.18.0
+    1.18.2: cut "max x 0 = 0"
+    1.18.2: z3 @1.18.0
+    1.18.3: rewrite_fact_with_prev @1.18.1,1.16
+    1.18.4: rewrite_fact_with_prev @1.18.2,1.18.3
+    1.18.5: apply_forward_step real_integral_unique @1.18.4
+    1.18.6: rewrite_goal_with_prev @1.18.5
+    1.18.6: rewrite_fact if_P @1.17,1.18.0 sym=false
+    1.18.7: apply_forward_step real_series_neg @1.18.6
+    1.18.8: cut "!i. -(a i * -1 * x ^ (i + 1) / of_nat (i + 1)) = a i * x ^ (i + 1) / of_nat (i + 1)"
+    1.18.8: rewrite_goal real_divide_def sym=false
+    1.18.8: introduction i
+    1.18.8.1: real_norm
+    1.18.10: rewrite_fact_with_prev @1.18.9,1.18.7
+    1.19: introduction
+    1.19.1: rewrite_goal if_not_P @1.19.0 sym=false
+    1.19.1: cut "min x 0 = 0"
+    1.19.1: z3 @1.19.0
+    1.19.2: cut "max x 0 = x"
+    1.19.2: z3 @1.19.0
+    1.19.3: rewrite_fact_with_prev @1.19.1,1.16
+    1.19.4: rewrite_fact_with_prev @1.19.2,1.19.3
+    1.19.5: apply_forward_step real_integral_unique @1.19.4
+    1.19.6: rewrite_goal_with_prev @1.19.5
+    1.19.6: rewrite_fact if_not_P @1.17,1.19.0 sym=false
+    1.19.7: rewrite_fact real_mul_rid @1.19.6 sym=false
+  qed
+
+theorem power_series_integral2
+  fixes a :: nat ⇒ real, f :: real ⇒ real, f1 :: real ⇒ real, r :: real, s :: nat set
+  prop (∀x. abs x < r ⟶ has_real_derivative f (f1 x) (atreal x)) ⟶ (∀x. abs x < r ⟶ real_sums (λi. a i * x ^ i) (f1 x) s) ⟶ (∀x. abs x < r ⟶ real_sums (λi. a i * x ^ (i + 1) / of_nat (i + 1)) (f x - f 0) s)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step power_series_integral @1
+    3: introduction x
+    3.2: apply_fact @2,3.1
+    3.3: cut "(if x < 0 then -(real_integral (real_closed_interval x 0) f1) else real_integral (real_closed_interval 0 x) f1) = f x - f 0" @3.2
+    3.3: cases "x < 0"
+    3.3: introduction
+    3.3.1: rewrite_goal if_P @3.3.0 sym=false
+    3.3.1: cut "real_integral (real_closed_interval x 0) f1 = f 0 - f x"
+    3.3.1: apply_backward_step real_integral_unique
+    3.3.1: apply_backward_step real_fundamental_theorem_of_calculus
+    3.3.1: apply_backward_step real_lt_imp_le @3.3.0
+    3.3.2: introduction x1
+    3.3.2.2: apply_backward_step has_real_derivative_atreal_within
+    3.3.2.2: apply_prev @0
+    3.3.2.2: rewrite_fact real_closed_interval_def @3.3.2.1 sym=false
+    3.3.2.3: rewrite_fact member_collect @3.3.2.2 sym=false
+    3.3.2.4: z3 @3.3.2.3,3.1
+    3.3.5: rewrite_goal_with_prev @3.3.4
+    3.3.5: rewrite_goal real_neg_sub sym=false
+    3.4: introduction
+    3.4.1: rewrite_goal if_not_P @3.4.0 sym=false
+    3.4.1: apply_backward_step real_integral_unique
+    3.4.1: apply_backward_step real_fundamental_theorem_of_calculus
+    3.4.1: rewrite_fact real_not_lt @3.4.0 sym=false
+    3.4.2: introduction x1
+    3.4.2.2: apply_backward_step has_real_derivative_atreal_within
+    3.4.2.2: apply_prev @0
+    3.4.2.2: rewrite_fact real_closed_interval_def @3.4.2.1 sym=false
+    3.4.2.3: rewrite_fact member_collect @3.4.2.2 sym=false
+    3.4.2.4: z3 @3.4.2.3,3.1
+    3.6: rewrite_fact_with_prev @3.5,3.2
+  qed
+
+theorem strict_increasing_nat_le
+  fixes h :: nat ⇒ nat
+  prop (∀n. h n < h (n + 1)) ⟶ (∀n. n ≤ h n)
+  [hint_backward]
+  proof
+    1: introduction n
+    1.1: induction n nat_induct
+    1.1: apply_backward_step le_0
+    1.2: rewrite_goal lesseq_Suc_less sym=false
+    1.2: introduction n
+    1.2.1: apply_backward_step let_trans param_m="h n"
+    1.2.1: rewrite_goal add_1_right sym=true
+    1.2.1: apply_prev @0
+  qed
+
+theorem strict_increasing_nat_lt
+  fixes h :: nat ⇒ nat
+  prop (∀n. h n < h (n + 1)) ⟶ (∀n. ∀m. n < m ⟶ h n < h m)
+  [hint_backward]
+  proof
+    1: introduction n,m
+    1.3: revert_intro @1.2
+    1.2: induction n nat_induct
+    1.2: induction m nat_induct
+    1.2: z3
+    1.3: introduction m
+    1.3.2: rewrite_goal add_1_right sym=true
+    1.3.2: rewrite_fact nat_less_def_2 @1.3.1 sym=false
+    1.3.3: apply_backward_step disjE @1.3.2
+    1.3.3: introduction
+    1.3.3.1: rewrite_goal_with_prev @1.3.3.0
+    1.3.3.1: apply_prev @0
+    1.3.4: introduction
+    1.3.4.1: apply_backward_step lt_trans param_m="h m"
+    1.3.4.1: apply_prev @1.3.0,1.3.4.0
+    1.3.4.2: apply_prev @0
+    1.5: introduction n
+    1.5.2: revert_intro @1.5.1
+    1.5.1: induction m nat_induct
+    1.5.1: rewrite_goal nat_less_def_1 sym=false
+    1.5.1: z3
+    1.5.3: introduction m1
+    1.5.3.3: rewrite_fact nat_less_def_2 @1.5.3.2 sym=false
+    1.5.3.4: apply_backward_step disjE @1.5.3.3
+    1.5.3.4: introduction
+    1.5.3.4.1: rewrite_goal_with_prev @1.5.3.4.0
+    1.5.3.4.1: rewrite_goal add_1_right sym=true
+    1.5.3.4.1: apply_prev @0
+    1.5.3.5: introduction
+    1.5.3.5.1: apply_backward_step lt_trans param_m="h m1"
+    1.5.3.5.1: apply_prev @1.5.3.1,1.5.3.5.0
+    1.5.3.5.2: rewrite_goal add_1_right sym=true
+    1.5.3.5.2: apply_prev @0
+  qed
+
+theorem strict_increasing_nat_inj
+  fixes h :: nat ⇒ nat
+  prop (∀n. h n < h (n + 1)) ⟶ (∀n. ∀m. h n = h m ⟶ n = m)
+  [hint_backward]
+  proof
+    1: apply_forward_step strict_increasing_nat_lt @0
+    2: introduction n,m
+    2.3: cut "n = m | n < m | m < n"
+    2.3: z3
+    2.4: apply_backward_step disjE @2.3
+    2.5: introduction
+    2.5.1: apply_backward_step disjE @2.5.0
+    2.5.1: introduction
+    2.5.1.1: apply_fact @1,2.5.1.0
+    2.5.1.2: z3 @2.5.1.1,2.2
+    2.5.2: introduction
+    2.5.2.1: apply_fact @1,2.5.2.0
+    2.5.2.2: z3 @2.5.2.1,2.2
+  qed
+
+theorem strict_increasing_nat_le_eq
+  fixes h :: nat ⇒ nat
+  prop (∀n. h n < h (n + 1)) ⟶ (∀n. ∀m. h n ≤ h m ⟷ n ≤ m)
+  [hint_backward]
+  proof
+    1: apply_forward_step strict_increasing_nat_lt @0
+    2: introduction n,m
+    2.2: apply_backward_step iffI
+    2.2: introduction
+    2.2.1: rewrite_goal double_neg sym=true
+    2.2.1: rewrite_goal not_le sym=false
+    2.2.1: apply_backward_step contrapositive @2.2.0
+    2.2.1: introduction
+    2.2.1.1: rewrite_fact double_neg @2.2.1.0 sym=false
+    2.2.1.2: apply_fact @1,2.2.1.1
+    2.2.1.3: rewrite_goal not_le sym=false
+    2.3: introduction
+    2.3.1: rewrite_fact le_lt @2.3.0 sym=false
+    2.3.2: apply_backward_step disjE @2.3.1
+    2.3.2: introduction
+    2.3.2.1: apply_fact @1,2.3.2.0
+    2.3.2.2: apply_backward_step lt_imp_le @2.3.2.1
+    2.3.3: introduction
+    2.3.3.1: rewrite_goal_with_prev @2.3.3.0
+    2.3.3.1: apply_backward_step less_eq_refl
+  qed
+
+theorem strict_increasing_nat_lt_eq
+  fixes h :: nat ⇒ nat
+  prop (∀n. h n < h (n + 1)) ⟶ (∀n. ∀m. h n < h m ⟷ n < m)
+  [hint_backward]
+  proof
+    1: introduction n,m
+    1.2: rewrite_goal not_le sym=true
+    1.2: apply_forward_step strict_increasing_nat_le_eq @0
+    1.3: rewrite_goal_with_prev @1.2
+  qed
+
+theorem strict_increasing_nat_le2
+  fixes h :: nat ⇒ nat
+  prop (∀n. h n < h (n + 1)) ⟶ (∀n. ∀m. h n ≤ m ⟶ n ≤ m)
+  [hint_backward]
+  proof
+    1: introduction n,m
+    1.3: apply_backward_step less_eq_trans param_m="h n"
+    1.3: apply_forward_step strict_increasing_nat_le @0
+    1.4: apply_prev @1.3
+  qed
+
+theorem real_sums_image
+  fixes f :: nat ⇒ real, h :: nat ⇒ nat, l :: real, s :: nat set
+  prop (∀n. h n < h (n + 1)) ⟶ real_sums f l (image h s) ⟷ real_sums (f ∘ h) l s
+  [hint_backward]
+  proof
+    1: rewrite_goal real_sums_def sym=false
+    1: rewrite_goal reallim_sequentially sym=false
+    1: apply_forward_step strict_increasing_nat_le @0
+    2: apply_forward_step strict_increasing_nat_inj @0
+    3: apply_forward_step strict_increasing_nat_le_eq @0
+    4: apply_forward_step strict_increasing_nat_le2 @0
+    5: apply_backward_step iffI
+    5: introduction
+    5.1: introduction e
+    5.1.2: apply_fact @5.0,5.1.1
+    5.1.3: exists_elim N @5.1.2
+    5.1.5: inst_exists_goal N
+    5.1.5: introduction n
+    5.1.5.2: cut "N<= h n"
+    5.1.5.2: apply_backward_step less_eq_trans @5.1.5.1
+    5.1.5.2: apply_prev @1
+    5.1.5.4: apply_fact @5.1.4,5.1.5.3
+    5.1.5.5: cut "image h s ∩ {0..(h n)} = image h (s ∩ {0..n})"
+    5.1.5.5: apply_backward_step member_ext
+    5.1.5.5: introduction x
+    5.1.5.5.1: rewrite_goal member_inter_iff sym=false
+    5.1.5.5.1: rewrite_goal in_image sym=false
+    5.1.5.5.1: rewrite_goal member_inter_iff sym=false
+    5.1.5.5.1: rewrite_goal member_natseg_0 sym=false
+    5.1.5.5.1: apply_backward_step iffI
+    5.1.5.5.1: introduction
+    5.1.5.5.1.1: apply_forward_step conjD1 @5.1.5.5.1.0
+    5.1.5.5.1.2: apply_forward_step conjD2 @5.1.5.5.1.0
+    5.1.5.5.1.3: exists_elim x1 @5.1.5.5.1.1
+    5.1.5.5.1.5: inst_exists_goal x1
+    5.1.5.5.1.5: rewrite_goal conj_assoc sym=false
+    5.1.5.5.1.5: apply_backward_step conjI
+    5.1.5.5.1.5: apply_forward_step conjD1 @5.1.5.5.1.4
+    5.1.5.5.1.6: rewrite_fact_with_prev @5.1.5.5.1.5,5.1.5.5.1.2
+    5.1.5.5.1.7: rewrite_fact_with_prev @3,5.1.5.5.1.6
+    5.1.5.5.2: introduction
+    5.1.5.5.2.1: exists_elim x1 @5.1.5.5.2.0
+    5.1.5.5.2.3: rewrite_fact conj_assoc @5.1.5.5.2.2 sym=false
+    5.1.5.5.2.4: apply_forward_step conjD1 @5.1.5.5.2.3
+    5.1.5.5.2.5: apply_forward_step conjD2 @5.1.5.5.2.3
+    5.1.5.5.2.6: apply_backward_step conjI
+    5.1.5.5.2.6: apply_backward_step exI @5.1.5.5.2.4
+    5.1.5.5.2.7: apply_forward_step conjD1 @5.1.5.5.2.4
+    5.1.5.5.2.8: rewrite_goal_with_prev @5.1.5.5.2.7
+    5.1.5.5.2.8: rewrite_goal_with_prev @3
+    5.1.5.7: apply_fact @5.1.4,5.1.5.3
+    5.1.5.8: rewrite_fact_with_prev @5.1.5.6,5.1.5.7
+    5.1.5.9: cut "sum (image h (s ∩ {0..n})) f = sum (s ∩ {0..n}) (f ∘ h)" @5.1.5.8
+    5.1.5.9: apply_backward_step sum_image
+    5.1.5.9: introduction x,y
+    5.1.5.9.5: apply_prev @2,5.1.5.9.4
+    5.1.5.11: rewrite_fact_with_prev @5.1.5.10,5.1.5.8
+    6: introduction
+    6.1: introduction e
+    6.1.2: apply_fact @6.0,6.1.1
+    6.1.3: exists_elim N @6.1.2
+    6.1.5: inst_exists_goal "h N"
+    6.1.5: introduction n
+    6.1.5.2: cut "∃t. h t ≤ n ∧ (∀i. h i ≤ n ⟶ i ≤ t)"
+    6.1.5.2: rewrite_goal nat_MAX sym=true
+    6.1.5.2: apply_backward_step conjI
+    6.1.5.2: inst_exists_goal N
+    6.1.5.3: inst_exists_goal n
+    6.1.5.3: introduction i
+    6.1.5.3.2: apply_prev @4
+    6.1.5.7: exists_elim k @6.1.5.6
+    6.1.5.9: apply_forward_step conjD1 @6.1.5.8
+    6.1.5.10: apply_forward_step conjD2 @6.1.5.8
+    6.1.5.11: apply_fact @6.1.5.10,6.1.5.1
+    6.1.5.12: apply_fact @6.1.4,6.1.5.11
+    6.1.5.13: cut "image h s ∩ {0..n} = image h (s ∩ {0..k})"
+    6.1.5.13: apply_backward_step member_ext
+    6.1.5.13: introduction x
+    6.1.5.13.1: rewrite_goal member_inter_iff sym=false
+    6.1.5.13.1: rewrite_goal in_image sym=false
+    6.1.5.13.1: rewrite_goal member_inter_iff sym=false
+    6.1.5.13.1: rewrite_goal member_natseg_0 sym=false
+    6.1.5.13.1: apply_backward_step iffI
+    6.1.5.13.1: introduction
+    6.1.5.13.1.1: apply_forward_step conjD1 @6.1.5.13.1.0
+    6.1.5.13.1.2: apply_forward_step conjD2 @6.1.5.13.1.0
+    6.1.5.13.1.3: exists_elim x1 @6.1.5.13.1.1
+    6.1.5.13.1.5: inst_exists_goal x1
+    6.1.5.13.1.5: rewrite_goal conj_assoc sym=false
+    6.1.5.13.1.5: apply_backward_step conjI
+    6.1.5.13.1.5: apply_forward_step conjD1 @6.1.5.13.1.4
+    6.1.5.13.1.6: rewrite_fact_with_prev @6.1.5.13.1.5,6.1.5.13.1.2
+    6.1.5.13.1.7: apply_prev @6.1.5.10
+    6.1.5.13.2: introduction
+    6.1.5.13.2.1: exists_elim x1 @6.1.5.13.2.0
+    6.1.5.13.2.3: rewrite_fact conj_assoc @6.1.5.13.2.2 sym=false
+    6.1.5.13.2.4: apply_forward_step conjD1 @6.1.5.13.2.3
+    6.1.5.13.2.5: apply_forward_step conjD2 @6.1.5.13.2.3
+    6.1.5.13.2.6: apply_backward_step conjI
+    6.1.5.13.2.6: apply_backward_step exI @6.1.5.13.2.4
+    6.1.5.13.2.7: apply_forward_step conjD1 @6.1.5.13.2.4
+    6.1.5.13.2.8: rewrite_goal_with_prev @6.1.5.13.2.7
+    6.1.5.13.2.8: apply_backward_step less_eq_trans param_m="h k"
+    6.1.5.13.2.8: rewrite_goal_with_prev @3
+    6.1.5.15: rewrite_goal_with_prev @6.1.5.14
+    6.1.5.15: cut "sum (image h (s ∩ {0..k})) f = sum (s ∩ {0..k}) (f ∘ h)"
+    6.1.5.15: apply_backward_step sum_image
+    6.1.5.15: introduction x,y
+    6.1.5.15.5: apply_prev @2,6.1.5.15.4
+    6.1.5.17: rewrite_goal_with_prev @6.1.5.16
+  qed
+
+theorem real_summable_image
+  fixes f :: nat ⇒ real, h :: nat ⇒ nat, s :: nat set
+  prop (∀n. h n < h (n + 1)) ⟶ real_summable (image h s) f ⟷ real_summable s (f ∘ h)
+  [hint_backward]
+  proof
+    1: apply_forward_step real_sums_image @0 param_f=f param_l="" param_s=s
+    2: rewrite_goal real_summable_def sym=false
+    2: apply_backward_step iffI
+    2: introduction
+    2.1: rewrite_fact_with_prev @1,2.0
+    3: introduction
+    3.1: rewrite_goal_with_prev @1
+  qed
+
+theorem real_sums_image_odd
+  fixes f :: nat ⇒ real, l :: real
+  prop real_sums (λi. if odd i then f i else 0) l univ ⟷ real_sums (λi. f (2 * i + 1)) l univ
+  [hint_rewrite]
+  proof
+    0: apply_forward_step member_collect param_P=odd param_x=""
+    1: rewrite_fact eq_sym_eq @0 sym=false
+    2: rewrite_goal_with_prev @1
+    2: rewrite_goal real_series_restrict sym=""
+    2: cut "(collect odd) = image (%i. 2 * i + 1) (univ::nat set)"
+    2: apply_backward_step member_ext
+    2: rewrite_goal member_collect sym=false
+    2: rewrite_goal in_image sym=false
+    2: rewrite_goal odd_exists sym=false
+    2: rewrite_goal add_1_right sym=true
+    2: z3
+    8: rewrite_goal_with_prev @7
+    8: apply_forward_step real_sums_image param_f=f param_h="(λi::nat. 2 * i + 1)" param_l=l param_s="(univ::nat set)"
+    9: rewrite_fact comp_fun_def @8 sym=false
+    10: apply_prev @9
+    10: z3
+  qed
+
+theorem real_sums_image_even
+  fixes f :: nat ⇒ real, l :: real
+  prop real_sums (λi. if even i then f i else 0) l univ ⟷ real_sums (λi. f (2 * i)) l univ
+  [hint_rewrite]
+  proof
+    0: apply_forward_step member_collect param_P=even param_x=""
+    1: rewrite_fact eq_sym_eq @0 sym=false
+    2: rewrite_goal_with_prev @1
+    2: rewrite_goal real_series_restrict sym=false
+    2: cut "collect even = image (λi. 2 * i) (univ::nat set)"
+    2: apply_backward_step member_ext
+    2: rewrite_goal member_collect sym=false
+    2: rewrite_goal in_image sym=false
+    2: rewrite_goal even_exists sym=false
+    2: z3
+    7: rewrite_goal_with_prev @6
+    7: apply_forward_step real_sums_image param_f=f param_h="(λi::nat. 2 * i)" param_l=l param_s="(univ::nat set)"
+    8: rewrite_fact comp_fun_def @7 sym=false
+    9: apply_prev @8
+    9: z3
+  qed
+
+theorem n_le_pow_lemma
+  fixes e :: real
+  prop 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ of_nat n ≤ (1 + e) ^ n)
+  [hint_backward]
+  proof
+    1: apply_forward_step real_arch_simple param_x="2 / e ^ (2::nat) + 2"
+    2: exists_elim n @1
+    4: inst_exists_goal n
+    4: introduction i
+  qed
+
+theorem real_summable_lmul_eq
+  fixes c :: real, f :: nat ⇒ real, s :: nat set
+  prop ¬(c = 0) ⟶ real_summable s (λi. c * f i) ⟷ real_summable s f
+  [hint_backward]
+  proof
+    1: apply_backward_step iffI
+    1: introduction
+    1.1: cut "f = (%i. real_inverse c * c * f i)"
+    1.1: cut "real_inverse c * c = 1"
+    1.1: apply_backward_step real_mul_linv
+    1.2: rewrite_goal_with_prev @1.1
+    1.2: rewrite_goal real_mul_lid sym=false
+    1.2: rewrite_goal eta_conversion sym=false
+    1.5: rewrite_goal_with_prev @1.4
+    1.5: rewrite_goal real_mult_assoc sym=true
+    1.5: apply_backward_step real_summable_lmul
+    2: introduction
+    2.1: apply_backward_step real_summable_lmul @2.0
+  qed
+
+theorem summable_power_series_shift
+  fixes a :: nat ⇒ real, k :: nat, s :: nat set, x :: real
+  prop real_summable s (λi. a i * x ^ i) ⟶ real_summable s (λi. a i * x ^ (i - k))
+  [hint_backward]
+  proof
+    1: cases "x=0"
+    1: introduction
+    1.1: rewrite_goal_with_prev @1.0
+    1.1: apply_backward_step real_summable_comparison param_g="(%i::nat. (0::real))"
+    1.1: apply_backward_step real_summable_0
+    1.2: inst_exists_goal k+2
+    1.2: introduction i
+    1.2.3: cut "~(i-k=0)"
+    1.2.3: z3 @1.2.1
+    1.2.4: rewrite_goal real_pow_zero sym=false
+    1.2.4: rewrite_goal if_not_P @1.2.3 sym=false
+    1.2.4: rewrite_goal real_mul_rzero sym=false
+    1.2.4: rewrite_goal real_abs_0 sym=false
+    1.2.4: apply_backward_step real_le_refl
+    2: introduction
+    2.1: apply_forward_step real_summable_lmul_eq param_c="x ^ k" param_f="(λi. a i * x ^ (i - k))" param_s=s
+    2.2: cut "¬(x ^ k = 0)" @2.1
+    2.2: apply_backward_step real_pow_nz
+    2.3: apply_fact @2.1,2.2
+    2.4: rewrite_fact eq_sym_eq @2.3 sym=false
+    2.5: rewrite_goal_with_prev @2.4
+    2.5: apply_forward_step real_summable_iff_eventually param_f="(λi. a i * x ^ i)" param_g="(λi. x ^ k * (a i * x ^ (i - k)))" param_s=s
+    2.6: cut "(∃N. ∀n. N ≤ n ∧ n ∈ s ⟶ a n * x ^ n = x ^ k * (a n * x ^ (n - k)))" @2.5
+    2.6: inst_exists_goal k
+    2.6: introduction n
+    2.6.2: apply_forward_step conjD1 @2.6.1
+    2.6.3: cut "a n * x ^ n = a n * x ^ (k + (n-k))"
+    2.6.3: cut "(k + (n - k)) = n"
+    2.6.3: z3 @2.6.2
+    2.6.4: rewrite_goal_with_prev @2.6.3
+    2.6.5: rewrite_goal_with_prev @2.6.4
+    2.6.5: rewrite_goal real_pow_add sym=false
+    2.6.5: real_norm
+    2.8: apply_fact @2.5,2.7
+    2.9: rewrite_fact_with_prev @2.8,0
+  qed
+
+theorem power_sum_derivative_shift_lemma
+  fixes a :: nat ⇒ real, n :: nat, s :: nat set
+  prop sum (diff s ({0}) ∩ {0..n}) (λi. of_nat i * a i) = sum (s ∩ {0..n}) (λi. of_nat i * a i)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal eq_sym_eq sym=false
+    0: apply_backward_step sum_eq_superset
+    0: apply_backward_step finite_inter_natseg
+    1: apply_backward_step subsetI
+    1: rewrite_goal member_inter_iff sym=false
+    1: rewrite_goal diff_def sym=false
+    1: rewrite_goal member_collect sym=false
+    1: rewrite_goal member_natseg_0 sym=false
+    1: z3
+    7: introduction x
+    7.2: apply_backward_step eq_refl
+    8: introduction x
+    8.3: rewrite_fact member_inter_iff @8.1 sym=false
+    8.4: rewrite_fact member_inter_iff @8.2 sym=false
+    8.5: rewrite_fact de_morgan_thm1 @8.4 sym=false
+    8.6: rewrite_fact diff_def @8.5 sym=false
+    8.7: rewrite_fact member_collect @8.6 sym=false
+    8.8: rewrite_fact de_morgan_thm1 @8.7 sym=false
+    8.9: apply_backward_step disjE @8.8
+    8.9: introduction
+    8.9.1: apply_backward_step disjE @8.9.0
+    8.9.1: introduction
+    8.9.1.1: apply_forward_step conjD1 @8.3
+    8.9.1.2: apply_backward_step negE_gen @8.9.1.0,8.9.1.1
+    8.9.2: introduction
+    8.9.2.1: rewrite_fact double_neg @8.9.2.0 sym=false
+    8.9.2.2: rewrite_fact member_insert @8.9.2.1 sym=false
+    8.9.2.3: apply_backward_step disjE @8.9.2.2
+    8.9.2.3: introduction
+    8.9.2.3.1: rewrite_goal_with_prev @8.9.2.3.0
+    8.9.2.3.1: rewrite_goal real_zero_def sym=true
+    8.9.2.3.1: rewrite_goal real_mul_lzero sym=false
+    8.9.2.4: introduction
+    8.9.2.4.1: apply_resolve_step member_empty @8.9.2.4.0
+    8.10: introduction
+    8.10.1: apply_forward_step conjD2 @8.3
+    8.10.2: apply_backward_step negE_gen @8.10.0,8.10.1
+  qed
+
+theorem power_sum_derivative_shift_lemma2
+  fixes a :: nat ⇒ real, n :: nat, s :: nat set
+  prop 0 < n ⟶ sum (image Pre (diff s ({0})) ∩ {0..Pre n}) (λi. of_nat (Suc i) * a (Suc i)) = sum (s ∩ {0..n}) (λi. of_nat i * a i)
+  [hint_backward]
+  proof
+    1: rewrite_goal eq_sym_eq sym=false
+    1: cut "image Pre (diff s ({0})) ∩ {0..Pre n} = image Pre ((diff s ({0})) ∩ {0..n})"
+    1: apply_backward_step member_ext
+    1: introduction x
+    1.1: rewrite_goal in_image sym=false
+    1.1: rewrite_goal member_inter_iff sym=false
+    1.1: rewrite_goal in_image sym=false
+    1.1: rewrite_goal member_diff sym=false
+    1.1: rewrite_goal member_singleton sym=false
+    1.1: rewrite_goal member_natseg_0 sym=false
+    1.1: apply_backward_step iffI
+    1.1: introduction
+    1.1.1: apply_forward_step conjD1 @1.1.0
+    1.1.2: apply_forward_step conjD2 @1.1.0
+    1.1.3: exists_elim x1 @1.1.1
+    1.1.5: inst_exists_goal x1
+    1.1.5: rewrite_goal conj_assoc sym=false
+    1.1.5: apply_backward_step conjI
+    1.1.5: apply_forward_step conjD1 @1.1.4
+    1.1.6: rewrite_fact_with_prev @1.1.5,1.1.2
+    1.1.7: apply_forward_step le_Pre @0 param_m=x1
+    1.1.8: rewrite_fact_with_prev @1.1.7,1.1.6
+    1.2: introduction
+    1.2.1: exists_elim x1 @1.2.0
+    1.2.3: apply_backward_step conjI
+    1.2.3: rewrite_fact conj_assoc @1.2.2 sym=false
+    1.2.4: apply_forward_step conjD1 @1.2.3
+    1.2.5: apply_forward_step conjD2 @1.2.3
+    1.2.6: apply_backward_step exI @1.2.4
+    1.2.7: apply_forward_step conjD1 @1.2.4
+    1.2.8: rewrite_goal_with_prev @1.2.7
+    1.2.8: apply_forward_step le_Pre @0 param_m=x1
+    1.2.9: rewrite_goal_with_prev @1.2.8
+    3: rewrite_goal_with_prev @2
+    3: rewrite_goal power_sum_derivative_shift_lemma sym=true
+    3: apply_forward_step sum_image param_f=Pre param_g="(λi. of_nat (Suc i) * a (Suc i))" param_s="(diff s ({0}) ∩ {0..n})"
+    4: rewrite_fact comp_fun_def @3 sym=false
+    5: cut "(∀x. ∀y. x ∈ diff s ({0}) ∩ {0..n} ⟶ y ∈ diff s ({0}) ∩ {0..n} ⟶ Pre x = Pre y ⟶ x = y)" @4
+    5: rewrite_goal member_inter_iff sym=false
+    5: rewrite_goal member_diff sym=false
+    5: rewrite_goal member_singleton sym=false
+    5: rewrite_goal member_natseg_0 sym=false
+    5: introduction x,y
+    5.5: apply_forward_step conjD1 @5.2
+    5.6: apply_forward_step conjD2 @5.5
+    5.7: apply_forward_step conjD1 @5.3
+    5.8: apply_forward_step conjD2 @5.7
+    5.9: apply_forward_step le_1_1 @5.6
+    5.10: apply_forward_step le_1_1 @5.8
+    5.11: apply_forward_step Pre_inj @5.9,5.10
+    5.12: rewrite_fact_with_prev @5.11,5.4
+    10: apply_fact @4,9
+    11: rewrite_goal_with_prev @10
+    11: apply_backward_step sum_eq
+    11: introduction x
+    11.2: rewrite_fact member_inter_iff @11.1 sym=false
+    11.3: apply_forward_step conjD1 @11.2
+    11.4: rewrite_fact member_diff @11.3 sym=false
+    11.5: apply_forward_step conjD2 @11.4
+    11.6: rewrite_fact member_singleton @11.5 sym=false
+    11.7: apply_forward_step le_1_1 @11.6
+    11.8: apply_forward_step Suc_Pre @11.7
+    11.9: rewrite_goal_with_prev @11.8
+  qed
+
+theorem power_sum_derivative_shift_lemma3
+  fixes a :: nat ⇒ real, n :: nat, s :: nat set, x :: real
+  prop 0 < n ⟶ sum (image Pre (diff s ({0})) ∩ {0..Pre n}) (λi. of_nat (Suc i) * a (Suc i) * x ^ i) = sum (s ∩ {0..n}) (λi. of_nat i * a i * x ^ (i - 1))
+  [hint_backward]
+  proof
+    1: apply_forward_step power_sum_derivative_shift_lemma2 @0 param_a="(λi. a i * x ^ (i-1))" param_s=s
+    2: cut "!i. (Suc i - 1) = i"
+    2: rewrite_goal suc_sub1 sym=false
+    2: z3
+    4: rewrite_fact_with_prev @3,1
+    5: rewrite_fact real_mult_assoc @4 sym=false
+  qed
+
+theorem power_series_derivative_shift_lemma
+  fixes a :: nat ⇒ real, l :: real, s :: nat set
+  prop real_sums (λi. of_nat i * a i) l s ⟷ real_sums (λi. of_nat i * a i) l (diff s ({0}))
+  [hint_rewrite,hint_backward]
+  proof
+    0: rewrite_goal real_sums_def sym=false
+    0: rewrite_goal power_sum_derivative_shift_lemma sym=false
+  qed
+
+theorem power_series_derivative_shift
+  fixes a :: nat ⇒ real, l :: real, s :: nat set, x :: real
+  prop real_sums (λi. of_nat i * a i * x ^ (i - 1)) l s ⟷ real_sums (λi. of_nat (Suc i) * a (Suc i) * x ^ i) l (image Pre (diff s ({0})))
+  [hint_rewrite]
+  proof
+    0: cut "(λi. of_nat (Suc i) * a (Suc i) * x ^ i) = (λi. of_nat i * a i * x ^ (i-1)) O Suc"
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal suc_sub1 sym=false
+    2: rewrite_goal_with_prev @1
+    2: apply_forward_step real_sums_image param_f="(λi. of_nat i * a i * x ^ (i - 1))" param_h=Suc param_l=l param_s="(image Pre (diff s ({0})))"
+    3: cut "(∀n. Suc n < Suc (n + 1))"
+    3: rewrite_goal add_1_right sym=true
+    3: z3
+    5: apply_fact @2,4
+    6: rewrite_fact eq_sym_eq @5 sym=false
+    7: rewrite_goal_with_prev @6
+    7: rewrite_goal real_mult_assoc sym=true
+    7: cut "real_sums (λi. of_nat i * (a i * x ^ (i - 1))) l s ⟷ real_sums (λi. of_nat i * (a i * x ^ (i - 1))) l (diff s ({0}))"
+    7: apply_backward_step power_series_derivative_shift_lemma
+    8: rewrite_goal_with_prev @7
+    8: cut "(diff s ({0})) = (image Suc (image Pre (diff s ({0}))))"
+    8: apply_backward_step member_ext
+    8: rewrite_goal in_image sym=false
+    8: rewrite_goal in_image sym=false
+    8: rewrite_goal member_diff sym=false
+    8: rewrite_goal member_singleton sym=false
+    8: introduction x
+    8.1: apply_backward_step iffI
+    8.1: introduction
+    8.1.1: inst_exists_goal "Pre x"
+    8.1.1: apply_forward_step conjD2 @8.1.0
+    8.1.2: apply_forward_step le_1_1 @8.1.1
+    8.1.3: apply_backward_step conjI
+    8.1.3: rewrite_goal eq_sym_eq sym=false
+    8.1.3: apply_backward_step Suc_Pre
+    8.1.5: inst_exists_goal x
+    8.1.5: apply_backward_step conjI
+    8.1.5: apply_backward_step eq_refl
+    8.2: introduction
+    8.2.1: exists_elim x1 @8.2.0
+    8.2.3: apply_forward_step conjD1 @8.2.2
+    8.2.4: apply_forward_step conjD2 @8.2.2
+    8.2.5: exists_elim x2 @8.2.4
+    8.2.7: apply_forward_step conjD1 @8.2.6
+    8.2.8: apply_forward_step conjD2 @8.2.6
+    8.2.9: rewrite_fact_with_prev @8.2.7,8.2.3
+    8.2.10: apply_forward_step conjD2 @8.2.8
+    8.2.11: apply_forward_step le_1_1 @8.2.10
+    8.2.12: apply_forward_step Suc_Pre @8.2.11
+    8.2.13: rewrite_fact_with_prev @8.2.12,8.2.9
+    8.2.14: rewrite_goal_with_prev @8.2.13
+    14: rewrite_fact eq_sym_eq @13 sym=false
+    15: rewrite_goal_with_prev @14
+  qed
+
+theorem summable_power_series_derivative
+  fixes a :: nat ⇒ real, s :: nat set, y :: real
+  prop real_summable s (λi. a i * y ^ i) ⟶ (∀x. abs x < y ⟶ real_summable s (λi. of_nat i * a i * x ^ (i - 1)))
+  [hint_backward]
+  proof
+    1: introduction x
+    1.2: apply_backward_step summable_power_series_shift
+    1.2: cases "x=0"
+    1.2: introduction
+    1.2.1: rewrite_goal_with_prev @1.2.0
+    1.2.1: apply_backward_step real_summable_comparison param_g="(%n::nat. (0::real))"
+    1.2.1: apply_backward_step real_summable_0
+    1.2.2: inst_exists_goal "(2::nat)"
+    1.2.2: introduction i
+    1.2.2.3: cut "~(i = 0)" @1.2.2.1
+    1.2.2.3: z3 @1.2.2.1
+    1.2.2.4: rewrite_goal real_pow_zero sym=false
+    1.2.2.4: rewrite_goal if_not_P @1.2.2.3 sym=false
+    1.2.2.4: rewrite_goal real_mul_rzero sym=false
+    1.2.2.4: rewrite_goal real_abs_0 sym=false
+    1.2.2.4: apply_backward_step real_le_refl
+    1.3: introduction
+    1.3.1: cut "~(y=0)"
+    1.3.1: z3 @1.1
+    1.3.2: cut "0 < y"
+    1.3.2: z3 @1.1
+    1.3.3: cut "0 < abs x"
+    1.3.3: apply_backward_step real_abs_nz @1.3.0
+    1.3.4: cut "~(abs x = 0)"
+    1.3.4: z3 @1.3.0
+    1.3.5: cut "0 < (y / (abs x) - 1) / 2"
+    1.3.5: rewrite_goal real_divide_def sym=false
+    1.3.5: apply_backward_step real_lt_mul
+    1.3.5: rewrite_goal real_sub_lt sym=false
+    1.3.5: apply_forward_step real_lt_rdiv_eq @1.3.3 param_x="(1::real)" param_y=y
+    1.3.6: rewrite_goal_with_prev @1.3.5
+    1.3.6: rewrite_goal real_mul_lid sym=false
+    1.3.9: apply_backward_step real_lt_inv
+    1.3.9: z3
+    1.3.13: cut "abs (x * (1 + (y / abs x - 1) / 2)) < y"
+    1.3.13: rewrite_goal real_abs_mul sym=false
+    1.3.13: cut "!e::real. 0 < e --> abs (1 + e) = 1 + e"
+    1.3.13: z3
+    1.3.14: apply_fact @1.3.13,1.3.12
+    1.3.15: rewrite_goal_with_prev @1.3.14
+    1.3.15: rewrite_goal real_add_ldistrib sym=false
+    1.3.15: rewrite_goal real_mul_rid sym=false
+    1.3.15: cut "∀x. ¬(x = 0) ⟶ x * ((y / x - 1) / 2) = (y - x) / 2"
+    1.3.15: z3
+    1.3.16: apply_fact @1.3.15,1.3.4
+    1.3.17: rewrite_goal_with_prev @1.3.16
+    1.3.17: z3 @1.1
+    1.3.23: apply_backward_step real_summable_comparison param_g="(%i. abs (a i * (x * (1 + (y / abs x - 1) / 2)) ^ i))"
+    1.3.23: apply_backward_step real_power_series_conv_imp_absconv param_z=y
+    1.3.23: cut "abs y = y"
+    1.3.23: z3 @1.3.2
+    1.3.24: rewrite_goal_with_prev @1.3.23
+    1.3.26: apply_forward_step n_le_pow_lemma @1.3.12
+    1.3.27: exists_elim N @1.3.26
+    1.3.29: inst_exists_goal N
+    1.3.29: introduction i
+    1.3.29.3: rewrite_fact greater_eq_def @1.3.29.1 sym=false
+    1.3.29.4: rewrite_goal real_abs_mul sym=false
+    1.3.29.4: rewrite_goal real_abs_mul sym=false
+    1.3.29.4: rewrite_goal real_abs_pow sym=false
+    1.3.29.4: rewrite_goal real_abs_mul sym=false
+    1.3.29.4: rewrite_goal real_pow_mul sym=false
+    1.3.29.4: cut "abs (a i) * (abs x ^ i * abs (1 + (y / abs x - 1) / 2) ^ i) = abs (1 + (y / abs x - 1) / 2) ^ i * (abs (a i) * abs x ^ i)"
+    1.3.29.4: real_norm
+    1.3.29.5: rewrite_goal_with_prev @1.3.29.4
+    1.3.29.5: rewrite_goal real_mult_assoc sym=true
+    1.3.29.5: rewrite_goal real_mult_comm sym=false
+    1.3.29.5: apply_backward_step real_le_lmul
+    1.3.29.5: apply_backward_step real_le_mul
+    1.3.29.5: apply_backward_step real_abs_pos
+    1.3.29.6: apply_backward_step real_pow_le
+    1.3.29.6: apply_backward_step real_abs_pos
+    1.3.29.9: rewrite_goal real_abs_nat sym=false
+    1.3.29.9: rewrite_goal_with_prev @1.3.14
+    1.3.29.9: apply_prev @1.3.28
+  qed
+
+theorem power_series_has_derivative
+  fixes a :: nat ⇒ real, f :: real ⇒ real, r :: real, s :: nat set
+  prop (∀x. abs x < r ⟶ real_sums (λi. a i * x ^ i) (f x) s) ⟶ (∃f1. ∀x. abs x < r ⟶ has_real_derivative f (f1 x) (atreal x) ∧ real_sums (λi. of_nat i * a i * x ^ (i - 1)) (f1 x) s)
+  [hint_backward]
+  proof
+    1: cut "(!w. 0 < w --> abs w < r --> w < r --> abs w < abs r --> \n		      ?f1. (!x. abs x < w --> has_real_derivative f (f1 x) (atreal x) &\n				  real_sums (λi. of_nat i * a i * x ^ (i - 1)) (f1 x) s))\n     --> ?f1. (!x. abs x < r --> has_real_derivative f (f1 x) (atreal x) &\n				  real_sums (λi. of_nat i * a i * x ^ (i - 1)) (f1 x) s)"
+    1: introduction
+    1.1: rewrite_fact right_imp_exists_thm @1.0 sym=false
+    1.2: rewrite_fact right_imp_exists_thm @1.1 sym=false
+    1.3: rewrite_fact right_imp_exists_thm @1.2 sym=false
+    1.4: rewrite_fact skolem_thm_gen @1.3 sym=false
+    1.5: exists_elim p @1.4
+    1.7: inst_exists_goal "(%x. p ((abs x + r) / 2) x)"
+    1.7: introduction x
+    1.7.2: forall_elim "(abs x + r) / 2" @1.6
+    1.7.3: cut "0 < (abs x + r) / 2"
+    1.7.3: z3 @1.7.1
+    1.7.4: cut "abs ((abs x + r) / 2) < r" @1.7.2
+    1.7.4: z3 @1.7.1
+    1.7.5: cut "(abs x + r) / 2 < r" @1.7.2
+    1.7.5: z3 @1.7.1
+    1.7.6: cut "abs ((abs x + r) / 2) < abs r"
+    1.7.6: z3 @1.7.1
+    1.7.7: apply_fact @1.7.2,1.7.3,1.7.4,1.7.5,1.7.6
+    1.7.8: apply_prev @1.7.7
+    1.7.8: z3 @1.7.1
+    2: apply_prev @1
+    2: introduction w
+    2.5: apply_forward_step has_real_derivative_series param_f="(%i. %x. a i * x ^ i)" param_f1="(%i. %x. (of_nat i * a i) * x ^ (i - 1))" param_g1="(%x. real_infsum s (%i. (of_nat i * a i) * x ^ (i - 1)))" param_k=s param_s="(real_open_interval (-w) w)"
+    2.6: cut "is_realinterval (real_open_interval (-w) w)" @2.5
+    2.6: apply_backward_step is_realinterval_open_interval
+    2.7: apply_fact @2.5,2.6
+    2.8: rewrite_fact in_real_open_interval @2.7 sym=false
+    2.9: cut "(∀n. ∀x. -w < x ∧ x < w ⟶ has_real_derivative (λx1. a n * x1 ^ n) (of_nat n * a n * x ^ (n - 1)) (within (atreal x) (real_open_interval (-w) w)))"
+    2.9: introduction n,x
+    2.9.3: apply_backward_step has_real_derivative_atreal_within
+    2.9.3: cut "of_nat n * a n * x ^ (n - 1) = a n * (of_nat n * x ^ (n - 1))"
+    2.9.3: real_norm
+    2.9.4: rewrite_goal_with_prev @2.9.3
+    2.9.4: apply_backward_step has_real_derivative_lmul_atreal
+    2.9.4: cut "of_nat n * x ^ (n - 1) = of_nat n * x ^ (n - 1) * 1"
+    2.9.4: rewrite_goal real_mul_rid sym=false
+    2.9.5: rewrite_goal_with_prev @2.9.4
+    2.9.5: apply_backward_step has_real_derivative_pow_atreal
+    2.9.5: apply_backward_step has_real_derivative_id
+    2.10: apply_fact @2.8,2.9
+    2.11: cut "(∀e. 0 < e ⟶ (∃N. ∀n. ∀x. n ≥ N ∧ -w < x ∧ x < w ⟶ abs (sum (s ∩ {0..n}) (λi. of_nat i * a i * x ^ (i - 1)) - real_infsum s (λi. of_nat i * a i * x ^ (i - 1))) ≤ e))"
+    2.11: introduction e
+    2.11.2: cut "0 < (r + w) / 2"
+    2.11.2: z3 @2.1,2.3
+    2.11.3: cut "abs ((r + w) / 2) < r"
+    2.11.3: z3 @2.1,2.3
+    2.11.4: cut "w < (r + w) / 2"
+    2.11.4: z3 @2.1,2.3
+    2.11.5: cut "abs w < (r + w) / 2"
+    2.11.5: z3 @2.1,2.3
+    2.11.6: cut "abs w < abs ((r + w) / 2)" @2.11.5
+    2.11.6: z3 @2.1,2.3
+    2.11.7: cut "0 <((r + w) / 2 + r) /2"
+    2.11.7: z3 @2.1,2.3
+    2.11.8: cut "abs (((r + w) / 2 + r) / 2) < r" @2.11.3
+    2.11.8: z3 @2.1,2.3
+    2.11.9: cut "(r + w) / 2 < ((r + w) / 2 + r) / 2" @2.11.7
+    2.11.9: z3 @2.1,2.3
+    2.11.10: cut "abs ((r + w) / 2) < abs (((r + w) / 2 + r) / 2)" @2.11.9
+    2.11.10: z3 @2.1,2.3
+    2.11.11: cut "abs ((r + w) / 2) < ((r + w) / 2 + r) / 2"
+    2.11.11: z3 @2.1,2.3
+    2.11.12: apply_forward_step summable_power_series_derivative param_a=a param_s=s param_y="((r + w) / 2 + r) / 2"
+    2.11.13: cut "real_summable s (λi. a i * (((r + w) / 2 + r) / 2) ^ i)"
+    2.11.13: rewrite_goal real_summable_def sym=false
+    2.11.13: inst_exists_goal "f (((r + w) / 2 + r) / 2)"
+    2.11.13: apply_prev @0
+    2.11.16: apply_fact @2.11.12,2.11.15
+    2.11.17: apply_forward_step power_series_uniform param_a="(%i. of_nat(Suc i) * a (Suc i))" param_s="image Pre (diff s {0})" param_t=w param_y="(r + w) / 2"
+    2.11.18: cut "real_summable (image Pre (diff s ({0}))) (λi. of_nat (Suc i) * a (Suc i) * ((r + w) / 2) ^ i)"
+    2.11.18: rewrite_goal real_summable_def sym=false
+    2.11.18: rewrite_goal power_series_derivative_shift sym=true
+    2.11.18: rewrite_goal real_summable_def sym=true
+    2.11.18: apply_prev @2.11.16
+    2.11.22: apply_fact @2.11.17,2.11.21
+    2.11.23: apply_fact @2.11.22,2.11.6
+    2.11.24: apply_fact @2.11.23,2.11.1
+    2.11.25: exists_elim N @2.11.24
+    2.11.27: inst_exists_goal N+1
+    2.11.27: introduction n,t
+    2.11.27.3: cut "0 < n"
+    2.11.27.3: z3 @2.11.27.2
+    2.11.27.4: cut "N <= Pre n"
+    2.11.27.4: apply_forward_step le_Pre @2.11.27.3 param_m=N+1
+    2.11.27.5: rewrite_fact add_1_right @2.11.27.4 sym=false
+    2.11.27.6: rewrite_fact Pre_def_2 @2.11.27.5 sym=false
+    2.11.27.7: rewrite_goal_with_prev @2.11.27.6
+    2.11.27.7: rewrite_goal add_1_right sym=true
+    2.11.27.7: z3 @2.11.27.2
+    2.11.27.10: cut "t ∈ real_closed_interval (-(abs w)) (abs w)"
+    2.11.27.10: rewrite_goal in_real_closed_interval sym=false
+    2.11.27.10: z3 @2.11.27.2
+    2.11.27.12: apply_fact @2.11.26,2.11.27.9,2.11.27.11
+    2.11.27.13: apply_forward_step power_sum_derivative_shift_lemma3 @2.11.27.3 param_a=a param_s=s param_x=t
+    2.11.27.14: rewrite_fact_with_prev @2.11.27.13,2.11.27.12
+    2.11.27.15: rewrite_goal real_infsum_def sym=""
+    2.11.27.15: rewrite_fact real_infsum_def @2.11.27.14 sym=""
+    2.11.27.16: rewrite_goal power_series_derivative_shift sym=false
+    2.11.27.16: apply_backward_step real_lt_imp_le
+    2.12: apply_fact @2.10,2.11
+    2.13: cut "(∃x. ∃l. (-w < x ∧ x < w) ∧ real_sums (λn. a n * x ^ n) l s)"
+    2.13: inst_exists_goal "(0::real)"
+    2.13: rewrite_goal conj_comm sym=false
+    2.13: rewrite_goal left_exists_and_thm sym=false
+    2.13: apply_backward_step conjI
+    2.13: apply_backward_step real_series_comparison param_g="(%n::nat. (0::real))"
+    2.13: inst_exists_goal "(0::real)"
+    2.13: apply_backward_step real_series_0
+    2.15: inst_exists_goal "(1::nat)"
+    2.15: introduction i
+    2.15.3: rewrite_goal real_pow_zero sym=false
+    2.15.3: cut "~(i = 0)"
+    2.15.3: z3 @2.15.1
+    2.15.4: rewrite_goal if_not_P @2.15.3 sym=false
+    2.15.4: rewrite_goal real_mul_rzero sym=false
+    2.15.4: rewrite_goal real_abs_0 sym=false
+    2.15.4: apply_backward_step real_le_refl
+    2.18: z3 @2.1
+    2.23: apply_fact @2.12,2.22
+    2.24: exists_elim g @2.23
+    2.26: inst_exists_goal "(%x. real_infsum s (%i. (of_nat i * a i) * x ^ (i - 1)))"
+    2.26: introduction x
+    2.26: cut "!y. abs y < w --> g y = f y"
+    2.26: introduction y
+    2.26.2: cut "-w < y ∧ y < w"
+    2.26.2: z3 @2.26.1
+    2.26.3: apply_fact @2.25,2.26.2
+    2.26.4: apply_forward_step conjD1 @2.26.3
+    2.26.5: apply_backward_step real_series_unique @2.26.4
+    2.26.5: apply_prev @0
+    2.26.5: apply_backward_step real_lt_trans @2.26.1,2.3
+    2.27.2: cut "-w < x ∧ x < w"
+    2.27.2: z3 @2.27.1
+    2.27.3: apply_fact @2.25,2.27.2
+    2.27.4: apply_forward_step conjD1 @2.27.3
+    2.27.5: apply_forward_step conjD2 @2.27.3
+    2.27.6: apply_backward_step conjI
+    2.27.6: cut "x ∈ (real_open_interval (-w) w)"
+    2.27.6: rewrite_goal in_real_open_interval sym=false
+    2.27.7: cut "real_open (real_open_interval (-w) w)"
+    2.27.7: apply_backward_step real_open_real_interval
+    2.27.8: apply_forward_step has_real_derivative_within_real_open @2.27.6,2.27.7 param_f=g param_f1=""
+    2.27.9: rewrite_fact_with_prev @2.27.8,2.27.5
+    2.27.10: apply_backward_step has_real_derivative_transform_atreal param_d="(w - abs x) / 2" param_f=g
+    2.27.10: z3 @2.27.1
+    2.27.11: introduction x1
+    2.27.11.2: apply_prev @2.26
+    2.27.11.2: z3 @2.27.11.1
+    2.27.13: rewrite_goal real_sums_infsum sym=false
+    2.27.13: apply_forward_step summable_power_series_derivative param_a=a param_s=s param_y=w
+    2.27.14: cut "real_summable s (λi. a i * w ^ i)"
+    2.27.14: rewrite_goal real_summable_def sym=false
+    2.27.14: inst_exists_goal "f w"
+    2.27.14: apply_prev @0
+    2.27.17: apply_fact @2.27.13,2.27.16
+    2.27.18: apply_prev @2.27.17
+  qed
+
+theorem power_series_has_derivative2
+  fixes a :: nat ⇒ real, f :: real ⇒ real, r :: real
+  prop (∀x. abs x < r ⟶ real_sums (λi. a i * x ^ i) (f x) univ) ⟶ (∃f1. ∀x. abs x < r ⟶ has_real_derivative f (f1 x) (atreal x) ∧ real_sums (λi. of_nat (Suc i) * a (Suc i) * x ^ i) (f1 x) univ)
+  [hint_backward]
+  proof
+    1: apply_forward_step power_series_has_derivative @0
+    2: rewrite_fact power_series_derivative_shift @1 sym=false
+    3: cut "(image Pre (diff univ ({0}))) = univ"
+    3: apply_backward_step member_ext
+    3: introduction x
+    3.1: rewrite_goal in_image sym=false
+    3.1: rewrite_goal member_diff sym=false
+    3.1: rewrite_goal member_singleton sym=false
+    3.1: apply_backward_step iffI
+    3.1: introduction
+    3.1.1: apply_backward_step member_univ
+    3.2: introduction
+    3.2.1: inst_exists_goal "Suc x"
+    3.2.1: apply_backward_step conjI
+    3.2.1: rewrite_goal Pre_def_2 sym=false
+    3.2.2: apply_backward_step conjI
+    3.2.2: apply_backward_step member_univ
+    3.2.3: rewrite_goal eq_sym_eq sym=false
+    3.2.3: apply_backward_step nat_zero_Suc_neq
+    5: rewrite_fact_with_prev @4,2
+  qed
+
+theorem real_sums_i_xi
+  fixes x :: real
+  prop abs x < 1 ⟶ real_sums (λi. of_nat i * x ^ i) (x / (1 - x) ^ (2::nat)) univ
+  [hint_backward]
+  proof
+    1: apply_forward_step power_series_has_derivative param_a="(%i::nat. (1::real))" param_f="(%x::real. 1 / (1 - x))" param_r="(1::real)" param_s="(univ::nat set)"
+    2: cut "(∀x. abs x < 1 ⟶ real_sums (λi. 1 * x ^ i) (1 / (1 - x)) univ)"
+    2: introduction x
+    2.1: apply_forward_step real_sums_gp param_n="(0::nat)" param_x=x
+    2.2: apply_fact @2.1,0
+    2.3: rewrite_fact from_0 @2.2 sym=false
+    2.4: rewrite_goal real_mul_lid sym=false
+    2.4: rewrite_fact real_nat_power_def_1 @2.3 sym=false
+    3: apply_fact @1,2
+    4: exists_elim f1 @3
+    6: apply_fact @5,0
+    7: apply_forward_step conjD1 @6
+    8: apply_forward_step conjD2 @6
+    9: cut "f1 x = 1 / (1 - x) ^ (2::nat)"
+    9: apply_backward_step real_derivative_unique_atreal @7
+    9: cut "has_real_derivative (λx1. 1 / (1 - x1)) (( 0 * (1-x) - 1* (-1)) / (1 - x) ^ (2::nat)) (atreal x)"
+    9: apply_backward_step has_real_derivative_div_atreal
+    9: apply_backward_step has_real_derivative_const
+    10: cut "-1 = (0::real) - 1"
+    10: real_norm
+    11: rewrite_goal_with_prev @10
+    11: apply_backward_step has_real_derivative_sub
+    11: apply_backward_step has_real_derivative_id
+    14: z3 @0
+    16: cut "(0 * (1 - x) - 1 * -1) = 1" @15
+    16: real_norm
+    17: rewrite_fact_with_prev @16,15
+    19: rewrite_fact_with_prev @18,8
+    20: apply_forward_step real_series_lmul @19 param_c=x
+    21: rewrite_fact real_divide_def @20 sym=false
+    22: rewrite_fact real_mul_lid @21 sym=false
+    23: rewrite_goal real_divide_def sym=false
+    23: cut "!n. x * (of_nat n * 1 * x ^ (n - 1)) = of_nat n * x ^ n" @22
+    23: introduction n
+    23.1: cases "n = 0"
+    23.1: introduction
+    23.1.1: rewrite_goal_with_prev @23.1.0
+    23.1.1: real_norm
+    23.2: introduction
+    23.2.1: cut "x ^ (n-1 + 1) = x * x ^ (n - 1)"
+    23.2.1: rewrite_goal real_pow_add sym=false
+    23.2.1: rewrite_goal real_pow_1 sym=false
+    23.2.1: apply_backward_step real_mult_comm
+    23.2.4: cut "n - 1 + 1 = n" @23.2.3
+    23.2.4: apply_backward_step sub_add
+    23.2.4: apply_backward_step le_1_2
+    23.2.6: rewrite_fact_with_prev @23.2.5,23.2.3
+    23.2.7: rewrite_goal_with_prev @23.2.6
+    23.2.7: real_norm
+    24: rewrite_fact_with_prev @23,22
+  qed
+
+theorem real_sums_neg_i_xi
+  fixes x :: real
+  prop abs x < 1 ⟶ real_sums (λi. -1 ^ i * of_nat i * x ^ i) (-(x / (1 + x) ^ (2::nat))) univ
+  [hint_backward]
+  proof
+    1: apply_forward_step real_sums_i_xi param_x=-x
+    2: rewrite_fact real_abs_neg @1 sym=false
+    3: apply_fact @2,0
+    4: cut "-x = -1 * x"
+    4: real_norm
+    5: rewrite_fact real_minus_def @3 sym=false
+    6: rewrite_fact real_neg_neg @5 sym=false
+    7: rewrite_fact_with_prev @4,6
+    8: rewrite_fact real_pow_mul @7 sym=false
+    9: rewrite_fact real_mul_lneg @8 sym=false
+    10: cut "(-(1 * x) / (1 + x) ^ (2::nat)) = (-(x / (1 + x) ^ (2::nat)))" @9
+    10: rewrite_goal real_divide_def sym=false
+    10: real_norm
+    12: rewrite_fact_with_prev @11,9
+    13: cut "!i. of_nat i * (-1 ^ i * x ^ i) = -1 ^ i * of_nat i * x ^ i" @12
+    13: introduction i
+    13.1: real_norm
+    14: rewrite_fact_with_prev @13,12
+  qed
+
+theorem real_sums_neg_xi
+  fixes x :: real
+  prop abs x < 1 ⟶ real_sums (λi. -1 ^ i * x ^ i) (1 / (1 + x)) univ
+  [hint_backward]
+  proof
+    1: apply_forward_step real_sums_gp param_n="(0::nat)" param_x="(-x)"
+    2: rewrite_fact real_abs_neg @1 sym=false
+    3: apply_fact @2,0
+    4: rewrite_fact from_0 @3 sym=false
+    5: rewrite_fact real_nat_power_def_1 @4 sym=false
+    6: rewrite_fact real_minus_def @5 sym=false
+    7: rewrite_fact real_neg_neg @6 sym=false
+    8: rewrite_goal real_pow_mul sym=true
+    8: rewrite_goal real_mul_lneg sym=false
+    8: rewrite_goal real_mul_lid sym=false
+  qed
+
+theorem exp_series
+  fixes x :: real
+  prop real_sums (λk. 1 / of_nat (fact k) * x ^ k) (exp x) univ
+  [hint_backward]
+  proof
+    0: rewrite_goal real_sums_def sym=false
+  qed
+
+theorem exp_infsum
+  fixes x :: real
+  prop real_infsum (from 0) (λk. 1 / of_nat (fact k) * x ^ k) = exp x
+  [hint_rewrite]
+  proof
+    0: apply_backward_step real_infsum_unique
+    0: rewrite_goal from_0 sym=false
+    0: apply_backward_step exp_series
+  qed
+
+theorem log_derivative_series
+  fixes x :: real
+  prop abs x < 1 ⟶ real_sums (λi. -1 ^ i * x ^ i) (real_inverse (1 + x)) univ
+  [hint_backward]
+  proof
+    1: rewrite_goal real_inverse_divide sym=false
+    1: apply_backward_step real_sums_neg_xi
+  qed
+
+theorem log_series
+  fixes x :: real
+  prop abs x < 1 ⟶ real_sums (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) (log (1 + x)) univ
+  [hint_backward]
+  proof
+    1: apply_forward_step power_series_integral2 param_a="(λk::nat. -(1::real) ^ k)" param_f="(%x. log (1 + x))" param_f1="(%x. real_inverse (1 + x))" param_r="(1::real)" param_s="(univ::nat set)"
+    2: cut "(∀x. abs x < 1 ⟶ has_real_derivative (λx1. log (1 + x1)) (real_inverse (1 + x)) (atreal x))" @1
+    2: introduction x
+    2.1: cut "real_inverse (1 + x) = real_inverse (1 + x) * 1"
+    2.1: rewrite_goal real_mul_rid sym=false
+    2.2: rewrite_goal_with_prev @2.1
+    2.2: apply_backward_step real_diff_chain_atreal
+    2.2: cut "has_real_derivative (λx1. 1 + x1) (0 + 1) (atreal x)"
+    2.2: apply_backward_step has_real_derivative_add
+    2.2: apply_backward_step has_real_derivative_const
+    2.3: apply_backward_step has_real_derivative_id
+    2.5: rewrite_fact real_add_lid @2.4 sym=false
+    2.6: apply_backward_step has_real_derivative_log
+    2.6: z3 @0
+    3: apply_fact @1,2
+    4: cut "(∀x. abs x < 1 ⟶ real_sums (λi. -1 ^ i * x ^ i) (real_inverse (1 + x)) univ)" @3
+    4: introduction x
+    4.1: apply_backward_step log_derivative_series
+    5: apply_fact @3,4
+    6: apply_fact @5,0
+    7: rewrite_fact real_add_rid @6 sym=false
+    8: rewrite_fact log_1 @7 sym=false
+    9: rewrite_fact real_sub_rzero @8 sym=false
+    10: cut "!a::real. !b::real. !x. a * x / b = a / b * x"
+    10: rewrite_goal real_divide_def sym=false
+    10: introduction a,b,c
+    10.3: real_norm
+    12: rewrite_fact_with_prev @11,9
+  qed
+
+theorem log_infsum
+  fixes x :: real
+  prop abs x < 1 ⟶ real_infsum (from 0) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) = log (1 + x)
+  [hint_backward]
+  proof
+    1: apply_backward_step real_infsum_unique
+    1: rewrite_goal from_0 sym=false
+    1: apply_backward_step log_series @0
+  qed
+
+theorem atn_derivative_series
+  fixes x :: real
+  prop abs x < 1 ⟶ real_sums (λk. (if even k then -1 ^ (k DIV 2) else 0) * x ^ k) (real_inverse (1 + x ^ (2::nat))) univ
+  [hint_backward]
+  proof
+    1: apply_forward_step real_sums_gp param_n="(0::nat)" param_x="(-1) * x ^ (2::nat)"
+    2: cut "abs (-1 * x ^ (2::nat)) < 1" @1
+    2: rewrite_goal real_pow_2 sym=false
+    2: rewrite_goal real_abs_mul sym=false
+    2: rewrite_goal real_abs_neg sym=false
+    2: rewrite_goal real_abs_mul sym=false
+    2: rewrite_goal real_mult_assoc sym=false
+    2: rewrite_goal real_abs_mul sym=true
+    2: rewrite_goal real_mul_lid sym=false
+    2: rewrite_goal real_pow_2 sym=true
+    2: apply_backward_step real_pow_1_lt
+    2: nat_const_ineq
+    3: apply_backward_step real_abs_pos
+    13: apply_fact @1,12
+    14: rewrite_fact from_0 @13 sym=false
+    15: rewrite_fact real_mul_lneg @14 sym=false
+    16: rewrite_fact real_mul_lid @15 sym=false
+    17: rewrite_fact real_minus_def @16 sym=false
+    18: rewrite_fact real_neg_neg @17 sym=false
+    19: rewrite_fact real_nat_power_def_1 @18 sym=false
+    20: rewrite_goal real_inverse_divide sym=false
+    20: rewrite_goal cond_rand sym=false
+    20: rewrite_goal cond_rator sym=false
+    20: rewrite_goal real_mul_lzero sym=false
+    20: rewrite_goal real_sums_image_even sym=false
+    20: cut "!i. 2 * i DIV 2 = i"
+    20: introduction i
+    20.1: apply_backward_step div_mult
+    21: rewrite_goal_with_prev @20
+    21: rewrite_goal real_pow_pow sym=true
+    21: rewrite_goal real_pow_mul sym=true
+    21: rewrite_goal real_mul_lneg sym=false
+    21: rewrite_goal real_mul_lid sym=false
+  qed
+
+theorem atn_series
+  fixes x :: real
+  prop abs x < 1 ⟶ real_sums (λk. -1 ^ k / of_nat (2 * k + 1) * x ^ (2 * k + 1)) (atn x) univ
+  [hint_backward]
+  proof
+    1: apply_forward_step power_series_integral2 param_a="(%k. if even k then (-1) ^ (k DIV 2) else (0::real))" param_f=atn param_f1="(%x. real_inverse (1 + x ^ (2::nat)))" param_r="(1::real)" param_s="(univ::nat set)"
+    2: cut "(∀x. abs x < 1 ⟶ has_real_derivative atn (real_inverse (1 + x ^ (2::nat))) (atreal x))"
+    2: introduction x
+    2.1: apply_backward_step has_real_derivative_atn
+    3: apply_fact @1,2
+    4: cut "(∀x. abs x < 1 ⟶ real_sums (λi. (if even i then -1 ^ (i DIV 2) else 0) * x ^ i) (real_inverse (1 + x ^ (2::nat))) univ)"
+    4: introduction x
+    4.1: apply_backward_step atn_derivative_series
+    5: apply_fact @3,4
+    6: apply_fact @5,0
+    7: rewrite_fact atn_0 @6 sym=false
+    8: rewrite_fact real_sub_rzero @7 sym=false
+    9: rewrite_fact cond_rand @8 sym=false
+    10: rewrite_fact cond_rator @9 sym=false
+    11: rewrite_fact real_mul_lzero @10 sym=false
+    12: rewrite_fact cond_rand @11 sym=false
+    13: rewrite_fact cond_rator @12 sym=false
+    14: cut "∀i. 0 / i = 0"
+    14: rewrite_goal real_div_eq_0 sym=false
+    14: introduction i
+    14.1: apply_backward_step disjI1
+    14.1: apply_backward_step eq_refl
+    16: rewrite_fact_with_prev @15,13
+    17: rewrite_fact real_sums_image_even @16 sym=false
+    18: cut "!i. 2 * i DIV 2 = i"
+    18: introduction i
+    18.1: apply_backward_step div_mult
+    18.1: nat_const_ineq
+    19: rewrite_fact_with_prev @18,17
+    20: cut "!a. !b. !c::real. a / b * c = a * c / b"
+    20: introduction a,b,c
+    20.3: rewrite_goal real_divide_def sym=false
+    20.3: real_norm
+    21: rewrite_goal_with_prev @20
+  qed
+
+theorem atn_infsum
+  fixes x :: real
+  prop abs x < 1 ⟶ real_infsum (from 0) (λk. -1 ^ k / of_nat (2 * k + 1) * x ^ (2 * k + 1)) = atn x
+  [hint_backward]
+  proof
+    1: apply_backward_step real_infsum_unique
+    1: rewrite_goal from_0 sym=false
+    1: apply_backward_step atn_series @0
+  qed
+
+theorem sin_series
+  fixes x :: real
+  prop real_sums (λk. -1 ^ k / of_nat (fact (2 * k + 1)) * x ^ (2 * k + 1)) (sin x) univ
+  [hint_backward]
+
+theorem sin_infsum
+  fixes x :: real
+  prop real_infsum (from 0) (λk. -1 ^ k / of_nat (fact (2 * k + 1)) * x ^ (2 * k + 1)) = sin x
+  [hint_rewrite]
+  proof
+    0: apply_backward_step real_infsum_unique
+    0: rewrite_goal from_0 sym=false
+    0: apply_backward_step sin_series
+  qed
+
+theorem cos_series
+  fixes x :: real
+  prop real_sums (λk. -1 ^ k / of_nat (fact (2 * k)) * x ^ (2 * k)) (cos x) univ
+  [hint_backward]
+
+theorem cos_infsum
+  fixes x :: real
+  prop real_infsum (from 0) (λk. -1 ^ k / of_nat (fact (2 * k)) * x ^ (2 * k)) = cos x
+  [hint_rewrite]
+  proof
+    0: apply_backward_step real_infsum_unique
+    0: rewrite_goal from_0 sym=false
+    0: apply_backward_step cos_series
+  qed

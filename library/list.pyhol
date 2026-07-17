@@ -1,0 +1,151 @@
+theory list
+imports set
+description "Lists"
+
+header "Basic definitions"
+
+datatype list 'a =
+  | nil :: 'a list
+  | cons (x :: 'a) (xs :: 'a list) :: 'a list
+
+fun length :: 'a list ⇒ nat
+  | length ([]::'a list) = 0
+  | length (x # xs) = Suc (length xs)
+
+fun nth :: 'a list ⇒ nat ⇒ 'a
+  | nth (x # xs) 0 = x
+  | nth (x # xs) (Suc n) = nth xs n
+
+fun append :: 'a list ⇒ 'a list ⇒ 'a list
+  | [] @ xs = xs
+  | (x # xs) @ ys = x # xs @ ys
+
+fun rev :: 'a list ⇒ 'a list
+  | rev ([]::'a list) = []
+  | rev (x # xs) = rev xs @ [x]
+
+theorem append_right_neutral
+  fixes xs :: 'a list
+  prop xs @ [] = xs
+  [hint_rewrite]
+  proof
+    0: induction xs list_induct
+    0: rewrite_goal append_def_1
+    1: introduction x,xs
+    1.3: rewrite_goal append_def_2
+    1.3: rewrite_goal_with_prev @1.2
+  qed
+
+theorem append_assoc
+  fixes x :: 'a, xs :: 'a list, ys :: 'a list, zs :: 'a list
+  prop (xs @ ys) @ zs = xs @ ys @ zs
+  proof
+    0: induction xs list_induct
+    0: rewrite_goal append_def_1
+    1: introduction x,xs
+    1.3: rewrite_goal append_def_2
+    1.3: rewrite_goal append_def_2
+    1.3: rewrite_goal_with_prev @1.2
+  qed
+
+theorem length_append
+  fixes xs :: 'a list, ys :: 'a list
+  prop length (xs @ ys) = length xs + length ys
+  [hint_rewrite]
+  proof
+    0: induction xs list_induct
+    0: rewrite_goal append_def_1
+    0: rewrite_goal length_def_1
+    0: rewrite_goal nat_plus_def_1
+    3: introduction x,xs
+    3.3: rewrite_goal append_def_2
+    3.3: rewrite_goal length_def_2
+    3.3: rewrite_goal_with_prev @3.2
+    3.3: rewrite_goal nat_plus_def_2
+  qed
+
+theorem rev_append
+  fixes xs :: 'a list, ys :: 'a list
+  prop rev (xs @ ys) = rev ys @ rev xs
+  [hint_rewrite]
+  proof
+    0: induction xs list_induct
+    0: rewrite_goal append_def_1
+    0: rewrite_goal rev_def_1
+    0: rewrite_goal append_right_neutral
+    3: introduction x,xs
+    3.3: rewrite_goal append_def_2
+    3.3: rewrite_goal rev_def_2
+    3.3: rewrite_goal_with_prev @3.2
+    3.3: rewrite_goal append_assoc
+  qed
+
+theorem rev_rev
+  fixes xs :: 'a list
+  prop rev (rev xs) = xs
+  proof
+    0: induction xs list_induct
+    0: rewrite_goal rev_def_1
+    0: rewrite_goal rev_def_1
+    2: introduction x,xs
+    2.3: rewrite_goal rev_def_2
+    2.3: rewrite_goal rev_append
+    2.3: rewrite_goal rev_def_2
+    2.3: rewrite_goal rev_def_1
+    2.3: rewrite_goal append_def_1
+    2.3: rewrite_goal append_def_2
+    2.3: rewrite_goal append_def_1
+    2.3: rewrite_goal_with_prev @2.2
+  qed
+
+theorem rev_length
+  fixes xs :: 'a list
+  prop length (rev xs) = length xs
+  proof
+    0: induction xs list_induct
+    0: rewrite_goal rev_def_1
+    1: introduction x,xs
+    1.3: rewrite_goal length_def_2
+    1.3: rewrite_goal rev_def_2
+    1.3: rewrite_goal length_append
+    1.3: rewrite_goal length_def_2
+    1.3: rewrite_goal length_def_1
+    1.3: rewrite_goal_with_prev @1.2
+    1.3: nat_norm
+  qed
+
+fun set :: 'a list ⇒ 'a set
+  | set ([]::'a list) = ∅
+  | set (x # xs) = insert x (set xs)
+
+fun distinct :: 'a list ⇒ bool
+  | distinct ([]::'a list) ⟷ true
+  | distinct (x # xs) ⟷ ¬(x ∈ set xs) ∧ distinct xs
+
+theorem not_member_nil
+  fixes x :: 'a
+  prop ¬(x ∈ set []) ⟷ true
+  proof
+    0: rewrite_goal set_def_1 sym=false
+    0: rewrite_goal member_empty_simp sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step trueI
+    1: introduction
+    1.1: apply_backward_step negI
+  qed
+
+theorem not_member_cons
+  fixes x :: 'a, y :: 'a, ys :: 'a list
+  prop ¬(x ∈ set (y # ys)) ⟷ ¬(x = y) ∧ ¬(x ∈ set ys)
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: rewrite_fact set_def_2 @0.0 sym=false
+    0.2: rewrite_fact member_insert @0.1 sym=false
+    0.3: rewrite_fact de_morgan_thm2 @0.2 sym=false
+    1: introduction
+    1.1: rewrite_goal set_def_2 sym=false
+    1.1: rewrite_goal member_insert sym=false
+    1.1: rewrite_goal de_morgan_thm2 sym=false
+  qed

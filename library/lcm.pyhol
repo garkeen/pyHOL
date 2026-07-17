@@ -1,0 +1,922 @@
+theory lcm
+imports prime
+description "Least common multiples."
+
+def lcm :: nat ⇒ nat ⇒ nat = lcm m n = (if m * n = 0 then 0 else m * n DIV gcd m n) [hint_rewrite]
+
+theorem lcm_divides
+  fixes d :: nat, m :: nat, n :: nat
+  prop divides (lcm m n) d ⟷ divides m d ∧ divides n d
+  [hint_rewrite]
+  proof
+    0: rewrite_goal lcm_def sym=false
+    0: cases "m * n = 0"
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: rewrite_fact divides_0 @0.1.0 sym=false
+    0.1.2: rewrite_goal_with_prev @0.1.1
+    0.1.2: apply_backward_step conjI
+    0.1.2: apply_backward_step divides_zero
+    0.1.3: apply_backward_step divides_zero
+    0.2: introduction
+    0.2.1: rewrite_goal divides_0 sym=false
+    0.2.1: apply_forward_step conjD1 @0.2.0
+    0.2.2: apply_forward_step conjD2 @0.2.0
+    0.2.3: rewrite_fact mult_eq_0 @0.0 sym=false
+    0.2.4: apply_backward_step disjE @0.2.3
+    0.2.4: introduction
+    0.2.4.1: rewrite_fact_with_prev @0.2.4.0,0.2.1
+    0.2.4.2: rewrite_fact divides_0 @0.2.4.1 sym=false
+    0.2.5: introduction
+    0.2.5.1: rewrite_fact_with_prev @0.2.5.0,0.2.2
+    0.2.5.2: rewrite_fact divides_0 @0.2.5.1 sym=false
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+    1.1: apply_forward_step gcd_divides2 param_m=m param_n=n
+    1.2: rewrite_fact divides_def @1.1 sym=false
+    1.3: exists_elim k1 @1.2
+    1.5: cut "m * n DIV gcd m n = m * k1"
+    1.5: apply_backward_step div_uniq param_r="(0::nat)"
+    1.5: rewrite_goal add_0_right sym=false
+    1.5: rewrite_goal mult_assoc sym=false
+    1.5: rewrite_goal eq_mult_lcancel sym=false
+    1.5: apply_backward_step disjI2
+    1.5: rewrite_goal mult_comm sym=false
+    1.10: apply_backward_step le_1_1
+    1.10: rewrite_goal gcd_zero sym=false
+    1.10: apply_backward_step contrapositive @1.0
+    1.10: rewrite_goal double_neg sym=false
+    1.10: z3
+    1.16: apply_forward_step gcd_divide1 param_m=m param_n=n
+    1.17: rewrite_fact divides_def @1.16 sym=false
+    1.18: exists_elim k2 @1.17
+    1.20: cut "m * n DIV gcd m n = k2 * n"
+    1.20: rewrite_goal mult_comm sym=false
+    1.20: apply_backward_step div_uniq param_r="(0::nat)"
+    1.20: rewrite_goal add_0_right sym=false
+    1.20: rewrite_goal mult_assoc sym=false
+    1.20: rewrite_goal eq_mult_lcancel sym=false
+    1.20: apply_backward_step disjI2
+    1.20: rewrite_goal mult_comm sym=false
+    1.27: apply_backward_step iffI
+    1.27: introduction
+    1.27.1: rewrite_fact divides_def @1.27.0 sym=false
+    1.27.2: exists_elim k @1.27.1
+    1.27.4: rewrite_goal_with_prev @1.27.3
+    1.27.4: apply_backward_step conjI
+    1.27.4: apply_backward_step divides_rmul
+    1.27.4: rewrite_goal_with_prev @1.15
+    1.27.4: apply_backward_step divides_rmul
+    1.27.4: apply_backward_step divides_self
+    1.27.8: apply_backward_step divides_rmul
+    1.27.8: rewrite_goal_with_prev @1.26
+    1.27.8: apply_backward_step divides_lmul
+    1.27.8: apply_backward_step divides_self
+    1.28: introduction
+    1.28.1: apply_forward_step conjD1 @1.28.0
+    1.28.2: apply_forward_step conjD2 @1.28.0
+    1.28.3: rewrite_goal_with_prev @1.15
+    1.28.3: rewrite_fact divides_def @1.28.1 sym=false
+    1.28.4: exists_elim k3 @1.28.3
+    1.28.6: rewrite_goal_with_prev @1.28.5
+    1.28.6: rewrite_goal_with_prev @1.19
+    1.28.6: rewrite_goal mult_assoc sym=false
+    1.28.6: apply_backward_step divides_mult_left
+    1.28.6: apply_backward_step divides_mul
+    1.28.6: apply_backward_step divides_rmul
+    1.28.6: apply_backward_step divides_self
+    1.28.8: apply_backward_step divides_cmul2 param_c="gcd m n"
+    1.28.8: rewrite_goal mult_assoc sym=true
+    1.28.8: rewrite_fact eq_sym_eq @1.19 sym=false
+    1.28.9: rewrite_fact eq_sym_eq @1.4 sym=false
+    1.28.10: rewrite_goal_with_prev @1.28.8
+    1.28.10: rewrite_goal_with_prev @1.28.9
+    1.28.10: rewrite_fact_with_prev @1.28.5,1.28.2
+    1.28.15: apply_backward_step gcd_coprime param_a=m param_b=n
+  qed
+
+theorem lcm_sym
+  fixes m :: nat, n :: nat
+  prop lcm m n = lcm n m
+  [hint_rewrite,hint_backward]
+  proof
+    0: rewrite_goal lcm_def sym=false
+    0: apply_forward_step mult_comm param_x=m param_y=n
+    1: apply_forward_step gcd_comm param_m=m param_n=n
+    2: rewrite_goal_with_prev @0
+    2: rewrite_goal_with_prev @1
+  qed
+
+theorem lcm1
+  fixes m :: nat, n :: nat
+  prop divides m (lcm m n)
+  [hint_backward]
+  proof
+    0: rewrite_goal lcm_def sym=false
+    0: cases "m * n = 0"
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: apply_backward_step divides_zero
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+    1.1: cut "divides (gcd m n) (m * n)"
+    1.1: apply_backward_step divides_lmul
+    1.1: apply_backward_step gcd_divides2
+    1.3: apply_forward_step divides_divides_div @1.2 param_e=m
+    1.4: rewrite_goal_with_prev @1.3
+    1.4: cut "gcd m n * m = m * gcd m n"
+    1.4: apply_backward_step mult_comm
+    1.5: rewrite_goal_with_prev @1.4
+    1.5: apply_backward_step divides_mult_left
+  qed
+
+theorem lcm2
+  fixes m :: nat, n :: nat
+  prop divides n (lcm m n)
+  [hint_backward]
+  proof
+    0: rewrite_goal lcm_sym sym=false
+    0: apply_backward_step lcm1
+  qed
+
+theorem lcm3
+  fixes d :: nat, m :: nat, n :: nat
+  prop divides m d ⟶ divides n d ⟶ divides (lcm m n) d
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal lcm_divides sym=false
+    2: apply_backward_step conjI
+  qed
+
+theorem lcm_divides_mul
+  fixes m :: nat, n :: nat
+  prop divides (lcm m n) (m * n)
+  [hint_backward]
+  proof
+    0: apply_backward_step lcm3
+    0: apply_backward_step divides_rmul
+    0: apply_backward_step divides_self
+    2: apply_backward_step divides_lmul
+    2: apply_backward_step divides_self
+  qed
+
+theorem divides_lcm
+  fixes m :: nat, n :: nat, r :: nat
+  prop divides r m ∨ divides r n ⟶ divides r (lcm m n)
+  [hint_backward]
+  proof
+    1: apply_backward_step disjE @0
+    1: introduction
+    1.1: apply_backward_step divides_trans param_m=m
+    1.1: apply_backward_step lcm1
+    2: introduction
+    2.1: apply_backward_step divides_trans param_m=n
+    2.1: apply_backward_step lcm2
+  qed
+
+theorem lcm_0
+  fixes n :: nat
+  prop lcm 0 n = 0
+  [hint_rewrite,hint_backward]
+  proof
+    0: rewrite_goal lcm_def sym=false
+    0: cut "0 * n = 0"
+    0: rewrite_goal nat_times_def_1 sym=false
+    1: rewrite_goal if_P @0 sym=false
+  qed
+
+theorem lcm_1
+  fixes n :: nat
+  prop lcm 1 n = n
+  [hint_backward,hint_rewrite]
+  proof
+    0: rewrite_goal lcm_def sym=false
+    0: rewrite_goal gcd_1_left sym=false
+    0: rewrite_goal mult_1_left sym=false
+    0: rewrite_goal div_1 sym=false
+    0: z3
+  qed
+
+theorem divides_lcm_gcd
+  fixes d :: nat, m :: nat, n :: nat
+  prop divides d (lcm m n) ⟷ divides (d * gcd m n) (m * n)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal lcm_def sym=false
+    0: cases "m * n = 0"
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: rewrite_goal_with_prev @0.0
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step divides_zero
+    0.2: introduction
+    0.2.1: apply_backward_step divides_zero
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+    1.1: cut "d * gcd m n = gcd m n * d"
+    1.1: apply_backward_step mult_comm
+    1.2: rewrite_goal_with_prev @1.1
+    1.2: apply_backward_step divides_divides_div
+    1.2: apply_backward_step divides_lmul
+    1.2: apply_backward_step gcd_divides2
+  qed
+
+theorem primepow_divides_lcm
+  fixes k :: nat, m :: nat, n :: nat, p :: nat
+  prop prime p ⟶ divides (p ^ k) (lcm m n) ⟷ divides (p ^ k) m ∨ divides (p ^ k) n
+  [hint_backward]
+  proof
+    1: apply_backward_step iffI
+    1: introduction
+    1.1: cases "m=0"
+    1.1: introduction
+    1.1.1: apply_backward_step disjI1
+    1.1.1: rewrite_goal_with_prev @1.1.0
+    1.1.1: apply_backward_step divides_zero
+    1.2: introduction
+    1.2.1: cases "n=0"
+    1.2.1: introduction
+    1.2.1.1: apply_backward_step disjI2
+    1.2.1.1: rewrite_goal_with_prev @1.2.1.0
+    1.2.1.1: apply_backward_step divides_zero
+    1.2.2: introduction
+    1.2.2.1: apply_forward_step prime_ge_2 @0
+    1.2.2.2: apply_forward_step factorization_index @1.2.0,1.2.2.1
+    1.2.2.3: apply_forward_step factorization_index @1.2.2.0,1.2.2.1
+    1.2.2.4: exists_elim a @1.2.2.2
+    1.2.2.6: apply_forward_step conjD1 @1.2.2.5
+    1.2.2.7: apply_forward_step conjD2 @1.2.2.5
+    1.2.2.8: rewrite_fact divides_def @1.2.2.6 sym=false
+    1.2.2.9: exists_elim q @1.2.2.8
+    1.2.2.11: exists_elim b @1.2.2.3
+    1.2.2.13: apply_forward_step conjD1 @1.2.2.12
+    1.2.2.14: apply_forward_step conjD2 @1.2.2.12
+    1.2.2.15: rewrite_fact divides_def @1.2.2.13 sym=false
+    1.2.2.16: exists_elim r @1.2.2.15
+    1.2.2.18: rewrite_fact divides_lcm_gcd @1.0 sym=false
+    1.2.2.19: rewrite_fact_with_prev @1.2.2.10,1.2.2.18
+    1.2.2.20: rewrite_fact_with_prev @1.2.2.17,1.2.2.19
+    1.2.2.21: cut "gcd (p ^ a * q) (p ^ b * r) =\n    p ^ (min a b) * (gcd (p ^ (a - min a b) * q) (p ^ (b - min a b) * r))"
+    1.2.2.21: rewrite_goal gcd_mult_left sym=true
+    1.2.2.21: rewrite_goal mult_assoc sym=true
+    1.2.2.21: rewrite_goal nat_power_add sym=true
+    1.2.2.21: cut "min a b + (a - min a b) = a"
+    1.2.2.21: z3
+    1.2.2.22: cut "min a b + (b - min a b) = b"
+    1.2.2.22: z3
+    1.2.2.23: rewrite_goal_with_prev @1.2.2.21
+    1.2.2.23: rewrite_goal_with_prev @1.2.2.22
+    1.2.2.28: rewrite_fact_with_prev @1.2.2.27,1.2.2.20
+    1.2.2.29: rewrite_fact mult_assoc @1.2.2.28 sym=true
+    1.2.2.30: rewrite_fact nat_power_add @1.2.2.29 sym=true
+    1.2.2.31: apply_forward_step divides_rmul2 @1.2.2.30
+    1.2.2.32: cut "p ^ a * q * p ^ b * r = (q * r) * p ^ (a + b) "
+    1.2.2.32: rewrite_goal nat_power_add sym=false
+    1.2.2.32: nat_norm
+    1.2.2.34: rewrite_fact_with_prev @1.2.2.33,1.2.2.31
+    1.2.2.35: apply_forward_step coprime_exp_divprod @1.2.2.34
+    1.2.2.36: cut "coprime p (q * r)"
+    1.2.2.36: rewrite_goal coprime_rmul sym=false
+    1.2.2.36: rewrite_fact prime_coprime_eq_nondivisiable @0 sym=false
+    1.2.2.37: rewrite_goal_with_prev @1.2.2.36
+    1.2.2.37: apply_backward_step conjI
+    1.2.2.37: forall_elim a+1 @1.2.2.7
+    1.2.2.38: cut "a < a + 1"
+    1.2.2.38: z3
+    1.2.2.39: apply_fact @1.2.2.37,1.2.2.38
+    1.2.2.40: rewrite_fact nat_power_add @1.2.2.39 sym=false
+    1.2.2.41: rewrite_fact exp_1 @1.2.2.40 sym=false
+    1.2.2.42: rewrite_fact_with_prev @1.2.2.10,1.2.2.41
+    1.2.2.43: apply_backward_step contrapositive @1.2.2.42
+    1.2.2.43: rewrite_goal double_neg sym=false
+    1.2.2.43: introduction
+    1.2.2.43.1: apply_backward_step divides_mult_left @1.2.2.43.0
+    1.2.2.46: forall_elim b+1 @1.2.2.14
+    1.2.2.47: cut "b < b + 1"
+    1.2.2.47: z3
+    1.2.2.48: apply_fact @1.2.2.46,1.2.2.47
+    1.2.2.49: rewrite_fact nat_power_add @1.2.2.48 sym=false
+    1.2.2.50: rewrite_fact exp_1 @1.2.2.49 sym=false
+    1.2.2.51: apply_backward_step contrapositive @1.2.2.50
+    1.2.2.51: rewrite_goal double_neg sym=false
+    1.2.2.51: introduction
+    1.2.2.51.1: rewrite_goal_with_prev @1.2.2.17
+    1.2.2.51.1: apply_backward_step divides_mult_left @1.2.2.51.0
+    1.2.2.57: apply_fact @1.2.2.35,1.2.2.56
+    1.2.2.58: apply_forward_step divides_exp_le @1.2.2.1 param_m="k + min a b" param_n="a + b"
+    1.2.2.59: rewrite_fact_with_prev @1.2.2.58,1.2.2.57
+    1.2.2.60: cut "k<=a | k<=b"
+    1.2.2.60: z3 @1.2.2.59
+    1.2.2.61: apply_backward_step disjE @1.2.2.60
+    1.2.2.61: introduction
+    1.2.2.61.1: apply_backward_step disjI1
+    1.2.2.61.1: rewrite_goal_with_prev @1.2.2.10
+    1.2.2.61.1: apply_backward_step divides_rmul
+    1.2.2.61.1: apply_backward_step divides_exp_le_imp
+    1.2.2.62: introduction
+    1.2.2.62.1: apply_backward_step disjI2
+    1.2.2.62.1: rewrite_goal_with_prev @1.2.2.17
+    1.2.2.62.1: apply_backward_step divides_rmul
+    1.2.2.62.1: apply_backward_step divides_exp_le_imp
+    2: introduction
+    2.1: apply_backward_step divides_lcm @2.0
+  qed
+
+theorem lcm_zero
+  fixes m :: nat, n :: nat
+  prop lcm m n = 0 ⟷ m = 0 ∨ n = 0
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: rewrite_fact multiples_eq @0.0 sym=""
+    0.2: rewrite_fact lcm_divides @0.1 sym=false
+    0.3: rewrite_fact divides_0 @0.2 sym=false
+    0.4: rewrite_fact eq_sym_eq @0.3 sym=false
+    0.5: apply_backward_step mult_nonzero
+    0.5: rewrite_goal_with_prev @0.4
+    0.5: apply_backward_step conjI
+    0.5: apply_backward_step divides_rmul
+    0.5: apply_backward_step divides_self
+    0.7: apply_backward_step divides_lmul
+    0.7: apply_backward_step divides_self
+    1: introduction
+    1.1: apply_backward_step disjE @1.0
+    1.1: introduction
+    1.1.1: rewrite_goal_with_prev @1.1.0
+    1.1.1: apply_backward_step lcm_0
+    1.2: introduction
+    1.2.1: rewrite_goal_with_prev @1.2.0
+    1.2.1: rewrite_goal lcm_sym sym=false
+    1.2.1: apply_backward_step lcm_0
+  qed
+
+theorem index_lcm
+  fixes m :: nat, n :: nat, p :: nat
+  prop prime p ⟶ index p (lcm m n) = (if m = 0 ∨ n = 0 then 0 else max (index p m) (index p n))
+  [hint_backward]
+  proof
+    1: cases "m = 0 ∨ n = 0"
+    1: introduction
+    1.1: rewrite_goal if_P @1.0 sym=false
+    1.1: rewrite_goal index_eq_0 sym=false
+    1.1: apply_backward_step disjI1
+    1.1: rewrite_goal lcm_zero sym=false
+    2: introduction
+    2.1: rewrite_goal if_not_P @2.0 sym=false
+    2.1: apply_forward_step primepow_divides_lcm @0 param_k="" param_m=m param_n=n
+    2.2: rewrite_fact primepow_divides_index @2.1 sym=false
+    2.3: cut "!m. !n. (!k::nat. k <= m <--> k <= n) --> m = n "
+    2.3: z3
+    2.4: apply_prev @2.3
+    2.4: introduction k
+    2.4.1: cut "!m. !n. k <= max m n <--> k <= m | k <= n"
+    2.4.1: z3
+    2.4.2: rewrite_goal_with_prev @2.4.1
+    2.4.2: rewrite_fact de_morgan_thm2 @2.0 sym=false
+    2.4.3: apply_forward_step conjD1 @2.4.2
+    2.4.4: apply_forward_step conjD2 @2.4.2
+    2.4.5: rewrite_fact prime_def @0 sym=false
+    2.4.6: apply_forward_step conjD1 @2.4.5
+    2.4.7: apply_backward_step iffI
+    2.4.7: introduction
+    2.4.7.1: cut "lcm m n = 0 ∨ p = 1 ∨ k ≤ index p (lcm m n)"
+    2.4.7.1: apply_backward_step disjI2
+    2.4.7.1: apply_backward_step disjI2
+    2.4.7.3: rewrite_fact_with_prev @2.2,2.4.7.2
+    2.4.7.4: apply_backward_step disjE @2.4.7.3
+    2.4.7.4: introduction
+    2.4.7.4.1: apply_backward_step disjI1
+    2.4.7.4.1: apply_backward_step disjE @2.4.7.4.0
+    2.4.7.4.1: introduction
+    2.4.7.4.1.1: apply_backward_step negE_gen @2.4.3,2.4.7.4.1.0
+    2.4.7.4.2: introduction
+    2.4.7.4.2.1: apply_backward_step disjE @2.4.7.4.2.0
+    2.4.7.4.2.1: introduction
+    2.4.7.4.2.1.1: apply_backward_step negE_gen @2.4.6,2.4.7.4.2.1.0
+    2.4.7.5: introduction
+    2.4.7.5.1: apply_backward_step disjI2
+    2.4.7.5.1: apply_backward_step disjE @2.4.7.5.0
+    2.4.7.5.1: introduction
+    2.4.7.5.1.1: apply_backward_step negE_gen @2.4.4,2.4.7.5.1.0
+    2.4.7.5.2: introduction
+    2.4.7.5.2.1: apply_backward_step disjE @2.4.7.5.2.0
+    2.4.7.5.2.1: introduction
+    2.4.7.5.2.1.1: apply_backward_step negE_gen @2.4.6,2.4.7.5.2.1.0
+    2.4.8: introduction
+    2.4.8.1: cut "lcm m n = 0 ∨ p = 1 ∨ k ≤ index p (lcm m n)"
+    2.4.8.1: rewrite_goal_with_prev @2.2
+    2.4.8.1: apply_backward_step disjE @2.4.8.0
+    2.4.8.1: introduction
+    2.4.8.1.1: apply_backward_step disjI1
+    2.4.8.1.1: apply_backward_step disjI2
+    2.4.8.1.1: apply_backward_step disjI2
+    2.4.8.2: introduction
+    2.4.8.2.1: apply_backward_step disjI2
+    2.4.8.2.1: apply_backward_step disjI2
+    2.4.8.2.1: apply_backward_step disjI2
+    2.4.8.5: apply_backward_step disjE @2.4.8.4
+    2.4.8.5: introduction
+    2.4.8.5.1: rewrite_fact lcm_zero @2.4.8.5.0 sym=false
+    2.4.8.5.2: apply_backward_step negE_gen @2.0,2.4.8.5.1
+    2.4.8.6: introduction
+    2.4.8.6.1: apply_backward_step disjE @2.4.8.6.0
+    2.4.8.6.1: introduction
+    2.4.8.6.1.1: apply_backward_step negE_gen @2.4.6,2.4.8.6.1.0
+  qed
+
+theorem lcm_assoc
+  fixes m :: nat, n :: nat, p :: nat
+  prop lcm m (lcm n p) = lcm (lcm m n) p
+  [hint_rewrite,hint_rewrite_sym]
+  proof
+    0: rewrite_goal multiples_eq sym=""
+    0: rewrite_goal lcm_divides sym=false
+    0: rewrite_goal lcm_divides sym=false
+    0: introduction q
+    0.1: rewrite_goal conj_assoc sym=false
+  qed
+
+theorem lcm_refl
+  fixes n :: nat
+  prop lcm n n = n
+  [hint_rewrite]
+  proof
+    0: rewrite_goal lcm_def sym=false
+    0: cases "n=0"
+    0: introduction
+    0.1: cut "n * n = 0"
+    0.1: rewrite_goal_with_prev @0.0
+    0.1: rewrite_goal mult_0_right sym=false
+    0.3: rewrite_goal if_P @0.2 sym=false
+    0.3: rewrite_goal eq_sym_eq sym=false
+    1: introduction
+    1.1: cut "~(n * n = 0)"
+    1.1: rewrite_goal mult_eq_0 sym=false
+    1.1: rewrite_goal de_morgan_thm2 sym=false
+    1.1: apply_backward_step conjI
+    1.4: rewrite_goal if_not_P @1.3 sym=false
+    1.4: rewrite_goal gcd_refl sym=false
+    1.4: apply_backward_step div_mult
+  qed
+
+theorem lcm_multiple
+  fixes m :: nat, n :: nat
+  prop lcm n (m * n) = m * n
+  [hint_rewrite]
+  proof
+    0: rewrite_goal multiples_eq sym=""
+    0: rewrite_goal lcm_divides sym=false
+    0: introduction d
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step conjD2 @0.1.0
+    0.2: introduction
+    0.2.1: apply_backward_step conjI
+    0.2.1: apply_backward_step divides_lmul2 @0.2.0
+  qed
+
+theorem lcm_gcd_distrib
+  fixes m :: nat, n :: nat, p :: nat
+  prop lcm m (gcd n p) = gcd (lcm m n) (lcm m p)
+  [hint_rewrite,hint_rewrite_sym]
+  proof
+    0: rewrite_goal primepow_divisors_eq sym=false
+    0: introduction q,k
+    0.3: apply_forward_step primepow_divides_lcm @0.2 param_k=k param_m="" param_n=""
+    0.4: rewrite_goal_with_prev @0.3
+    0.4: rewrite_goal divides_gcd sym=false
+    0.4: rewrite_goal_with_prev @0.3
+    0.4: rewrite_goal disj_conj_distribL1 sym=false
+  qed
+
+theorem gcd_lcm_distrib
+  fixes m :: nat, n :: nat, p :: nat
+  prop gcd m (lcm n p) = lcm (gcd m n) (gcd m p)
+  [hint_rewrite,hint_rewrite_sym]
+  proof
+    0: rewrite_goal primepow_divisors_eq sym=false
+    0: introduction q,k
+    0.3: apply_forward_step primepow_divides_lcm @0.2 param_k=k param_m="" param_n=""
+    0.4: rewrite_goal_with_prev @0.3
+    0.4: rewrite_goal divides_gcd sym=false
+    0.4: rewrite_goal_with_prev @0.3
+    0.4: rewrite_goal conj_disj_distribL1 sym=false
+  qed
+
+theorem lcm_unique
+  fixes d :: nat, m :: nat, n :: nat
+  prop divides m d ∧ divides n d ∧ (∀e. divides m e ⟶ divides n e ⟶ divides d e) ⟷ d = lcm m n
+  [hint_rewrite]
+  proof
+    0: rewrite_goal multiples_eq sym=""
+    0: rewrite_goal lcm_divides sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_forward_step conjD1 @0.0
+    0.2: apply_forward_step conjD2 @0.0
+    0.3: apply_forward_step conjD1 @0.2
+    0.4: apply_forward_step conjD2 @0.2
+    0.5: introduction a
+    0.5.1: apply_backward_step iffI
+    0.5.1: introduction
+    0.5.1.1: apply_backward_step conjI
+    0.5.1.1: apply_backward_step divides_trans param_m=d
+    0.5.1.2: apply_backward_step divides_trans param_m=d
+    0.5.2: introduction
+    0.5.2.1: apply_forward_step conjD1 @0.5.2.0
+    0.5.2.2: apply_forward_step conjD2 @0.5.2.0
+    0.5.2.3: apply_prev @0.4
+    1: introduction
+    1.1: rewrite_goal conj_assoc sym=false
+    1.1: apply_backward_step conjI
+    1.1: rewrite_fact eq_sym_eq @1.0 sym=false
+    1.2: rewrite_goal_with_prev @1.1
+    1.2: apply_backward_step divides_self
+    1.4: introduction e
+    1.4.3: rewrite_goal_with_prev @1.0
+    1.4.3: apply_backward_step conjI
+  qed
+
+theorem lcm_eq
+  fixes m :: nat, n :: nat, p :: nat, q :: nat
+  prop (∀d. divides m d ∧ divides n d ⟷ divides p d ∧ divides q d) ⟶ lcm m n = lcm p q
+  [hint_backward]
+  proof
+    1: rewrite_goal multiples_eq sym=""
+    1: rewrite_goal lcm_divides sym=false
+  qed
+
+theorem divides_lcm_left
+  fixes m :: nat, n :: nat
+  prop divides n m ⟷ lcm m n = m
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: rewrite_goal eq_sym_eq sym=false
+    0.1: rewrite_goal lcm_unique sym=true
+    0.1: apply_backward_step conjI
+    0.1: apply_backward_step divides_self
+    0.2: apply_backward_step conjI
+    1: introduction
+    1.1: rewrite_fact eq_sym_eq @1.0 sym=false
+    1.2: rewrite_goal_with_prev @1.1
+    1.2: apply_backward_step lcm2
+  qed
+
+theorem divides_lcm_right
+  fixes m :: nat, n :: nat
+  prop divides m n ⟷ lcm m n = n
+  [hint_rewrite]
+  proof
+    0: rewrite_goal lcm_sym sym=false
+    0: rewrite_goal divides_lcm_left sym=false
+  qed
+
+theorem mult_lcm_gcd
+  fixes m :: nat, n :: nat
+  prop lcm m n * gcd m n = m * n
+  [hint_rewrite]
+  proof
+    0: rewrite_goal lcm_def sym=false
+    0: cases "m * n = 0"
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: rewrite_goal_with_prev @0.0
+    0.1: rewrite_goal nat_times_def_1 sym=false
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+    1.1: rewrite_goal divides_div_mult sym=true
+    1.1: apply_backward_step divides_lmul
+    1.1: apply_backward_step gcd_divides2
+  qed
+
+theorem mult_gcd_lcm
+  fixes m :: nat, n :: nat
+  prop gcd m n * lcm m n = m * n
+  [hint_rewrite]
+  proof
+    0: apply_forward_step mult_lcm_gcd param_m=m param_n=n
+    1: rewrite_fact eq_sym_eq @0 sym=false
+    2: rewrite_goal_with_prev @1
+    2: apply_backward_step mult_comm
+  qed
+
+theorem lcm_lmul
+  fixes m :: nat, n :: nat, p :: nat
+  prop lcm (p * m) (p * n) = p * lcm m n
+  [hint_rewrite]
+  proof
+    0: cases "p=0"
+    0: introduction
+    0.1: rewrite_goal_with_prev @0.0
+    0.1: rewrite_goal nat_times_def_1 sym=false
+    0.1: rewrite_goal lcm_0 sym=false
+    1: introduction
+    1.1: rewrite_goal lcm_def sym=false
+    1.1: cases "m * n = 0"
+    1.1: introduction
+    1.1.1: rewrite_goal if_P @1.1.0 sym=false
+    1.1.1: cut "p * m * (p * n) = 0"
+    1.1.1: z3 @1.1.0
+    1.1.2: rewrite_goal if_P @1.1.1 sym=false
+    1.1.2: rewrite_goal mult_0_right sym=false
+    1.2: introduction
+    1.2.1: rewrite_goal if_not_P @1.2.0 sym=false
+    1.2.1: cut "~(p * m * (p * n) = 0)"
+    1.2.1: z3 @1.2.0,1.0
+    1.2.2: rewrite_goal if_not_P @1.2.1 sym=false
+    1.2.2: rewrite_goal gcd_mult_left sym=false
+    1.2.2: rewrite_goal mult_assoc sym=false
+    1.2.2: apply_forward_step div_mult2 @1.0 param_n="m * (p * n)" param_p="gcd m n"
+    1.2.3: rewrite_goal_with_prev @1.2.2
+    1.2.3: cut "m * (p * n) = p * (m * n)"
+    1.2.3: nat_norm
+    1.2.4: rewrite_goal_with_prev @1.2.3
+    1.2.4: apply_backward_step div_uniq param_r="(0::nat)"
+    1.2.4: rewrite_goal add_0_right sym=false
+    1.2.4: rewrite_goal mult_assoc sym=false
+    1.2.4: rewrite_goal eq_mult_lcancel sym=false
+    1.2.4: apply_backward_step disjI2
+    1.2.4: rewrite_goal eq_sym_eq sym=false
+    1.2.4: rewrite_goal divides_div_mult sym=true
+    1.2.4: apply_backward_step divides_lmul
+    1.2.4: apply_backward_step gcd_divides2
+    1.2.12: apply_backward_step le_1_1
+    1.2.12: rewrite_goal gcd_zero sym=false
+    1.2.12: z3 @1.2.0
+  qed
+
+theorem lcm_rmul
+  fixes m :: nat, n :: nat, p :: nat
+  prop lcm (m * p) (n * p) = p * lcm m n
+  [hint_rewrite]
+  proof
+    0: rewrite_goal mult_comm sym=false
+    0: rewrite_goal lcm_lmul sym=false
+    0: apply_backward_step mult_comm
+  qed
+
+theorem lcm_exp
+  fixes a :: nat, b :: nat, n :: nat
+  prop lcm (a ^ n) (b ^ n) = lcm a b ^ n
+  [hint_rewrite,hint_rewrite_sym]
+  proof
+    0: rewrite_goal lcm_def sym=false
+    0: rewrite_goal mult_eq_0 sym=false
+    0: rewrite_goal exp_eq_0 sym=false
+    0: cases "n=0"
+    0: introduction
+    0.1: rewrite_goal_with_prev @0.0
+    0.1: rewrite_goal nat_nat_power_def_1 sym=false
+    0.1: cut "~(a = 0 ∧ ¬((0::nat) = 0) ∨ b = 0 ∧ ¬((0::nat) = 0))"
+    0.1: z3
+    0.2: rewrite_goal if_not_P @0.1 sym=false
+    0.2: rewrite_goal mult_1_right sym=false
+    0.2: rewrite_goal gcd_refl sym=false
+    0.2: rewrite_goal div_1 sym=false
+    1: introduction
+    1.1: cases " a = 0 ∨ b = 0"
+    1.1: introduction
+    1.1.1: rewrite_goal if_P @1.1.0 sym=false
+    1.1.1: cut "a = 0 ∧ ¬(n = 0) ∨ b = 0 ∧ ¬(n = 0)"
+    1.1.1: z3 @1.1.0,1.0
+    1.1.2: rewrite_goal if_P @1.1.1 sym=false
+    1.1.2: rewrite_goal exp_zero sym=false
+    1.1.2: rewrite_goal if_not_P @1.0 sym=false
+    1.2: introduction
+    1.2.1: cut "~(a = 0 ∧ ¬(n = 0) ∨ b = 0 ∧ ¬(n = 0))"
+    1.2.1: z3 @1.2.0,1.0
+    1.2.2: rewrite_goal if_not_P @1.2.1 sym=false
+    1.2.2: rewrite_goal if_not_P @1.2.0 sym=false
+    1.2.2: rewrite_goal gcd_exp sym=false
+    1.2.2: apply_backward_step div_uniq param_r="(0::nat)"
+    1.2.2: rewrite_goal add_0_right sym=false
+    1.2.2: rewrite_goal mult_exp sym=true
+    1.2.2: cut "divides (gcd a b) (a * b)"
+    1.2.2: apply_backward_step divides_lmul
+    1.2.2: apply_backward_step gcd_divides2
+    1.2.4: rewrite_fact divides_div_mult @1.2.3 sym=false
+    1.2.5: rewrite_goal_with_prev @1.2.4
+    1.2.8: rewrite_goal exp_lt_0 sym=false
+    1.2.8: apply_backward_step disjI1
+    1.2.8: rewrite_goal gcd_zero sym=false
+    1.2.8: z3 @1.2.0
+  qed
+
+theorem lcm_coprime_decomp
+  fixes m :: nat, n :: nat
+  prop ∃m1. ∃n1. divides m1 m ∧ divides n1 n ∧ coprime m1 n1 ∧ m1 * n1 = lcm m n
+  [hint_backward]
+  proof
+    0: cases "m=0"
+    0: introduction
+    0.1: rewrite_goal_with_prev @0.0
+    0.1: inst_exists_goal "(0::nat)"
+    0.1: inst_exists_goal "(1::nat)"
+    0.1: apply_backward_step conjI
+    0.1: rewrite_goal divides_0 sym=false
+    0.2: apply_backward_step conjI
+    0.2: apply_backward_step divides_1
+    0.3: apply_backward_step conjI
+    0.3: apply_backward_step coprime_1
+    0.4: rewrite_goal lcm_0 sym=false
+    0.4: rewrite_goal nat_times_def_1 sym=false
+    1: introduction
+    1.1: apply_forward_step gcd_coprime_exists param_a=m param_b=n
+    1.2: exists_elim c,d @1.1
+    1.5: apply_forward_step conjD1 @1.4
+    1.6: apply_forward_step conjD2 @1.4
+    1.7: apply_forward_step conjD1 @1.6
+    1.8: apply_forward_step conjD2 @1.6
+    1.9: apply_forward_step coprime_pair_decomp @1.8 param_m="gcd m n"
+    1.10: rewrite_fact gcd_zero @1.9 sym=false
+    1.11: cut "¬(m = 0 ∧ n = 0)"
+    1.11: z3 @1.0
+    1.12: apply_fact @1.10,1.11
+    1.13: exists_elim n1,m1 @1.12
+    1.16: apply_forward_step conjD1 @1.15
+    1.17: apply_forward_step conjD2 @1.15
+    1.18: apply_forward_step conjD1 @1.17
+    1.19: apply_forward_step conjD2 @1.17
+    1.20: apply_forward_step conjD1 @1.19
+    1.21: apply_forward_step conjD2 @1.19
+    1.22: inst_exists_goal c*m1
+    1.22: inst_exists_goal d*n1
+    1.22: rewrite_goal coprime_lmul sym=false
+    1.22: rewrite_goal coprime_rmul sym=false
+    1.22: apply_backward_step conjI
+    1.22: rewrite_goal_with_prev @1.5
+    1.22: apply_backward_step divides_mult_left
+    1.22: rewrite_fact eq_sym_eq @1.21 sym=false
+    1.23: rewrite_goal_with_prev @1.22
+    1.23: apply_backward_step divides_lmul
+    1.23: apply_backward_step divides_self
+    1.28: apply_backward_step conjI
+    1.28: rewrite_goal_with_prev @1.7
+    1.28: apply_backward_step divides_mult_left
+    1.28: rewrite_goal_with_prev @1.22
+    1.28: apply_backward_step divides_rmul
+    1.28: apply_backward_step divides_self
+    1.33: apply_backward_step conjI
+    1.33: apply_backward_step conjI
+    1.33: apply_backward_step conjI
+    1.33: rewrite_goal coprime_sym sym=false
+    1.35: apply_backward_step conjI
+    1.35: rewrite_goal coprime_sym sym=false
+    1.38: cut "!a. !b. !d::nat. ~(d = 0) --> a * d = b * d --> a = b"
+    1.38: z3
+    1.39: apply_prev @1.38 param_d="gcd m n"
+    1.39: rewrite_goal gcd_zero sym=false
+    1.40: rewrite_goal mult_lcm_gcd sym=false
+    1.40: rewrite_goal_with_prev @1.22
+    1.40: rewrite_goal_with_prev @1.5
+    1.40: rewrite_goal_with_prev @1.22
+    1.40: rewrite_goal_with_prev @1.7
+    1.40: rewrite_goal_with_prev @1.22
+    1.40: nat_norm
+  qed
+
+theorem le_lcm1
+  fixes m :: nat, n :: nat
+  prop m ≤ lcm m n ⟷ (n = 0 ⟶ m = 0)
+  [hint_rewrite]
+  proof
+    0: cases "m=0"
+    0: introduction
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.2: introduction
+    0.2.1: rewrite_goal_with_prev @0.0
+    0.2.1: apply_backward_step le_0
+    1: introduction
+    1.1: cases "n=0"
+    1.1: introduction
+    1.1.1: apply_backward_step iffI
+    1.1.1: introduction
+    1.1.1.1: rewrite_fact_with_prev @1.1.0,1.1.1.0
+    1.1.1.2: rewrite_fact lcm_sym @1.1.1.1 sym=false
+    1.1.1.3: rewrite_fact lcm_0 @1.1.1.2 sym=false
+    1.1.1.4: apply_forward_step nat_le_zero @1.1.1.3
+    1.1.2: introduction
+    1.1.2.1: apply_fact @1.1.2.0,1.1.0
+    1.1.2.2: rewrite_goal_with_prev @1.1.2.1
+    1.1.2.2: apply_backward_step le_0
+    1.2: introduction
+    1.2.1: apply_backward_step iffI
+    1.2.1: introduction
+    1.2.1.2: apply_backward_step negE_gen @1.2.0,1.2.1.1
+    1.2.2: introduction
+    1.2.2.1: apply_backward_step divides_le_imp
+    1.2.2.1: apply_backward_step lcm1
+    1.2.2.2: rewrite_goal lcm_zero sym=false
+    1.2.2.2: introduction
+    1.2.2.2.1: apply_backward_step disjE @1.2.2.2.0
+  qed
+
+theorem le_lcm2
+  fixes m :: nat, n :: nat
+  prop n ≤ lcm m n ⟷ (m = 0 ⟶ n = 0)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal lcm_sym sym=false
+    0: rewrite_goal le_lcm1 sym=false
+  qed
+
+theorem lcm_le_mult
+  fixes m :: nat, n :: nat
+  prop lcm m n ≤ m * n
+  [hint_backward]
+  proof
+    0: rewrite_goal lcm_def sym=false
+    0: cases "m * n = 0"
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: apply_backward_step le_0
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+    1.1: apply_backward_step div_le
+  qed
+
+theorem lcm_eq_mult
+  fixes m :: nat, n :: nat
+  prop lcm m n = m * n ⟷ m = 0 ∨ n = 0 ∨ coprime m n
+  [hint_rewrite]
+  proof
+    0: cases "m=0"
+    0: introduction
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step disjI1
+    0.2: introduction
+    0.2.1: rewrite_goal_with_prev @0.0
+    0.2.1: rewrite_goal lcm_0 sym=false
+    0.2.1: rewrite_goal nat_times_def_1 sym=false
+    1: introduction
+    1.1: cases "n=0"
+    1.1: introduction
+    1.1.1: apply_backward_step iffI
+    1.1.1: introduction
+    1.1.1.1: apply_backward_step disjI2
+    1.1.1.1: apply_backward_step disjI1
+    1.1.2: introduction
+    1.1.2.1: rewrite_goal_with_prev @1.1.0
+    1.1.2.1: rewrite_goal lcm_sym sym=false
+    1.1.2.1: rewrite_goal lcm_0 sym=false
+    1.1.2.1: rewrite_goal mult_0_right sym=false
+    1.2: introduction
+    1.2.1: rewrite_goal lcm_def sym=false
+    1.2.1: cut "~(m * n = 0)"
+    1.2.1: rewrite_goal mult_eq_0 sym=false
+    1.2.1: rewrite_goal de_morgan_thm2 sym=false
+    1.2.1: apply_backward_step conjI
+    1.2.4: rewrite_goal if_not_P @1.2.3 sym=false
+    1.2.4: rewrite_goal div_eq_self sym=false
+    1.2.4: rewrite_goal coprime_gcd sym=false
+    1.2.4: rewrite_goal mult_eq_0 sym=false
+    1.2.4: rewrite_goal disj_assoc_eq sym=false
+  qed
+
+theorem max_le_lcm_eq
+  fixes m :: nat, n :: nat
+  prop max m n ≤ lcm m n ⟷ m = 0 ⟷ n = 0
+  [hint_rewrite]
+  proof
+    0: rewrite_goal max_def sym=false
+    0: cases "m ≤ n"
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: rewrite_goal le_lcm2 sym=false
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step iffI
+    0.1.1: introduction
+    0.1.1.1: rewrite_fact_with_prev @0.1.1.0,0.0
+    0.1.1.2: apply_forward_step nat_le_zero @0.1.1.1
+    0.2: introduction
+    0.2.2: rewrite_fact_with_prev @0.2.0,0.2.1
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+    1.1: rewrite_goal le_lcm1 sym=false
+    1.1: apply_backward_step iffI
+    1.1: introduction
+    1.1.1: apply_backward_step iffI
+    1.1.1: introduction
+    1.1.1.1: rewrite_fact_with_prev @1.1.1.0,1.0
+    1.1.1.2: apply_backward_step negE_gen @1.1.1.1
+    1.1.1.2: apply_backward_step le_0
+    1.2: introduction
+    1.2.2: rewrite_goal_with_prev @1.2.0
+  qed
+
+theorem max_le_lcm
+  fixes m :: nat, n :: nat
+  prop m = 0 ⟷ n = 0 ⟶ max m n ≤ lcm m n
+  [hint_backward]
+  proof
+    1: rewrite_goal max_le_lcm_eq sym=false
+  qed

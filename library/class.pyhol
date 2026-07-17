@@ -1,0 +1,3 @@
+theory class
+imports logic
+description "Extension, classical reasoning with AC starts now! Refer class.ml from HOL Light."

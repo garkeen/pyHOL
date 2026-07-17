@@ -1,0 +1,621 @@
+theory trig_atn
+imports trig_series
+description "Formal inequalities for trig about atn series."
+
+def halfatn :: real ⇒ real = halfatn x = x / (sqrt (1 + x ^ (2::nat)) + 1) [hint_rewrite]
+
+def halfatn4 :: real ⇒ real = halfatn4 = halfatn ∘ halfatn ∘ halfatn ∘ halfatn [hint_rewrite]
+
+theorem abs_lemma
+  fixes a :: real
+  prop 0 < a ⟶ abs a = a
+  [hint_backward]
+  proof
+    1: z3 @0
+  qed
+
+theorem pos_lemma
+  fixes x :: real
+  prop 0 < 1 + x ^ (2::nat)
+  [hint_backward]
+  proof
+    0: cut "∀a::real. 0 ≤ a ⟶ 0 < 1 + a "
+    0: z3
+    1: apply_prev @0
+    1: apply_backward_step real_le_pow_2
+  qed
+
+theorem pos_lemma2
+  fixes x :: real
+  prop 0 < sqrt (1 + x ^ (2::nat)) + 1
+  [hint_backward]
+  proof
+    0: cut "!a::real. 0 <= a --> 0 < a + 1"
+    0: z3
+    1: apply_prev @0
+    1: rewrite_goal sqrt_le_0 sym=false
+    1: apply_backward_step real_lt_imp_le
+    1: apply_backward_step pos_lemma
+  qed
+
+theorem eq_lemma
+  fixes x :: real
+  prop 1 - halfatn x ^ (2::nat) = 2 / (sqrt (1 + x ^ (2::nat)) + 1)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal halfatn_def sym=false
+    0: rewrite_goal real_pow_div sym=false
+    0: cut "(sqrt (1 + x ^ (2::nat))) ^ (2::nat) = 1 + x ^ (2::nat)"
+    0: rewrite_goal sqrt_pow2 sym=false
+    0: apply_backward_step real_lt_imp_le
+    0: apply_backward_step pos_lemma
+    3: apply_forward_step pos_lemma2 param_x=x
+    4: cut "∀b. 0 < b + 1 ⟶ b ^ (2::nat) = 1 + x ^ (2::nat) ⟶ 1 - x ^ (2::nat) / (b + 1) ^ (2::nat) = 2 / (b + 1)"
+    4: rewrite_goal real_pow_2 sym=false
+    4: z3
+    6: apply_prev @5
+  qed
+
+theorem halfatn_bounds_abs
+  fixes x :: real
+  prop abs (halfatn x) < 1
+  [hint_backward]
+  proof
+    0: rewrite_goal halfatn_def sym=false
+    0: rewrite_goal real_abs_div sym=false
+    0: cut "0 < abs (sqrt (1 + x ^ (2::nat)) + 1)"
+    0: cut "∀a::real. 0 < a ⟶ 0 < abs a"
+    0: z3
+    1: apply_prev @0
+    1: apply_backward_step pos_lemma2
+    3: apply_forward_step real_lt_ldiv_eq @2 param_x="abs x" param_y="(1::real)"
+    4: rewrite_goal_with_prev @3
+    4: apply_forward_step abs_lemma @1
+    5: rewrite_goal_with_prev @4
+    5: cut "!x::real. !y. x < y --> x < 1 * (y + 1)"
+    5: z3
+    6: apply_prev @5
+    6: apply_backward_step real_lt_rsqrt
+    6: rewrite_goal real_pow2_abs sym=false
+    6: rewrite_goal real_pow_2 sym=false
+    6: z3
+  qed
+
+theorem halfatn_half
+  fixes t :: real, x :: real
+  prop abs x < t ⟶ abs (halfatn x) < t / 2
+  [hint_backward]
+  proof
+    1: rewrite_goal halfatn_def sym=false
+    1: rewrite_goal real_abs_div sym=false
+    1: apply_forward_step pos_lemma2 param_x=x
+    2: apply_forward_step abs_lemma @1
+    3: rewrite_goal_with_prev @2
+    3: apply_forward_step real_lt_ldiv_eq @1 param_x="abs x" param_y="t / 2"
+    4: rewrite_goal_with_prev @3
+    4: apply_backward_step real_lte_trans param_y=t
+    4: cut "!a::real. t / 2 * a = t * (a / 2)"
+    4: z3
+    5: rewrite_goal_with_prev @4
+    5: cut "!a. t * (1 + 1) <= t * a --> t <= t * (a / 2)"
+    5: z3
+    6: apply_prev @5
+    6: apply_backward_step real_le_lmul
+    6: z3 @0
+    7: cut "!a::real. 1 <= a --> 1+1<=a+1"
+    7: z3
+    8: apply_prev @7
+    8: apply_backward_step real_le_rsqrt
+    8: rewrite_goal real_pow_one sym=false
+    8: rewrite_goal real_pow_2 sym=false
+    8: z3
+  qed
+
+theorem atn_half
+  fixes x :: real
+  prop atn x = 2 * atn (halfatn x)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_mul_2 sym=false
+    0: cut "abs (halfatn x * halfatn x) < 1"
+    0: rewrite_goal real_pow_2 sym=true
+    0: rewrite_goal real_abs_pow sym=false
+    0: rewrite_goal real_pow2_abs sym=false
+    0: rewrite_goal abs_sqare_lt_1 sym=false
+    0: apply_backward_step halfatn_bounds_abs
+    5: apply_forward_step atn_add_small @4
+    6: rewrite_goal_with_prev @5
+    6: rewrite_goal real_mul_2 sym=true
+    6: rewrite_goal real_pow_2 sym=true
+    6: cut "x = (2 * halfatn x / (1 - halfatn x ^ (2::nat)))"
+    6: rewrite_goal eq_lemma sym=false
+    6: rewrite_goal halfatn_def sym=false
+    6: cut "!a. 0 < a --> x = 2 *(x/a)/(2/a)"
+    6: z3
+    7: apply_prev @6
+    7: apply_backward_step pos_lemma2
+    11: rewrite_fact eq_sym_eq @10 sym=false
+    12: rewrite_goal_with_prev @11
+  qed
+
+theorem rat_lemma4_lt
+  fixes x1 :: real, x2 :: real, y1 :: real, y2 :: real
+  prop 0 < y1 ⟶ 0 < y2 ⟶ x1 / y1 < x2 / y2 ⟷ x1 * y2 < x2 * y1
+  [hint_backward,hint_backward1]
+  proof
+    2: z3 @0,1
+  qed
+
+theorem halfatn_odd
+  fixes x :: real
+  prop halfatn (-x) = -(halfatn x)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal halfatn_def sym=false
+    0: rewrite_goal real_pow_neg sym=false
+    0: cut "even 2"
+    0: rewrite_goal even_exists sym=false
+    0: inst_exists_goal "(1::nat)"
+    0: rewrite_goal mult_1_right sym=false
+    3: rewrite_goal if_P @2 sym=false
+    3: rewrite_goal real_divide_def sym=false
+    3: rewrite_goal real_mul_lneg sym=false
+  qed
+
+theorem halfatn_sgn
+  fixes x :: real
+  prop real_sgn (halfatn x) = real_sgn x
+  [hint_rewrite]
+  proof
+    0: rewrite_goal halfatn_def sym=false
+    0: rewrite_goal real_sgn_div sym=false
+    0: cut "real_sgn (sqrt (1 + x ^ (2::nat)) + 1) = 1"
+    0: rewrite_goal real_sgn_def sym=false
+    0: apply_backward_step if_P1
+    0: apply_backward_step pos_lemma2
+    3: rewrite_goal_with_prev @2
+    3: rewrite_goal real_div_1 sym=false
+  qed
+
+theorem halfatn_pos_eq
+  fixes x :: real
+  prop 0 ≤ halfatn x ⟷ 0 ≤ x
+  [hint_rewrite]
+  proof
+    0: apply_backward_step real_sgn_eq_pos
+    0: rewrite_goal halfatn_sgn sym=false
+  qed
+
+theorem halfatn_pos_lt_eq
+  fixes x :: real
+  prop 0 < halfatn x ⟷ 0 < x
+  [hint_rewrite]
+  proof
+    0: apply_backward_step real_sgn_eq_pos_lt
+    0: rewrite_goal halfatn_sgn sym=false
+  qed
+
+theorem halfatn_pos
+  fixes x :: real
+  prop 0 ≤ x ⟶ 0 ≤ halfatn x
+  [hint_backward]
+  proof
+    1: rewrite_goal halfatn_pos_eq sym=false
+  qed
+
+theorem halfatn_neg
+  fixes x :: real
+  prop x < 0 ⟶ halfatn x < 0
+  [hint_backward]
+  proof
+    1: rewrite_goal real_less_def sym=false
+    1: rewrite_goal halfatn_pos_eq sym=false
+    1: rewrite_goal real_not_lt sym=true
+    1: rewrite_goal double_neg sym=false
+  qed
+
+theorem halfatn4_pos
+  fixes x :: real
+  prop 0 ≤ x ⟶ 0 ≤ halfatn4 x
+  [hint_backward]
+  proof
+    1: rewrite_goal halfatn4_def sym=false
+    1: rewrite_goal comp_fun_def sym=false
+    1: rewrite_goal comp_fun_def sym=false
+    1: rewrite_goal comp_fun_def sym=false
+    1: apply_backward_step halfatn_pos
+    1: apply_backward_step halfatn_pos
+    1: apply_backward_step halfatn_pos
+    1: apply_backward_step halfatn_pos
+  qed
+
+theorem halfatn4_pos_eq
+  fixes x :: real
+  prop 0 ≤ halfatn4 x ⟷ 0 ≤ x
+  [hint_rewrite]
+  proof
+    0: rewrite_goal halfatn4_def sym=false
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal halfatn_pos_eq sym=false
+    0: rewrite_goal halfatn_pos_eq sym=false
+    0: rewrite_goal halfatn_pos_eq sym=false
+    0: rewrite_goal halfatn_pos_eq sym=false
+  qed
+
+theorem halfatn4_pos_lt_eq
+  fixes x :: real
+  prop 0 < halfatn4 x ⟷ 0 < x
+  [hint_rewrite]
+  proof
+    0: rewrite_goal halfatn4_def sym=false
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal halfatn_pos_lt_eq sym=false
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal halfatn_pos_lt_eq sym=false
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal halfatn_pos_lt_eq sym=false
+    0: rewrite_goal halfatn_pos_lt_eq sym=false
+  qed
+
+theorem halfatn_mono_lt
+  fixes x :: real, y :: real
+  prop x < y ⟶ halfatn x < halfatn y
+  [hint_backward]
+  proof
+    1: cut "!x. !y. 0 <= x --> x < y --> halfatn x < halfatn y"
+    1: introduction a,b
+    1.4: rewrite_goal halfatn_def sym=false
+    1.4: apply_forward_step pos_lemma2 param_x=a
+    1.5: apply_forward_step pos_lemma2 param_x=b
+    1.6: apply_forward_step rat_lemma4_lt @1.4,1.5 param_x1=a param_x2=b
+    1.7: rewrite_goal_with_prev @1.6
+    1.7: rewrite_goal real_add_ldistrib sym=false
+    1.7: rewrite_goal real_mul_rid sym=false
+    1.7: apply_backward_step real_let_add2
+    1.7: cut "!c. sqrt (1 + c ^ (2::nat)) = abs (sqrt (1 + c^ (2::nat)))"
+    1.7: introduction c
+    1.7.1: apply_forward_step pos_lemma param_x=c
+    1.7.2: apply_forward_step sqrt_pos_lt @1.7.1
+    1.7.3: apply_forward_step abs_lemma @1.7.2
+    1.7.4: rewrite_goal_with_prev @1.7.3
+    1.8: rewrite_goal_with_prev @1.7
+    1.8: cut "abs (a * sqrt (1 + b ^ (2::nat))) ≤ abs (b * sqrt (1 + a ^ (2::nat)))"
+    1.8: rewrite_goal real_le_square_abs sym=false
+    1.8: rewrite_goal real_pow_mul sym=false
+    1.8: rewrite_goal sqrt_works_gen_2 sym=false
+    1.8: cut "!c::real. abs (1 + c ^ (2::nat)) = 1 + c ^ (2::nat)"
+    1.8: introduction c
+    1.8.1: apply_backward_step abs_lemma
+    1.8.1: apply_backward_step pos_lemma
+    1.9: rewrite_goal_with_prev @1.8
+    1.9: rewrite_goal real_add_ldistrib sym=false
+    1.9: rewrite_goal real_mul_rid sym=false
+    1.9: apply_backward_step real_le_add2
+    1.9: apply_backward_step real_pow_le2
+    1.9: apply_backward_step real_lt_imp_le
+    1.11: rewrite_goal real_pow_2 sym=false
+    1.11: z3
+    1.20: rewrite_fact real_abs_mul @1.19 sym=false
+    1.21: cut "abs a =a"
+    1.21: z3 @1.2
+    1.22: cut "abs b = b"
+    1.22: z3 @1.2,1.3
+    1.23: rewrite_fact_with_prev @1.21,1.20
+    1.24: rewrite_fact_with_prev @1.22,1.23
+    2: cases "y < 0"
+    2: introduction
+    2.1: cut "!a::real. !b. a < b <--> -b < -a"
+    2.1: z3
+    2.2: rewrite_goal_with_prev @2.1
+    2.2: rewrite_goal halfatn_odd sym=true
+    2.2: apply_prev @1
+    2.2: z3 @2.0
+    2.3: rewrite_fact_with_prev @2.1,0
+    3: introduction
+    3.1: cases "x < 0"
+    3.1: introduction
+    3.1.1: apply_backward_step real_lte_trans param_y="(0::real)"
+    3.1.1: apply_backward_step halfatn_neg
+    3.1.2: apply_backward_step halfatn_pos
+    3.1.2: rewrite_fact real_not_lt @3.0 sym=false
+    3.2: introduction
+    3.2.1: apply_prev @1
+    3.2.1: rewrite_fact real_not_lt @3.2.0 sym=false
+  qed
+
+theorem halfatn_mono
+  fixes x :: real, y :: real
+  prop x ≤ y ⟶ halfatn x ≤ halfatn y
+  [hint_backward]
+  proof
+    1: rewrite_fact real_le_lt @0 sym=false
+    2: apply_backward_step disjE @1
+    2: introduction
+    2.1: apply_backward_step real_lt_imp_le
+    2.1: apply_backward_step halfatn_mono_lt @2.0
+    3: introduction
+    3.1: rewrite_goal_with_prev @3.0
+    3.1: apply_backward_step real_le_refl
+  qed
+
+theorem atn_halfatn4
+  fixes x :: real
+  prop atn x = 16 * atn (halfatn4 x)
+  [hint_rewrite]
+  proof
+    0: cut "!a::real. 16 * a = 2 * (2 * (2 * (2 * a)))"
+    0: z3
+    1: rewrite_goal_with_prev @0
+    1: rewrite_goal halfatn4_def sym=false
+    1: rewrite_goal comp_fun_def sym=false
+    1: rewrite_goal comp_fun_def sym=false
+    1: rewrite_goal comp_fun_def sym=false
+    1: rewrite_goal atn_half sym=true
+    1: rewrite_goal atn_half sym=true
+    1: rewrite_goal atn_half sym=true
+    1: rewrite_goal atn_half sym=true
+  qed
+
+theorem halfatn4_bound
+  fixes x :: real
+  prop abs (halfatn4 x) < real_inverse 8
+  [hint_backward]
+  proof
+    0: rewrite_goal halfatn4_def sym=false
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal comp_fun_def sym=false
+    0: cut "real_inverse 8 = 1/2/2/2"
+    0: rewrite_goal real_inverse_divide sym=false
+    0: real_norm
+    2: rewrite_goal_with_prev @1
+    2: apply_backward_step halfatn_half
+    2: apply_backward_step halfatn_half
+    2: apply_backward_step halfatn_half
+    2: apply_backward_step halfatn_bounds_abs
+  qed
+
+theorem atn_series_alt_sign
+  fixes x :: real
+  prop abs x < 1 ⟶ (∀n. abs (-1 ^ (n + 1) / of_nat (2 * n + 3) * x ^ (2 * n + 3)) ≤ abs (-1 ^ n / of_nat (2 * n + 1) * x ^ (2 * n + 1)) ∧ -1 ^ (n + 1) / of_nat (2 * n + 3) * x ^ (2 * n + 3) * (-1 ^ n / of_nat (2 * n + 1) * x ^ (2 * n + 1)) ≤ 0) ∧ tendsto_real (λi. -1 ^ i / of_nat (2 * i + 1) * x ^ (2 * i + 1)) 0 sequentially
+  proof
+    1: apply_backward_step conjI
+    1: introduction n
+    1.1: apply_backward_step conjI
+    1.1: rewrite_goal real_abs_mul sym=false
+    1.1: apply_backward_step real_le_mul2
+    1.1: apply_backward_step real_abs_pos
+    1.2: rewrite_goal real_abs_div sym=false
+    1.2: rewrite_goal abs_neg_one_pow sym=false
+    1.2: rewrite_goal real_divide_def sym=false
+    1.2: rewrite_goal real_abs_nat sym=false
+    1.2: rewrite_goal real_mul_lid sym=false
+    1.2: apply_backward_step real_le_inv2
+    1.2: rewrite_goal real_zero_def sym=false
+    1.2: rewrite_goal real_of_nat_lt sym=false
+    1.2: z3
+    1.5: rewrite_goal real_of_nat_le sym=false
+    1.5: z3
+    1.13: apply_backward_step real_abs_pos
+    1.14: rewrite_goal real_abs_pow sym=false
+    1.14: apply_backward_step real_pow_mono_inv
+    1.14: apply_backward_step real_abs_pos
+    1.15: apply_backward_step real_lt_imp_le
+    1.20: cut "∀a. ∀b. ∀c. ∀d. ∀e. ∀f. a / b * c * ((d / e) * f) = a * d * (c * f) / b / e"
+    1.20: rewrite_goal real_divide_def sym=false
+    1.20: rewrite_goal real_divide_def sym=false
+    1.20: z3
+    1.23: rewrite_goal_with_prev @1.22
+    1.23: rewrite_goal real_pow_add sym=true
+    1.23: cut "n + 1 + n = 2 * n + 1"
+    1.23: nat_norm
+    1.24: rewrite_goal_with_prev @1.23
+    1.24: cut "2 * n + 3 + (2 * n + 1) = 2 * (2 * n + 2)"
+    1.24: nat_norm
+    1.25: rewrite_goal_with_prev @1.24
+    1.25: rewrite_goal real_pow_add sym=false
+    1.25: rewrite_goal real_pow_pow sym=true
+    1.25: rewrite_goal real_pow_1 sym=false
+    1.25: rewrite_goal real_pow_neg sym=false
+    1.25: cut "even 2"
+    1.25: rewrite_goal even_exists sym=false
+    1.25: inst_exists_goal "(1::nat)"
+    1.25: rewrite_goal mult_1_right sym=false
+    1.28: rewrite_goal if_P @1.27 sym=false
+    1.28: rewrite_goal real_pow_one sym=false
+    1.28: rewrite_goal real_pow_one sym=false
+    1.28: rewrite_goal real_mul_lid sym=false
+    1.28: cut "!a::real. 0 <= a --> -1 * a <= 0"
+    1.28: z3
+    1.29: rewrite_goal real_divide_def sym=false
+    1.29: rewrite_goal real_divide_def sym=false
+    1.29: rewrite_goal real_mult_assoc sym=true
+    1.29: rewrite_goal real_mult_assoc sym=true
+    1.29: apply_prev @1.28
+    1.29: apply_backward_step real_le_mul
+    1.29: apply_backward_step real_pow_le
+    1.29: apply_backward_step real_le_pow_2
+    1.31: apply_backward_step real_le_mul
+    1.31: apply_backward_step real_lt_imp_le
+    1.31: apply_backward_step real_lt_inv
+    1.31: rewrite_goal real_zero_def sym=false
+    1.31: rewrite_goal real_of_nat_lt sym=false
+    1.31: z3
+    1.36: apply_backward_step real_lt_imp_le
+    1.36: apply_backward_step real_lt_inv
+    2: apply_backward_step real_series_terms_tozero param_l="atn x" param_n="(0::nat)"
+    2: rewrite_goal from_0 sym=false
+    2: apply_backward_step atn_series
+  qed
+
+theorem atn_poly_bound
+  fixes n :: nat, x :: real
+  prop abs x < 1 ⟶ abs (atn x - sum ({0..n}) (λi. -1 ^ i / of_nat (2 * i + 1) * x ^ (2 * i + 1))) ≤ abs x ^ (2 * n + 3) / of_nat (2 * n + 3)
+  [hint_backward]
+  proof
+    1: apply_forward_step alt_sign_abs_bound param_f="(λi. -1 ^ i / of_nat (2 * i + 1) * x ^ (2 * i + 1))" param_k=n+1 param_m="(0::nat)"
+    2: apply_forward_step atn_series_alt_sign @0
+    3: apply_forward_step conjD1 @2
+    4: apply_forward_step conjD2 @2
+    5: cut "!n::nat. 2 * (n + 1) + 1 = 2 * n + 3"
+    5: z3
+    6: rewrite_fact_with_prev @5,1
+    7: cut "0 < n + 1"
+    7: z3
+    8: apply_fact @6,3,4,7
+    9: apply_forward_step atn_infsum @0
+    10: rewrite_fact_with_prev @9,8
+    11: rewrite_fact nat_plus_minus @10 sym=false
+    12: rewrite_fact real_abs_mul @11 sym=false
+    13: rewrite_fact real_abs_div @12 sym=false
+    14: rewrite_fact abs_neg_one_pow @13 sym=false
+    15: rewrite_fact real_abs_nat @14 sym=false
+    16: rewrite_fact real_abs_pow @15 sym=false
+    17: cut "!a::real. !b. 1 / a * b = b / a"
+    17: rewrite_goal real_divide_def sym=false
+    17: z3
+    19: rewrite_fact_with_prev @18,16
+  qed
+
+theorem atn_poly_pos_upper_bound
+  fixes n :: nat, x :: real
+  prop even n ⟶ 0 ≤ x ⟶ x < 1 ⟶ atn x ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (2 * i + 1) * x ^ (2 * i + 1))
+  [hint_backward,hint_backward1]
+  proof
+    3: cut "abs x < 1"
+    3: z3 @1,2
+    4: cases "n=0"
+    4: introduction
+    4.1: rewrite_goal_with_prev @4.0
+    4.1: rewrite_goal sum_sing_natseg sym=false
+    4.1: rewrite_goal real_nat_power_def_1 sym=false
+    4.1: rewrite_goal mult_0_right sym=false
+    4.1: rewrite_goal nat_plus_def_1 sym=false
+    4.1: rewrite_goal real_pow_1 sym=false
+    4.1: rewrite_goal real_one_def sym=true
+    4.1: rewrite_goal real_div_1 sym=false
+    4.1: rewrite_goal real_mul_lid sym=false
+    4.1: apply_backward_step atn_le_x
+    5: introduction
+    5.1: apply_forward_step atn_poly_bound param_n=n-1 param_x=x
+    5.2: apply_fact @5.1,3
+    5.3: cut "0 < n"
+    5.3: apply_backward_step le_1_1 @5.0
+    5.4: apply_forward_step lt_imp_le @5.3
+    5.5: apply_forward_step sum_clauses_right @5.3,5.4 param_f="(λi. -1 ^ i / of_nat (2 * i + 1) * x ^ (2 * i + 1))"
+    5.6: rewrite_goal_with_prev @5.5
+    5.6: cut "-1 ^ n / of_nat (2 * n + 1) * x ^ (2 * n + 1) = abs x ^ (2 * (n - 1) + 3) / of_nat (2 * (n - 1) + 3)"
+    5.6: rewrite_goal real_pow_neg sym=false
+    5.6: rewrite_goal if_P @0 sym=false
+    5.6: rewrite_goal real_pow_one sym=false
+    5.6: cut "2 * (n - 1) + 3 = 2 * n + 1"
+    5.6: z3 @5.0
+    5.7: rewrite_goal_with_prev @5.6
+    5.7: cut "abs x = x" @1
+    5.7: z3 @1
+    5.8: rewrite_goal_with_prev @5.7
+    5.8: rewrite_goal real_divide_def sym=false
+    5.8: real_norm
+    5.15: rewrite_goal_with_prev @5.14
+    5.15: cut "∀a::real. ∀b. ∀c. abs (a - b) ≤ c ⟶ a ≤ b + c"
+    5.15: z3
+    5.16: apply_prev @5.15
+  qed
+
+theorem atn_poly_pos_lower_bound
+  fixes n :: nat, x :: real
+  prop odd n ⟶ 0 ≤ x ⟶ x < 1 ⟶ sum ({0..n}) (λi. -1 ^ i / of_nat (2 * i + 1) * x ^ (2 * i + 1)) ≤ atn x
+  [hint_backward,hint_backward1]
+  proof
+    3: cut "abs x < 1"
+    3: z3 @1,2
+    4: cut "~(n=0)"
+    4: apply_backward_step contrapositive @0
+    4: rewrite_goal double_neg sym=false
+    4: introduction
+    4.1: rewrite_goal_with_prev @4.0
+    4.1: rewrite_goal odd_def_1 sym=false
+    4.1: z3
+    7: apply_forward_step atn_poly_bound param_n=n-1 param_x=x
+    8: apply_fact @7,3
+    9: cut "0 < n"
+    9: apply_backward_step le_1_1 @6
+    10: apply_forward_step lt_imp_le @9
+    11: apply_forward_step sum_clauses_right @9,10 param_f="(λi. -1 ^ i / of_nat (2 * i + 1) * x ^ (2 * i + 1))"
+    12: rewrite_goal_with_prev @11
+    12: cut "-1 ^ n / of_nat(2 * n + 1) * x ^ (2 * n + 1) = -(abs x ^ (2 * (n - 1) + 3) / of_nat(2 * (n - 1) + 3))"
+    12: rewrite_goal real_pow_neg sym=false
+    12: rewrite_fact not_even @0 sym=true
+    13: rewrite_goal if_not_P @12 sym=false
+    13: rewrite_goal real_pow_one sym=false
+    13: cut "abs x = x"
+    13: z3 @1
+    14: rewrite_goal_with_prev @13
+    14: cut "2 * (n - 1) + 3 = 2 * n + 1"
+    14: z3 @6
+    15: rewrite_goal_with_prev @14
+    15: rewrite_goal real_divide_def sym=false
+    15: real_norm
+    22: rewrite_goal_with_prev @21
+    22: cut "!a::real. !b. !c. abs (a-b)<= c --> b + -c <= a"
+    22: z3
+    23: apply_prev @22
+  qed
+
+theorem atn_halfatn4_pos_upper_bound
+  fixes n :: nat, x :: real
+  prop even n ⟶ 0 ≤ x ⟶ atn (halfatn4 x) ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (2 * i + 1) * halfatn4 x ^ (2 * i + 1))
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step atn_poly_pos_upper_bound
+    2: apply_backward_step halfatn4_pos
+    3: cut "!x. abs x < real_inverse 8 ⟶ x < 1"
+    3: z3
+    4: apply_prev @3
+    4: apply_backward_step halfatn4_bound
+  qed
+
+theorem atn_halfatn4_pos_lower_bound
+  fixes n :: nat, x :: real
+  prop odd n ⟶ 0 ≤ x ⟶ sum ({0..n}) (λi. -1 ^ i / of_nat (2 * i + 1) * halfatn4 x ^ (2 * i + 1)) ≤ atn (halfatn4 x)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step atn_poly_pos_lower_bound
+    2: apply_backward_step halfatn4_pos
+    3: cut "!x. abs x < real_inverse (8) --> x < 1"
+    3: z3
+    4: apply_prev @3
+    4: apply_backward_step halfatn4_bound
+  qed
+
+theorem real_taylor_atn_halfatn4
+  fixes n :: nat, x :: real
+  prop abs (atn (halfatn4 x) - sum ({0..n}) (λj. -1 ^ j * halfatn4 x ^ (2 * j + 1) / of_nat (2 * j + 1))) ≤ real_inverse (8 ^ (2 * n + 3) * of_nat (2 * n + 3))
+  [hint_backward]
+  proof
+    0: apply_forward_step halfatn4_bound param_x=x
+    1: apply_backward_step real_le_trans param_y="abs (halfatn4 x) ^ (2 * n + 3) / of_nat(2 * n + 3)"
+    1: cut "abs (halfatn4 x) < 1"
+    1: apply_backward_step real_lt_trans param_y="real_inverse 8"
+    1: z3
+    3: apply_forward_step atn_poly_bound @2 param_n=n
+    4: cut "!a::real. !b. !c. a * b / c = a / c * b"
+    4: rewrite_goal real_divide_def sym=false
+    4: z3
+    6: rewrite_goal_with_prev @5
+    7: rewrite_goal real_inv_mul sym=false
+    7: rewrite_goal real_divide_def sym=false
+    7: rewrite_goal real_mult_comm sym=false
+    7: apply_backward_step real_le_lmul
+    7: apply_backward_step real_lt_imp_le
+    7: apply_backward_step real_lt_inv
+    7: rewrite_goal real_zero_def sym=false
+    7: rewrite_goal real_of_nat_lt sym=false
+    7: z3
+    12: rewrite_goal real_pow_inv sym=true
+    12: apply_backward_step real_pow_le2
+    12: apply_backward_step real_abs_pos
+    13: apply_backward_step real_lt_imp_le
+  qed

@@ -69,8 +69,9 @@ def testSteps(self, thy_name, thm_name, *, no_gaps=True, print_proof=False, \
             print("%20s %5d %5d %5d" % (val['name'], total, num_found, total - num_found))
         
     basic.load_theory(thy_name, limit=('thm', thm_name))
-    with open('./library/' + thy_name + '.json', 'r', encoding='utf-8') as f:
-        f_data = json.load(f)
+    from format import pyhol
+    with open('./library/' + thy_name + '.pyhol', 'r', encoding='utf-8') as f:
+        f_data = pyhol.parse_pyhol(f.read())
         for val in f_data['content']:
             if val['ty'] == 'thm' and val['name'] == thm_name:
                 test_val(val)

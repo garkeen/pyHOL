@@ -1,6 +1,6 @@
 # Author: Bohua Zhan
 
-"""Output theory to JSON file."""
+"""Output theory to .pyhol file."""
 
 import json
 
@@ -9,6 +9,7 @@ from kernel import proof
 from logic import basic
 from server import items
 from syntax import printer
+from format import pyhol
 
 class JSONTheory():
     def __init__(self, name, imports, description):
@@ -54,5 +55,5 @@ class JSONTheory():
             "description": self.description,
             "content": self.content
         }
-        with open('library/' + self.name + '.json', 'w+', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, ensure_ascii=False, sort_keys=True)
+        with open('library/' + self.name + '.pyhol', 'w+', encoding='utf-8') as f:
+            f.write(pyhol.export_pyhol(data))

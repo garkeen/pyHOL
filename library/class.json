@@ -1,8 +1,0 @@
-{
-    "content": [],
-    "description": "Extension, classical reasoning with AC starts now! Refer class.ml from HOL Light.",
-    "imports": [
-        "logic"
-    ],
-    "name": "class"
-}

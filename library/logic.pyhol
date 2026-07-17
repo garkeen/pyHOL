@@ -1,0 +1,754 @@
+theory logic
+imports logic_base
+description "Basic results in logic"
+
+theorem conj_comm
+  fixes A :: bool, B :: bool
+  prop A ∧ B ⟷ B ∧ A
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step conjI
+    0.1: apply_backward_step conjD2 @0.0
+    0.2: apply_backward_step conjD1 @0.0
+    1: introduction
+    1.1: apply_backward_step conjI
+    1.1: apply_backward_step conjD2 @1.0
+    1.2: apply_backward_step conjD1 @1.0
+  qed
+
+theorem disj_comm
+  fixes A :: bool, B :: bool
+  prop A ∨ B ⟷ B ∨ A
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step disjE @0.0
+    0.1: introduction
+    0.1.1: apply_backward_step disjI2 @0.1.0
+    0.2: introduction
+    0.2.1: apply_backward_step disjI1 @0.2.0
+    1: introduction
+    1.1: apply_backward_step disjE @1.0
+    1.1: introduction
+    1.1.1: apply_backward_step disjI2 @1.1.0
+    1.2: introduction
+    1.2.1: apply_backward_step disjI1 @1.2.0
+  qed
+
+theorem conj_assoc
+  fixes A :: bool, B :: bool, C :: bool
+  prop A ∧ B ∧ C ⟷ (A ∧ B) ∧ C
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction ""
+    0.1: apply_backward_step conjI
+    0.1: apply_backward_step conjI
+    0.1: apply_backward_step conjD1 @0.0
+    0.2: apply_forward_step conjD2 @0.0
+    0.3: apply_backward_step conjD1 @0.2
+    0.5: apply_backward_step conjD2 @0.2
+    1: introduction ""
+    1.1: apply_backward_step conjI
+    1.1: apply_forward_step conjD1 @1.0
+    1.2: apply_backward_step conjD1 @1.1
+    1.3: apply_backward_step conjI
+    1.3: apply_backward_step conjD2 @1.1
+    1.4: apply_backward_step conjD2 @1.0
+  qed
+
+theorem disj_assoc
+  fixes A :: bool, B :: bool, C :: bool
+  prop A ∨ B ∨ C ⟶ (A ∨ B) ∨ C
+  proof
+    1: apply_backward_step disjE @0
+    1: introduction ""
+    1.1: apply_backward_step disjI1
+    1.1: apply_backward_step disjI1 @1.0
+    2: introduction ""
+    2.1: apply_backward_step disjE @2.0
+    2.1: introduction ""
+    2.1.1: apply_backward_step disjI1
+    2.1.1: apply_backward_step disjI2 @2.1.0
+    2.2: introduction ""
+    2.2.1: apply_backward_step disjI2 @2.2.0
+  qed
+
+theorem disj_assoc_eq
+  fixes A :: bool, B :: bool, C :: bool
+  prop A ∨ B ∨ C ⟷ (A ∨ B) ∨ C
+  [hint_rewrite,hint_rewrite_sym]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step disj_assoc
+    1: introduction
+    1.1: apply_backward_step disjE @1.0
+    1.1: introduction
+    1.1.1: apply_backward_step disjE @1.1.0
+    1.1.1: introduction
+    1.1.1.1: apply_backward_step disjI1
+    1.1.2: introduction
+    1.1.2.1: apply_backward_step disjI2
+    1.1.2.1: apply_backward_step disjI1
+    1.2: introduction
+    1.2.1: apply_backward_step disjI2
+    1.2.1: apply_backward_step disjI2
+  qed
+
+theorem double_neg
+  fixes A :: bool
+  prop ¬¬A ⟷ A
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI @
+    0: introduction "" @
+    0.1: cases A @
+    0.2: introduction "" @
+    0.2.1: apply_backward_step negE_gen @0.0
+    1: introduction "" @
+    1.1: apply_backward_step negI @
+    1.1: introduction "" @
+    1.1.1: apply_backward_step negE @1.1.0
+  qed
+
+theorem disj_conv_imp
+  fixes A :: bool, B :: bool
+  prop ¬A ∨ B ⟷ (A ⟶ B)
+  proof
+    0: apply_backward_step iffI
+    0: introduction ""
+    0.2: apply_backward_step disjE @0.0
+    0.2: introduction ""
+    0.2.1: apply_backward_step negE_gen @0.2.0
+    1: introduction ""
+    1.1: cases A
+    1.1: introduction ""
+    1.1.1: apply_backward_step disjI2
+    1.1.1: apply_prev @1.0
+    1.2: introduction ""
+    1.2.1: apply_backward_step disjI1
+  qed
+
+theorem ex_conj_distrib
+  fixes A :: 'a ⇒ bool, B :: 'a ⇒ bool
+  prop (∃x. A x ∧ B x) ⟶ (∃x. A x) ∧ (∃x. B x)
+  [hint_backward]
+  proof
+    1: exists_elim x @0
+    3: apply_backward_step conjI
+    3: apply_forward_step conjD1 @2
+    4: apply_backward_step exI @3
+    5: apply_forward_step conjD2 @2
+    6: apply_backward_step exI @5
+  qed
+
+theorem all_conj_distrib
+  fixes A :: 'a ⇒ bool, B :: 'a ⇒ bool, x :: 'a
+  prop (∀x. A x ∧ B x) ⟶ (∀x. A x) ∧ (∀x. B x)
+  [hint_rewrite]
+  proof
+    1: apply_backward_step conjI
+    1: introduction x
+    1.1: forall_elim x @0
+    1.2: apply_backward_step conjD1 @1.1
+    2: introduction x
+    2.1: forall_elim x @0
+    2.2: apply_backward_step conjD2 @2.1
+  qed
+
+theorem conj_disj_distribL1
+  fixes A :: bool, B :: bool, C :: bool
+  prop A ∧ (B ∨ C) ⟷ A ∧ B ∨ A ∧ C
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction ""
+    0.1: apply_forward_step conjD1 @0.0
+    0.2: apply_forward_step conjD2 @0.0
+    0.3: apply_backward_step disjE @0.2
+    0.3: introduction ""
+    0.3.1: apply_backward_step disjI1
+    0.3.1: apply_backward_step conjI @0.1
+    0.4: introduction ""
+    0.4.1: apply_backward_step disjI2
+    0.4.1: apply_backward_step conjI @0.1
+    1: introduction ""
+    1.1: apply_backward_step disjE @1.0
+    1.1: introduction ""
+    1.1.1: apply_backward_step conjI
+    1.1.1: apply_backward_step conjD1 @1.1.0
+    1.1.2: apply_backward_step disjI1
+    1.1.2: apply_backward_step conjD2 @1.1.0
+    1.2: introduction ""
+    1.2.1: apply_backward_step conjI
+    1.2.1: apply_backward_step conjD1 @1.2.0
+    1.2.2: apply_backward_step disjI2
+    1.2.2: apply_backward_step conjD2 @1.2.0
+  qed
+
+theorem disj_conj_distribL1
+  fixes A :: bool, B :: bool, C :: bool
+  prop A ∨ B ∧ C ⟷ (A ∨ B) ∧ (A ∨ C)
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step disjE @0.0
+    0.1: introduction
+    0.1.1: apply_backward_step conjI
+    0.1.1: apply_backward_step disjI1
+    0.1.2: apply_backward_step disjI1
+    0.2: introduction
+    0.2.1: apply_forward_step conjD1 @0.2.0
+    0.2.2: apply_forward_step conjD2 @0.2.0
+    0.2.3: apply_backward_step conjI
+    0.2.3: apply_backward_step disjI2
+    0.2.4: apply_backward_step disjI2
+    1: introduction
+    1.1: apply_forward_step conjD1 @1.0
+    1.2: apply_forward_step conjD2 @1.0
+    1.3: apply_backward_step disjE @1.1
+    1.3: introduction
+    1.3.1: apply_backward_step disjI1
+    1.4: introduction
+    1.4.1: apply_backward_step disjE @1.2
+    1.4.1: introduction
+    1.4.1.1: apply_backward_step disjI2
+    1.4.1.1: apply_backward_step conjI
+  qed
+
+theorem disj_conj_distribL2
+  fixes A :: bool, B :: bool, C :: bool
+  prop A ∧ B ∨ C ⟷ (A ∨ C) ∧ (B ∨ C)
+
+theorem de_morgan_thm1
+  fixes A :: bool, B :: bool
+  prop ¬(A ∧ B) ⟷ ¬A ∨ ¬B
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: cut "A ∧ B ⟶ A"
+    0: introduction
+    0.1: apply_backward_step conjD1 @0.0
+    1: cut "¬A ⟶ ¬(A ∧ B)"
+    1: introduction
+  qed
+
+theorem de_morgan_thm2
+  fixes A :: bool, B :: bool
+  prop ¬(A ∨ B) ⟷ ¬A ∧ ¬B
+  [hint_rewrite]
+  proof
+    0: z3
+  qed
+
+theorem not_imp
+  fixes A :: bool, B :: bool
+  prop ¬(A ⟶ B) ⟷ A ∧ ¬B
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step contrapositive @0.0
+    0.1: introduction
+    0.1.1: rewrite_goal double_neg sym=false
+    0.1.1: introduction
+  qed
+
+theorem eq_true
+  fixes A :: bool
+  prop A ⟷ A ⟷ true
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.0: apply_backward_step trueI
+    0.2: introduction
+    1: introduction
+    1.1: rewrite_goal_with_prev @1.0
+    1.1: apply_backward_step trueI
+  qed
+
+theorem eq_false
+  fixes A :: bool
+  prop ¬A ⟷ A ⟷ false
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step negE param_A=A
+    0.2: introduction
+    0.2.1: apply_resolve_step not_false_res @0.2.0
+    1: introduction
+    1.1: apply_backward_step negI
+    1.1: introduction
+    1.1.1: rewrite_fact_with_prev @1.0,1.1.0
+  qed
+
+theorem not_true
+  prop ¬true ⟷ false
+
+theorem not_false
+  prop ¬false ⟷ true
+
+theorem pierce
+  fixes A :: bool, B :: bool
+  prop ((A ⟶ B) ⟶ A) ⟶ A
+  proof
+    1: cases A @
+    2: introduction "" @
+    2.1: apply_prev @0
+    2.1: introduction "" @
+    2.1.1: apply_backward_step negE_gen @2.0
+  qed
+
+theorem not_all
+  fixes P :: 'a ⇒ bool
+  prop ¬(∀x. P x) ⟷ (∃x. ¬(P x))
+  [hint_rewrite]
+  proof
+    0: z3
+  qed
+
+theorem not_exists
+  fixes P :: 'a ⇒ bool
+  prop ¬(∃x. P x) ⟷ (∀x. ¬(P x))
+  [hint_rewrite]
+  proof
+    0: z3
+  qed
+
+theorem right_or_exists_thm
+  fixes P :: bool, Q :: 'a ⇒ bool
+  prop P ∨ (∃x. Q x) ⟷ (∃x. P ∨ Q x)
+  [hint_rewrite,hint_rewrite_sym]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step disjE @0.0
+    0.1: introduction
+    0.1.1: new_var a 'a
+    0.1.2: inst_exists_goal a
+    0.1.2: apply_backward_step disjI1
+    0.2: introduction
+    0.2.1: exists_elim x @0.2.0
+    0.2.3: apply_backward_step exI param_a=x
+    0.2.3: apply_backward_step disjI2
+    1: introduction
+    1.1: exists_elim x @1.0
+    1.3: apply_backward_step disjE @1.2
+    1.3: introduction
+    1.3.1: apply_backward_step disjI1
+    1.4: introduction
+    1.4.1: apply_backward_step disjI2
+    1.4.1: apply_backward_step exI param_a=x
+  qed
+
+theorem left_exists_and_thm
+  fixes P :: 'a ⇒ bool, Q :: bool
+  prop (∃x. P x ∧ Q) ⟷ (∃x1. P x1) ∧ Q
+  [hint_rewrite,hint_rewrite_sym]
+  proof
+    0: z3
+  qed
+
+theorem left_imp_exists_thm
+  fixes P :: 'a ⇒ bool, Q :: bool
+  prop ((∃x. P x) ⟶ Q) ⟷ (∀x. P x ⟶ Q)
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: introduction x
+    0.1.2: apply_prev @0.0
+    0.1.2: inst_exists_goal x
+    1: introduction
+    1.2: exists_elim x @1.1
+    1.4: apply_prev @1.0 param_x=x
+  qed
+
+theorem left_imp_forall_thm
+  fixes P :: 'a ⇒ bool, Q :: bool
+  prop ((∀x. P x) ⟶ Q) ⟷ (∃x. P x ⟶ Q)
+  [hint_rewrite]
+  proof
+    0: cut "!A. !B. (A <--> B) <--> (~A <--> ~B)"
+    0: z3
+    1: rewrite_goal_with_prev @0
+    1: rewrite_goal not_exists sym=false
+    1: rewrite_goal not_imp sym=false
+    1: z3
+  qed
+
+theorem left_exists_imp_thm
+  fixes P :: 'a ⇒ bool, Q :: bool
+  prop (∃x. P x ⟶ Q) ⟷ ((∀x. P x) ⟶ Q)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal left_imp_forall_thm sym=false
+  qed
+
+theorem right_imp_exists_thm
+  fixes P :: bool, Q :: 'a ⇒ bool
+  prop (P ⟶ (∃x. Q x)) ⟷ (∃x. P ⟶ Q x)
+  [hint_rewrite]
+  proof
+    0: z3
+  qed
+
+theorem right_exists_imp_thm
+  fixes P :: bool, Q :: 'a ⇒ bool
+  prop (∃x. P ⟶ Q x) ⟷ (P ⟶ (∃x. Q x))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal right_imp_exists_thm sym=false
+  qed
+
+theorem drinker
+  fixes P :: 'a ⇒ bool
+  prop ∃x. P x ⟶ (∀x1. P x1)
+  proof
+    0: cases "!x. P x"
+    0: introduction ""
+    0.1: new_var x 'a
+    0.2: inst_exists_goal x
+    0.2: introduction ""
+    1: introduction ""
+    1.1: rewrite_fact not_all @1.0 sym=false
+    1.2: exists_elim x @1.1
+    1.4: inst_exists_goal x
+    1.4: introduction ""
+    1.4.1: apply_backward_step negE_gen @1.3
+  qed
+
+theorem test
+  fixes a :: 'a, b :: 'a, p :: 'a ⇒ bool, q :: 'a ⇒ bool
+  prop p a ∨ q b ⟶ (∀x. p x ⟶ q x) ⟶ (∃x. q x)
+  proof
+    2: apply_backward_step disjE @0
+    2: introduction
+    2.1: apply_fact @1,2.0
+    2.2: apply_backward_step exI @2.1
+    3: introduction
+    3.1: apply_backward_step exI @3.0
+  qed
+
+theorem forall_elim
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop (∀x. P x) ⟶ P a
+  proof
+    1: apply_prev @0
+  qed
+
+theorem quant_intro_forall
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, x :: 'a, y :: 'a
+  prop P = Q ⟶ (∀x1. P x1) ⟷ (∀x2. Q x2)
+  proof
+    1: rewrite_goal_with_prev @0
+  qed
+
+theorem quant_intro_exists
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
+  prop P = Q ⟶ (∃x1. P x1) ⟷ (∃x2. Q x2)
+  proof
+    1: rewrite_goal_with_prev @0
+  qed
+
+theorem skolem_thm
+  fixes P :: 'a ⇒ 'b ⇒ bool
+  prop (∀x. ∃y. P x y) ⟷ (∃y. ∀x. P x (y x))
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: inst_exists_goal "(%x. Some (P x))"
+    0.1: introduction x
+    0.1.1: forall_elim x @0.0
+    0.1.2: exists_elim y @0.1.1
+    0.1.4: apply_backward_step some_AX @0.1.3
+    1: introduction
+    1.1: exists_elim y @1.0
+    1.3: introduction x
+    1.3.1: inst_exists_goal "y x"
+    1.3.1: apply_prev @1.2
+  qed
+
+theorem skolem_thm_gen
+  fixes P :: 'a ⇒ bool, R :: 'a ⇒ 'b ⇒ bool
+  prop (∀x. P x ⟶ (∃y. R x y)) ⟷ (∃f. ∀x. P x ⟶ R x (f x))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal right_imp_exists_thm sym=false
+    0: rewrite_goal skolem_thm sym=false
+  qed
+
+theorem iff_conv_conj_disj
+  fixes A :: bool, B :: bool
+  prop (A ⟷ B) ⟷ (A ∨ ¬B) ∧ (¬A ∨ B)
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: cases A
+    0.1: introduction
+    0.1.1: apply_backward_step conjI
+    0.1.1: apply_backward_step disjI1
+    0.1.2: apply_backward_step disjI2
+    0.1.2: rewrite_fact_with_prev @0.0,0.1.0
+    0.2: introduction
+    0.2.1: apply_backward_step conjI
+    0.2.1: apply_backward_step disjI2
+    0.2.1: rewrite_fact_with_prev @0.0,0.2.0
+    0.2.3: apply_backward_step disjI1
+    1: introduction
+    1.1: apply_forward_step conjD1 @1.0
+    1.2: apply_forward_step conjD2 @1.0
+    1.3: apply_backward_step iffI
+    1.3: introduction
+    1.3.1: apply_backward_step disjE @1.2
+    1.3.1: introduction
+    1.3.1.1: apply_backward_step negE_gen @1.3.1.0,1.3.0
+    1.4: introduction
+    1.4.1: apply_backward_step disjE @1.1
+    1.4.2: introduction
+    1.4.2.1: apply_backward_step negE_gen @1.4.2.0,1.4.0
+  qed
+
+theorem eq_imp_false
+  fixes A :: 'a, B :: 'a
+  prop (A = A ⟶ false) ⟶ false
+  [hint_rewrite]
+  proof
+    1: apply_prev @0
+    1: apply_backward_step eq_refl
+  qed
+
+theorem disj_false_right
+  fixes A :: bool
+  prop A ∨ false ⟷ A
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step disjE @0.0
+    0.2: introduction
+    0.2.1: apply_resolve_step not_false_res @0.2.0
+    1: introduction
+    1.1: apply_backward_step disjI1
+  qed
+
+theorem disj_false_left
+  fixes A :: bool
+  prop false ∨ A ⟷ A
+  [hint_rewrite]
+  proof
+    0: rewrite_goal disj_comm sym=false
+    0: rewrite_goal disj_false_right sym=""
+  qed
+
+theorem force_disj_true1
+  fixes A :: bool, B :: bool
+  prop A ∨ B ⟶ ¬B ⟶ A
+  [hint_backward1,hint_forward]
+  proof
+    2: apply_backward_step disjE @0
+    3: introduction
+    3.1: apply_backward_step negE_gen @1,3.0
+  qed
+
+theorem force_disj_true2
+  fixes A :: bool, B :: bool
+  prop A ∨ ¬B ⟶ B ⟶ A
+  [hint_backward1,hint_forward]
+  proof
+    2: apply_backward_step force_disj_true1 @0
+    2: rewrite_goal double_neg sym=false
+  qed
+
+theorem eq_mean_true
+  fixes A :: 'a
+  prop A = A ⟷ true
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step trueI
+    1: introduction
+    1.1: apply_backward_step eq_refl
+  qed
+
+theorem conj_false_right
+  fixes P :: bool
+  prop false ∧ P ⟷ false
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step conjD1 @0.0
+    1: introduction
+    1.1: apply_resolve_step not_false_res @1.0
+  qed
+
+theorem conj_false_left
+  fixes P :: bool
+  prop P ∧ false ⟷ false
+  proof
+    0: rewrite_goal conj_comm sym=false
+    0: rewrite_goal conj_false_right sym=false
+  qed
+
+theorem imply_neg
+  fixes P :: bool, Q :: bool
+  prop (P ⟶ Q) ⟷ (¬Q ⟶ ¬P)
+  proof
+    0: apply_backward_step iffI
+    0: cut "(P ⟶ Q) ⟷ (¬P ∨ Q)"
+    0: rewrite_goal disj_conv_imp sym=True
+    1: cut "(P ⟶ Q) ⟶ (¬P ∨ Q)" @0
+    3: cut "¬P ∨ Q ⟷ Q ∨ ¬P"
+  qed
+
+theorem not_or_elim1
+  fixes p :: bool, q :: bool
+  prop ¬(p ∨ q) ⟶ ¬p
+
+theorem not_or_elim2
+  fixes p :: bool, q :: bool
+  prop ¬(p ∨ q) ⟶ ¬q
+
+theorem conj_true_left
+  fixes P :: bool
+  prop true ∧ P ⟷ P
+
+theorem conj_true_right
+  fixes P :: bool
+  prop P ∧ true ⟷ P
+
+theorem disj_true_left
+  fixes P :: bool
+  prop true ∨ P ⟷ true
+
+theorem disj_true_right
+  fixes P :: bool
+  prop P ∨ true ⟷ true
+
+theorem conj_pos_neg
+  fixes P :: bool
+  prop P ∧ ¬P ⟷ false
+
+theorem conj_neg_pos
+  fixes P :: bool
+  prop ¬P ∧ P ⟷ false
+
+theorem conj_same_atom
+  fixes P :: bool
+  prop P ∧ P ⟷ P
+
+theorem disj_pos_neg
+  fixes P :: bool
+  prop P ∨ ¬P ⟷ true
+
+theorem disj_neg_pos
+  fixes P :: bool
+  prop ¬P ∨ P ⟷ true
+
+theorem disj_same_atom
+  fixes P :: bool
+  prop P ∨ P ⟷ P
+
+theorem neg_iff
+  fixes P :: bool, Q :: bool
+  prop ¬(P ⟷ Q) ⟷ ¬P ⟷ Q
+
+theorem neg_disj_pos_conj_other
+  fixes P :: bool, Q :: bool
+  prop ¬P ∨ Q ∧ P ⟷ ¬P ∨ Q
+
+theorem neg_iff_both_sides
+  fixes P :: bool, Q :: bool
+  prop (P ⟷ Q) ⟷ ¬P ⟷ ¬Q
+
+theorem pos_eq_neg
+  fixes P :: bool
+  prop (P ⟷ ¬P) ⟷ false
+
+theorem neg_eq_pos
+  fixes P :: bool
+  prop (¬P ⟷ P) ⟷ false
+
+theorem ite_to_disj
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (if P then Q else R) ⟷ P ∧ Q ∨ ¬P ∧ R
+
+theorem ite_eq_value
+  fixes P :: bool, x :: 'a, y :: 'a, z :: 'a
+  prop (if P then x else y) = z ⟷ P ∧ x = z ∨ ¬P ∧ y = z
+
+theorem ite_cond_disj_to_conj
+  fixes P :: bool, Q :: bool, x :: 'a, y :: 'a
+  prop (if P ∨ Q then x else y) = (if ¬P ∧ ¬Q then y else x)
+
+theorem norm_neg_equality
+  fixes P :: bool, Q :: bool
+  prop (¬P ⟷ Q) ⟷ P ⟷ ¬Q
+
+theorem ite_elim_else_if
+  fixes P :: bool, Q :: bool, x :: 'a, y :: 'a
+  prop (if P then x else if Q then x else y) = (if P ∨ Q then x else y)
+
+theorem conj_extend_exists
+  fixes P :: bool, Q :: 'a ⇒ bool, R :: 'a ⇒ bool, t :: 'a
+  prop P ⟶ (∃t. Q t ∧ R t) ⟶ (∃t. Q t ∧ P ∧ R t)
+
+theorem exists_forall
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop (∃a. P a) ⟷ ¬(∀a. ¬(P a))
+
+theorem veriT_not_implies1
+  fixes P :: bool, Q :: bool
+  prop ¬(P ⟶ Q) ⟶ P
+
+theorem veriT_not_implies2
+  fixes P :: bool, Q :: bool
+  prop ¬(P ⟶ Q) ⟶ ¬Q
+
+theorem conj_extend_exists1
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, R :: bool
+  prop R ⟶ (∃t. Q t ⟶ P t) ⟶ (∃t. Q t ⟶ R ∧ P t)
+
+theorem implies_or_assm
+  fixes A :: bool, B :: bool
+  prop (A ⟶ B) ∨ A
+
+theorem implies_or_neg_concl
+  fixes A :: bool, B :: bool
+  prop (A ⟶ B) ∨ ¬B
+
+theorem forall_exists
+  fixes P :: 'a ⇒ bool, t :: 'a
+  prop (∀t. P t) ⟷ ¬(∃t1. ¬(P t1))
+
+theorem imp_disj_eq
+  fixes A :: bool, B :: bool
+  prop (A ⟶ B) ⟷ ¬A ∨ B
+
+theorem eq_implies1
+  fixes A :: bool, B :: bool
+  prop A ⟷ B ⟶ A ⟶ B
+
+def Let :: 'a ⇒ ('a ⇒ 'b) ⇒ 'b = Let s f = f s
+
+def xor :: bool ⇒ bool ⇒ bool = xor A B ⟷ A ∧ ¬B ∨ ¬A ∧ B
+
+theorem disjI1_syllogism
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (P ∨ Q ⟶ R) ⟶ P ⟶ R
+
+theorem disjI2_syllogism
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (P ∨ Q ⟶ R) ⟶ Q ⟶ R

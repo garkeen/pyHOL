@@ -189,7 +189,7 @@ class Axiom(Item):
 
             # theorem does not already exist
             if theory.thy.has_theorem(self.name):
-                raise ItemException("Theorem %s: theorem already exists")
+                raise ItemException("Theorem %s: theorem already exists" % self.name)
 
             # prop should not contain extra variables
             self_vars = set(self.vars.keys())
@@ -233,11 +233,17 @@ class Axiom(Item):
         }
 
     def parse_edit(self, edit_data):
-        vars = dict()
-        for var_decl in edit_data['vars'].split('\n'):
-            if var_decl.strip():
-                nm, T = [s.strip() for s in var_decl.split('::')]
-                vars[nm] = T
+        raw_vars = edit_data.get('vars', {})
+        if isinstance(raw_vars, dict):
+            # Already in dict format (from export_json round-trip)
+            vars = {nm: T for nm, T in raw_vars.items() if nm}
+        else:
+            # String format: "P :: bool\nQ :: nat"
+            vars = dict()
+            for var_decl in raw_vars.split('\n'):
+                if var_decl.strip():
+                    nm, T = [s.strip() for s in var_decl.split('::')]
+                    vars[nm] = T
         edit_data['vars'] = vars
         self.parse(edit_data)
 
@@ -260,23 +266,15 @@ class Theorem(Axiom):
         super().__init__()
         self.ty = 'thm'
         self.steps = None
-        self.proof = None
-        self.num_gaps = None
 
     def __eq__(self, other):
-        return super().__eq__(other) and self.steps == other.steps and self.proof == other.proof and \
-            self.num_gaps == other.num_gaps
+        return super().__eq__(other) and self.steps == other.steps
 
     def parse(self, data):
         super().parse(data)
 
-        # Just store the proof information without processing them
         if 'steps' in data:
             self.steps = data['steps']
-        if 'proof' in data:
-            self.proof = data['proof']
-        if 'num_gaps' in data:
-            self.num_gaps = data['num_gaps']
 
     def get_extension(self):
         return super().get_extension()
@@ -290,10 +288,6 @@ class Theorem(Axiom):
         res = dict()
         if self.steps:
             res['steps'] = self.steps
-        if self.proof:
-            res['proof'] = self.proof
-        if self.num_gaps is not None:
-            res['num_gaps'] = self.num_gaps
         return res
 
     def parse_edit(self, edit_data):
@@ -304,10 +298,6 @@ class Theorem(Axiom):
         res['ty'] = 'thm'
         if self.steps:
             res['steps'] = self.steps
-        if self.proof:
-            res['proof'] = self.proof
-        if self.num_gaps is not None:
-            res['num_gaps'] = self.num_gaps
         return res
 
 class Definition(Item):

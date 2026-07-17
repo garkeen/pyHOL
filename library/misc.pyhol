@@ -1,0 +1,365 @@
+theory misc
+imports floor, card
+description "Various convenient background stuff. Refer to misc.ml from HOL Light."
+
+theorem abs_sqare_lt_1
+  fixes x :: real
+  prop x ^ (2::nat) < 1 ⟷ abs x < 1
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_one_def sym=false
+    0: rewrite_goal real_abs_nat sym=true
+    0: rewrite_goal real_lt_square_abs sym=false
+    0: rewrite_goal real_abs_nat sym=false
+    0: rewrite_goal real_one_def sym=true
+    0: rewrite_goal real_pow_one sym=false
+  qed
+
+theorem real_lt_between
+  fixes a :: real, b :: real
+  prop a < b ⟷ (∃x. a < x ∧ x < b)
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: inst_exists_goal "(a+b)/2"
+    0.1: z3 @0.0
+    1: z3
+  qed
+
+def is_realinterval :: real set ⇒ bool = is_realinterval s ⟷ (∀a. ∀b. ∀c. a ∈ s ⟶ b ∈ s ⟶ a ≤ c ⟶ c ≤ b ⟶ c ∈ s) [hint_rewrite]
+
+theorem is_realinterval_empty
+  prop is_realinterval ∅
+  [hint_backward]
+  proof
+    0: rewrite_goal is_realinterval_def sym=false
+    0: introduction a,b,c
+    0.7: apply_resolve_step member_empty @0.3
+  qed
+
+theorem is_realinterval_union
+  fixes s :: real set, t :: real set
+  prop is_realinterval s ⟶ is_realinterval t ⟶ ¬(s ∩ t = ∅) ⟶ is_realinterval (s ∪ t)
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_goal is_realinterval_def sym=false
+    3: rewrite_fact is_realinterval_def @0 sym=false
+    4: rewrite_fact is_realinterval_def @1 sym=false
+    5: z3 @3,4,2
+  qed
+
+theorem is_realinterval_univ
+  prop is_realinterval univ
+  [hint_backward]
+  proof
+    0: rewrite_goal is_realinterval_def sym=false
+    0: introduction a,b,c
+    0.7: apply_backward_step member_univ
+  qed
+
+def real_closed_interval :: real ⇒ real ⇒ real set = real_closed_interval a b = {p. a ≤ p ∧ p ≤ b} [hint_rewrite]
+
+def real_open_interval :: real ⇒ real ⇒ real set = real_open_interval a b = {p. a < p ∧ p < b} [hint_rewrite]
+
+def real_lopen_interval :: real ⇒ real ⇒ real set = real_lopen_interval a b = {p. a < p ∧ p ≤ b} [hint_rewrite]
+
+def real_ropen_interval :: real ⇒ real ⇒ real set = real_ropen_interval a b = {p. a ≤ p ∧ p < b} [hint_rewrite]
+
+theorem in_real_closed_interval
+  fixes a :: real, b :: real, x :: real
+  prop x ∈ real_closed_interval a b ⟷ a ≤ x ∧ x ≤ b
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_closed_interval_def sym=false
+    0: rewrite_goal member_collect sym=false
+  qed
+
+theorem in_real_open_interval
+  fixes a :: real, b :: real, x :: real
+  prop x ∈ real_open_interval a b ⟷ a < x ∧ x < b
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_open_interval_def sym=false
+    0: rewrite_goal member_collect sym=false
+  qed
+
+theorem in_real_lopen_interval
+  fixes a :: real, b :: real, x :: real
+  prop x ∈ real_lopen_interval a b ⟷ a < x ∧ x ≤ b
+  proof
+    0: rewrite_goal real_lopen_interval_def sym=false
+    0: rewrite_goal member_collect sym=false
+  qed
+
+theorem in_real_ropen_interval
+  fixes a :: real, b :: real, x :: real
+  prop x ∈ real_ropen_interval a b ⟷ a ≤ x ∧ x < b
+  proof
+    0: rewrite_goal real_ropen_interval_def sym=false
+    0: rewrite_goal member_collect sym=false
+  qed
+
+theorem real_interval_open_subset_closed
+  fixes a :: real, b :: real
+  prop real_open_interval a b ⊆ real_closed_interval a b
+  [hint_backward]
+  proof
+    0: apply_backward_step subsetI
+    0: introduction x
+    0.2: rewrite_goal real_closed_interval_def sym=false
+    0.2: rewrite_fact real_open_interval_def @0.1 sym=false
+    0.3: rewrite_goal member_collect sym=false
+    0.3: rewrite_fact member_collect @0.2 sym=false
+    0.4: z3 @0.3
+  qed
+
+theorem real_closed_interval_eq_empty
+  fixes a :: real, b :: real
+  prop real_closed_interval a b = ∅ ⟷ b < a
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_closed_interval_def sym=false
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal member_collect sym=false
+    0: z3
+  qed
+
+theorem real_open_interval_eq_empty
+  fixes a :: real, b :: real
+  prop real_open_interval a b = ∅ ⟷ b ≤ a
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_open_interval_def sym=false
+    0: z3
+  qed
+
+theorem real_closed_interval_ne_empty
+  fixes a :: real, b :: real
+  prop ¬(real_closed_interval a b = ∅) ⟷ a ≤ b
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_closed_interval_eq_empty sym=false
+    0: rewrite_goal real_not_lt sym=false
+  qed
+
+theorem real_open_interval_ne_empty
+  fixes a :: real, b :: real
+  prop ¬(real_open_interval a b = ∅) ⟷ a < b
+  [hint_rewrite]
+  proof
+    0: rewrite_goal " real_open_interval_eq_empty" sym=false
+    0: rewrite_goal real_less_def sym=false
+  qed
+
+theorem is_realinterval_open_interval
+  fixes a :: real, b :: real
+  prop is_realinterval (real_open_interval a b)
+  [hint_backward]
+  proof
+    0: rewrite_goal is_realinterval_def sym=false
+    0: rewrite_goal in_real_open_interval sym=false
+    0: z3
+  qed
+
+theorem is_realinterval_closed_interval
+  fixes a :: real, b :: real
+  prop is_realinterval (real_closed_interval a b)
+  [hint_backward]
+  proof
+    0: rewrite_goal is_realinterval_def sym=false
+    0: rewrite_goal in_real_closed_interval sym=false
+    0: z3
+  qed
+
+theorem real_open_closed_interval
+  fixes a :: real, b :: real
+  prop real_open_interval a b = diff (real_closed_interval a b) ({a, b})
+  [hint_rewrite,hint_rewrite_sym]
+  proof
+    0: apply_backward_step member_ext
+    0: introduction x
+    0.1: rewrite_goal real_open_interval_def sym=false
+    0.1: rewrite_goal real_closed_interval_def sym=false
+    0.1: rewrite_goal diff_def sym=false
+    0.1: rewrite_goal member_collect sym=false
+    0.1: rewrite_goal member_collect sym=false
+    0.1: z3
+  qed
+
+def from :: nat ⇒ nat set = from n = {m. n ≤ m} [hint_rewrite]
+
+theorem from_0
+  prop from 0 = univ
+  [hint_rewrite]
+  proof
+    0: rewrite_goal from_def sym=false
+    0: apply_backward_step member_ext
+    0: rewrite_goal member_collect sym=false
+    0: z3
+  qed
+
+theorem in_from
+  fixes m :: nat, n :: nat
+  prop m ∈ from n ⟷ n ≤ m
+  [hint_rewrite]
+  proof
+    0: rewrite_goal from_def sym=false
+    0: rewrite_goal member_collect sym=false
+  qed
+
+theorem from_mono
+  fixes m :: nat, n :: nat
+  prop from m ⊆ from n ⟷ n ≤ m
+  [hint_rewrite]
+  proof
+    0: rewrite_goal subset_def sym=""
+    0: rewrite_goal in_from sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_prev @0.0
+    0.1: apply_backward_step less_eq_refl
+    1: introduction
+    1.1: introduction x
+    1.1.2: apply_backward_step less_eq_trans param_m=m
+  qed
+
+theorem from_inter_natseg_gen
+  fixes k :: nat, m :: nat, n :: nat
+  prop from k ∩ {m..n} = (if m < k then {k..n} else {m..n})
+  [hint_rewrite]
+  proof
+    0: cases "m < k"
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: rewrite_goal from_def sym=false
+    0.1: apply_backward_step member_ext
+    0.1: introduction x
+    0.1.1: rewrite_goal member_inter_iff sym=false
+    0.1.1: rewrite_goal member_natseg sym=false
+    0.1.1: rewrite_goal member_collect sym=false
+    0.1.1: z3 @0.0
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+    1.1: apply_backward_step member_ext
+    1.1: introduction x
+    1.1.1: rewrite_goal member_inter_iff sym=false
+    1.1.1: rewrite_goal in_from sym=false
+    1.1.1: rewrite_goal member_natseg sym=false
+    1.1.1: z3 @1.0
+  qed
+
+theorem from_inter_natseg_max
+  fixes m :: nat, n :: nat, p :: nat
+  prop from p ∩ {m..n} = {max p m..n}
+  [hint_rewrite]
+  proof
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal member_inter_iff sym=false
+    0: rewrite_goal in_from sym=false
+    0: rewrite_goal member_natseg sym=false
+    0: z3
+  qed
+
+theorem from_inter_natseg
+  fixes k :: nat, n :: nat
+  prop from k ∩ {0..n} = {k..n}
+  [hint_rewrite]
+  proof
+    0: rewrite_goal from_inter_natseg_max sym=false
+    0: cut "max k 0 = k"
+    0: z3
+    1: rewrite_goal_with_prev @0
+  qed
+
+theorem infinite_from
+  fixes n :: nat
+  prop infinite (from n)
+  [hint_backward]
+  proof
+    0: cut "from n = diff (univ::nat set) {i. i < n}"
+    0: apply_backward_step member_ext
+    0: rewrite_goal diff_def sym=false
+    0: rewrite_goal in_from sym=false
+    0: rewrite_goal member_collect sym=false
+    0: rewrite_goal member_collect sym=false
+    0: z3
+    6: rewrite_goal_with_prev @5
+    6: apply_backward_step infinite_diff_finite
+    6: apply_backward_step nat_infinite
+    7: apply_backward_step finite_natseg_lt
+  qed
+
+theorem finite_inter_natseg
+  fixes m :: nat, n :: nat, s :: nat set
+  prop finite (s ∩ {m..n})
+  [hint_backward]
+  proof
+    0: apply_backward_step finite_subset param_t={m..n}
+    0: apply_backward_step finite_natseg
+    1: rewrite_goal nat_interval_def sym=false
+    1: z3
+  qed
+
+theorem monotone_bigger
+  fixes R :: nat ⇒ nat
+  prop (∀m. ∀n. m < n ⟶ R m < R n) ⟶ (∀n. n ≤ R n)
+  [hint_backward,hint_forward]
+  proof
+    1: introduction n
+    1.1: induction n nat_induct
+    1.1: apply_backward_step le_0
+    1.2: introduction n
+    1.2.1: cut "n < n+1"
+    1.2.1: z3
+    1.2.2: rewrite_goal add_1_right sym=true
+    1.2.2: z3 @1.2.1,1.2.0,0
+  qed
+
+theorem infinite_enumerate_weak
+  fixes s :: nat set
+  prop infinite s ⟶ (∃r. (∀m::nat. ∀n. m < n ⟶ r m < r n) ∧ (∀n. r n ∈ s))
+  [hint_backward,hint_forward]
+
+theorem infinite_enumerate_eq_alt
+  fixes s :: nat set
+  prop infinite s ⟷ (∃r. (∀m::nat. ∀n. m < n ⟶ r m < r n) ∧ (∀n. r n ∈ s))
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step infinite_enumerate_weak @0.0
+  qed
+
+theorem monotone_subsequence
+  fixes s :: nat ⇒ real
+  prop ∃r. (∀m::nat. ∀n. m < n ⟶ r m < r n) ∧ ((∀m. ∀n. m < n ⟶ s (r m) ≤ s (r n)) ∨ (∀m. ∀n. m < n ⟶ s (r n) ≤ s (r m)))
+  [hint_backward]
+  proof
+    0: cases "!n. ?p. n < p & !m. p <= m --> s m <= s p"
+  qed
+
+theorem convergent_bounded_increasing
+  fixes b :: real, s :: nat ⇒ real
+  prop (∀m. ∀n. m ≤ n ⟶ s m ≤ s n) ⟶ (∀n. abs (s n) ≤ b) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e))
+  [hint_backward,hint_backward1]
+
+theorem convergent_bounded_monotone
+  fixes b :: real, s :: nat ⇒ real
+  prop (∀n. abs (s n) ≤ b) ⟶ (∀m. ∀n. m ≤ n ⟶ s m ≤ s n) ∨ (∀m. ∀n. m ≤ n ⟶ s n ≤ s m) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e))
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step disjE @1
+    2: introduction
+    2.1: apply_backward_step convergent_bounded_increasing @2.0,0
+    3: introduction
+    3.1: apply_forward_step convergent_bounded_increasing param_b=b param_s="(%n. -s n)"
+    3.2: rewrite_fact real_le_lneg2 @3.1 sym=false
+    3.3: rewrite_fact real_abs_neg @3.2 sym=false
+    3.4: apply_fact @3.3,3.0,0
+    3.5: exists_elim l @3.4
+    3.7: inst_exists_goal -l
+    3.7: cut "!n. abs (-(s n) - l) = abs (s n - -l) "
+    3.7: z3
+    3.8: rewrite_fact_with_prev @3.7,3.6
+  qed

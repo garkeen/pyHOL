@@ -194,6 +194,25 @@ class rewrite_goal(Tactic):
             assert new_goal.prop != goal.prop, "rewrite: unable to apply theorem"
             return ProofTerm(macro_name, args=(th_name, C), prevs=[new_goal] + prevs)
 
+class rewrite_goal_with_conv(Tactic):
+    """Rewrite the goal using a pre-built Conv object."""
+    def __init__(self, cv):
+        self.cv = cv
+
+    def get_proof_term(self, goal, *, args=None, prevs=None):
+        C = goal.prop
+        eq_th = self.cv.eval(C)
+        new_goal = eq_th.prop.rhs
+        
+        if new_goal == C:
+            return ProofTerm.reflexive(C)
+        
+        new_goal_pt = ProofTerm.sorry(Thm(new_goal, goal.hyps))
+        return ProofTerm('equal_elim', None, [
+            ProofTerm('symmetric', None, [self.cv.get_proof_term(C)]),
+            new_goal_pt
+        ])
+
 class rewrite_goal_with_prev(Tactic):
     def get_proof_term(self, goal, *, args=None, prevs=None):
         assert isinstance(prevs, list) and len(prevs) == 1, "rewrite_goal_with_prev"
@@ -256,6 +275,13 @@ class apply_prev(Tactic):
 
         inst_arg = [inst[new_name] for new_name in new_names]
         new_goals = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in inst_As[len(prev_pts):]]
+        
+        # When there are no remaining premises, the fact directly proves the goal.
+        # Return the fact itself (possibly with forall/instantiation) without
+        # going through apply_fact, which requires at least 2 prevs.
+        if len(inst_As) == 0 and len(prev_pts) == 0:
+            return pt
+        
         if set(new_names).issubset({v.name for v in term.get_vars(As)}) and \
            matcher.is_pattern_list(As, []):
             return ProofTerm('apply_fact', args=None, prevs=prevs + new_goals)

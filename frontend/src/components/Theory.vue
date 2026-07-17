@@ -47,11 +47,11 @@
         
         <!-- 编辑表单 -->
         <div v-if="isEditing(index)" class="edit-section">
-          <ConstantEdit v-if="item.ty === 'def.ax'" :old_item="item.edit" ref="edit_ref"/>
-          <DefinitionEdit v-else-if="item.ty === 'def'" :old_item="item.edit" :ext="item.ext" ref="edit_ref"/>
-          <DatatypeEdit v-else-if="item.ty === 'type.ind'" :old_item="item.edit" :ext="item.ext" ref="edit_ref"/>
-          <InductiveEdit v-else-if="item.ty === 'def.ind' || item.ty === 'def.pred'" :old_item="item.edit" :ext="item.ext" ref="edit_ref"/>
-          <TheoremEdit v-else-if="item.ty === 'thm' || item.ty === 'thm.ax'" :old_item="item.edit" ref="edit_ref"/>
+          <ConstantEdit v-if="item.ty === 'def.ax'" :old_item="item.edit" :ref="(el) => { if (el) edit_ref = el }"/>
+          <DefinitionEdit v-else-if="item.ty === 'def'" :old_item="item.edit" :ext="item.ext" :ref="(el) => { if (el) edit_ref = el }"/>
+          <DatatypeEdit v-else-if="item.ty === 'type.ind'" :old_item="item.edit" :ext="item.ext" :ref="(el) => { if (el) edit_ref = el }"/>
+          <InductiveEdit v-else-if="item.ty === 'def.ind' || item.ty === 'def.pred'" :old_item="item.edit" :ref="(el) => { if (el) edit_ref = el }"/>
+          <TheoremEdit v-else-if="item.ty === 'thm' || item.ty === 'thm.ax'" :old_item="item.edit" :ref="(el) => { if (el) edit_ref = el }"/>
           
           <div style="margin-top:5px">
             <button class="btn btn-sm btn-primary" @click="check_edit">Check</button>
@@ -64,7 +64,7 @@
           <ProofArea :key="'proof-' + theory.name + '-' + item.name + '-' + index"
                      :theory_name="theory.name" :thm_name="item.name"
                      :vars="item.vars" :prop="item.prop"
-                     :old_steps="item.steps" :old_proof="item.proof"
+                     :old_steps="item.steps"
                      :ref="(el) => { if (el) proof = el }"
                      @set-message="$emit('set-message', $event)"
                      @set-status="$emit('set-status', $event)"
@@ -119,8 +119,8 @@ const emit = defineEmits([
 ])
 const edit_metadata = ref(false)
 const meta_edit_ref = ref(null)
-let edit_ref = ref(null)
-let proof = ref(null)
+let edit_ref = null  // set by function ref in template
+let proof = null     // set by function ref in template
 
 const isEditing = (index) => {
   return props.ui_state === 'EDIT' && props.active_index === index
@@ -150,75 +150,120 @@ const save_metadata = () => {
 }
 
 const check_edit = async () => {
-  if (!edit_ref.value) return
+  console.log('[check_edit] called, edit_ref:', edit_ref)
+  if (!edit_ref) {
+    emit('set-message', { type: 'error', data: 'Error: edit form not ready' })
+    return
+  }
+  
+  const current_item = props.theory.content[props.active_index]
+  const form_data = edit_ref.getData()
+  console.log('[check_edit] form_data:', JSON.stringify(form_data))
+  
+  const is_new = !current_item.name || !props.theory.content.some(
+    (it, i) => i !== props.active_index && it.name === current_item.name
+  )
   
   const data = {
     filename: props.theory.name,
-    limit_ty: props.theory.content[props.active_index].ty,
-    limit_name: props.theory.content[props.active_index].name,
     line_length: 80,
-    item: edit_ref.value.getData()
+    item: form_data
+  }
+  if (!is_new) {
+    data.limit_ty = current_item.ty
+    data.limit_name = current_item.name
   }
   
   emit('set-message', { type: 'OK', data: 'Checking...' })
+  console.log('[check_edit] sending to /check-modify')
   
   try {
     const response = await api.post('/check-modify', data)
+    console.log('[check_edit] response:', JSON.stringify(response.data))
     const item = response.data.item
     
     if ('error' in item) {
       emit('set-message', {
         type: 'error',
-        data: item.error.err_type + '\n' + item.error.err_str
+        data: item.error.err_type + ': ' + item.error.err_str
       })
     } else {
-      emit('set-message', { type: 'OK', data: 'No errors' })
+      emit('set-message', { type: 'OK', data: 'Check passed - no errors' })
     }
   } catch (err) {
-    emit('set-message', { type: 'error', data: 'Server error' })
+    console.error('[check_edit] exception:', err)
+    const errDetail = err.response?.data?.error || err.message || 'Unknown error'
+    emit('set-message', { type: 'error', data: 'Check failed: ' + errDetail })
   }
 }
 
 const save_edit = async () => {
-  if (!edit_ref.value) return
+  console.log('[save_edit] called, edit_ref:', edit_ref)
+  if (!edit_ref) {
+    emit('set-message', { type: 'error', data: 'Error: edit form not ready' })
+    return
+  }
+  
+  const current_item = props.theory.content[props.active_index]
+  const form_data = edit_ref.getData()
+  console.log('[save_edit] form_data:', JSON.stringify(form_data))
+  
+  if (!form_data.name) {
+    emit('set-message', { type: 'error', data: 'Error: theorem name is required' })
+    return
+  }
+  if (!form_data.prop) {
+    emit('set-message', { type: 'error', data: 'Error: proposition (shows) is required' })
+    return
+  }
+  
+  const is_new = !current_item.name || !props.theory.content.some(
+    (it, i) => i !== props.active_index && it.name === current_item.name
+  )
+  console.log('[save_edit] is_new:', is_new)
   
   const data = {
     filename: props.theory.name,
-    limit_ty: props.theory.content[props.active_index].ty,
-    limit_name: props.theory.content[props.active_index].name,
     line_length: 80,
-    item: edit_ref.value.getData()
+    item: form_data
   }
+  if (!is_new) {
+    data.limit_ty = current_item.ty
+    data.limit_name = current_item.name
+  }
+  
+  emit('set-message', { type: 'OK', data: 'Saving...' })
+  console.log('[save_edit] sending to /check-modify:', JSON.stringify(data))
   
   try {
     const response = await api.post('/check-modify', data)
+    console.log('[save_edit] response:', JSON.stringify(response.data))
     const new_item = response.data.item
     
     if ('error' in new_item) {
+      console.log('[save_edit] backend error:', new_item.error)
       emit('set-message', {
         type: 'error',
-        data: new_item.error.err_type + '\n' + new_item.error.err_str
+        data: new_item.error.err_type + ': ' + new_item.error.err_str
       })
       return
     }
     
-    // 保留证明数据
-    const old_item = props.theory.content[props.active_index]
-    if (old_item.ty === 'thm') {
-      new_item.proof = old_item.proof
-      new_item.num_gaps = old_item.num_gaps
-      new_item.steps = old_item.steps
+    if (current_item.ty === 'thm') {
+      new_item.steps = current_item.steps
     }
     
-    // 更新item
+    console.log('[save_edit] emitting edit-submit')
     emit('edit-submit', props.active_index, new_item)
   } catch (err) {
-    emit('set-message', { type: 'error', data: 'Server error' })
+    console.error('[save_edit] exception:', err)
+    const errDetail = err.response?.data?.error || err.message || 'Unknown error'
+    emit('set-message', { type: 'error', data: 'Save failed: ' + errDetail })
   }
 }
 
 defineExpose({
-  getProof: () => proof.value
+  getProof: () => proof
 })
 </script>
 

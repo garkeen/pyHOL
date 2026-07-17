@@ -1,0 +1,141 @@
+theory hoare
+imports function, int
+description "Hoare logic"
+
+header "Programs"
+
+datatype com 'a =
+  | Basic (f :: ('a ⇒ 'a)) :: 'a com
+  | Seq (c1 :: 'a com) (c2 :: 'a com) :: 'a com
+  | Cond (b :: ('a ⇒ bool)) (c1 :: 'a com) (c2 :: 'a com) :: 'a com
+  | While (b :: ('a ⇒ bool)) (I :: ('a ⇒ bool)) (c :: 'a com) :: 'a com
+
+inductive Sem :: 'a com ⇒ 'a ⇒ 'a ⇒ bool
+  | Sem_basic: Sem (Basic f) s (f s)
+  | Sem_seq: Sem c1 s s3 ⟶ Sem c2 s3 s2 ⟶ Sem (Seq c1 c2) s s2
+  | Sem_if1: b s ⟶ Sem c1 s s2 ⟶ Sem (Cond b c1 c2) s s2
+  | Sem_if2: ¬(b s) ⟶ Sem c2 s s2 ⟶ Sem (Cond b c1 c2) s s2
+  | Sem_while_skip: ¬(b s) ⟶ Sem (While b I c) s s
+  | Sem_while_loop: b s ⟶ Sem c s s3 ⟶ Sem (While b I c) s3 s2 ⟶ Sem (While b I c) s s2
+
+theorem Sem_Seq_elim
+  fixes c1 :: 'a com, c2 :: 'a com, s :: 'a, s2 :: 'a
+  prop Sem (Seq c1 c2) s s2 ⟶ (∃s3. Sem c1 s s3 ∧ Sem c2 s3 s2)
+  [hint_forward]
+
+def Skip :: 'a com = Skip = Basic (λf::'a. f)
+
+theorem Sem_Skip
+  fixes s :: 'a
+  prop Sem Skip s s
+
+def Assign :: 'a ⇒ (('a ⇒ 'b) ⇒ 'b) ⇒ ('a ⇒ 'b) com = Assign a b = Basic (λf. (f)(a := b f))
+
+theorem Sem_Assign
+  fixes a :: 'a, b :: ('a ⇒ 'b) ⇒ 'b, s :: 'a ⇒ 'b
+  prop Sem (Assign a b) s ((s)(a := b s))
+
+theorem Sem_Assign_elim
+  fixes a :: 'a, b :: ('a ⇒ 'b) ⇒ 'b, s :: 'a ⇒ 'b, s2 :: 'a ⇒ 'b
+  prop Sem (Assign a b) s s2 ⟶ s2 = (s)(a := b s)
+  [hint_forward]
+
+def P1 :: (nat ⇒ nat) com = P1 = Seq (Assign 0 (λs. 1)) (Assign 1 (λs. 2))
+
+theorem P1_test
+  prop Sem P1 (λx. 0) ((λx. 0)(0 := 1, 1 := 2))
+  proof
+    0: rewrite_goal P1_def sym=""
+    0: apply_backward_step Sem_seq param_s3="((λx. 0)((0::nat) := (1::nat)))"
+    0: apply_backward_step Sem_Assign
+    1: apply_backward_step Sem_Assign
+  qed
+
+def P2 :: (nat ⇒ nat) com = P2 = Seq (Assign 0 (λs. s 0 + 1)) (Assign 0 (λs. s 0 + 1))
+
+theorem P2_test
+  prop Sem P2 (λx. 0) ((λx. 0)(0 := 2))
+  proof
+    0: rewrite_goal P2_def sym=""
+    0: eval_Sem
+  qed
+
+def P3 :: (nat ⇒ nat) com = P3 = While (λs. ¬(s 0 = 3)) (λs. true) (Assign 0 (λs. s 0 + 1))
+
+theorem P3_test
+  prop Sem P3 (λx. 0) ((λx. 0)(0 := 3))
+  proof
+    0: rewrite_goal P3_def sym=""
+    0: eval_Sem
+  qed
+
+def Entail :: ('a ⇒ bool) ⇒ ('a ⇒ bool) ⇒ bool = Entail P Q ⟷ (∀s. P s ⟶ Q s) [hint_rewrite]
+
+def Valid :: ('a ⇒ bool) ⇒ 'a com ⇒ ('a ⇒ bool) ⇒ bool = Valid P c Q ⟷ (∀s. ∀s2. P s ⟶ Sem c s s2 ⟶ Q s2) [hint_rewrite]
+
+theorem pre_rule
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, R :: 'a ⇒ bool, c :: 'a com
+  prop Entail P Q ⟶ Valid Q c R ⟶ Valid P c R
+  proof
+    2: rewrite_goal Valid_def
+    2: introduction "s, s2"
+    2.4: rewrite_fact Entail_def @0
+    2.5: rewrite_fact Valid_def @1
+    2.6: apply_fact @2.4,2.2
+    2.7: apply_prev @2.5,2.6
+  qed
+
+theorem skip_rule
+  fixes P :: 'a ⇒ bool
+  prop Valid P Skip P
+
+theorem assign_rule
+  fixes P :: ('a ⇒ 'b) ⇒ bool, a :: 'a, b :: ('a ⇒ 'b) ⇒ 'b
+  prop Valid (λs. P ((s)(a := b s))) (Assign a b) P
+  proof
+    0: rewrite_goal Valid_def
+    0: introduction "s, s2"
+    0.4: apply_forward_step Sem_Assign_elim @0.3
+    0.5: rewrite_goal_with_prev @0.4
+  qed
+
+theorem seq_rule
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, R :: 'a ⇒ bool, c1 :: 'a com, c2 :: 'a com
+  prop Valid P c1 Q ⟶ Valid Q c2 R ⟶ Valid P (Seq c1 c2) R
+  proof
+    2: rewrite_goal Valid_def
+    2: introduction s,s2
+    2.4: apply_forward_step Sem_Seq_elim @2.3
+    2.5: apply_backward_step exE @2.4
+    2.5: introduction s3
+    2.5.2: apply_forward_step conjD1 @2.5.1
+    2.5.3: apply_forward_step conjD2 @2.5.1
+    2.5.4: rewrite_fact Valid_def @0
+    2.5.5: rewrite_fact Valid_def @1
+    2.5.6: apply_fact @2.5.4,2.2,2.5.2
+    2.5.7: apply_prev @2.5.5,2.5.6,2.5.3
+  qed
+
+theorem if_rule
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, R :: 'a ⇒ bool, b :: 'a ⇒ bool, c1 :: 'a com, c2 :: 'a com
+  prop Valid P c1 R ⟶ Valid Q c2 R ⟶ Valid (λs. if b s then P s else Q s) (Cond b c1 c2) R
+
+theorem while_rule
+  fixes I :: 'a ⇒ bool, Q :: 'a ⇒ bool, b :: 'a ⇒ bool, c :: 'a com
+  prop Entail (λs. I s ∧ ¬(b s)) Q ⟶ Valid (λs. I s ∧ b s) c I ⟶ Valid I (While b I c) Q
+
+theorem abs_test
+  fixes a :: int
+  prop true ⟶ (if 0 ≤ a then a = abs a else -a = abs a)
+  proof
+    1: rewrite_goal abs_def
+    1: z3
+  qed
+
+theorem max_test
+  fixes m :: int, n :: int
+  prop true ⟶ (if m ≤ n then n = max m n else m = max m n)
+  proof
+    1: rewrite_goal max_def
+    1: z3
+  qed

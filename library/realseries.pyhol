@@ -1,0 +1,2010 @@
+theory realseries
+imports realderivative
+description "Some analytic concepts for real."
+
+def has_limsup :: ('a ⇒ real) ⇒ real ⇒ 'a net ⇒ bool = has_limsup f l net ⟷ trivial_limit net ∨ has_inf ({b. eventually (λx. f x ≤ b) net}) l [hint_rewrite]
+
+def has_liminf :: ('a ⇒ real) ⇒ real ⇒ 'a net ⇒ bool = has_liminf f l net ⟷ trivial_limit net ∨ has_sup ({b. eventually (λx. b ≤ f x) net}) l [hint_rewrite]
+
+theorem has_limsup_transform
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, net :: 'a net
+  prop eventually (λx. f x = g x) net ⟶ has_limsup f l net ⟶ has_limsup g l net
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_fact has_limsup_def @1 sym=false
+    3: rewrite_goal has_limsup_def sym=false
+    3: apply_backward_step disjE @2
+    3: introduction
+    3.1: apply_backward_step disjI1
+    4: introduction
+    4.1: apply_backward_step disjI2
+    4.1: cut "!b. eventually (λx. f x ≤ b) net <--> eventually (λx. g x ≤ b) net"
+    4.1: introduction b
+    4.1.1: apply_backward_step eventually_iff
+    4.1.1: apply_backward_step eventually_mp param_P="(λx. f x = g x)"
+    4.1.1: apply_backward_step always_eventually
+    4.1.1: z3
+    4.2: rewrite_fact_with_prev @4.1,4.0
+  qed
+
+theorem has_limsup_eventually_ubound
+  fixes b :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop ¬(trivial_limit net) ⟶ has_limsup f l net ⟶ l < b ⟶ eventually (λx. f x < b) net
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    3: rewrite_fact has_limsup_def @1 sym=false
+    4: apply_backward_step disjE @3
+    4: introduction
+    4.1: apply_backward_step negE_gen @0,4.0
+    5: introduction
+    5.1: apply_forward_step has_inf_approach @5.0,2
+    5.2: rewrite_fact member_collect @5.1 sym=false
+    5.3: exists_elim c @5.2
+    5.5: apply_forward_step conjD1 @5.4
+    5.6: apply_backward_step eventually_mp param_P="(λx. f x ≤ c)"
+    5.6: apply_backward_step always_eventually
+    5.6: apply_forward_step conjD2 @5.4
+    5.7: z3 @5.6
+  qed
+
+theorem reallim_imp_has_limsup
+  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop tendsto_real f l net ⟶ has_limsup f l net
+  [hint_backward,hint_forward]
+  proof
+    1: cases "trivial_limit net"
+    1: rewrite_goal has_limsup_def sym=false
+    1: introduction
+    1.1: apply_backward_step disjI1
+    3: rewrite_goal has_limsup_def sym=false
+    3: introduction
+    3.1: apply_backward_step disjI2
+    3.1: rewrite_goal has_inf sym=false
+    3.1: apply_backward_step conjI
+    3.1: rewrite_goal set_equal_iff sym=false
+    3.1: rewrite_goal member_empty_simp sym=false
+    3.1: rewrite_goal not_all sym=false
+    3.1: rewrite_goal member_collect sym=false
+    3.1: inst_exists_goal "l +1"
+    3.1: apply_backward_step negI
+    3.1: introduction
+    3.1.1: rewrite_fact eq_sym_eq @3.1.0 sym=false
+    3.1.2: rewrite_goal_with_prev @3.1.1
+    3.1.2: rewrite_fact tendsto_real_def @0 sym=false
+    3.1.3: forall_elim "(1::real)" @3.1.2
+    3.1.4: cut "(0::real) < 1"
+    3.1.4: z3
+    3.1.5: apply_fact @3.1.3,3.1.4
+    3.1.6: apply_backward_step eventually_mono param_P="(λx. abs (f x - l) < 1)"
+    3.1.6: z3
+    3.8: apply_backward_step conjI
+    3.8: rewrite_goal member_collect sym=false
+    3.8: introduction x
+    3.8.2: apply_backward_step reallim_ubound @0,3.0,3.8.1
+    3.10: introduction c
+    3.10.2: rewrite_goal member_collect sym=false
+    3.10.2: inst_exists_goal "(l + c) / 2"
+    3.10.2: apply_backward_step conjI
+    3.10.2: rewrite_fact tendsto_real_def @0 sym=false
+    3.10.3: forall_elim "(c - l) / 2" @3.10.2
+    3.10.4: cut "0 < (c - l) / 2"
+    3.10.4: z3 @3.10.1
+    3.10.5: apply_fact @3.10.3,3.10.4
+    3.10.6: apply_backward_step eventually_mono param_P="(λx. abs (f x - l) < (c - l) / 2)"
+    3.10.6: z3 @3.10.1
+    3.10.8: z3 @3.10.1
+  qed
+
+theorem has_limsup_imp_ubound_le
+  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop has_limsup f l net ⟶ (∃b. eventually (λx. f x ≤ b) net)
+  [hint_backward]
+  proof
+    1: rewrite_fact has_limsup_def @0 sym=false
+    2: apply_backward_step disjE @1
+    2: introduction
+    2.1: inst_exists_goal l
+    2.1: apply_backward_step eventually_trivial
+    3: introduction
+    3.1: rewrite_fact has_inf @3.0 sym=false
+    3.2: apply_forward_step conjD2 @3.1
+    3.3: apply_forward_step conjD2 @3.2
+    3.4: forall_elim l+1 @3.3
+    3.5: cut "l < l + 1" @3.4
+    3.5: z3
+    3.6: apply_fact @3.4,3.5
+    3.7: rewrite_fact member_collect @3.6 sym=false
+    3.8: exists_elim x @3.7
+    3.10: apply_forward_step conjD1 @3.9
+    3.11: apply_backward_step exI @3.10
+  qed
+
+theorem has_limsup_not_ubound
+  fixes c :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop ¬(trivial_limit net) ⟶ has_limsup f l net ⟶ c < l ⟶ ¬(eventually (λx. f x ≤ c) net)
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_fact has_limsup_def @1 sym=false
+    4: apply_backward_step disjE @3
+    4: introduction
+    4.1: apply_backward_step negE_gen @0,4.0
+    5: introduction
+    5.1: apply_backward_step contrapositive @2
+    5.1: introduction
+    5.1.1: rewrite_fact double_neg @5.1.0 sym=false
+    5.1.2: rewrite_goal real_not_lt sym=false
+    5.1.2: apply_backward_step has_inf_lbound @5.0
+    5.1.2: rewrite_goal member_collect sym=false
+  qed
+
+theorem has_limsup
+  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop has_limsup f l net ⟷ trivial_limit net ∨ (∀c. l < c ⟶ eventually (λx. f x ≤ c) net) ∧ (∀c. c < l ⟶ ¬(eventually (λx. f x ≤ c) net))
+  [hint_rewrite]
+  proof
+    0: cases "trivial_limit net"
+    0: introduction
+    0.1: rewrite_goal has_limsup_def sym=false
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step disjI1
+    0.2: introduction
+    0.2.1: apply_backward_step disjI1
+    1: introduction
+    1.1: apply_backward_step iffI
+    1.1: introduction
+    1.1.1: apply_backward_step disjI2
+    1.1.1: apply_backward_step conjI
+    1.1.1: introduction c
+    1.1.1.2: apply_backward_step eventually_mono param_P="(λx. f x < c)"
+    1.1.1.2: z3
+    1.1.1.3: apply_backward_step has_limsup_eventually_ubound param_l=l
+    1.1.2: introduction c
+    1.1.2.2: apply_backward_step has_limsup_not_ubound param_l=l
+    1.2: introduction
+    1.2.1: rewrite_goal has_limsup_def sym=false
+    1.2.1: apply_backward_step disjI2
+    1.2.1: apply_backward_step disjE @1.2.0
+    1.2.1: introduction
+    1.2.1.1: apply_backward_step negE_gen @1.0,1.2.1.0
+    1.2.2: introduction
+    1.2.2.1: rewrite_goal has_inf sym=false
+    1.2.2.1: apply_backward_step conjI
+    1.2.2.1: rewrite_goal set_equal_iff sym=false
+    1.2.2.1: rewrite_goal member_collect sym=false
+    1.2.2.1: rewrite_goal member_empty_simp sym=false
+    1.2.2.1: rewrite_goal not_all sym=false
+    1.2.2.1: inst_exists_goal "l + 1"
+    1.2.2.1: apply_forward_step conjD1 @1.2.2.0
+    1.2.2.1: apply_forward_step conjD2 @1.2.2.0
+    1.2.2.3: apply_backward_step negI
+    1.2.2.3: introduction
+    1.2.2.3.1: rewrite_fact eq_sym_eq @1.2.2.3.0 sym=false
+    1.2.2.3.2: rewrite_goal_with_prev @1.2.2.3.1
+    1.2.2.3.2: apply_prev @1.2.2.2
+    1.2.2.3.2: z3
+    1.2.2.10: apply_backward_step conjI
+    1.2.2.10: rewrite_goal member_collect sym=false
+    1.2.2.10: apply_backward_step contrapositive @1.2.2.1
+    1.2.2.10: rewrite_goal not_all sym=false
+    1.2.2.10: rewrite_goal not_imp sym=false
+    1.2.2.10: rewrite_goal double_neg sym=false
+    1.2.2.10: rewrite_goal real_less_def sym=false
+    1.2.2.10: introduction
+    1.2.2.10.1: rewrite_goal conj_comm sym=false
+    1.2.2.17: introduction c
+    1.2.2.17.2: inst_exists_goal "(l+c)/2"
+    1.2.2.17.2: apply_backward_step conjI
+    1.2.2.17.2: rewrite_goal member_collect sym=false
+    1.2.2.17.2: apply_prev @1.2.2.2
+    1.2.2.17.2: z3 @1.2.2.17.1
+    1.2.2.17.5: z3 @1.2.2.17.1
+  qed
+
+theorem limsup_exists
+  fixes f :: 'a ⇒ real, net :: 'a net
+  prop (∃l. has_limsup f l net) ⟷ trivial_limit net ∨ (∃b. eventually (λx. f x ≤ b) net) ∧ (∃c. ¬(eventually (λx. f x ≤ c) net))
+  proof
+    0: apply_backward_step iffI
+    0: rewrite_goal has_limsup sym=false
+    0: introduction
+    0.1: exists_elim l @0.0
+    0.3: apply_backward_step disjE @0.2
+    0.3: introduction
+    0.3.1: apply_backward_step disjI1
+    0.4: introduction
+    0.4.1: apply_backward_step disjI2
+    0.4.1: apply_forward_step conjD1 @0.4.0
+    0.4.2: apply_forward_step conjD2 @0.4.0
+    0.4.3: apply_backward_step conjI
+    0.4.3: inst_exists_goal l+1
+    0.4.3: apply_prev @0.4.1
+    0.4.3: z3
+    0.4.6: inst_exists_goal l-1
+    0.4.6: apply_prev @0.4.2
+    0.4.6: z3
+    2: rewrite_goal has_limsup_def sym=false
+    2: introduction
+    2.1: apply_backward_step disjE @2.0
+    2.1: introduction
+    2.1.1: inst_exists_goal "(0::real)"
+    2.1.1: apply_backward_step disjI1
+    2.2: introduction
+    2.2.1: rewrite_goal right_or_exists_thm sym=true
+    2.2.1: apply_backward_step disjI2
+    2.2.1: rewrite_goal inf_exists sym=false
+    2.2.1: apply_backward_step conjI
+    2.2.1: apply_forward_step conjD1 @2.2.0
+    2.2.2: apply_forward_step conjD2 @2.2.0
+    2.2.3: rewrite_goal set_equal_iff sym=false
+    2.2.3: rewrite_goal member_empty_simp sym=false
+    2.2.3: rewrite_goal member_collect sym=false
+    2.2.3: apply_backward_step negI
+    2.2.3: introduction
+    2.2.3.1: rewrite_fact eq_sym_eq @2.2.3.0 sym=false
+    2.2.3.2: exists_elim b @2.2.1
+    2.2.3.4: forall_elim b @2.2.3.1
+    2.2.3.5: rewrite_goal_with_prev @2.2.3.4
+    2.2.8: exists_elim c @2.2.2
+    2.2.10: inst_exists_goal c
+    2.2.10: rewrite_goal member_collect sym=false
+    2.2.10: introduction x
+    2.2.10.2: apply_backward_step contrapositive @2.2.9
+    2.2.10.2: rewrite_goal double_neg sym=false
+    2.2.10.2: introduction
+    2.2.10.2.1: apply_backward_step eventually_mp param_P="(λx1. f x1 ≤ x)"
+    2.2.10.2.1: apply_backward_step always_eventually
+    2.2.10.2.1: z3 @2.2.10.2.0
+  qed
+
+theorem has_limsup_le
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, m :: real, net :: 'a net
+  prop has_limsup f l net ⟶ has_limsup g m net ⟶ ¬(trivial_limit net) ⟶ eventually (λx. f x ≤ g x) net ⟶ l ≤ m
+  [hint_backward1]
+  proof
+    4: rewrite_goal real_not_lt sym=true
+    4: rewrite_goal real_lt_between sym=false
+    4: apply_backward_step negI
+    4: introduction
+    4.1: exists_elim c @4.0
+    4.3: apply_backward_step negE param_A="eventually (λx. g x < c) net"
+    4.3: apply_backward_step negI
+    4.3: introduction
+    4.3.1: apply_backward_step negE param_A="eventually (λx. f x ≤ c) net"
+    4.3.1: apply_backward_step has_limsup_not_ubound param_l=l
+    4.3.1: apply_backward_step conjD2 @4.2
+    4.3.3: apply_backward_step eventually_mp param_P="(λx. f x ≤ g x &  g x < c)"
+    4.3.3: apply_backward_step always_eventually
+    4.3.3: z3
+    4.3.5: rewrite_goal eventually_and sym=false
+    4.3.5: apply_backward_step conjI
+    4.5: apply_backward_step has_limsup_eventually_ubound param_l=m
+    4.5: apply_backward_step conjD1 @4.2
+  qed
+
+theorem has_limsup_ubound
+  fixes b :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop eventually (λx. f x ≤ b) net ⟶ has_limsup f l net ⟶ ¬(trivial_limit net) ⟶ l ≤ b
+  [hint_backward1,hint_forward]
+  proof
+    3: apply_backward_step has_limsup_le @1 param_g="(%x:: 'a. b)"
+    3: apply_backward_step reallim_imp_has_limsup
+    3: apply_backward_step reallim_const
+  qed
+
+theorem has_limsup_sequentially
+  fixes a :: nat ⇒ real, l :: real
+  prop has_limsup a l sequentially ⟷ (∀c. l < c ⟶ (∃N. ∀n. N ≤ n ⟶ a n ≤ c)) ∧ (∀c. c < l ⟶ (∀N. ∃n. N ≤ n ∧ c < a n))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal has_limsup sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step disjE @0.0
+    0.1: introduction
+    0.1.1: apply_backward_step contrapositive @0.1.0
+    0.1.1: introduction
+    0.1.1.1: apply_backward_step trivial_limit_sequentially
+    0.2: introduction
+    0.2.1: rewrite_fact eventually_sequentially @0.2.0 sym=false
+    0.2.2: rewrite_fact not_exists @0.2.1 sym=false
+    0.2.3: rewrite_fact not_all @0.2.2 sym=false
+    0.2.4: rewrite_fact not_imp @0.2.3 sym=false
+    0.2.5: rewrite_fact real_less_def @0.2.4 sym=true
+    1: introduction
+    1.1: apply_backward_step disjI2
+    1.1: rewrite_goal eventually_sequentially sym=false
+    1.1: rewrite_goal not_exists sym=false
+    1.1: rewrite_goal not_all sym=false
+    1.1: rewrite_goal not_imp sym=false
+    1.1: rewrite_goal real_less_def sym=true
+  qed
+
+theorem has_limsup_sequentially_within
+  fixes a :: nat ⇒ real, k :: nat set, l :: real
+  prop has_limsup a l (within sequentially k) ⟷ finite k ∨ (∀c. l < c ⟶ (∃N. ∀n. n ∈ k ⟶ N ≤ n ⟶ a n ≤ c)) ∧ (∀c. c < l ⟶ (∀N. ∃n. n ∈ k ∧ N ≤ n ∧ c < a n))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal has_limsup sym=false
+    0: rewrite_goal trivial_limit_sequentially_within sym=false
+    0: cases "finite k"
+    0: introduction
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step disjI1
+    0.2: introduction
+    0.2.1: apply_backward_step disjI1
+    1: introduction
+    1.1: apply_backward_step iffI
+    1.1: introduction
+    1.1.1: apply_backward_step disjI2
+    1.1.1: apply_backward_step disjE @1.1.0
+    1.1.1: introduction
+    1.1.1.1: apply_backward_step negE_gen @1.0,1.1.1.0
+    1.1.2: introduction
+    1.1.2.1: apply_backward_step conjI
+    1.1.2.1: rewrite_fact eventually_sequentially_within @1.1.2.0 sym=false
+    1.1.2.2: apply_forward_step conjD1 @1.1.2.1
+    1.1.2.3: apply_forward_step conjD2 @1.1.2.1
+    1.1.2.4: introduction c
+    1.1.2.4.2: apply_fact @1.1.2.2,1.1.2.4.1
+    1.1.2.4.3: apply_backward_step disjE @1.1.2.4.2
+    1.1.2.4.3: introduction
+    1.1.2.4.3.1: apply_backward_step negE_gen @1.0,1.1.2.4.3.0
+    1.1.2.5: introduction c
+    1.1.2.5.2: apply_fact @1.1.2.3,1.1.2.5.1
+    1.1.2.5.3: rewrite_fact de_morgan_thm2 @1.1.2.5.2 sym=false
+    1.1.2.5.4: apply_forward_step conjD2 @1.1.2.5.3
+    1.1.2.5.5: rewrite_fact not_exists @1.1.2.5.4 sym=false
+    1.1.2.5.6: rewrite_fact not_all @1.1.2.5.5 sym=false
+    1.1.2.5.7: rewrite_fact not_imp @1.1.2.5.6 sym=false
+    1.1.2.5.8: rewrite_fact not_imp @1.1.2.5.7 sym=false
+    1.1.2.5.9: rewrite_goal real_less_def sym=false
+    1.2: introduction
+    1.2.1: apply_backward_step disjI2
+    1.2.1: apply_backward_step disjE @1.2.0
+    1.2.1: introduction
+    1.2.1.1: apply_backward_step negE_gen @1.0,1.2.1.0
+    1.2.2: introduction
+    1.2.2.1: rewrite_goal eventually_sequentially_within sym=false
+    1.2.2.1: apply_backward_step conjI
+    1.2.2.1: apply_forward_step conjD1 @1.2.2.0
+    1.2.2.2: apply_forward_step conjD2 @1.2.2.0
+    1.2.2.3: introduction c
+    1.2.2.3.2: apply_backward_step disjI2
+    1.2.2.3.2: apply_prev @1.2.2.1
+    1.2.2.4: introduction c
+    1.2.2.4.2: rewrite_goal de_morgan_thm2 sym=false
+    1.2.2.4.2: apply_backward_step conjI
+    1.2.2.4.2: rewrite_goal not_exists sym=false
+    1.2.2.4.2: rewrite_goal not_all sym=false
+    1.2.2.4.2: rewrite_goal not_imp sym=false
+    1.2.2.4.2: rewrite_goal not_imp sym=false
+    1.2.2.4.2: rewrite_goal real_not_lt sym=true
+    1.2.2.4.2: rewrite_goal double_neg sym=false
+    1.2.2.4.2: apply_prev @1.2.2.2,1.2.2.4.1
+  qed
+
+theorem has_limsup_sequentially_imp_reallim_sup
+  fixes a :: nat ⇒ real, l :: real
+  prop has_limsup a l sequentially ⟶ tendsto_real (λn. sup (image a ({m. m ≥ n}))) l sequentially
+  [hint_backward,hint_forward]
+  proof
+    1: rewrite_goal reallim_sequentially sym=false
+    1: rewrite_fact has_limsup_sequentially @0 sym=false
+    2: introduction e
+    2.2: apply_forward_step conjD1 @1
+    2.3: apply_forward_step conjD2 @1
+    2.4: forall_elim "l + e/2" @2.2
+    2.5: cut "l < l + e / 2"
+    2.5: z3 @2.1
+    2.6: apply_fact @2.4,2.5
+    2.7: forall_elim l-e @2.3
+    2.8: cut "l - e < l"
+    2.8: z3 @2.1
+    2.9: apply_fact @2.7,2.8
+    2.10: exists_elim N @2.6
+    2.12: inst_exists_goal N
+    2.12: introduction n
+    2.12.2: rewrite_goal real_abs_between sym=true
+    2.12.2: apply_backward_step conjI
+    2.12.2: forall_elim n @2.9
+    2.12.3: exists_elim M @2.12.2
+    2.12.5: apply_backward_step conjI
+    2.12.5: apply_backward_step real_lte_trans param_y="a M"
+    2.12.5: apply_backward_step conjD2 @2.12.4
+    2.12.6: apply_backward_step element_le_sup
+    2.12.6: rewrite_goal image_def sym=false
+    2.12.6: rewrite_goal conj_comm sym=false
+    2.12.6: rewrite_goal forall_in_gspec1 sym=false
+    2.12.6: inst_exists_goal l+e/2
+    2.12.6: introduction m
+    2.12.6.2: apply_prev @2.11
+    2.12.6.2: rewrite_fact member_collect @2.12.6.1 sym=false
+    2.12.6.3: z3 @2.12.6.2,2.12.1
+    2.12.11: rewrite_goal in_image sym=false
+    2.12.11: inst_exists_goal M
+    2.12.11: apply_backward_step conjI
+    2.12.11: apply_backward_step eq_refl
+    2.12.12: rewrite_goal member_collect sym=false
+    2.12.12: apply_forward_step conjD1 @2.12.4
+    2.12.13: z3 @2.12.12
+    2.12.20: apply_backward_step real_let_trans param_y="l + e / 2"
+    2.12.20: apply_backward_step real_sup_le
+    2.12.20: rewrite_goal set_equal_iff sym=false
+    2.12.20: rewrite_goal member_empty_simp sym=false
+    2.12.20: apply_backward_step negI
+    2.12.20: introduction
+    2.12.20.1: rewrite_fact eq_sym_eq @2.12.20.0 sym=false
+    2.12.20.2: forall_elim "a M" @2.12.20.1
+    2.12.20.3: rewrite_goal_with_prev @2.12.20.2
+    2.12.24: rewrite_goal image_def sym=false
+    2.12.24: rewrite_goal conj_comm sym=false
+    2.12.24: rewrite_goal forall_in_gspec1 sym=false
+    2.12.28: z3 @2.1
+  qed
+
+theorem has_limsup_sequentially_reallim_sup
+  fixes a :: nat ⇒ real, l :: real
+  prop has_limsup a l sequentially ⟷ (∃b. ∀n. a n ≤ b) ∧ tendsto_real (λn. sup (image a ({m. m ≥ n}))) l sequentially
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_forward_step has_limsup_sequentially_imp_reallim_sup @0.0
+    0.2: apply_backward_step conjI
+    0.2: rewrite_goal eventually_ubound_le_sequentially sym=true
+    0.2: apply_backward_step has_limsup_imp_ubound_le @0.0
+    1: introduction
+    1.1: rewrite_fact reallim_sequentially @1.0 sym=false
+    1.2: apply_forward_step conjD1 @1.1
+    1.2: apply_forward_step conjD2 @1.1
+    1.4: exists_elim b @1.3
+    1.6: rewrite_goal has_limsup_sequentially sym=false
+    1.6: apply_backward_step conjI
+    1.6: introduction c
+    1.6.2: forall_elim c-l @1.2
+    1.6.3: cut "0 < c - l"
+    1.6.3: z3 @1.6.1
+    1.6.4: apply_fact @1.6.2,1.6.3
+    1.6.5: exists_elim N @1.6.4
+    1.6.7: inst_exists_goal N
+    1.6.7: introduction n
+    1.6.7.2: apply_fact @1.6.6,1.6.7.1
+    1.6.7.3: rewrite_fact real_abs_between @1.6.7.2 sym=true
+    1.6.7.4: apply_forward_step conjD2 @1.6.7.3
+    1.6.7.5: apply_forward_step conjD2 @1.6.7.4
+    1.6.7.6: apply_backward_step real_le_trans param_y="sup (image a ({m. m ≥ n}))"
+    1.6.7.6: apply_backward_step element_le_sup
+    1.6.7.6: rewrite_goal image_def sym=false
+    1.6.7.6: rewrite_goal conj_comm sym=false
+    1.6.7.6: rewrite_goal forall_in_gspec1 sym=false
+    1.6.7.6: inst_exists_goal b
+    1.6.7.6: z3 @1.5
+    1.6.7.11: rewrite_goal in_image sym=false
+    1.6.7.11: inst_exists_goal n
+    1.6.7.11: apply_backward_step conjI
+    1.6.7.11: apply_backward_step eq_refl
+    1.6.7.12: z3
+    1.6.7.17: apply_backward_step real_le_trans param_y="l + (c - l)"
+    1.6.7.17: apply_backward_step real_lt_imp_le
+    1.6.7.18: z3
+    1.7: introduction c
+    1.7.2: introduction N
+    1.7.2.1: forall_elim l-c @1.2
+    1.7.2.2: rewrite_fact real_sub_lt @1.7.1 sym=true
+    1.7.2.3: apply_fact @1.7.2.1,1.7.2.2
+    1.7.2.4: exists_elim M @1.7.2.3
+    1.7.2.6: apply_forward_step sup_approach param_c=c param_s="{y. ?k. y = a k & k >= max N M}"
+    1.7.2.7: cut "(∃x. x ∈ {y. ∃k. y = a k ∧ k ≥ max N M} ∧ c < x)"
+    1.7.2.7: apply_prev @1.7.2.6
+    1.7.2.7: z3
+    1.7.2.8: inst_exists_goal b
+    1.7.2.8: rewrite_goal forall_in_gspec1 sym=false
+    1.7.2.8: z3 @1.5
+    1.7.2.11: forall_elim "max N M" @1.7.2.5
+    1.7.2.12: cut "M ≤ max N M"
+    1.7.2.12: z3
+    1.7.2.13: apply_fact @1.7.2.11,1.7.2.12
+    1.7.2.14: rewrite_fact real_abs_between @1.7.2.13 sym=true
+    1.7.2.15: apply_forward_step conjD2 @1.7.2.14
+    1.7.2.16: apply_forward_step conjD1 @1.7.2.15
+    1.7.2.17: rewrite_fact image_def @1.7.2.16 sym=false
+    1.7.2.18: rewrite_fact member_collect @1.7.2.17 sym=false
+    1.7.2.19: rewrite_goal conj_comm sym=false
+    1.7.2.19: apply_backward_step real_let_trans param_y="l - (l - c)"
+    1.7.2.19: z3
+    1.7.2.23: rewrite_fact exists_in_gspec1 @1.7.2.22 sym=false
+    1.7.2.24: z3 @1.7.2.23
+  qed
+
+theorem has_limsup_mul_reallim_right
+  fixes a :: real, b :: real, f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
+  prop has_limsup f a net ⟶ tendsto_real g b net ⟶ eventually (λx. 0 ≤ f x) net ⟶ eventually (λx. 0 ≤ g x) net ⟶ has_limsup (λx. f x * g x) (a * b) net
+  [hint_backward,hint_backward1]
+  proof
+    4: rewrite_goal has_limsup sym=false
+    4: cases "trivial_limit net"
+    4: introduction
+    4.1: apply_backward_step disjI1
+    5: introduction
+    5.1: apply_backward_step disjI2
+    5.1: apply_backward_step conjI
+    5.1: introduction c
+    5.1.2: cut "?d. 0 < d & !x. abs x < d --> (a + x) * (b + x) < c"
+    5.1.2: cut "real_continuous (λx. (a + x) * (b + x)) (atreal 0)"
+    5.1.2: apply_backward_step real_continuous_mul
+    5.1.2: apply_backward_step real_continuous_add
+    5.1.2: apply_backward_step real_continuous_const
+    5.1.3: apply_backward_step real_continuous_at_id
+    5.1.5: apply_backward_step real_continuous_add
+    5.1.5: apply_backward_step real_continuous_const
+    5.1.8: rewrite_fact real_continuous_atreal1 @5.1.7 sym=false
+    5.1.9: forall_elim "c- a * b" @5.1.8
+    5.1.10: cut "0 < c - a * b"
+    5.1.10: z3 @5.1.1
+    5.1.11: apply_fact @5.1.9,5.1.10
+    5.1.12: exists_elim d @5.1.11
+    5.1.14: inst_exists_goal d
+    5.1.14: apply_backward_step conjI
+    5.1.14: apply_backward_step conjD1 @5.1.13
+    5.1.15: apply_forward_step conjD2 @5.1.13
+    5.1.16: introduction x
+    5.1.16.2: rewrite_fact real_sub_rzero @5.1.15 sym=false
+    5.1.16.3: apply_fact @5.1.16.2,5.1.16.1
+    5.1.16.4: z3 @5.1.16.3
+    5.1.19: apply_forward_step conjD2 @5.1.17
+    5.1.20: rewrite_fact tendsto_real_def @1 sym=false
+    5.1.21: forall_elim d/2 @5.1.20
+    5.1.22: cut "0 < d / 2 " @5.1.21
+    5.1.22: z3 @5.1.14
+    5.1.23: apply_fact @5.1.21,5.1.22
+    5.1.24: apply_backward_step eventually_mp param_P="(λx. abs (g x - b) < d / 2)"
+    5.1.24: rewrite_fact has_limsup @0 sym=false
+    5.1.25: apply_backward_step disjE @5.1.24
+    5.1.25: introduction
+    5.1.25.1: apply_backward_step eventually_trivial @5.1.25.0
+    5.1.26: introduction
+    5.1.26.1: apply_forward_step conjD1 @5.1.26.0
+    5.1.26.2: forall_elim "a + d/2" @5.1.26.1
+    5.1.26.3: cut "a < a + d / 2"
+    5.1.26.3: z3 @5.1.14
+    5.1.26.4: apply_fact @5.1.26.2,5.1.26.3
+    5.1.26.5: apply_backward_step eventually_mp param_P="(λx. f x ≤ a + d / 2)"
+    5.1.26.5: apply_forward_step conjI @2,3
+    5.1.26.6: rewrite_fact eventually_and @5.1.26.5 sym=true
+    5.1.26.7: apply_backward_step eventually_mono param_P="(λx. 0 ≤ f x ∧ 0 ≤ g x)"
+    5.1.26.7: introduction x
+    5.1.26.7.4: apply_backward_step real_le_trans param_y="(a + d / 2) * (b + d / 2)"
+    5.1.26.7.4: apply_backward_step real_le_mul2
+    5.1.26.7.4: apply_backward_step conjD1 @5.1.26.7.1
+    5.1.26.7.5: apply_backward_step conjD2 @5.1.26.7.1
+    5.1.26.7.6: z3 @5.1.26.7.3
+    5.1.26.7.8: forall_elim d/2 @5.1.19
+    5.1.26.7.9: apply_backward_step real_lt_imp_le
+    5.1.26.7.9: apply_prev @5.1.26.7.8
+    5.1.26.7.9: z3 @5.1.14
+    5.2: introduction c
+    5.2.2: cases "b=0"
+    5.2.2: introduction
+    5.2.2.1: rewrite_fact_with_prev @5.2.2.0,5.2.1
+    5.2.2.2: rewrite_fact real_mul_rzero @5.2.2.1 sym=false
+    5.2.2.3: apply_backward_step negI
+    5.2.2.3: introduction
+    5.2.2.3.1: apply_backward_step negE param_A="0<=c"
+    5.2.2.3.1: rewrite_goal real_not_lt sym=true
+    5.2.2.3.1: rewrite_goal double_neg sym=false
+    5.2.2.3.3: cut "eventually (λx. 0 ≤ c) net"
+    5.2.2.3.3: apply_forward_step conjI @2,3
+    5.2.2.3.4: rewrite_fact eventually_and @5.2.2.3.3 sym=true
+    5.2.2.3.5: apply_forward_step conjI @5.2.2.3.4,5.2.2.3.0
+    5.2.2.3.6: rewrite_fact eventually_and @5.2.2.3.5 sym=true
+    5.2.2.3.7: apply_backward_step eventually_mono param_P="(λx. (0 ≤ f x ∧ 0 ≤ g x) ∧ f x * g x ≤ c)"
+    5.2.2.3.7: z3
+    5.2.2.3.9: apply_forward_step eventually_happens @5.2.2.3.8
+    5.2.2.3.10: apply_backward_step disjE @5.2.2.3.9
+    5.2.2.3.10: introduction
+    5.2.2.3.10.1: apply_backward_step negE_gen @5.0,5.2.2.3.10.0
+    5.2.2.3.11: z3
+    5.2.3: introduction
+    5.2.3.1: apply_backward_step negI
+    5.2.3.1: introduction
+    5.2.3.1.1: apply_backward_step negE param_A="0 < b"
+    5.2.3.1.1: apply_backward_step negI
+    5.2.3.1.1: introduction
+    5.2.3.1.1.1: cut "∃d. 0 < d ∧ (∀x. abs x < d ⟶ c < (a + x) * (b + x))"
+    5.2.3.1.1.1: cut "real_continuous (λx. (a + x) * (b + x)) (atreal 0)"
+    5.2.3.1.1.1: apply_backward_step real_continuous_mul
+    5.2.3.1.1.1: apply_backward_step real_continuous_add
+    5.2.3.1.1.1: apply_backward_step real_continuous_const
+    5.2.3.1.1.2: apply_backward_step real_continuous_at_id
+    5.2.3.1.1.4: apply_backward_step real_continuous_add
+    5.2.3.1.1.4: apply_backward_step real_continuous_const
+    5.2.3.1.1.7: rewrite_fact real_continuous_atreal1 @5.2.3.1.1.6 sym=false
+    5.2.3.1.1.8: forall_elim "a * b -c" @5.2.3.1.1.7
+    5.2.3.1.1.9: cut "0 < a * b - c"
+    5.2.3.1.1.9: z3 @5.2.1
+    5.2.3.1.1.10: apply_fact @5.2.3.1.1.8,5.2.3.1.1.9
+    5.2.3.1.1.11: exists_elim d @5.2.3.1.1.10
+    5.2.3.1.1.13: inst_exists_goal d
+    5.2.3.1.1.13: apply_backward_step conjI
+    5.2.3.1.1.13: apply_backward_step conjD1 @5.2.3.1.1.12
+    5.2.3.1.1.14: apply_forward_step conjD2 @5.2.3.1.1.12
+    5.2.3.1.1.15: rewrite_fact real_sub_rzero @5.2.3.1.1.14 sym=false
+    5.2.3.1.1.16: introduction x
+    5.2.3.1.1.16.2: apply_fact @5.2.3.1.1.15,5.2.3.1.1.16.1
+    5.2.3.1.1.16.3: z3 @5.2.3.1.1.16.2
+    5.2.3.1.1.19: exists_elim d1 @5.2.3.1.1.18
+    5.2.3.1.1.21: rewrite_fact has_limsup @0 sym=false
+    5.2.3.1.1.22: apply_backward_step contrapositive @5.2.3.1.1.21
+    5.2.3.1.1.22: introduction
+    5.2.3.1.1.22.1: rewrite_goal de_morgan_thm2 sym=false
+    5.2.3.1.1.22.1: apply_backward_step conjI
+    5.2.3.1.1.22.1: rewrite_goal de_morgan_thm1 sym=false
+    5.2.3.1.1.22.1: apply_backward_step disjI2
+    5.2.3.1.1.22.1: rewrite_goal not_all sym=false
+    5.2.3.1.1.22.1: rewrite_goal not_imp sym=false
+    5.2.3.1.1.22.1: inst_exists_goal "a - min b (d1 / 2) / 2"
+    5.2.3.1.1.22.1: apply_backward_step conjI
+    5.2.3.1.1.22.1: z3 @5.2.3.1.1.13,5.2.3.1.1.0,5.2.3.1.1.20
+    5.2.3.1.1.22.2: rewrite_goal double_neg sym=false
+    5.2.3.1.1.22.2: rewrite_fact tendsto_real_def @1 sym=false
+    5.2.3.1.1.22.3: forall_elim "min b (d1 / 2) / 2" @5.2.3.1.1.22.2
+    5.2.3.1.1.22.4: cut "0 < min b (d1 / 2) / 2"
+    5.2.3.1.1.22.4: z3 @5.2.3.1.1.0,5.2.3.1.1.20
+    5.2.3.1.1.22.5: apply_fact @5.2.3.1.1.22.3,5.2.3.1.1.22.4
+    5.2.3.1.1.22.6: apply_forward_step conjI @2,3
+    5.2.3.1.1.22.7: rewrite_fact eventually_and @5.2.3.1.1.22.6 sym=true
+    5.2.3.1.1.22.8: apply_forward_step conjI @5.2.3.1.1.22.7,5.2.3.1.1.22.5
+    5.2.3.1.1.22.9: rewrite_fact eventually_and @5.2.3.1.1.22.8 sym=true
+    5.2.3.1.1.22.10: apply_forward_step conjI @5.2.3.1.0,5.2.3.1.1.22.9
+    5.2.3.1.1.22.11: rewrite_fact eventually_and @5.2.3.1.1.22.10 sym=true
+    5.2.3.1.1.22.12: apply_backward_step eventually_mono param_P="(λx. f x * g x ≤ c ∧ (0 ≤ f x ∧ 0 ≤ g x) ∧ abs (g x - b) < min b (d1 / 2) / 2)"
+    5.2.3.1.1.22.12: introduction x
+    5.2.3.1.1.22.12.2: apply_forward_step conjD1 @5.2.3.1.1.22.12.1
+    5.2.3.1.1.22.12.3: apply_forward_step conjD2 @5.2.3.1.1.22.12.1
+    5.2.3.1.1.22.12.4: apply_forward_step conjD1 @5.2.3.1.1.22.12.3
+    5.2.3.1.1.22.12.5: apply_forward_step conjD2 @5.2.3.1.1.22.12.3
+    5.2.3.1.1.22.12.6: apply_forward_step conjD1 @5.2.3.1.1.20
+    5.2.3.1.1.22.12.7: apply_forward_step conjD2 @5.2.3.1.1.20
+    5.2.3.1.1.22.12.8: apply_backward_step real_le_rcancel_imp param_z="b-min b (d1 / 2) / 2"
+    5.2.3.1.1.22.12.8: z3 @5.2.3.1.1.0
+    5.2.3.1.1.22.12.9: apply_backward_step real_le_trans param_y="f x * g x"
+    5.2.3.1.1.22.12.9: apply_backward_step real_le_lmul
+    5.2.3.1.1.22.12.9: apply_backward_step conjD1 @5.2.3.1.1.22.12.4
+    5.2.3.1.1.22.12.10: z3 @5.2.3.1.1.22.12.5
+    5.2.3.1.1.22.12.12: apply_backward_step real_le_trans param_y=c
+    5.2.3.1.1.22.12.12: forall_elim "- (min b (d1 / 2) / 2)" @5.2.3.1.1.22.12.7
+    5.2.3.1.1.22.12.13: rewrite_goal real_minus_def sym=false
+    5.2.3.1.1.22.12.13: apply_backward_step real_lt_imp_le
+    5.2.3.1.1.22.12.13: apply_prev @5.2.3.1.1.22.12.12
+    5.2.3.1.1.22.12.13: z3 @5.2.3.1.1.22.12.6,5.2.3.1.1.0
+    5.2.3.1.3: cut "0 <= b"
+    5.2.3.1.3: apply_backward_step reallim_lbound param_f=g param_net=net
+    5.2.3.1.4: z3 @5.2.3.1.3,5.2.3.0
+  qed
+
+theorem has_limsup_mul_reallim_left
+  fixes a :: real, b :: real, f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
+  prop tendsto_real f a net ⟶ has_limsup g b net ⟶ eventually (λx. 0 ≤ f x) net ⟶ eventually (λx. 0 ≤ g x) net ⟶ has_limsup (λx. f x * g x) (a * b) net
+  [hint_backward,hint_backward1]
+  proof
+    4: rewrite_goal real_mult_comm sym=false
+    4: apply_backward_step has_limsup_mul_reallim_right
+  qed
+
+theorem has_limsup_sequentially_within_lbound_zero
+  fixes b :: real, f :: nat ⇒ real, k :: nat set
+  prop has_limsup f b (within sequentially k) ⟶ (∀x. 0 ≤ f x) ⟶ ¬(finite k) ⟶ 0 ≤ b
+  [hint_backward1]
+  proof
+    3: apply_backward_step has_limsup_le param_f="(%n::nat. (0::real))" param_g=f param_net="(within sequentially k)"
+    3: apply_backward_step reallim_imp_has_limsup
+    3: apply_backward_step reallim_const
+    5: rewrite_goal trivial_limit_sequentially_within sym=false
+    6: apply_backward_step always_eventually
+  qed
+
+theorem has_liminf_transform
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, net :: 'a net
+  prop eventually (λx. f x = g x) net ⟶ has_liminf f l net ⟶ has_liminf g l net
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: rewrite_goal has_liminf_def sym=false
+    2: rewrite_fact has_liminf_def @1 sym=false
+    3: apply_backward_step disjE @2
+    3: introduction
+    3.1: apply_backward_step disjI1
+    4: introduction
+    4.1: apply_backward_step disjI2
+    4.1: cut "!b. eventually (λx. b ≤ f x) net <--> eventually (λx. b ≤ g x) net"
+    4.1: introduction b
+    4.1.1: apply_backward_step eventually_iff
+    4.1.1: apply_backward_step eventually_mp param_P="(λx. f x = g x)"
+    4.1.1: apply_backward_step always_eventually
+    4.1.1: z3
+    4.2: rewrite_fact_with_prev @4.1,4.0
+  qed
+
+theorem has_liminf_eventually_lbound
+  fixes b :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop ¬(trivial_limit net) ⟶ has_liminf f l net ⟶ b < l ⟶ eventually (λx. b < f x) net
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_fact has_liminf_def @1 sym=false
+    4: apply_backward_step disjE @3
+    4: introduction
+    4.1: apply_backward_step negE_gen @0,4.0
+    5: introduction
+    5.1: apply_forward_step has_sup_approach param_c=b param_l=l param_s="{b. eventually (λx. b ≤ f x) net}"
+    5.2: apply_fact @5.1,5.0,2
+    5.3: rewrite_fact member_collect @5.2 sym=false
+    5.4: exists_elim c @5.3
+    5.6: apply_forward_step conjD1 @5.5
+    5.7: apply_backward_step eventually_mp param_P="(λx. c ≤ f x)"
+    5.7: apply_backward_step always_eventually
+    5.7: apply_forward_step conjD2 @5.5
+    5.8: z3 @5.7
+  qed
+
+theorem reallim_imp_has_liminf
+  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop tendsto_real f l net ⟶ has_liminf f l net
+  [hint_backward,hint_forward]
+  proof
+    1: rewrite_goal has_liminf_def sym=false
+    1: cases "trivial_limit net"
+    1: introduction
+    1.1: apply_backward_step disjI1
+    2: introduction
+    2.1: apply_backward_step disjI2
+    2.1: rewrite_goal has_sup sym=false
+    2.1: apply_backward_step conjI
+    2.1: apply_backward_step negI
+    2.1: rewrite_goal set_equal_iff sym=false
+    2.1: rewrite_goal member_empty_simp sym=false
+    2.1: introduction
+    2.1.1: apply_backward_step contrapositive @2.1.0
+    2.1.1: introduction
+    2.1.1.1: rewrite_goal not_all sym=false
+    2.1.1.1: inst_exists_goal l-1
+    2.1.1.1: rewrite_goal member_collect sym=false
+    2.1.1.1: apply_backward_step negI
+    2.1.1.1: introduction
+    2.1.1.1.1: rewrite_fact eq_sym_eq @2.1.1.1.0 sym=false
+    2.1.1.1.2: rewrite_goal_with_prev @2.1.1.1.1
+    2.1.1.1.2: rewrite_fact tendsto_real_def @0 sym=false
+    2.1.1.1.3: forall_elim "(1::real)" @2.1.1.1.2
+    2.1.1.1.4: cut "(0::real) < 1"
+    2.1.1.1.4: z3
+    2.1.1.1.5: apply_fact @2.1.1.1.3,2.1.1.1.4
+    2.1.1.1.6: apply_backward_step eventually_mono param_P="(λx. abs (f x - l) < 1)"
+    2.1.1.1.6: z3
+    2.5: apply_backward_step conjI
+    2.5: rewrite_goal member_collect sym=false
+    2.5: introduction x
+    2.5.2: apply_backward_step reallim_lbound param_f=f param_net=net
+    2.7: introduction c
+    2.7.2: inst_exists_goal "(l+c)/2"
+    2.7.2: rewrite_goal member_collect sym=false
+    2.7.2: apply_backward_step conjI
+    2.7.2: rewrite_fact tendsto_real_def @0 sym=false
+    2.7.3: forall_elim "(l-c)/2" @2.7.2
+    2.7.4: cut "0 < (l - c) / 2 "
+    2.7.4: z3 @2.7.1
+    2.7.5: apply_fact @2.7.3,2.7.4
+    2.7.6: apply_backward_step eventually_mono param_P="(λx. abs (f x - l) < (l - c) / 2)"
+    2.7.6: z3 @2.7.1
+    2.7.8: z3 @2.7.1
+  qed
+
+theorem has_liminf_imp_lbound_le
+  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop has_liminf f l net ⟶ (∃b. eventually (λx. b ≤ f x) net)
+  [hint_forward,hint_backward]
+  proof
+    1: rewrite_fact has_liminf_def @0 sym=false
+    2: apply_backward_step disjE @1
+    2: introduction
+    2.1: inst_exists_goal l
+    2.1: apply_backward_step eventually_trivial
+    3: rewrite_goal has_sup sym=false
+    3: rewrite_goal member_collect sym=false
+    3: introduction
+    3.1: apply_forward_step conjD2 @3.0
+    3.2: apply_forward_step conjD2 @3.1
+    3.3: forall_elim l-1 @3.2
+    3.4: cut "l - 1 < l "
+    3.4: z3
+    3.5: apply_fact @3.3,3.4
+    3.6: exists_elim x @3.5
+    3.8: inst_exists_goal x
+    3.8: apply_backward_step conjD1 @3.7
+  qed
+
+theorem has_liminf_not_lbound
+  fixes c :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop ¬(trivial_limit net) ⟶ has_liminf f l net ⟶ l < c ⟶ ¬(eventually (λx. c ≤ f x) net)
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_fact has_liminf_def @1 sym=false
+    4: apply_backward_step disjE @3
+    4: introduction
+    4.1: apply_backward_step negE_gen @0,4.0
+    5: introduction
+    5.1: apply_backward_step contrapositive @2
+    5.1: rewrite_goal real_not_lt sym=false
+    5.1: rewrite_goal double_neg sym=false
+    5.1: introduction
+    5.1.1: apply_backward_step has_sup_ubound @5.0
+    5.1.1: rewrite_goal member_collect sym=false
+  qed
+
+theorem has_liminf
+  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop has_liminf f l net ⟷ trivial_limit net ∨ (∀c. c < l ⟶ eventually (λx. c ≤ f x) net) ∧ (∀c. l < c ⟶ ¬(eventually (λx. c ≤ f x) net))
+  [hint_rewrite]
+  proof
+    0: cases "trivial_limit net"
+    0: rewrite_goal has_liminf_def sym=false
+    0: introduction
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step disjI1
+    0.2: introduction
+    0.2.1: apply_backward_step disjI1
+    2: introduction
+    2.1: apply_backward_step iffI
+    2.1: introduction
+    2.1.1: apply_backward_step disjI2
+    2.1.1: apply_backward_step conjI
+    2.1.1: introduction c
+    2.1.1.2: apply_backward_step eventually_mono param_P="(λx. c < f x)"
+    2.1.1.2: z3
+    2.1.1.3: apply_backward_step has_liminf_eventually_lbound @2.0,2.1.0,2.1.1.1
+    2.1.2: introduction c
+    2.1.2.2: apply_backward_step has_liminf_not_lbound @2.0,2.1.0,2.1.2.1
+    2.2: introduction
+    2.2.1: apply_backward_step disjE @2.2.0
+    2.2.1: introduction
+    2.2.1.1: apply_backward_step negE_gen @2.0,2.2.1.0
+    2.2.2: introduction
+    2.2.2.1: rewrite_goal has_liminf_def sym=false
+    2.2.2.1: apply_backward_step disjI2
+    2.2.2.1: rewrite_goal has_sup sym=false
+    2.2.2.1: apply_backward_step conjI
+    2.2.2.1: apply_forward_step conjD1 @2.2.2.0
+    2.2.2.2: apply_forward_step conjD2 @2.2.2.0
+    2.2.2.3: rewrite_goal set_equal_iff sym=false
+    2.2.2.3: rewrite_goal member_empty_simp sym=false
+    2.2.2.3: rewrite_goal not_all sym=false
+    2.2.2.3: rewrite_goal member_collect sym=false
+    2.2.2.3: inst_exists_goal l-1
+    2.2.2.3: apply_backward_step negI
+    2.2.2.3: introduction
+    2.2.2.3.1: rewrite_fact eq_sym_eq @2.2.2.3.0 sym=false
+    2.2.2.3.2: rewrite_goal_with_prev @2.2.2.3.1
+    2.2.2.3.2: apply_prev @2.2.2.1
+    2.2.2.3.2: z3
+    2.2.2.10: apply_backward_step conjI
+    2.2.2.10: rewrite_goal member_collect sym=false
+    2.2.2.10: introduction x
+    2.2.2.10.2: rewrite_goal real_not_lt sym=true
+    2.2.2.10.2: apply_backward_step contrapositive @2.2.2.10.1
+    2.2.2.10.2: introduction
+    2.2.2.10.2.1: rewrite_fact double_neg @2.2.2.10.2.0 sym=false
+    2.2.2.10.2.2: apply_prev @2.2.2.2
+    2.2.2.12: rewrite_goal member_collect sym=false
+    2.2.2.12: introduction c
+    2.2.2.12.2: inst_exists_goal "(l+c)/2"
+    2.2.2.12.2: apply_backward_step conjI
+    2.2.2.12.2: apply_prev @2.2.2.1
+    2.2.2.12.2: z3 @2.2.2.12.1
+    2.2.2.12.4: z3 @2.2.2.12.1
+  qed
+
+theorem liminf_exists
+  fixes f :: 'a ⇒ real, net :: 'a net
+  prop (∃l. has_liminf f l net) ⟷ trivial_limit net ∨ (∃b. eventually (λx. b ≤ f x) net) ∧ (∃c. ¬(eventually (λx. c ≤ f x) net))
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: rewrite_goal has_liminf sym=false
+    0: cases "trivial_limit net"
+    0: introduction
+    0.2: apply_backward_step disjI1
+    1: introduction
+    1.2: apply_backward_step disjI2
+    1.2: exists_elim l @1.1
+    1.4: apply_backward_step disjE @1.3
+    1.4: introduction
+    1.4.1: apply_backward_step negE_gen @1.0,1.4.0
+    1.5: introduction
+    1.5.1: apply_forward_step conjD1 @1.5.0
+    1.5.2: apply_forward_step conjD2 @1.5.0
+    1.5.3: apply_backward_step conjI
+    1.5.3: inst_exists_goal l-1
+    1.5.3: apply_prev @1.5.1
+    1.5.3: z3
+    1.5.6: inst_exists_goal l+1
+    1.5.6: apply_prev @1.5.2
+    1.5.6: z3
+    4: introduction
+    4.1: rewrite_goal has_liminf_def sym=false
+    4.1: cases "trivial_limit net"
+    4.1: introduction
+    4.1.1: inst_exists_goal "(0::real)"
+    4.1.1: apply_backward_step disjI1
+    4.2: introduction
+    4.2.1: rewrite_goal right_or_exists_thm sym=true
+    4.2.1: apply_backward_step disjI2
+    4.2.1: rewrite_goal sup_exists sym=false
+    4.2.1: apply_backward_step disjE @4.0
+    4.2.1: introduction
+    4.2.1.1: apply_backward_step negE_gen @4.2.0,4.2.1.0
+    4.2.2: introduction
+    4.2.2.1: apply_forward_step conjD1 @4.2.2.0
+    4.2.2.2: apply_forward_step conjD2 @4.2.2.0
+    4.2.2.3: exists_elim b @4.2.2.1
+    4.2.2.5: exists_elim c @4.2.2.2
+    4.2.2.7: apply_backward_step conjI
+    4.2.2.7: rewrite_goal set_equal_iff sym=false
+    4.2.2.7: rewrite_goal member_empty_simp sym=false
+    4.2.2.7: rewrite_goal not_all sym=false
+    4.2.2.7: inst_exists_goal b
+    4.2.2.7: rewrite_goal member_collect sym=false
+    4.2.2.7: apply_backward_step negI
+    4.2.2.7: introduction
+    4.2.2.7.1: rewrite_fact eq_sym_eq @4.2.2.7.0 sym=false
+    4.2.2.7.2: rewrite_goal_with_prev @4.2.2.7.1
+    4.2.2.14: inst_exists_goal c
+    4.2.2.14: rewrite_goal member_collect sym=false
+    4.2.2.14: introduction x
+    4.2.2.14.2: rewrite_goal real_not_lt sym=true
+    4.2.2.14.2: apply_backward_step contrapositive @4.2.2.6
+    4.2.2.14.2: rewrite_goal double_neg sym=false
+    4.2.2.14.2: introduction
+    4.2.2.14.2.1: apply_backward_step eventually_mono param_P="(λx1. x ≤ f x1)"
+    4.2.2.14.2.1: z3 @4.2.2.14.2.0
+  qed
+
+theorem has_liminf_le
+  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, m :: real, net :: 'a net
+  prop has_liminf f l net ⟶ has_liminf g m net ⟶ ¬(trivial_limit net) ⟶ eventually (λx. f x ≤ g x) net ⟶ l ≤ m
+  [hint_backward1]
+  proof
+    4: rewrite_goal real_not_lt sym=true
+    4: rewrite_goal real_lt_between sym=false
+    4: rewrite_goal not_exists sym=false
+    4: introduction c
+    4.1: apply_backward_step negI
+    4.1: introduction
+    4.1.1: apply_backward_step negE param_A="eventually (λx. c < f x) net"
+    4.1.1: apply_forward_step conjD1 @4.1.0
+    4.1.2: apply_forward_step conjD2 @4.1.0
+    4.1.3: apply_backward_step negI
+    4.1.3: introduction
+    4.1.3.1: apply_backward_step negE param_A="eventually (λx. c ≤ g x) net"
+    4.1.3.1: apply_backward_step has_liminf_not_lbound @2,1,4.1.1
+    4.1.3.2: apply_backward_step eventually_mp param_P="(λx. c < f x & f x ≤ g x) "
+    4.1.3.2: apply_backward_step always_eventually
+    4.1.3.2: z3
+    4.1.3.4: rewrite_goal eventually_and sym=false
+    4.1.3.4: apply_backward_step conjI
+    4.1.5: apply_backward_step has_liminf_eventually_lbound @2,0,4.1.2
+  qed
+
+theorem has_liminf_lbound
+  fixes b :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
+  prop eventually (λx. b ≤ f x) net ⟶ has_liminf f l net ⟶ ¬(trivial_limit net) ⟶ b ≤ l
+  [hint_backward1,hint_forward]
+  proof
+    3: apply_backward_step has_liminf_le param_f="(%x::'a. b)" param_g=f param_net=net
+    3: apply_backward_step reallim_imp_has_liminf
+    3: apply_backward_step reallim_const
+  qed
+
+theorem has_liminf_sequentially
+  fixes a :: nat ⇒ real, l :: real
+  prop has_liminf a l sequentially ⟷ (∀c. c < l ⟶ (∃N. ∀n. N ≤ n ⟶ c ≤ a n)) ∧ (∀c. l < c ⟶ (∀N. ∃n. N ≤ n ∧ a n < c))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal has_liminf sym=false
+    0: rewrite_goal eventually_sequentially sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step disjE @0.0
+    0.1: introduction
+    0.1.1: apply_backward_step contrapositive @0.1.0
+    0.1.1: introduction
+    0.1.1.1: apply_backward_step trivial_limit_sequentially
+    0.2: introduction
+    0.2.1: apply_backward_step conjI
+    0.2.1: apply_backward_step conjD1 @0.2.0
+    0.2.2: apply_forward_step conjD2 @0.2.0
+    0.2.3: rewrite_fact not_exists @0.2.2 sym=false
+    0.2.4: rewrite_fact not_all @0.2.3 sym=false
+    0.2.5: rewrite_fact not_imp @0.2.4 sym=false
+    0.2.6: rewrite_fact real_not_lt @0.2.5 sym=true
+    0.2.7: rewrite_fact double_neg @0.2.6 sym=false
+    1: introduction
+    1.1: apply_backward_step disjI2
+    1.1: apply_backward_step conjI
+    1.1: apply_backward_step conjD1 @1.0
+    1.2: rewrite_goal not_exists sym=false
+    1.2: rewrite_goal not_all sym=false
+    1.2: rewrite_goal not_imp sym=false
+    1.2: rewrite_goal real_not_lt sym=true
+    1.2: rewrite_goal double_neg sym=false
+    1.2: apply_backward_step conjD2 @1.0
+  qed
+
+theorem has_liminf_sequentially_within
+  fixes a :: nat ⇒ real, k :: nat set, l :: real
+  prop has_liminf a l (within sequentially k) ⟷ finite k ∨ (∀c. c < l ⟶ (∃N. ∀n. n ∈ k ⟶ N ≤ n ⟶ c ≤ a n)) ∧ (∀c. l < c ⟶ (∀N. ∃n. n ∈ k ∧ N ≤ n ∧ a n < c))
+  [hint_rewrite]
+  proof
+    0: cases "finite k"
+    0: introduction
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step disjI1
+    0.2: introduction
+    0.2.1: rewrite_goal has_liminf sym=false
+    0.2.1: apply_backward_step disjI1
+    0.2.1: rewrite_goal trivial_limit_sequentially_within sym=false
+    1: rewrite_goal has_liminf sym=false
+    1: rewrite_goal trivial_limit_sequentially_within sym=false
+    1: rewrite_goal eventually_sequentially_within sym=false
+    1: introduction
+    1.1: apply_backward_step iffI
+    1.1: introduction
+    1.1.1: apply_backward_step disjI2
+    1.1.1: apply_backward_step disjE @1.1.0
+    1.1.1: introduction
+    1.1.1.1: apply_backward_step negE_gen @1.0,1.1.1.0
+    1.1.2: introduction
+    1.1.2.1: apply_backward_step conjI
+    1.1.2.1: apply_forward_step conjD1 @1.1.2.0
+    1.1.2.2: introduction c
+    1.1.2.2.2: apply_fact @1.1.2.1,1.1.2.2.1
+    1.1.2.2.3: apply_backward_step disjE @1.1.2.2.2
+    1.1.2.2.3: introduction
+    1.1.2.2.3.1: apply_backward_step negE_gen @1.0,1.1.2.2.3.0
+    1.1.2.3: apply_forward_step conjD2 @1.1.2.0
+    1.1.2.4: introduction c
+    1.1.2.4.2: apply_fact @1.1.2.3,1.1.2.4.1
+    1.1.2.4.3: rewrite_fact de_morgan_thm2 @1.1.2.4.2 sym=false
+    1.1.2.4.4: apply_forward_step conjD2 @1.1.2.4.3
+    1.1.2.4.5: rewrite_fact not_exists @1.1.2.4.4 sym=false
+    1.1.2.4.6: rewrite_fact not_all @1.1.2.4.5 sym=false
+    1.1.2.4.7: rewrite_fact not_imp @1.1.2.4.6 sym=false
+    1.1.2.4.8: rewrite_fact not_imp @1.1.2.4.7 sym=false
+    1.1.2.4.9: rewrite_goal real_less_def sym=false
+    1.2: introduction
+    1.2.1: apply_backward_step disjI2
+    1.2.1: apply_backward_step disjE @1.2.0
+    1.2.1: introduction
+    1.2.1.1: apply_backward_step negE_gen @1.0,1.2.1.0
+    1.2.2: introduction
+    1.2.2.1: apply_backward_step conjI
+    1.2.2.1: introduction c
+    1.2.2.1.2: apply_backward_step disjI2
+    1.2.2.1.2: apply_forward_step conjD1 @1.2.2.0
+    1.2.2.1.3: apply_prev @1.2.2.1.2
+    1.2.2.2: introduction c
+    1.2.2.2.2: rewrite_goal de_morgan_thm2 sym=false
+    1.2.2.2.2: apply_backward_step conjI
+    1.2.2.2.2: apply_forward_step conjD2 @1.2.2.0
+    1.2.2.2.3: rewrite_goal not_exists sym=false
+    1.2.2.2.3: rewrite_goal not_all sym=false
+    1.2.2.2.3: rewrite_goal not_imp sym=false
+    1.2.2.2.3: rewrite_goal not_imp sym=false
+    1.2.2.2.3: rewrite_goal real_not_lt sym=true
+    1.2.2.2.3: rewrite_goal double_neg sym=false
+    1.2.2.2.3: apply_prev @1.2.2.2.2
+  qed
+
+theorem has_liminf_sequentially_imp_reallim_inf
+  fixes a :: nat ⇒ real, l :: real
+  prop has_liminf a l sequentially ⟶ tendsto_real (λn. inf (image a ({m. m ≥ n}))) l sequentially
+  [hint_backward]
+  proof
+    1: rewrite_fact has_liminf_sequentially @0 sym=false
+    2: rewrite_goal reallim_sequentially sym=false
+    2: apply_forward_step conjD1 @1
+    3: apply_forward_step conjD2 @1
+    4: introduction e
+    4.2: forall_elim l-e/2 @2
+    4.3: cut "l - e / 2 < l"
+    4.3: z3 @4.1
+    4.4: apply_fact @4.2,4.3
+    4.5: exists_elim N @4.4
+    4.7: forall_elim l+e @3
+    4.8: cut "l < l + e"
+    4.8: z3 @4.1
+    4.9: apply_fact @4.7,4.8
+    4.10: inst_exists_goal N
+    4.10: introduction n
+    4.10.2: rewrite_goal real_abs_between sym=true
+    4.10.2: apply_backward_step conjI
+    4.10.2: forall_elim n @4.9
+    4.10.3: exists_elim M @4.10.2
+    4.10.5: apply_backward_step conjI
+    4.10.5: apply_backward_step real_lte_trans param_y=l-e/2
+    4.10.5: z3 @4.1
+    4.10.6: apply_backward_step real_le_inf
+    4.10.6: apply_backward_step negI
+    4.10.6: rewrite_goal set_equal_iff sym=false
+    4.10.6: rewrite_goal member_empty_simp sym=false
+    4.10.6: introduction
+    4.10.6.1: forall_elim "a n" @4.10.6.0
+    4.10.6.2: rewrite_fact eq_sym_eq @4.10.6.1 sym=false
+    4.10.6.3: rewrite_goal_with_prev @4.10.6.2
+    4.10.6.3: rewrite_goal in_image sym=false
+    4.10.6.3: inst_exists_goal n
+    4.10.6.3: apply_backward_step conjI
+    4.10.6.3: apply_backward_step eq_refl
+    4.10.6.4: rewrite_goal member_collect sym=false
+    4.10.6.4: z3
+    4.10.10: rewrite_goal image_def sym=false
+    4.10.10: rewrite_goal conj_comm sym=false
+    4.10.10: rewrite_goal forall_in_gspec1 sym=false
+    4.10.10: introduction m
+    4.10.10.2: apply_prev @4.6
+    4.10.10.2: rewrite_fact member_collect @4.10.10.1 sym=false
+    4.10.10.3: z3 @4.10.10.2,4.10.1
+    4.10.16: apply_backward_step real_let_trans param_y="a M"
+    4.10.16: apply_backward_step inf_le_element
+    4.10.16: inst_exists_goal "l - e / 2"
+    4.10.17: rewrite_goal in_image sym=false
+    4.10.17: inst_exists_goal M
+    4.10.17: apply_backward_step conjI
+    4.10.17: apply_backward_step eq_refl
+    4.10.18: rewrite_goal member_collect sym=false
+    4.10.18: z3 @4.10.4
+    4.10.24: apply_backward_step conjD2 @4.10.4
+  qed
+
+theorem has_liminf_sequentially_reallim_inf
+  fixes a :: nat ⇒ real, l :: real
+  prop has_liminf a l sequentially ⟷ (∃b. ∀n. b ≤ a n) ∧ tendsto_real (λn. inf (image a ({m. m ≥ n}))) l sequentially
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step conjI
+    0.1: rewrite_goal eventually_lbound_le_sequentially sym=true
+    0.1: apply_backward_step has_liminf_imp_lbound_le param_l=l
+    0.3: apply_backward_step has_liminf_sequentially_imp_reallim_inf
+    1: rewrite_goal reallim_sequentially sym=false
+    1: introduction
+    1.1: rewrite_goal has_liminf_sequentially sym=false
+    1.1: apply_forward_step conjD2 @1.0
+    1.2: apply_backward_step conjI
+    1.2: introduction c
+    1.2.2: forall_elim l-c @1.1
+    1.2.3: cut "0 < l - c"
+    1.2.3: z3 @1.2.1
+    1.2.4: apply_fact @1.2.2,1.2.3
+    1.2.5: exists_elim N @1.2.4
+    1.2.7: inst_exists_goal N
+    1.2.7: introduction n
+    1.2.7.2: apply_fact @1.2.6,1.2.7.1
+    1.2.7.3: rewrite_fact real_abs_between @1.2.7.2 sym=true
+    1.2.7.4: apply_forward_step conjD2 @1.2.7.3
+    1.2.7.5: apply_forward_step conjD1 @1.2.7.4
+    1.2.7.6: apply_backward_step real_le_trans param_y="inf (image a ({m. m ≥ n}))"
+    1.2.7.6: apply_backward_step real_le_trans param_y="l - (l - c)"
+    1.2.7.6: z3
+    1.2.7.7: apply_backward_step real_lt_imp_le
+    1.2.7.9: apply_backward_step inf_le_element
+    1.2.7.9: rewrite_goal image_def sym=false
+    1.2.7.9: rewrite_goal conj_comm sym=false
+    1.2.7.9: rewrite_goal forall_in_gspec1 sym=false
+    1.2.7.9: apply_forward_step conjD1 @1.0
+    1.2.7.10: exists_elim b @1.2.7.9
+    1.2.7.12: inst_exists_goal b
+    1.2.7.12: introduction x
+    1.2.7.12.2: apply_prev @1.2.7.11
+    1.2.7.17: rewrite_goal in_image sym=false
+    1.2.7.17: inst_exists_goal n
+    1.2.7.17: apply_backward_step conjI
+    1.2.7.17: apply_backward_step eq_refl
+    1.2.7.18: rewrite_goal member_collect sym=false
+    1.2.7.18: z3
+    1.3: introduction c
+    1.3.2: introduction N
+    1.3.2.1: forall_elim c-l @1.1
+    1.3.2.2: cut "0 < c - l"
+    1.3.2.2: z3 @1.3.1
+    1.3.2.3: apply_fact @1.3.2.1,1.3.2.2
+    1.3.2.4: exists_elim M @1.3.2.3
+    1.3.2.6: apply_forward_step inf_approach param_c=c param_s="image a ({m. m ≥ max N M})"
+    1.3.2.7: cut "(∃x. x ∈ image a ({m. m ≥ max N M}) ∧ x < c)"
+    1.3.2.7: apply_prev @1.3.2.6
+    1.3.2.7: apply_backward_step negI
+    1.3.2.7: rewrite_goal set_equal_iff sym=false
+    1.3.2.7: rewrite_goal member_empty_simp sym=false
+    1.3.2.7: rewrite_goal image_def sym=false
+    1.3.2.7: rewrite_goal conj_comm sym=false
+    1.3.2.7: introduction
+    1.3.2.7.1: rewrite_fact member_collect @1.3.2.7.0 sym=false
+    1.3.2.7.2: rewrite_fact member_collect @1.3.2.7.1 sym=false
+    1.3.2.7.3: z3 @1.3.2.7.2
+    1.3.2.13: apply_forward_step conjD1 @1.0
+    1.3.2.14: exists_elim b @1.3.2.13
+    1.3.2.16: inst_exists_goal b
+    1.3.2.16: rewrite_goal image_def sym=false
+    1.3.2.16: rewrite_goal conj_comm sym=false
+    1.3.2.16: rewrite_goal forall_in_gspec1 sym=false
+    1.3.2.16: introduction n
+    1.3.2.16.2: apply_prev @1.3.2.15
+    1.3.2.21: forall_elim "max N M" @1.3.2.5
+    1.3.2.22: cut "M ≤ max N M"
+    1.3.2.22: z3
+    1.3.2.23: apply_fact @1.3.2.21,1.3.2.22
+    1.3.2.24: rewrite_fact real_abs_between @1.3.2.23 sym=true
+    1.3.2.25: apply_forward_step conjD2 @1.3.2.24
+    1.3.2.26: apply_forward_step conjD2 @1.3.2.25
+    1.3.2.27: apply_backward_step real_lte_trans param_y="l + (c - l)"
+    1.3.2.27: z3
+    1.3.2.30: rewrite_fact image_def @1.3.2.29 sym=false
+    1.3.2.31: exists_elim y @1.3.2.30
+    1.3.2.33: apply_forward_step conjD1 @1.3.2.32
+    1.3.2.34: rewrite_fact member_collect @1.3.2.33 sym=false
+    1.3.2.35: exists_elim z @1.3.2.34
+    1.3.2.37: inst_exists_goal z
+    1.3.2.37: apply_backward_step conjI
+    1.3.2.37: apply_forward_step conjD1 @1.3.2.36
+    1.3.2.38: rewrite_fact member_collect @1.3.2.37 sym=false
+    1.3.2.39: z3 @1.3.2.38
+    1.3.2.40: apply_forward_step conjD2 @1.3.2.36
+    1.3.2.41: apply_forward_step conjD2 @1.3.2.32
+    1.3.2.42: z3 @1.3.2.40,1.3.2.41
+  qed
+
+theorem real_series_root_test
+  fixes a :: nat ⇒ real, b :: real, k :: nat set
+  prop (∀n. n ∈ k ⟶ 0 ≤ a n) ⟶ b < 1 ⟶ has_limsup (λn. root n (a n)) b (within sequentially k) ⟶ real_summable k a
+  [hint_backward,hint_backward1]
+  proof
+    3: cases "finite k"
+    3: introduction
+    3.1: apply_backward_step real_summable_finite
+    4: introduction
+    4.1: cut "0 <= b"
+    4.1: apply_backward_step has_limsup_le param_f="(%n::nat. (0::real))" param_g="(λn. root n (a n))" param_net="(within sequentially k)"
+    4.1: apply_backward_step reallim_imp_has_limsup
+    4.1: apply_backward_step reallim_const
+    4.3: rewrite_goal trivial_limit_sequentially_within sym=false
+    4.4: rewrite_goal eventually_sequentially_within sym=false
+    4.4: apply_backward_step disjI2
+    4.4: rewrite_goal root_le_0 sym=false
+    4.4: inst_exists_goal "(0::nat)"
+    4.4: introduction n
+    4.4.3: apply_prev @0
+    4.10: cut "?a. a ∈ k"
+    4.10: rewrite_fact infinite_def @4.0 sym=true
+    4.11: apply_forward_step infinite_nonempty @4.10
+    4.12: z3 @4.11
+    4.13: cut "eventually (λn. root n (a n) < b + (1-b)/2) (within sequentially k)"
+    4.13: apply_backward_step has_limsup_eventually_ubound param_l=b
+    4.13: z3 @1
+    4.15: rewrite_fact eventually_sequentially_within @4.14 sym=false
+    4.16: apply_backward_step disjE @4.15
+    4.16: introduction
+    4.16.1: exists_elim N @4.16.0
+    4.16.3: rewrite_goal real_summable_def sym=""
+    4.16.3: apply_backward_step real_series_comparison param_g="(λn::nat. (b + (1 - b) / 2) ^ n)"
+    4.16.3: rewrite_goal real_summable_def sym=true
+    4.16.3: apply_backward_step real_summable_gp
+    4.16.3: z3 @4.9,1
+    4.16.6: inst_exists_goal N+1
+    4.16.6: rewrite_goal greater_eq_def sym=""
+    4.16.6: introduction n
+    4.16.6.3: rewrite_goal abs_def sym=false
+    4.16.6.3: cut "a n = root n (a n) ^ (n::nat)"
+    4.16.6.3: rewrite_goal eq_sym_eq sym=false
+    4.16.6.3: apply_backward_step real_pow_root_2
+    4.16.6.3: z3 @4.16.6.1
+    4.16.6.4: apply_prev @4.4
+    4.16.6.4: apply_backward_step le_0
+    4.16.6.8: rewrite_goal if_P @4.16.6.5 sym=false
+    4.16.6.8: rewrite_goal_with_prev @4.16.6.7
+    4.16.6.8: apply_backward_step real_pow_le2
+    4.16.6.8: apply_backward_step root_pos_le
+    4.16.6.9: apply_backward_step real_lt_imp_le
+    4.16.6.9: apply_prev @4.16.2
+    4.16.6.9: z3 @4.16.6.1
+  qed
+
+theorem real_cauchy_hadamard_radius
+  fixes a :: nat ⇒ real, b :: real, k :: nat set, x :: real
+  prop has_limsup (λn. root n (abs (a n))) b (within sequentially k) ⟶ b * abs x < 1 ⟶ real_summable k (λn. a n * x ^ n)
+  [hint_backward1]
+
+theorem real_cauchy_hadamard_radius_absconv_derivative
+  fixes a :: nat ⇒ real, b :: real, k :: nat set, x :: real
+  prop has_limsup (λn. root n (abs (a n))) b (within sequentially k) ⟶ b * abs x < 1 ⟶ real_summable k (λn. abs (of_nat n * a n * x ^ (n - 1)))
+  [hint_backward,hint_backward1]
+
+theorem real_cauchy_hadamard_radius_derivative
+  fixes a :: nat ⇒ real, b :: real, k :: nat set, x :: real
+  prop has_limsup (λn. root n (abs (a n))) b (within sequentially k) ⟶ b * abs x < 1 ⟶ real_summable k (λn. of_nat n * a n * x ^ (n - 1))
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step real_series_absconv_imp_conv
+    2: apply_backward_step real_cauchy_hadamard_radius_absconv_derivative @0,1
+  qed
+
+theorem real_cauchy_hadamard_radius_uniform
+  fixes a :: nat ⇒ real, b :: real, k :: nat set, s :: real set
+  prop has_limsup (λn. root n (abs (a n))) b (within sequentially k) ⟶ real_compact s ⟶ (∀x. x ∈ s ⟶ b * abs x < 1) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. ∀x. N ≤ n ∧ x ∈ s ⟶ abs (sum (k ∩ {0..n}) (λi. a i * x ^ i) - l x) < e))
+  [hint_backward,hint_backward1]
+  proof
+    3: cases "finite k"
+    3: introduction
+    3.1: rewrite_fact nat_finite @3.0 sym=false
+    3.2: exists_elim N @3.1
+    3.4: inst_exists_goal "(%x::real. sum k (λi. a i * x ^ i))"
+    3.4: introduction e
+    3.4.2: inst_exists_goal N
+    3.4.2: introduction n,x
+    3.4.2.3: cut "k ∩ {0..n} = k"
+    3.4.2.3: rewrite_goal nat_interval_def sym=false
+    3.4.2.3: apply_backward_step member_ext
+    3.4.2.3: rewrite_goal member_inter_iff sym=false
+    3.4.2.3: rewrite_goal member_collect sym=false
+    3.4.2.3: introduction x1
+    3.4.2.3.1: z3 @3.4.2.2,3.3
+    3.4.2.8: rewrite_goal_with_prev @3.4.2.7
+    3.4.2.8: rewrite_goal real_sub_refl sym=false
+    3.4.2.8: rewrite_goal real_abs_0 sym=false
+    4: introduction
+  qed
+
+theorem real_cauchy_hadamard_radius_uniform_derivative
+  fixes a :: nat ⇒ real, b :: real, k :: nat set, s :: real set
+  prop has_limsup (λn. root n (abs (a n))) b (within sequentially k) ⟶ real_compact s ⟶ (∀x. x ∈ s ⟶ b * abs x < 1) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. ∀x. N ≤ n ∧ x ∈ s ⟶ abs (sum (k ∩ {0..n}) (λi. of_nat i * a i * x ^ (i - 1)) - l x) < e))
+  [hint_backward,hint_backward1]
+
+theorem has_real_derivative_sequence
+  fixes f :: nat ⇒ real ⇒ real, f1 :: nat ⇒ real ⇒ real, g1 :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ (∀n. ∀x. x ∈ s ⟶ has_real_derivative (f n) (f1 n x) (within (atreal x) s)) ⟶ (∀e. 0 < e ⟶ (∃N. ∀n. ∀x. n ≥ N ∧ x ∈ s ⟶ abs (f1 n x - g1 x) ≤ e)) ⟶ (∃x. ∃l. x ∈ s ∧ tendsto_real (λn. f n x) l sequentially) ⟶ (∃g. ∀x. x ∈ s ⟶ tendsto_real (λn. f n x) (g x) sequentially ∧ has_real_derivative g (g1 x) (within (atreal x) s))
+  [hint_backward,hint_backward1]
+
+theorem has_real_derivative_series
+  fixes f :: nat ⇒ real ⇒ real, f1 :: nat ⇒ real ⇒ real, g1 :: real ⇒ real, k :: nat set, s :: real set
+  prop is_realinterval s ⟶ (∀n. ∀x. x ∈ s ⟶ has_real_derivative (f n) (f1 n x) (within (atreal x) s)) ⟶ (∀e. 0 < e ⟶ (∃N. ∀n. ∀x. n ≥ N ∧ x ∈ s ⟶ abs (sum (k ∩ {0..n}) (λi. f1 i x) - g1 x) ≤ e)) ⟶ (∃x. ∃l. x ∈ s ∧ real_sums (λn. f n x) l k) ⟶ (∃g. ∀x. x ∈ s ⟶ real_sums (λn. f n x) (g x) k ∧ has_real_derivative g (g1 x) (within (atreal x) s))
+  [hint_backward,hint_backward1]
+  proof
+    4: rewrite_goal real_sums_def sym=false
+    4: rewrite_fact real_sums_def @3 sym=false
+    5: apply_backward_step has_real_derivative_sequence param_f1="(%n::nat. %x::real. sum (inter k ({0..n})) (%n. f1 n x))"
+    5: introduction n,x
+    5.3: apply_backward_step has_real_derivative_sum
+    5.3: apply_backward_step finite_inter_natseg
+    5.4: introduction a
+    5.4.2: apply_prev @1
+  qed
+
+theorem real_differentiable_bound
+  fixes B :: real, f :: real ⇒ real, f1 :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ (∀x. x ∈ s ⟶ has_real_derivative f (f1 x) (within (atreal x) s) ⟶ abs (f1 x) ≤ B) ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ abs (f x - f y) ≤ B * abs (x - y))
+  [hint_backward,hint_backward1]
+
+theorem real_taylor_mvt_pos
+  fixes a :: real, f :: nat ⇒ real ⇒ real, n :: nat, x :: real
+  prop a < x ⟶ (∀i. ∀t. t ∈ real_closed_interval a x ⟶ i ≤ n ⟶ has_real_derivative (f i) (f (i + 1) t) (within (atreal t) (real_closed_interval a x))) ⟶ (∃t. t ∈ real_closed_interval a x ∧ f 0 x = sum ({0..n}) (λi. f i a * (x - a) ^ i / of_nat (fact i)) + f (n + 1) t * (x - a) ^ (n + 1) / of_nat (fact (n + 1)))
+  [hint_backward,hint_backward1]
+
+theorem real_taylor_mvt_neg
+  fixes a :: real, f :: nat ⇒ real ⇒ real, n :: nat, x :: real
+  prop x < a ⟶ (∀i. ∀t. t ∈ real_closed_interval x a ⟶ i ≤ n ⟶ has_real_derivative (f i) (f (i + 1) t) (within (atreal t) (real_closed_interval x a))) ⟶ (∃t. t ∈ real_closed_interval x a ∧ f 0 x = sum ({0..n}) (λi. f i a * (x - a) ^ i / of_nat (fact i)) + f (n + 1) t * (x - a) ^ (n + 1) / of_nat (fact (n + 1)))
+  [hint_backward,hint_backward1]
+
+theorem real_taylor
+  fixes B :: real, f :: nat ⇒ real ⇒ real, n :: nat, s :: real set
+  prop is_realinterval s ⟶ (∀i. ∀x. x ∈ s ⟶ i ≤ n ⟶ has_real_derivative (f i) (f (i + 1) x) (within (atreal x) s)) ⟶ (∀x. x ∈ s ⟶ abs (f (n + 1) x) ≤ B) ⟶ (∀w. ∀z. w ∈ s ⟶ z ∈ s ⟶ abs (f 0 z - sum ({0..n}) (λi. f i w * (z - w) ^ i / of_nat (fact i))) ≤ B * abs (z - w) ^ (n + 1) / of_nat (fact (n + 1)))
+  [hint_backward,hint_backward1]
+
+theorem real_sum_integral_ubound_increasing
+  fixes f :: real ⇒ real, g :: real ⇒ real, m :: nat, n :: nat
+  prop m ≤ n ⟶ (∀x. x ∈ real_closed_interval (of_nat m) (of_nat n + 1) ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval (of_nat m) (of_nat n + 1)))) ⟶ (∀x. ∀y. of_nat m ≤ x ⟶ x ≤ y ⟶ y ≤ of_nat n + 1 ⟶ f x ≤ f y) ⟶ sum ({m..n}) (λk. f (of_nat k)) ≤ g (of_nat n + 1) - g (of_nat m)
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step real_le_trans param_y="sum ({m..n}) (λk. g (of_nat k + 1) - g (of_nat k))"
+  qed
+
+theorem real_sum_integral_ubound_decreasing
+  fixes f :: real ⇒ real, g :: real ⇒ real, m :: nat, n :: nat
+  prop m ≤ n ⟶ (∀x. x ∈ real_closed_interval (of_nat m - 1) (of_nat n) ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval (of_nat m - 1) (of_nat n)))) ⟶ (∀x. ∀y. of_nat m - 1 ≤ x ⟶ x ≤ y ⟶ y ≤ of_nat n ⟶ f y ≤ f x) ⟶ sum ({m..n}) (λk. f (of_nat k)) ≤ g (of_nat n) - g (of_nat m - 1)
+  [hint_backward,hint_backward1]
+
+theorem real_sum_integral_lbound_increasing
+  fixes f :: real ⇒ real, g :: real ⇒ real, m :: nat, n :: nat
+  prop m ≤ n ⟶ (∀x. x ∈ real_closed_interval (of_nat m - 1) (of_nat n) ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval (of_nat m - 1) (of_nat n)))) ⟶ (∀x. ∀y. of_nat m - 1 ≤ x ⟶ x ≤ y ⟶ y ≤ of_nat n ⟶ f x ≤ f y) ⟶ g (of_nat n) - g (of_nat m - 1) ≤ sum ({m..n}) (λk. f (of_nat k))
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_forward_step real_sum_integral_ubound_decreasing @0 param_f="(%z. -g z)" param_g="(%z. -f z)"
+    4: cut "!x::real. !y. -x - (-y) = -(x-y)"
+    4: z3
+    5: rewrite_fact_with_prev @4,3
+  qed
+
+theorem real_sum_integral_lbound_decreasing
+  fixes f :: real ⇒ real, g :: real ⇒ real, m :: nat, n :: nat
+  prop m ≤ n ⟶ (∀x. x ∈ real_closed_interval (of_nat m) (of_nat n + 1) ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval (of_nat m) (of_nat n + 1)))) ⟶ (∀x. ∀y. of_nat m ≤ x ⟶ x ≤ y ⟶ y ≤ of_nat n + 1 ⟶ f y ≤ f x) ⟶ g (of_nat n + 1) - g (of_nat m) ≤ sum ({m..n}) (λk. f (of_nat k))
+  [hint_backward,hint_backward1]
+
+theorem real_sum_integral_bounds_increasing
+  fixes f :: real ⇒ real, g :: real ⇒ real, m :: nat, n :: nat
+  prop m ≤ n ⟶ (∀x. x ∈ real_closed_interval (of_nat m - 1) (of_nat n + 1) ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval (of_nat m - 1) (of_nat n + 1)))) ⟶ (∀x. ∀y. of_nat m - 1 ≤ x ⟶ x ≤ y ⟶ y ≤ of_nat n + 1 ⟶ f x ≤ f y) ⟶ g (of_nat n) - g (of_nat m - 1) ≤ sum ({m..n}) (λk. f (of_nat k)) ∧ sum ({m..n}) (λk. f (of_nat k)) ≤ g (of_nat n + 1) - g (of_nat m)
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step conjI
+    3: apply_backward_step real_sum_integral_lbound_increasing @0
+    3: introduction x
+    3.2: apply_backward_step has_real_derivative_within_subset param_s="(real_closed_interval (of_nat m - 1) (of_nat n + 1))"
+    3.2: apply_prev @1
+    3.2: rewrite_goal real_closed_interval_def sym=false
+    3.2: rewrite_fact real_closed_interval_def @3.1 sym=false
+    3.3: z3 @3.2
+    3.6: rewrite_goal real_closed_interval_def sym=false
+    3.6: z3
+    4: z3 @2
+    6: apply_backward_step real_sum_integral_ubound_increasing @0
+    6: introduction x
+    6.2: apply_backward_step has_real_derivative_within_subset param_s="real_closed_interval (of_nat m - 1) (of_nat n + 1)"
+    6.2: apply_prev @1
+    6.2: cut "real_closed_interval (of_nat m) (of_nat n + 1) ⊆ real_closed_interval (of_nat m - 1) (of_nat n + 1)"
+    6.2: rewrite_goal real_closed_interval_def sym=false
+    6.2: z3
+    6.4: apply_backward_step subsetE @6.3
+    6.6: rewrite_goal real_closed_interval_def sym=false
+    7: z3 @2
+  qed
+
+theorem real_sum_integral_bounds_decreasing
+  fixes f :: real ⇒ real, g :: real ⇒ real, m :: nat, n :: nat
+  prop m ≤ n ⟶ (∀x. x ∈ real_closed_interval (of_nat m - 1) (of_nat n + 1) ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval (of_nat m - 1) (of_nat n + 1)))) ⟶ (∀x. ∀y. of_nat m - 1 ≤ x ⟶ x ≤ y ⟶ y ≤ of_nat n + 1 ⟶ f y ≤ f x) ⟶ g (of_nat n + 1) - g (of_nat m) ≤ sum ({m..n}) (λk. f (of_nat k)) ∧ sum ({m..n}) (λk. f (of_nat k)) ≤ g (of_nat n) - g (of_nat m - 1)
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_backward_step conjI
+    3: apply_backward_step real_sum_integral_lbound_decreasing @0
+    3: introduction x
+    3.2: apply_backward_step has_real_derivative_within_subset param_s="real_closed_interval (of_nat m - 1) (of_nat n + 1)"
+    3.2: apply_prev @1
+    3.2: rewrite_goal real_closed_interval_def sym=false
+    3.2: rewrite_fact real_closed_interval_def @3.1 sym=false
+    3.3: z3 @3.2
+    3.6: rewrite_goal real_closed_interval_def sym=false
+    3.6: z3
+    4: z3 @2
+    6: apply_backward_step real_sum_integral_ubound_decreasing @0
+    6: introduction x
+    6.2: apply_backward_step has_real_derivative_within_subset param_s="real_closed_interval (of_nat m - 1) (of_nat n + 1)"
+    6.2: apply_prev @1
+    6.2: rewrite_goal real_closed_interval_def sym=false
+    6.2: rewrite_fact real_closed_interval_def @6.1 sym=false
+    6.3: z3 @6.2
+    6.6: rewrite_goal real_closed_interval_def sym=false
+    6.6: z3
+    7: z3 @2
+  qed
+
+theorem reallim_posinfinity_sequentially
+  fixes f :: real ⇒ real, l :: real
+  prop tendsto_real f l at_posinfinity ⟶ tendsto_real (λn. f (of_nat n)) l sequentially
+  [hint_backward,hint_forward]
+
+theorem reallim_zero_posinfinity
+  fixes f :: real ⇒ real, l :: real
+  prop tendsto_real (λx. f (1 / x)) l (atreal 0) ⟶ tendsto_real f l at_posinfinity
+  [hint_backward,hint_forward]
+
+theorem reallim_zero_neginfinity
+  fixes f :: real ⇒ real, l :: real
+  prop tendsto_real (λx. f (1 / x)) l (atreal 0) ⟶ tendsto_real f l at_neginfinity
+  [hint_backward,hint_forward]
+
+def closed_real_segment :: real ⇒ real ⇒ real set = closed_real_segment a b = {x. ∃u. x = (1 - u) * a + u * b ∧ 0 ≤ u ∧ u ≤ 1}
+
+def open_real_segment :: real ⇒ real ⇒ real set = open_real_segment a b = diff (closed_real_segment a b) ({a, b})
+
+theorem open_real_segment_interval
+  fixes a :: real, b :: real
+  prop open_real_segment a b = (if a ≤ b then real_open_interval a b else real_open_interval b a)
+  [hint_rewrite]
+
+theorem closed_real_segment_interval
+  fixes a :: real, b :: real
+  prop closed_real_segment a b = (if a ≤ b then real_closed_interval a b else real_closed_interval b a)
+  [hint_rewrite]
+
+theorem closed_real_interval_subset_real_segment
+  fixes a :: real, b :: real
+  prop real_closed_interval a b ⊆ closed_real_segment a b
+  proof
+    0: rewrite_goal closed_real_segment_interval
+    0: cases "a ≤ b"
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: apply_backward_step subset_refl
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+    1.1: rewrite_goal real_closed_interval_def
+    1.1: apply_backward_step subsetI
+    1.1: introduction x
+    1.1.2: rewrite_fact member_collect @1.1.1
+    1.1.3: apply_forward_step conjD1 @1.1.2
+    1.1.4: apply_forward_step conjD2 @1.1.2
+    1.1.5: cut "a <= b"
+  qed
+
+theorem open_real_interval_subset_real_segment
+  fixes a :: real, b :: real
+  prop real_open_interval a b ⊆ open_real_segment a b
+
+theorem real_continuous_injective_iff_monotonic
+  fixes f :: real ⇒ real, s :: real set
+  prop real_continuous_on f s ⟶ is_realinterval s ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y) ⟷ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ x < y ⟶ f x < f y) ∨ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ x < y ⟶ f y < f x)
+  [hint_backward,hint_backward1]
+
+theorem ends_in_real_segment1
+  fixes a :: real, b :: real
+  prop a ∈ closed_real_segment a b
+  [hint_resolve,hint_backward]
+
+theorem ends_in_real_segment2
+  fixes a :: real, b :: real
+  prop b ∈ closed_real_segment a b
+  [hint_resolve,hint_backward]
+
+theorem is_real_interval_contains_segment
+  fixes s :: real set
+  prop is_realinterval s ⟷ (∀a. ∀b. a ∈ s ⟶ b ∈ s ⟶ closed_real_segment a b ⊆ s)
+  [hint_rewrite]
+
+theorem is_realinterval_contains_segment_eq
+  fixes s :: real set
+  prop is_realinterval s ⟷ (∀a. ∀b. closed_real_segment a b ⊆ s ⟷ a ∈ s ∧ b ∈ s)
+  [hint_rewrite,hint_backward,hint_resolve]
+  proof
+    0: rewrite_goal is_real_interval_contains_segment
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: introduction "a, b"
+    0.1.2: apply_backward_step iffI
+    0.1.2: introduction
+    0.1.2.1: apply_backward_step conjI
+    0.1.2.1: apply_backward_step subsetE @0.1.2.0
+    0.1.2.1: apply_backward_step ends_in_real_segment1
+    0.1.2.3: apply_backward_step subsetE @0.1.2.0
+    0.1.2.3: apply_backward_step ends_in_real_segment2
+    0.1.3: introduction
+    0.1.3.1: apply_prev @0.0
+    0.1.3.1: apply_backward_step conjD1 @0.1.3.0
+    0.1.3.2: apply_backward_step conjD2 @0.1.3.0
+    1: introduction
+    1.1: introduction a,b
+    1.1.3: forall_elim a @1.0
+    1.1.4: forall_elim b @1.1.3
+    1.1.6: rewrite_goal_with_prev @1.1.4
+    1.1.6: apply_backward_step conjI
+  qed
+
+theorem is_realinterval_contains_segment_imp
+  fixes s :: real set
+  prop is_realinterval s ⟶ (∀a. ∀b. closed_real_segment a b ⊆ s ⟷ a ∈ s ∧ b ∈ s)
+
+theorem is_realinterval_closed_segment
+  fixes a :: real, b :: real
+  prop is_realinterval (closed_real_segment a b)
+  proof
+    0: rewrite_goal closed_real_segment_interval
+    0: cases "a ≤ b"
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: rewrite_goal is_realinterval_def sym=false
+  qed
+
+theorem is_realinterval_open_segment
+  fixes a :: real, b :: real
+  prop is_realinterval (open_real_segment a b)
+
+theorem is_closed_real_segment
+  fixes a :: real, b :: real, x :: real
+  prop x ∈ closed_real_segment a b ⟷ a ≤ x ∧ x ≤ b ∨ b ≤ x ∧ x ≤ a
+  [hint_rewrite]
+
+theorem is_open_real_segment
+  fixes a :: real, b :: real, x :: real
+  prop x ∈ open_real_segment a b ⟷ a < x ∧ x < b ∨ b < x ∧ x < a
+  [hint_rewrite]
+
+theorem floor_continuous_monotone_floor
+  fixes f :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ real_continuous_on f s ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ x ≤ y ⟶ f x ≤ f y) ∧ (∀x. x ∈ s ⟶ integer (f x) ⟶ integer x) ⟶ (∀x. floor x ∈ s ⟶ x ∈ s ⟶ floor (f (floor x)) = floor (f x))
+  [hint_backward,hint_backward1]
+
+def real_convex_on :: (real ⇒ real) ⇒ real set ⇒ bool = real_convex_on f s ⟷ (∀x. ∀y. ∀u. ∀v. x ∈ s ⟶ y ∈ s ⟶ 0 ≤ u ⟶ 0 ≤ v ⟶ u + v = 1 ⟶ f (u * x + v * y) ≤ u * f x + v * f y) [hint_rewrite]
+
+theorem real_convex_on_empty
+  fixes f :: real ⇒ real
+  prop real_convex_on f ∅
+  [hint_backward]
+  proof
+    0: rewrite_goal real_convex_on_def
+    0: introduction x,y,u,v
+    0.9: apply_resolve_step member_empty @0.4
+  qed
+
+theorem real_convex_on_eq
+  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ (∀x. x ∈ s ⟶ f x = g x) ⟶ real_convex_on f s ⟶ real_convex_on g s
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_sing
+  fixes a :: real, f :: real ⇒ real
+  prop real_convex_on f ({a})
+
+theorem real_convex_on_subset
+  fixes f :: real ⇒ real, s :: real set, t :: real set
+  prop real_convex_on f t ⟶ s ⊆ t ⟶ real_convex_on f s
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_const
+  fixes c :: real, s :: real set
+  prop real_convex_on (λx. c) s
+
+theorem real_convex_add
+  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
+  prop real_convex_on f s ⟶ real_convex_on g s ⟶ real_convex_on (λx. f x + g x) s
+  [hint_backward,hint_backward1]
+
+theorem real_convex_lmul
+  fixes c :: real, f :: real ⇒ real, s :: real set
+  prop 0 ≤ c ⟶ real_convex_on f s ⟶ real_convex_on (λx. c * f x) s
+  [hint_backward,hint_backward1]
+
+theorem real_convex_rmul
+  fixes c :: real, f :: real ⇒ real, s :: real set
+  prop 0 ≤ c ⟶ real_convex_on f s ⟶ real_convex_on (λx. f x * c) s
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal real_mult_comm sym=false
+    2: apply_backward_step real_convex_lmul @0,1
+  qed
+
+theorem real_convex_on_sum
+  fixes f :: 'a ⇒ real ⇒ real, s :: 'a set, t :: real set
+  prop finite s ⟶ (∀a. a ∈ s ⟶ real_convex_on (f a) t) ⟶ real_convex_on (λx. sum s (λa. f a x)) t
+  [hint_backward,hint_backward1]
+
+theorem real_convex_compose
+  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set, t :: real set
+  prop real_convex_on f s ⟶ real_convex_on g t ⟶ is_realinterval s ⟶ is_realinterval t ⟶ image f s ⊆ t ⟶ (∀x. ∀y. x ∈ t ⟶ y ∈ t ⟶ x ≤ y ⟶ g x ≤ g y) ⟶ real_convex_on (g ∘ f) s
+  [hint_backward,hint_backward1]
+
+theorem real_convex_lower
+  fixes f :: real ⇒ real, s :: real set, u :: real, v :: real, x :: real, y :: real
+  prop real_convex_on f s ⟶ x ∈ s ⟶ y ∈ s ⟶ 0 ≤ u ⟶ 0 ≤ v ⟶ u + v = 1 ⟶ f (u * x + v * y) ≤ max (f x) (f y)
+  [hint_backward,hint_backward1]
+
+theorem real_convex_lower_real_segment
+  fixes a :: real, b :: real, f :: real ⇒ real, s :: real set, x :: real
+  prop real_convex_on f s ⟶ a ∈ s ⟶ b ∈ s ⟶ x ∈ closed_real_segment a b ⟶ f x ≤ max (f a) (f b)
+  [hint_backward,hint_backward1]
+
+theorem real_convex_lower_real_interval
+  fixes a :: real, b :: real, f :: real ⇒ real, x :: real
+  prop real_convex_on f (real_closed_interval a b) ⟶ x ∈ closed_real_segment a b ⟶ f x ≤ max (f a) (f b)
+  [hint_backward,hint_backward1]
+
+theorem real_convex_local_global_minimum
+  fixes f :: real ⇒ real, s :: real set, t :: real set, x :: real
+  prop real_convex_on f s ⟶ x ∈ t ⟶ real_open t ⟶ t ⊆ s ⟶ (∀y. y ∈ t ⟶ f x ≤ f y) ⟶ (∀y. y ∈ s ⟶ f x ≤ f y)
+  [hint_backward,hint_backward1]
+
+theorem real_convex_distance
+  fixes a :: real, s :: real set
+  prop real_convex_on (λx. abs (a - x)) s
+  [hint_backward]
+
+theorem real_convex_on_jensen
+  fixes f :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ real_convex_on f s ⟷ (∀k. ∀u. ∀x. (∀i. 1 ≤ i ⟶ i ≤ k ⟶ 0 < u i ∧ x i ∈ s) ⟶ sum ({1..k}) u = 1 ⟶ f (sum ({1..k}) (λi. u i * x i)) ≤ sum ({1..k}) (λi. u i * f (x i)))
+  [hint_backward]
+
+theorem real_convex_on_imp_jensen
+  fixes f :: real ⇒ real, k :: 'a set, s :: real set, u :: 'a ⇒ real, x :: 'a ⇒ real
+  prop real_convex_on f s ⟶ is_realinterval s ⟶ finite k ⟶ (∀i. i ∈ k ⟶ 0 ≤ u i ∧ x i ∈ s) ⟶ sum k u = 1 ⟶ f (sum k (λi. u i * x i)) ≤ sum k (λi. u i * f (x i))
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_continuous
+  fixes f :: real ⇒ real, s :: real set
+  prop real_open s ⟶ real_convex_on f s ⟶ real_continuous_on f s
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_left_secant_mul
+  fixes f :: real ⇒ real, s :: real set
+  prop real_convex_on f s ⟷ (∀a. ∀b. ∀x. a ∈ s ⟶ b ∈ s ⟶ x ∈ closed_real_segment a b ⟶ (f x - f a) * abs (b - a) ≤ (f b - f a) * abs (x - a))
+  [hint_rewrite]
+
+theorem real_convex_on_right_secant_mul
+  fixes f :: real ⇒ real, s :: real set
+  prop real_convex_on f s ⟷ (∀a. ∀b. ∀x. a ∈ s ⟶ b ∈ s ⟶ x ∈ closed_real_segment a b ⟶ (f b - f a) * abs (b - x) ≤ (f b - f x) * abs (b - a))
+  [hint_rewrite]
+
+theorem real_convex_on_left_secant
+  fixes f :: real ⇒ real, s :: real set
+  prop real_convex_on f s ⟷ (∀a. ∀b. ∀x. a ∈ s ⟶ b ∈ s ⟶ x ∈ closed_real_segment a b ⟶ (f x - f a) / abs (x - a) ≤ (f b - f a) / abs (b - a))
+  [hint_rewrite]
+
+theorem real_convex_on_right_secant
+  fixes f :: real ⇒ real, s :: real set
+  prop real_convex_on f s ⟷ (∀a. ∀b. ∀x. a ∈ s ⟶ b ∈ s ⟶ x ∈ closed_real_segment a b ⟶ (f b - f a) / abs (b - a) ≤ (f b - f x) * abs (b - x))
+  [hint_rewrite]
+
+theorem real_convex_on_derivative_secant_imp
+  fixes f :: real ⇒ real, f1 :: real, s :: real set, x :: real, y :: real
+  prop real_convex_on f s ⟶ closed_real_segment x y ⊆ s ⟶ has_real_derivative f f1 (within (atreal x) s) ⟶ f1 * (y - x) ≤ f y - f x
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_secant_derivative_imp
+  fixes f :: real ⇒ real, f1 :: real, s :: real set, x :: real, y :: real
+  prop real_convex_on f s ⟶ closed_real_segment x y ⊆ s ⟶ has_real_derivative f f1 (within (atreal y) s) ⟶ f y - f x ≤ f1 * (y - x)
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_derivative_imp
+  fixes f :: real ⇒ real, f1x :: real, f1y :: real, s :: real set, x :: real, y :: real
+  prop real_convex_on f s ⟶ closed_real_segment x y ⊆ s ⟶ has_real_derivative f f1x (within (atreal x) s) ⟶ has_real_derivative f f1y (within (atreal y) s) ⟶ f1x * (y - x) ≤ f1y * (y - x)
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_derivative_increasing_imp
+  fixes f :: real ⇒ real, f1x :: real, f1y :: real, s :: real set, x :: real, y :: real
+  prop real_convex_on f s ⟶ real_closed_interval x y ⊆ s ⟶ has_real_derivative f f1x (within (atreal x) s) ⟶ has_real_derivative f f1y (within (atreal y) s) ⟶ x < y ⟶ f1x ≤ f1y
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_derivative_secant
+  fixes f :: real ⇒ real, f1 :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ (∀x. x ∈ s ⟶ has_real_derivative f (f1 x) (within (atreal x) s)) ⟶ real_convex_on f s ⟷ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f1 x * (y - x) ≤ f y - f x)
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_secant_derivative
+  fixes f :: real ⇒ real, f1 :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ (∀x. x ∈ s ⟶ has_real_derivative f (f1 x) (within (atreal x) s)) ⟶ real_convex_on f s ⟷ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f y - f x ≤ f1 y * (y - x))
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_derivatives
+  fixes f :: real ⇒ real, f1 :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ (∀x. x ∈ s ⟶ has_real_derivative f (f1 x) (within (atreal x) s)) ⟶ real_convex_on f s ⟷ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f1 x * (y - x) ≤ f1 y * (y - x))
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_derivatives_increasing
+  fixes f :: real ⇒ real, f1 :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ (∀x. x ∈ s ⟶ has_real_derivative f (f1 x) (within (atreal x) s)) ⟶ real_convex_on f s ⟷ (∀x. ∀y. x ∈ s ⟶ y ∈ s ∧ x ≤ y ⟶ f1 x ≤ f1 y)
+  [hint_backward,hint_backward1]
+
+theorem has_real_derivative_increasing_imp
+  fixes a :: real, b :: real, f :: real ⇒ real, f1 :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ (∀x. x ∈ s ⟶ has_real_derivative f (f1 x) (within (atreal x) s)) ⟶ (∀x. x ∈ s ⟶ 0 ≤ f1 x) ⟶ a ∈ s ⟶ b ∈ s ⟶ a ≤ b ⟶ f a ≤ f b
+  [hint_backward,hint_backward1]
+
+theorem has_real_derivative_increasing
+  fixes f :: real ⇒ real, f1 :: real ⇒ real, s :: real set
+  prop is_realinterval s ∧ ¬(∃a. s = {a}) ∧ (∀x. x ∈ s ⟶ has_real_derivative f (f1 x) (within (atreal x) s)) ⟶ (∀x. x ∈ s ⟶ 0 ≤ f1 x) ⟷ (∀x. ∀y. x ∈ s ∧ y ∈ s ∧ x ≤ y ⟶ f x ≤ f y)
+
+theorem has_real_derivative_strictly_increasing_imp
+  fixes a :: real, b :: real, f :: real ⇒ real, f1 :: real ⇒ real
+  prop (∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))) ∧ (∀x. x ∈ real_closed_interval a b ⟶ 0 ≤ f1 x) ∧ a < b ⟶ f a < f b
+
+theorem real_convex_on_second_derivative
+  fixes f :: real ⇒ real, f1 :: real ⇒ real, f2 :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ ¬(∃a. s = {a}) ⟶ (∀x. x ∈ s ⟶ has_real_derivative f (f1 x) (within (atreal x) s)) ⟶ (∀x. x ∈ s ⟶ has_real_derivative f1 (f2 x) (within (atreal x) s)) ⟶ real_convex_on f s ⟷ (∀x. x ∈ s ⟶ 0 ≤ f2 x)
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_asym
+  fixes f :: real ⇒ real, s :: real set
+  prop real_convex_on f s ⟷ (∀x. ∀y. ∀u. ∀v. x ∈ s ⟶ y ∈ s ⟶ x < y ⟶ 0 ≤ u ⟶ 0 ≤ v ⟶ u + v = 1 ⟶ f (u * x + v * y) ≤ u * f x + v * f y)
+  [hint_rewrite]
+
+theorem real_convex_on_exp
+  fixes s :: real set
+  prop real_convex_on exp s
+  [hint_backward]
+
+theorem real_convex_on_rpow
+  fixes s :: real set, t :: real
+  prop s ⊆ {x. 0 ≤ x} ⟶ 1 ≤ t ⟶ real_convex_on (λx. x ^ t) s
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_rpow_neg
+  fixes s :: real set, t :: real
+  prop s ⊆ {x. x < 0} ⟶ t ≤ 0 ⟶ real_convex_on (λx. x ^ t) s
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_rpow_integer
+  fixes s :: real set, t :: real
+  prop s ⊆ {x. 0 < x} ⟶ integer t ⟶ real_convex_on (λx. x ^ t) s
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_real_inv
+  fixes s :: real set
+  prop s ⊆ {x. 0 < x} ⟶ real_convex_on real_inverse s
+  [hint_backward]
+
+theorem real_convex_on_real_
+  fixes f :: real ⇒ real, n :: nat, s :: real set
+  prop real_convex_on f s ⟶ is_realinterval s ⟶ (∀x. x ∈ s ⟶ 0 ≤ f x) ⟶ real_convex_on (λx. f x ^ n) s
+  [hint_backward,hint_backward1]
+
+theorem real_convex_on_log
+  fixes s :: real set
+  prop s ⊆ {x. 0 < x} ⟶ real_convex_on (λx. -(log x)) s
+  [hint_backward]
+
+theorem real_continuous_midpoint_convex
+  fixes f :: real ⇒ real, s :: real set
+  prop real_continuous_on f s ⟶ is_realinterval s ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f ((x + y) / 2) ≤ (f x + f y) / 2) ⟶ real_convex_on f s
+  [hint_backward,hint_backward1]
+
+theorem agm_gen
+  fixes a :: 'a ⇒ real, k :: 'a set, x :: 'a ⇒ real
+  prop finite k ⟶ sum k a = 1 ⟶ (∀i. i ∈ k ⟶ 0 ≤ a i ∧ 0 ≤ x i) ⟶ product k (λi. x i ^ a i) ≤ sum k (λi. a i * x i)
+  [hint_backward,hint_backward1]
+
+theorem agm_rpow
+  fixes k :: 'a set, n :: nat, x :: 'a ⇒ real
+  prop has_size k n ⟶ ¬(n = 0) ⟶ (∀i. i ∈ k ⟶ 0 ≤ x i) ⟶ product k (λi. x i ^ (1 / of_nat n)) ≤ sum k (λi. x i / of_nat n)
+  [hint_backward,hint_backward1]
+
+theorem agm_boot
+  fixes k :: 'a set, n :: nat, x :: 'a ⇒ real
+  prop has_size k n ⟶ ¬(n = 0) ⟶ (∀i. i ∈ k ⟶ 0 ≤ x i) ⟶ root n (product k x) ≤ sum k x / of_nat n
+  [hint_backward,hint_backward1]
+
+theorem agm_sqrt
+  fixes x :: real, y :: real
+  prop 0 ≤ x ⟶ 0 ≤ y ⟶ sqrt (x + y) ≤ (x + y) / 2
+  [hint_backward,hint_backward1]
+
+theorem agm
+  fixes k :: 'a set, n :: nat, x :: 'a ⇒ real
+  prop has_size k n ⟶ ¬(n = 0) ⟶ (∀i. i ∈ k ⟶ 0 ≤ x i) ⟶ product k x ≤ (sum k x / of_nat n) ^ n
+  [hint_backward,hint_backward1]
+
+theorem agm_2
+  fixes u :: real, v :: real, x :: real, y :: real
+  prop 0 ≤ x ⟶ 0 ≤ y ⟶ 0 ≤ u ⟶ 0 ≤ v ⟶ u + v = 1 ⟶ x ^ u * y ^ v ≤ u * x + v * y
+  [hint_backward,hint_backward1]
+
+theorem young_inequality
+  fixes u :: real, v :: real, x :: real, y :: real
+  prop 0 ≤ x ⟶ 0 ≤ y ⟶ 0 < u ⟶ 0 < v ⟶ real_inverse u + real_inverse v = 1 ⟶ x * y ≤ x ^ u / u + y ^ v / v
+  [hint_backward,hint_backward1]
+
+theorem hoelder
+  fixes a :: 'a ⇒ real, k :: 'a set, x :: 'a ⇒ real, y :: 'a ⇒ real
+  prop finite k ⟶ sum k a = 1 ⟶ (∀i. i ∈ k ⟶ 0 ≤ a i ∧ 0 ≤ x i ∧ 0 ≤ y i) ⟶ product k (λi. x i ^ a i) + product k (λi. y i ^ a i) ≤ product k (λi. (x i + y i) ^ a i)
+  [hint_backward,hint_backward1]
+
+theorem rpow_minus1_quotient_lt
+  fixes a :: real, x :: real, y :: real
+  prop 0 < a ⟶ ¬(a = 1) ⟶ 0 < x ⟶ x < y ⟶ (a ^ x - 1) / x < (a ^ y - 1) / y
+  [hint_backward,hint_backward1]
+
+theorem rpow_minus1_quotient_le
+  fixes a :: real, x :: real, y :: real
+  prop 0 < a ⟶ ¬(a = 1) ⟶ 0 < x ⟶ x ≤ y ⟶ (a ^ x - 1) / x ≤ (a ^ y - 1) / y
+  [hint_backward,hint_backward1]
+
+theorem real_exp_limit_rpow_lt
+  fixes r :: real, s :: real, x :: real
+  prop 0 < r ⟶ r < s ⟶ ¬(x = 0) ⟶ x < r ⟶ (1 - x / r) ^ r < (1 - x / s) ^ s
+  [hint_backward,hint_backward1]
+
+theorem real_exp_limit_rpow_le
+  fixes r :: real, s :: real, x :: real
+  prop 0 ≤ r ⟶ r ≤ s ⟶ ¬(x = 0) ⟶ x ≤ r ⟶ (1 - x / r) ^ r ≤ (1 - x / s) ^ s
+  [hint_backward,hint_backward1]
+
+theorem real_le_x_sinh
+  fixes x :: real
+  prop 0 ≤ x ⟶ x ≤ (exp x - real_inverse (exp x)) / 2
+  [hint_backward]
+
+theorem real_le_abs_sinh
+  fixes x :: real
+  prop abs x ≤ abs ((exp x - real_inverse (exp x)) / 2)
+  [hint_backward]
+
+def real_log_convex_on :: (real ⇒ real) ⇒ real set ⇒ bool = real_log_convex_on f s ⟷ (∀x. ∀y. ∀u. ∀v. x ∈ s ⟶ y ∈ s ⟶ 0 ≤ u ⟶ 0 ≤ v ⟶ u + v = 1 ⟶ 0 ≤ f (u * x + v * y) ∧ f (u * x + v * y) ≤ f x ^ u * f y ^ v) [hint_rewrite]
+
+theorem real_log_convex_on_empty
+  fixes f :: real ⇒ real
+  prop real_log_convex_on f ∅
+  [hint_backward]
+  proof
+    0: rewrite_goal real_log_convex_on_def
+    0: introduction "x, y,u,v"
+    0.9: apply_resolve_step member_empty @0.4
+  qed
+
+theorem real_log_convex_on_subset
+  fixes f :: real ⇒ real, s :: real set, t :: real set
+  prop real_log_convex_on f t ⟶ s ⊆ t ⟶ real_log_convex_on f s
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal real_log_convex_on_def sym=false
+    2: rewrite_fact real_log_convex_on_def @0 sym=false
+    3: introduction x,y,u,v
+    3.9: apply_prev @2
+    3.9: apply_backward_step subsetE @1
+    3.10: apply_backward_step subsetE @1
+  qed
+
+theorem real_log_convex_on_eq
+  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ (∀x. x ∈ s ⟶ f x = g x) ⟶ real_log_convex_on f s ⟶ real_log_convex_on g s
+  [hint_backward,hint_backward1]
+
+theorem real_log_convex_on_sing
+  fixes a :: real, f :: real ⇒ real
+  prop real_log_convex_on f ({a}) ⟷ 0 ≤ f a
+  [hint_rewrite]
+
+theorem real_log_convex_imp_pos
+  fixes f :: real ⇒ real, s :: real set, x :: real
+  prop real_log_convex_on f s ⟶ x ∈ s ⟶ 0 ≤ f x
+  [hint_backward1]
+
+theorem real_log_convex_on_convex
+  fixes f :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ real_log_convex_on f s ⟷ (∀x. x ∈ s ⟶ 0 ≤ f x) ∧ (∀x. ∀y. ∀u. ∀v. x ∈ s ⟶ y ∈ s ⟶ 0 ≤ u ⟶ 0 ≤ v ⟶ u + v = 1 ⟶ f (u * x + v * y) ≤ f x ^ u * f y ^ v)
+  [hint_backward]
+
+theorem real_log_convex_on
+  fixes f :: real ⇒ real, s :: real set
+  prop is_realinterval s ⟶ (∀x. x ∈ s ⟶ 0 < f x) ⟶ real_log_convex_on f s ⟷ real_log_convex_on (log ∘ f) s
+  [hint_backward,hint_backward1]
+
+theorem real_log_convex_imp_convex
+  fixes f :: real ⇒ real, s :: real set
+  prop real_log_convex_on f s ⟶ real_convex_on f s
+  [hint_backward,hint_forward]
+
+theorem real_log_convex_add
+  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
+  prop real_log_convex_on f s ⟶ real_log_convex_on g s ⟶ real_log_convex_on (λx. f x + g x) s
+  [hint_backward,hint_backward1]
+
+theorem real_log_convex_mul
+  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
+  prop real_log_convex_on f s ⟶ real_log_convex_on g s ⟶ real_log_convex_on (λx. f x * g x) s
+  [hint_backward,hint_backward1]
+
+theorem midpoint_real_log_convex
+  fixes f :: real ⇒ real, s :: real set
+  prop real_continuous_on f s ⟶ is_realinterval s ⟶ (∀x. x ∈ s ⟶ 0 < f x) ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f ((x + y) / 2) ^ (2::nat) ≤ f x * f y) ⟶ real_log_convex_on f s
+  [hint_backward,hint_backward1]
+
+theorem real_log_convex_const
+  fixes a :: real, s :: real set
+  prop 0 ≤ a ⟶ real_log_convex_on (λx. a) s
+  [hint_backward]
+
+theorem real_log_convex_product
+  fixes f :: real ⇒ 'a ⇒ real, k :: 'a set, s :: real set
+  prop finite k ⟶ (∀i. i ∈ k ⟶ real_log_convex_on (λx. f x i) s) ⟶ real_log_convex_on (λx. product k (f x)) s
+  [hint_backward,hint_backward1]
+
+theorem real_log_convex_rpow_right
+  fixes a :: real, s :: real set
+  prop 0 < a ⟶ real_log_convex_on (λx. a ^ x) s
+  [hint_backward]
+
+theorem real_log_convex_lim
+  fixes f :: 'a ⇒ real ⇒ real, g :: real ⇒ real, net :: 'a net, s :: real set
+  prop ¬(trivial_limit net) ⟶ (∀x. ∀y. ∀u. ∀v. x ∈ s ⟶ y ∈ s ⟶ 0 ≤ u ⟶ 0 ≤ v ⟶ u + v = 1 ⟶ tendsto_real (λi. f i (u * x + v * y)) (g (u * x + v * y)) net) ∧ eventually (λi. real_log_convex_on (f i) s) net ⟶ real_log_convex_on g s
+  [hint_backward,hint_backward1]

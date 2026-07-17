@@ -1,817 +1,689 @@
 <template>
   <div class="editor-container">
-    <!-- 顶部菜单 -->
+    <!-- Top menu bar -->
     <nav class="navbar navbar-expand navbar-dark bg-dark">
       <div class="container-fluid">
         <span class="navbar-brand">HOLPy</span>
         <div class="navbar-nav">
-          <!-- File菜单 -->
           <div class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">File</a>
             <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#" @click.prevent="new_file">New</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="open_file">Open</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="load_filelist">Refresh</a></li>
+              <li><a class="dropdown-item" href="#" @click.prevent="create_file">New</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="save_file">Save</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="remove_file">Delete</a></li>
+              <li><a class="dropdown-item" href="#" @click.prevent="load_files">Refresh file list</a></li>
             </ul>
           </div>
-          
-          <!-- Items菜单（有文件时显示） -->
           <div class="nav-item dropdown" v-if="theory">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Items</a>
             <ul class="dropdown-menu">
               <li><h6 class="dropdown-header">Add</h6></li>
               <li><a class="dropdown-item" href="#" @click.prevent="add_item('thm')">Theorem</a></li>
+              <li><a class="dropdown-item" href="#" @click.prevent="add_item('thm.ax')">Axiom</a></li>
               <li><a class="dropdown-item" href="#" @click.prevent="add_item('def')">Definition</a></li>
               <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.ax')">Constant</a></li>
               <li><a class="dropdown-item" href="#" @click.prevent="add_item('type.ind')">Datatype</a></li>
               <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.ind')">Fun</a></li>
               <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.pred')">Inductive</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="add_item('thm.ax')">Axiom</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li><h6 class="dropdown-header">Manage</h6></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="remove_selected"
-                     :class="{disabled: selected_index < 0}">Remove selected</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="item_move_up"
-                     :class="{disabled: selected_index <= 0}">Move up</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="item_move_down"
-                     :class="{disabled: selected_index < 0 || selected_index >= theory.content.length - 1}">Move down</a></li>
+              <li><a class="dropdown-item" href="#" @click.prevent="add_item('header')">Header</a></li>
             </ul>
           </div>
         </div>
-        <span class="text-light ms-3" v-if="filename">File: {{ filename }}</span>
-        <span class="text-light ms-3" v-if="loading">Loading...</span>
+        <div class="ms-auto d-flex align-items-center gap-3">
+          <span class="text-light" v-if="filename">{{ filename }}</span>
+          <span class="text-light" v-if="saving">Saving...</span>
+          <span class="text-light" v-if="validating">Validating {{ val_progress }}/{{ val_total }}...</span>
+        </div>
       </div>
     </nav>
 
-    <!-- 主内容区 -->
+    <!-- Main content -->
     <div class="main-content">
-      <!-- 左侧面板：始终显示文件列表 -->
+      <!-- Left: file list -->
       <div class="left-panel">
-        <div class="panel-section">
-          <h6 class="panel-title">Files</h6>
-          <div class="file-list">
-            <div v-for="file in filelist" :key="file" 
-                 class="file-item" 
-                 :class="{active: filename === file}"
-                 @click="select_file(file)">
-              {{ file }}
+        <h6 class="panel-title">Files</h6>
+        <div class="file-list">
+          <div v-for="f in filelist" :key="f"
+               class="file-item" :class="{active: filename === f}"
+               @click="open_file(f)">
+            {{ f }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: theory content -->
+      <div class="center-panel">
+        <div v-if="loading" class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
+        <div v-else-if="!filename" class="empty-state"><h4>Select a file</h4></div>
+        <div v-else-if="theory">
+          <!-- File header -->
+          <div class="file-header">
+            <div class="file-header-row">
+              <button class="btn btn-sm btn-danger" @click="delete_file">Delete File</button>
+              <button class="btn btn-sm btn-primary" @click="validate_all">Validate All</button>
+            </div>
+            <!-- Metadata -->
+            <div class="metadata-section">
+              <div class="meta-row">
+                <label class="meta-label">theory</label>
+                <span class="meta-value">{{ theory.name }}</span>
+              </div>
+              <div class="meta-row">
+                <label class="meta-label">imports</label>
+                <input class="meta-input" v-model="meta_imports" placeholder="one per line"/>
+              </div>
+              <div class="meta-row">
+                <label class="meta-label">description</label>
+                <input class="meta-input" v-model="meta_description"/>
+              </div>
+              <button class="btn btn-sm btn-outline-primary mt-1" @click="save_metadata">Save Metadata</button>
+            </div>
+          </div>
+
+          <!-- Items -->
+          <div v-for="(item, index) in theory.content" :key="index" class="item-wrapper">
+            <!-- Item header -->
+            <div class="item-row" :class="{'item-selected': selected === index, 'item-error': item._error}"
+                 @click="selected = index">
+              <span class="item-idx">{{ index }}</span>
+              <span class="item-type">{{ typeLabel(item.ty) }}</span>
+              <span class="item-name">{{ item.name || '' }}</span>
+              <span v-if="thm_status[item.name]" class="item-status" :class="'status-' + thm_status[item.name].toLowerCase()">
+                {{ statusIcon(thm_status[item.name]) }}
+              </span>
+              <div class="item-actions">
+                <button class="btn btn-sm btn-outline-secondary" @click.stop="toggle_edit(index)" title="Edit">
+                  {{ editing === index ? 'Close' : 'Edit' }}
+                </button>
+                <button v-if="item.ty === 'thm'" class="btn btn-sm btn-outline-success" @click.stop="toggle_prove(index)" title="Prove">
+                  {{ proving === index ? 'Close' : 'Prove' }}
+                </button>
+                <button class="btn btn-sm btn-outline-warning" @click.stop="move_item(index, -1)" :disabled="index === 0" title="Move up">↑</button>
+                <button class="btn btn-sm btn-outline-warning" @click.stop="move_item(index, 1)" :disabled="index === theory.content.length - 1" title="Move down">↓</button>
+                <button class="btn btn-sm btn-outline-danger" @click.stop="remove_item(index)" title="Delete">✕</button>
+              </div>
+            </div>
+
+            <!-- Edit form -->
+            <div v-if="editing === index" class="edit-section">
+              <HeaderEdit v-if="item.ty === 'header'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+              <ConstantEdit v-else-if="item.ty === 'def.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+              <DefinitionEdit v-else-if="item.ty === 'def'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+              <DatatypeEdit v-else-if="item.ty === 'type.ind'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+              <InductiveEdit v-else-if="item.ty === 'def.ind' || item.ty === 'def.pred'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+              <TheoremEdit v-else-if="item.ty === 'thm' || item.ty === 'thm.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+              <AxTypeEdit v-else-if="item.ty === 'type.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+              <div class="edit-actions">
+                <button class="btn btn-sm btn-primary" @click="check_item(index)">Check</button>
+                <button class="btn btn-sm btn-success" @click="save_item(index)">Save</button>
+                <button class="btn btn-sm btn-secondary" @click="editing = -1">Cancel</button>
+              </div>
+            </div>
+
+            <!-- Proof area -->
+            <div v-if="proving === index && item.ty === 'thm'" class="proof-section">
+              <ProofArea
+                :key="'proof-' + theory.name + '-' + item.name + '-' + index"
+                :theory_name="theory.name"
+                :thm_name="item.name"
+                :vars="item.vars"
+                :prop="item.prop"
+                :old_steps="item.steps"
+                :ref="el => { if (el) proof_area_ref = el }"
+                @save-steps="(steps) => save_proof(index, steps)"
+                @set-message="msg => toast(msg)"
+                @set-context="data => { proof_ctxt = data.ctxt || {}; proof_history = data.history || []; proof_history_idx = data.history_idx || -1 }"/>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 中间面板：理论内容 -->
-      <div class="center-panel">
-        <!-- Loading状态 -->
-        <div v-if="loading" class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading...</p>
-        </div>
-        
-        <!-- 未选择文件 -->
-        <div v-else-if="!filename" class="empty-state">
-          <h4>Select a file to begin</h4>
-          <p>Choose a theory file from the left panel</p>
-        </div>
-        
-        <!-- 理论内容 -->
-        <Theory v-else-if="theory" 
-                :theory="theory"
-                :active_index="active_index"
-                :ui_state="ui_state"
-                :selected_index="selected_index"
-                :theorem_status="theorem_status"
-                @set-message="onSetMessage"
-                @set-proof="handle_set_proof"
-                @set-status="handle_set_status"
-                @set-context="handle_set_context"
-                @query="handle_query"
-                @goto-link="handleGoToLink"
-                @save-file="save_file"
-                @toggle-edit="toggle_edit"
-                @toggle-prove="toggle_prove"
-                @edit-submit="on_edit_submit"
-                @select-item="select_item"
-                ref="theory_ref"/>
-      </div>
-
-      <!-- 右侧面板：仅PROVE状态显示Context -->
-      <div class="right-panel">
-        <div v-if="message" class="panel-section message-section">
-          <div class="alert" :class="{'alert-danger': message.type === 'error', 'alert-info': message.type !== 'error'}">
-            {{ message.data }}
+      <!-- Right panel: proof context (shown when proving) -->
+      <div v-if="proving >= 0" class="right-panel">
+        <div class="panel-section">
+          <h6 class="panel-title">Variables</h6>
+          <div v-if="proof_ctxt && Object.keys(proof_ctxt).length > 0">
+            <div v-for="(T, nm) in proof_ctxt" :key="nm" class="ctxt-var">
+              <span class="ctxt-name">{{ nm }}</span> :: <span class="ctxt-type">{{ formatType(T) }}</span>
+            </div>
           </div>
+          <div v-else class="ctxt-empty">No context</div>
         </div>
-        <div v-if="ui_state === 'PROVE'" class="panel-section">
-          <h6 class="panel-title">Context</h6>
-          <ProofContext ref="ref_context" :ref_proof="ref_proof"/>
-        </div>
-        <div v-if="ui_state === 'PROVE'" class="panel-section">
-          <h6 class="panel-title">Proof Status</h6>
-          <ProofStatus ref="ref_status" :ref_proof="ref_proof"/>
+        <div class="panel-section">
+          <h6 class="panel-title">Proof History</h6>
+          <div v-if="proof_history.length > 0">
+            <div class="history-item" :class="{'history-selected': proof_history_idx === 0}"
+                 @click="proof_goto_step(0)">
+              <span class="history-idx">0</span>
+              <span class="history-text">Initial</span>
+            </div>
+            <div v-for="(h, i) in proof_history" :key="i" class="history-item"
+                 :class="{'history-selected': proof_history_idx === i + 1}"
+                 @click="proof_goto_step(i + 1)">
+              <span class="history-idx">{{ i + 1 }}</span>
+              <span v-if="h.step_output" class="history-text">{{ formatHistory(h.step_output) }}</span>
+            </div>
+          </div>
+          <div v-else class="ctxt-empty">No steps yet</div>
         </div>
       </div>
     </div>
 
-    <!-- 查询对话框 -->
-    <div v-if="query" class="modal-overlay" @click.self="handle_query_cancel">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">{{ query.title }}</h5>
-          <button type="button" class="btn-close" @click="handle_query_cancel"></button>
-        </div>
-        <div class="modal-body">
-          <ProofQuery :query="query"
-                      @query-ok="handle_query_ok"
-                      @query-cancel="handle_query_cancel"/>
-        </div>
+    <!-- Toast -->
+    <Transition name="toast">
+      <div v-if="message" class="toast" :class="message.type === 'error' ? 'toast-error' : 'toast-ok'">
+        <span>{{ message.type === 'error' ? '✗' : '✓' }}</span>
+        <span class="toast-text">{{ message.data }}</span>
+        <button class="toast-close" @click="message = null">&times;</button>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '../api'
-import Theory from '../components/Theory.vue'
-import ProofContext from '../components/proof/ProofContext.vue'
-import ProofStatus from '../components/proof/ProofStatus.vue'
-import ProofQuery from '../components/proof/ProofQuery.vue'
+import TheoremEdit from '../components/items/TheoremEdit.vue'
+import ConstantEdit from '../components/items/ConstantEdit.vue'
+import DefinitionEdit from '../components/items/DefinitionEdit.vue'
+import DatatypeEdit from '../components/items/DatatypeEdit.vue'
+import InductiveEdit from '../components/items/InductiveEdit.vue'
+import HeaderEdit from '../components/items/HeaderEdit.vue'
+import AxTypeEdit from '../components/items/AxTypeEdit.vue'
+import ProofArea from '../components/proof/ProofArea.vue'
 
-// ==================== 状态机 ====================
-const ui_state = ref('BROWSE')  // 'BROWSE' | 'EDIT' | 'PROVE'
-const active_index = ref(-1)
-const selected_index = ref(-1)
-const loading = ref(false)
-
-// ==================== 数据 ====================
+// ==================== State ====================
 const filelist = ref([])
 const filename = ref(null)
 const theory = ref(null)
+const loading = ref(false)
+const saving = ref(false)
 const message = ref(null)
-const query = ref(undefined)
+const selected = ref(-1)
+const editing = ref(-1)
+const proving = ref(-1)
+const thm_status = ref({})
+const validating = ref(false)
+const val_progress = ref(0)
+const val_total = ref(0)
 
-// 依赖图
-const deps = ref({})
-const reverse_deps = ref({})
-const theorem_status = ref({})
+// Metadata editing
+const meta_imports = ref('')
+const meta_description = ref('')
 
-// 组件引用
-const theory_ref = ref(null)
-const ref_context = ref(null)
-const ref_status = ref(null)
-const ref_proof = ref(null)
+// Proof context (right panel)
+const proof_ctxt = ref({})
+const proof_history = ref([])
+const proof_history_idx = ref(-1)
 
-// ==================== API调用 ====================
-const api_load_filelist = async () => {
+let edit_ref = null  // set by function ref in template
+let toastTimer = null
+
+const toast = (msg) => {
+  message.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  if (msg && msg.type !== 'error') {
+    toastTimer = setTimeout(() => { message.value = null }, 3000)
+  }
+}
+
+// ==================== File operations ====================
+const load_files = async () => {
   try {
-    const response = await api.post('/find-files')
-    filelist.value = response.data.theories
-  } catch (err) {
-    message.value = {type: 'error', data: 'Failed to load file list'}
+    const res = await api.post('/find-files')
+    filelist.value = res.data.theories
+  } catch (e) {
+    toast({ type: 'error', data: 'Failed to load file list' })
   }
 }
 
-const api_load_file = async (name) => {
-  try {
-    const response = await api.post('/load-json-file', {
-      filename: name,
-      profile: false,
-      line_length: 80
-    })
-    return response.data
-  } catch (err) {
-    message.value = {type: 'error', data: 'Failed to load file'}
-    return null
-  }
-}
-
-const api_save_file = async (data) => {
-  try {
-    await api.post('/save-file', {
-      filename: filename.value,
-      content: data
-    })
-    return true
-  } catch (err) {
-    message.value = {type: 'error', data: 'Failed to save file'}
-    return false
-  }
-}
-
-const api_check_modify = async (item) => {
-  try {
-    const response = await api.post('/check-modify', {
-      filename: filename.value,
-      limit_ty: item.ty,
-      limit_name: item.name,
-      line_length: 80,
-      item: item
-    })
-    return response.data.item
-  } catch (err) {
-    return { error: { err_type: 'ServerError', err_str: 'Server error' } }
-  }
-}
-
-// ==================== 状态转换 ====================
-const toggle_edit = (index) => {
-  if (ui_state.value === 'EDIT' && active_index.value === index) {
-    ui_state.value = 'BROWSE'
-    active_index.value = -1
-  } else {
-    ui_state.value = 'EDIT'
-    active_index.value = index
-  }
-}
-
-const toggle_prove = (index) => {
-  if (ui_state.value === 'PROVE' && active_index.value === index) {
-    ui_state.value = 'BROWSE'
-    active_index.value = -1
-    clear_context()
-  } else {
-    ui_state.value = 'PROVE'
-    active_index.value = index
-    clear_context()
-  }
-}
-
-const select_item = (index) => {
-  selected_index.value = index
-}
-
-const select_file = async (name) => {
+const open_file = async (name) => {
   if (loading.value) return
-  
-  // 清除所有状态
-  ui_state.value = 'BROWSE'
-  active_index.value = -1
-  selected_index.value = -1
-  clear_context()
-  
-  // 显示loading
   loading.value = true
   filename.value = name
   theory.value = null
-  
+  editing.value = -1
+  proving.value = -1
+  selected.value = -1
   try {
-    const data = await api_load_file(name)
-    if (data) {
-      theory.value = data
-      compute_deps_and_status()
-    }
+    const res = await api.post('/load-json-file', { filename: name, line_length: 80 })
+    res.data.content.forEach(item => { item._from_disk = true })
+    theory.value = res.data
+    meta_imports.value = (res.data.imports || []).join('\n')
+    meta_description.value = res.data.description || ''
+    compute_thm_status()
+  } catch (e) {
+    toast({ type: 'error', data: 'Failed to load ' + name })
   } finally {
     loading.value = false
   }
 }
 
-// ==================== 依赖图和状态 ====================
-const compute_deps_and_status = () => {
-  if (!theory.value) return
-  
-  deps.value = {}
-  reverse_deps.value = {}
-  
-  for (const item of theory.value.content) {
-    if (!item.name) continue
-    deps.value[item.name] = new Set()
-    
-    if (item.steps) {
-      for (const step of item.steps) {
-        if (step.theorem) {
-          deps.value[item.name].add(step.theorem)
-        }
-      }
-    }
-  }
-  
-  for (const [name, dep_set] of Object.entries(deps.value)) {
-    if (!reverse_deps.value[name]) reverse_deps.value[name] = new Set()
-    for (const dep of dep_set) {
-      if (!reverse_deps.value[dep]) reverse_deps.value[dep] = new Set()
-      reverse_deps.value[dep].add(name)
-    }
-  }
-  
-  theorem_status.value = {}
-  for (const item of theory.value.content) {
-    if (item.name) {
-      theorem_status.value[item.name] = compute_status(item)
-    }
+const reload_file = async () => {
+  if (!filename.value) return
+  const name = filename.value
+  loading.value = true
+  try {
+    const res = await api.post('/load-json-file', { filename: name, line_length: 80 })
+    res.data.content.forEach(item => { item._from_disk = true })
+    theory.value = res.data
+    meta_imports.value = (res.data.imports || []).join('\n')
+    meta_description.value = res.data.description || ''
+    compute_thm_status()
+  } catch (e) {
+    toast({ type: 'error', data: 'Failed to reload' })
+  } finally {
+    loading.value = false
   }
 }
 
-const compute_status = (item) => {
-  if (item.ty === 'thm.ax') return 'AXIOM'
-  if (item.ty === 'thm') {
-    if (!item.proof) return 'UNPROVED'
-    if (item.num_gaps > 0) return 'INVALID'
-    return 'VALID'
-  }
-  return 'VALID'
-}
-
-const mark_dirty = (name) => {
-  const queue = [name]
-  const visited = new Set()
-  
-  while (queue.length > 0) {
-    const current = queue.shift()
-    if (visited.has(current)) continue
-    visited.add(current)
-    
-    if (current in theorem_status.value) {
-      theorem_status.value[current] = 'DIRTY'
-    }
-    
-    if (reverse_deps.value[current]) {
-      for (const dep of reverse_deps.value[current]) {
-        queue.push(dep)
-      }
-    }
+const create_file = async () => {
+  const name = prompt('New theory name:')
+  if (!name) return
+  saving.value = true
+  try {
+    await api.post('/save-file', {
+      filename: name,
+      content: { name, imports: [], description: '', content: [] }
+    })
+    await load_files()
+    await open_file(name)
+    toast({ type: 'OK', data: `Created ${name}` })
+  } catch (e) {
+    toast({ type: 'error', data: 'Failed to create file' })
+  } finally {
+    saving.value = false
   }
 }
 
-// ==================== 编辑操作 ====================
-const on_edit_submit = (index, new_item) => {
-  const old_item = theory.value.content[index]
-  const old_prop = old_item.prop
-  
-  Object.assign(old_item, new_item)
-  
-  if (new_item.prop && new_item.prop !== old_prop) {
-    old_item.proof = null
-    old_item.steps = null
-    old_item.num_gaps = null
+const delete_file = async () => {
+  if (!filename.value) return
+  if (!confirm(`Delete file "${filename.value}"? This cannot be undone.`)) return
+  try {
+    await api.put('/remove-file', { filename: filename.value })
+    filename.value = null
+    theory.value = null
+    await load_files()
+    toast({ type: 'OK', data: 'File deleted' })
+  } catch (e) {
+    toast({ type: 'error', data: 'Failed to delete file' })
   }
-  
-  mark_dirty(old_item.name)
-  
-  ui_state.value = 'BROWSE'
-  active_index.value = -1
 }
 
-// ==================== 保存 ====================
-const save_file = async () => {
-  if (!theory.value) return
-  
-  const dirty_items = theory.value.content.filter(
-    i => i.name && theorem_status.value[i.name] === 'DIRTY'
-  )
-  
-  const sorted = topological_sort(dirty_items)
-  
-  for (const item of sorted) {
-    const result = await api_check_modify(item)
-    if (result.error) {
-      theorem_status.value[item.name] = 'INVALID'
-      message.value = { 
-        type: 'error', 
-        data: `Theorem ${item.name} check failed: ${result.error.err_str}` 
-      }
-      return
-    }
-    if (item.ty === 'thm') {
-      result.proof = item.proof
-      result.num_gaps = item.num_gaps
-      result.steps = item.steps
-    }
-    Object.assign(item, result)
-    theorem_status.value[item.name] = 'VALID'
-  }
-  
-  const content = theory.value.content
-    .filter(i => 'name' in i)
-    .map(i => {
-      const copy = JSON.parse(JSON.stringify(i))
-      delete copy.error
+// ==================== Persist to disk ====================
+const persist = async () => {
+  if (!theory.value) return false
+  saving.value = true
+  try {
+    // Clean items: remove internal fields
+    const content = theory.value.content.map(item => {
+      const copy = { ...item }
+      delete copy._error
+      delete copy._from_disk
       delete copy.display
       delete copy.edit
       delete copy.ext
+      delete copy.error
       return copy
     })
-  
-  const success = await api_save_file({
-    name: theory.value.name,
-    imports: theory.value.imports,
-    description: theory.value.description,
-    content: content
-  })
-  
-  if (success) {
-    // 重新加载
-    loading.value = true
-    try {
-      const data = await api_load_file(filename.value)
-      if (data) {
-        theory.value = data
-        compute_deps_and_status()
+    await api.post('/save-file', {
+      filename: filename.value,
+      content: {
+        name: theory.value.name,
+        imports: theory.value.imports || [],
+        description: theory.value.description || '',
+        content
       }
-    } finally {
-      loading.value = false
-    }
-    
-    active_index.value = -1
-    selected_index.value = -1
-    ui_state.value = 'BROWSE'
-    message.value = {type: 'OK', data: 'File saved'}
+    })
+    return true
+  } catch (e) {
+    toast({ type: 'error', data: 'Failed to save to disk' })
+    return false
+  } finally {
+    saving.value = false
   }
 }
 
-const topological_sort = (items) => {
-  const names = new Set(items.map(i => i.name))
-  const visited = new Set()
-  const result = []
-  
-  const visit = (name) => {
-    if (visited.has(name)) return
-    visited.add(name)
-    
-    if (deps.value[name]) {
-      for (const dep of deps.value[name]) {
-        if (names.has(dep)) {
-          visit(dep)
+// ==================== Metadata ====================
+const save_metadata = async () => {
+  if (!theory.value) return
+  theory.value.imports = meta_imports.value.split('\n').map(s => s.trim()).filter(Boolean)
+  theory.value.description = meta_description.value
+  const ok = await persist()
+  if (ok) {
+    await reload_file()
+    toast({ type: 'OK', data: 'Metadata saved' })
+  }
+}
+
+// ==================== Item operations ====================
+const add_item = (ty) => {
+  if (!theory.value) return
+  const item = { ty, name: '' }
+  if (ty === 'thm' || ty === 'thm.ax') { item.vars = ''; item.prop = ''; item.attributes = [] }
+  else if (ty === 'def') { item.type = ''; item.prop = ''; item.attributes = [] }
+  else if (ty === 'def.ax') { item.type = '' }
+  else if (ty === 'type.ax') { item.args = [] }
+  else if (ty === 'type.ind') { item.type = ''; item.args = []; item.constrs = '' }
+  else if (ty === 'def.ind' || ty === 'def.pred') { item.type = ''; item.rules = '' }
+  else if (ty === 'header') { item.depth = 0 }
+
+  theory.value.content.push(item)
+  const idx = theory.value.content.length - 1
+  editing.value = idx
+  selected.value = idx
+  toast({ type: 'OK', data: `Added ${typeLabel(ty)}` })
+}
+
+const remove_item = async (index) => {
+  const item = theory.value.content[index]
+  if (!confirm(`Delete "${item.name || typeLabel(item.ty)}"?`)) return
+  theory.value.content.splice(index, 1)
+  editing.value = -1
+  proving.value = -1
+  const ok = await persist()
+  if (ok) {
+    await reload_file()
+    toast({ type: 'OK', data: 'Deleted' })
+  }
+}
+
+const move_item = async (index, dir) => {
+  const content = theory.value.content
+  const target = index + dir
+  if (target < 0 || target >= content.length) return
+  const tmp = content[index]
+  content[index] = content[target]
+  content[target] = tmp
+  selected.value = target
+  if (editing.value === index) editing.value = target
+  else if (editing.value === target) editing.value = index
+  const ok = await persist()
+  if (ok) await reload_file()
+}
+
+// ==================== Edit operations ====================
+const toggle_edit = (index) => {
+  if (editing.value === index) {
+    editing.value = -1
+  } else {
+    editing.value = index
+    proving.value = -1
+    selected.value = index
+  }
+}
+
+const check_item = async (index) => {
+  if (!edit_ref) return
+  const data = edit_ref.getData()
+  const old_item = theory.value.content[index]
+  const is_existing = old_item._from_disk
+  try {
+    const req = { filename: filename.value, line_length: 80, item: data }
+    if (is_existing) {
+      req.limit_ty = old_item.ty
+      req.limit_name = old_item.name
+    }
+    const res = await api.post('/check-modify', req)
+    const result = res.data.item
+    if (result.error) {
+      toast({ type: 'error', data: `${result.error.err_type}: ${result.error.err_str}` })
+    } else {
+      toast({ type: 'OK', data: 'Check passed' })
+    }
+  } catch (e) {
+    toast({ type: 'error', data: 'Check failed: ' + (e.message || 'server error') })
+  }
+}
+
+const save_item = async (index) => {
+  if (!edit_ref) return
+  const data = edit_ref.getData()
+
+  if (!data.name) {
+    toast({ type: 'error', data: 'Name is required' })
+    return
+  }
+
+  const old_item = theory.value.content[index]
+  const is_existing = old_item._from_disk
+
+  saving.value = true
+  try {
+    // 1. Validate via check-modify
+    const req = { filename: filename.value, line_length: 80, item: data }
+    if (is_existing) {
+      req.limit_ty = old_item.ty
+      req.limit_name = old_item.name
+    }
+    const res = await api.post('/check-modify', req)
+    const result = res.data.item
+    if (result.error) {
+      toast({ type: 'error', data: `${result.error.err_type}: ${result.error.err_str}` })
+      return
+    }
+
+    // 2. Update item in memory (keep steps for theorems)
+    const steps = old_item.steps
+    // Only take core fields from check-modify result
+    const updated = { ty: result.ty, name: result.name }
+    if (result.vars !== undefined) updated.vars = result.vars
+    if (result.prop !== undefined) updated.prop = result.prop
+    if (result.type !== undefined) updated.type = result.type
+    if (result.attributes !== undefined) updated.attributes = result.attributes
+    if (result.args !== undefined) updated.args = result.args
+    if (result.constrs !== undefined) updated.constrs = result.constrs
+    if (result.rules !== undefined) updated.rules = result.rules
+    if (result.depth !== undefined) updated.depth = result.depth
+    if (result.overloaded !== undefined) updated.overloaded = result.overloaded
+    if (steps) updated.steps = steps
+    updated._from_disk = true
+    theory.value.content[index] = updated
+
+    // 3. Persist to disk
+    const ok = await persist()
+    if (ok) {
+      // 4. Reload from disk to confirm
+      await reload_file()
+      editing.value = -1
+      toast({ type: 'OK', data: `Saved "${updated.name}"` })
+    }
+  } catch (e) {
+    toast({ type: 'error', data: 'Save failed: ' + (e.message || 'server error') })
+  } finally {
+    saving.value = false
+  }
+}
+
+// ==================== Proof ====================
+const toggle_prove = (index) => {
+  if (proving.value === index) {
+    proving.value = -1
+  } else {
+    proving.value = index
+    editing.value = -1
+    selected.value = index
+  }
+}
+
+const save_proof = async (index, steps) => {
+  theory.value.content[index].steps = steps
+  const ok = await persist()
+  if (ok) {
+    await reload_file()
+    toast({ type: 'OK', data: 'Proof saved' })
+  }
+}
+
+// ==================== Validate All ====================
+const validate_all = async () => {
+  if (!filename.value) return
+  validating.value = true
+  val_progress.value = 0
+  val_total.value = 0
+  thm_status.value = {}
+
+  try {
+    const response = await fetch('/api/validate-theory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: filename.value })
+    })
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.done) {
+              toast({ type: 'OK', data: `Validation: ${data.valid} valid, ${data.invalid} invalid` })
+            } else if (data.error) {
+              toast({ type: 'error', data: data.error })
+            } else if (data.name && data.status) {
+              thm_status.value[data.name] = data.status
+              val_progress.value = data.progress
+              val_total.value = data.total
+            }
+          } catch (e) { /* ignore parse errors */ }
         }
       }
     }
-    
-    result.push(name)
-  }
-  
-  for (const name of names) {
-    visit(name)
-  }
-  
-  return result.map(name => items.find(i => i.name === name))
-}
-
-// ==================== 文件操作 ====================
-const new_file = async () => {
-  const name = prompt("Name of the theory")
-  if (!name) return
-  
-  // 创建新文件数据
-  const new_theory = {
-    name: name,
-    imports: [],
-    description: '',
-    content: []
-  }
-  
-  // 保存到后端
-  const success = await api_save_file(new_theory)
-  if (!success) return
-  
-  // 刷新文件列表
-  await api_load_filelist()
-  
-  // 选择新文件
-  await select_file(name)
-  message.value = {type: 'OK', data: `Created ${name}`}
-}
-
-const open_file = () => {
-  const name = prompt("Open file")
-  if (name) {
-    select_file(name)
+  } catch (e) {
+    toast({ type: 'error', data: 'Validation failed' })
+  } finally {
+    validating.value = false
   }
 }
 
-const remove_file = async () => {
-  if (!filename.value) return
-  if (!confirm(`Are you sure you want to delete ${filename.value}?`)) return
-  
-  try {
-    await api.put('/remove-file', { filename: filename.value })
-    filelist.value = filelist.value.filter(f => f !== filename.value)
-    filename.value = undefined
-    theory.value = undefined
-    ui_state.value = 'BROWSE'
-    active_index.value = -1
-    selected_index.value = -1
-    message.value = {type: 'OK', data: 'File deleted'}
-  } catch (err) {
-    message.value = {type: 'error', data: 'Failed to delete file'}
-  }
-}
-
-// ==================== 项管理 ====================
-const add_item = (ty) => {
+// ==================== Helpers ====================
+const compute_thm_status = () => {
+  thm_status.value = {}
   if (!theory.value) return
-  
-  const new_item = {
-    ty: ty,
-    name: '',
-    edit: { ty: ty, name: '' }
-  }
-  
-  // 根据类型添加默认字段
-  if (ty === 'thm' || ty === 'thm.ax') {
-    new_item.vars = {}
-    new_item.prop = ''
-    new_item.attributes = []
-  } else if (ty === 'def') {
-    new_item.type = ''
-    new_item.prop = ''
-    new_item.attributes = []
-  } else if (ty === 'def.ax') {
-    new_item.type = ''
-  } else if (ty === 'type.ind') {
-    new_item.args = []
-    new_item.constrs = []
-  } else if (ty === 'def.ind' || ty === 'def.pred') {
-    new_item.type = ''
-    new_item.rules = []
-  }
-  
-  // 添加到末尾
-  theory.value.content.push(new_item)
-  
-  // 进入编辑模式
-  const index = theory.value.content.length - 1
-  ui_state.value = 'EDIT'
-  active_index.value = index
-  selected_index.value = index
-  
-  message.value = {type: 'OK', data: `Added new ${ty}`}
-}
-
-const remove_selected = () => {
-  if (!theory.value || selected_index.value < 0) return
-  
-  const item = theory.value.content[selected_index.value]
-  if (!confirm(`Remove ${item.name || item.ty}?`)) return
-  
-  theory.value.content.splice(selected_index.value, 1)
-  
-  // 调整选中索引
-  if (selected_index.value >= theory.value.content.length) {
-    selected_index.value = theory.value.content.length - 1
-  }
-  
-  // 如果正在编辑/证明这个项，关闭
-  if (active_index.value === selected_index.value) {
-    ui_state.value = 'BROWSE'
-    active_index.value = -1
-  }
-  
-  message.value = {type: 'OK', data: 'Item removed'}
-}
-
-const item_move_up = () => {
-  if (!theory.value || selected_index.value <= 0) return
-  
-  const content = theory.value.content
-  const idx = selected_index.value
-  
-  // 交换
-  const temp = content[idx]
-  content[idx] = content[idx - 1]
-  content[idx - 1] = temp
-  
-  selected_index.value = idx - 1
-  
-  // 调整active_index
-  if (active_index.value === idx) {
-    active_index.value = idx - 1
-  } else if (active_index.value === idx - 1) {
-    active_index.value = idx
+  for (const item of theory.value.content) {
+    if (item.ty === 'thm') {
+      thm_status.value[item.name] = (item.steps && item.steps.length > 0) ? 'PENDING' : 'UNPROVED'
+    } else if (item.ty === 'thm.ax') {
+      thm_status.value[item.name] = 'AXIOM'
+    }
   }
 }
 
-const item_move_down = () => {
-  if (!theory.value || selected_index.value < 0) return
-  if (selected_index.value >= theory.value.content.length - 1) return
-  
-  const content = theory.value.content
-  const idx = selected_index.value
-  
-  // 交换
-  const temp = content[idx]
-  content[idx] = content[idx + 1]
-  content[idx + 1] = temp
-  
-  selected_index.value = idx + 1
-  
-  // 调整active_index
-  if (active_index.value === idx) {
-    active_index.value = idx + 1
-  } else if (active_index.value === idx + 1) {
-    active_index.value = idx
+const typeLabel = (ty) => ({
+  'header': 'header', 'type.ax': 'type', 'type.ind': 'datatype',
+  'def.ax': 'constant', 'def': 'definition', 'def.ind': 'fun',
+  'def.pred': 'inductive', 'thm.ax': 'axiom', 'thm': 'theorem'
+}[ty] || ty)
+
+const statusIcon = (s) => ({
+  'VALID': '✓', 'STEP_FAILED': '✗', 'DEP_FAILED': '⚠',
+  'PENDING': '⏳', 'UNPROVED': '○', 'AXIOM': '□', 'DIRTY': '•'
+}[s] || '')
+
+const formatHistory = (step_output) => {
+  if (Array.isArray(step_output)) {
+    return step_output.map(item => item.text || String(item)).join('')
+  }
+  return String(step_output)
+}
+
+const formatType = (T) => {
+  if (typeof T === 'string') return T
+  if (Array.isArray(T)) return T.map(item => item.text || String(item)).join('')
+  return String(T)
+}
+
+// Reference to ProofArea for navigating history
+let proof_area_ref = null
+
+const proof_goto_step = (step_idx) => {
+  if (proof_area_ref && typeof proof_area_ref.gotoStep === 'function') {
+    proof_area_ref.gotoStep(step_idx)
   }
 }
 
-// ==================== 其他操作 ====================
-const clear_context = () => {
-  ref_proof.value = null
-  if (ref_context.value) {
-    ref_context.value.setContext({ ctxt: {}, steps: [] })
-  }
-  if (ref_status.value) {
-    ref_status.value.setStatus({ status: '', search_res: [], instr: [], instr_no: '' })
-  }
-}
-
-const handleGoToLink = (link_filename, index) => {
-  if (link_filename !== filename.value) {
-    select_file(link_filename).then(() => {
-      if (index !== undefined && theory_ref.value) {
-        nextTick(() => {
-          selected_index.value = index
-        })
-      }
-    })
-  }
-}
-
-const onSetMessage = (msg) => {
-  message.value = msg
-}
-
-const handle_set_proof = (proof_ref) => {
-  ref_proof.value = proof_ref
-}
-
-const handle_set_status = (data) => {
-  if (ref_status.value) {
-    ref_status.value.setStatus(data)
-  }
-}
-
-const handle_set_context = (data) => {
-  if (ref_context.value) {
-    ref_context.value.setContext(data)
-  }
-}
-
-const handle_query = (q) => {
-  query.value = q
-}
-
-const handle_query_ok = (vals) => {
-  if (query.value && query.value.resolve) {
-    query.value.resolve(vals)
-  }
-  query.value = undefined
-}
-
-const handle_query_cancel = () => {
-  if (query.value && query.value.resolve) {
-    query.value.resolve(undefined)
-  }
-  query.value = undefined
-}
-
-// ==================== 初始化 ====================
-api_load_filelist()
+// ==================== Init ====================
+onMounted(() => { load_files() })
 </script>
 
 <style scoped>
-.editor-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+.editor-container { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.main-content { flex: 1; display: flex; overflow: hidden; }
+.left-panel { width: 220px; min-width: 220px; border-right: 1px solid #dee2e6; overflow-y: auto; background: #f8f9fa; padding: 10px; }
+.center-panel { flex: 1; overflow-y: auto; padding: 15px; }
+.panel-title { font-weight: bold; color: #495057; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 2px solid #007bff; }
+.file-list { overflow-y: auto; }
+.file-item { padding: 6px 10px; cursor: pointer; border-radius: 4px; margin-bottom: 2px; font-size: 14px; }
+.file-item:hover { background: #e9ecef; }
+.file-item.active { background: #007bff; color: white; }
+.empty-state, .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #6c757d; }
+.spinner { width: 36px; height: 36px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-.main-content {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
+/* File header */
+.file-header { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 12px; margin-bottom: 15px; }
+.file-header-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.metadata-section { border-top: 1px solid #dee2e6; padding-top: 10px; }
+.meta-row { display: flex; align-items: center; margin-bottom: 6px; }
+.meta-label { font-weight: bold; color: #006000; width: 80px; flex-shrink: 0; }
+.meta-input { flex: 1; padding: 4px 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; }
+.meta-value { font-family: Consolas, monospace; }
 
-.left-panel {
-  width: 250px;
-  min-width: 250px;
-  border-right: 1px solid #dee2e6;
-  overflow-y: auto;
-  background: #f8f9fa;
-}
+/* Items */
+.item-wrapper { border-bottom: 1px solid #eee; }
+.item-row { display: flex; align-items: center; padding: 4px 8px; cursor: pointer; gap: 8px; }
+.item-row:hover { background: #f5f5f5; }
+.item-selected { background: #e8f0fe !important; }
+.item-error { background: #ffe0e0 !important; }
+.item-idx { color: #999; font-size: 12px; width: 24px; text-align: right; }
+.item-type { font-weight: bold; color: #006000; min-width: 70px; font-size: 13px; }
+.item-name { font-family: Consolas, monospace; font-size: 14px; flex: 1; }
+.item-status { font-size: 16px; }
+.item-actions { display: flex; gap: 4px; }
+.item-actions .btn { padding: 1px 6px; font-size: 12px; }
 
-.center-panel {
-  flex: 1;
-  overflow-y: auto;
-  padding: 15px;
-}
+.status-valid { color: #28a745; }
+.status-step_failed { color: #dc3545; }
+.status-dep_failed { color: #fd7e14; }
+.status-pending { color: #6c757d; }
+.status-unproved { color: #6c757d; }
+.status-axiom { color: #17a2b8; }
+.status-dirty { color: #ffc107; }
 
-.right-panel {
-  width: 300px;
-  min-width: 300px;
-  border-left: 1px solid #dee2e6;
-  overflow-y: auto;
-  background: #f8f9fa;
-}
+/* Edit section */
+.edit-section { margin: 8px 0; padding: 12px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; }
+.edit-actions { margin-top: 8px; display: flex; gap: 6px; }
 
-.panel-section {
-  padding: 10px;
-  border-bottom: 1px solid #dee2e6;
-}
+/* Proof section */
+.proof-section { margin: 8px 0; padding: 12px; background: #fff; border: 1px solid #28a745; border-radius: 4px; }
 
-.panel-title {
-  font-weight: bold;
-  color: #495057;
-  margin-bottom: 10px;
-  padding-bottom: 5px;
-  border-bottom: 2px solid #007bff;
-}
+/* Toast */
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); font-size: 14px; max-width: 600px; min-width: 280px; }
+.toast-ok { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.toast-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.toast-text { flex: 1; word-break: break-word; }
+.toast-close { background: none; border: none; font-size: 20px; cursor: pointer; color: inherit; opacity: 0.5; }
+.toast-close:hover { opacity: 1; }
+.toast-enter-active { animation: toast-in 0.3s ease; }
+.toast-leave-active { animation: toast-out 0.3s ease; }
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
 
-.file-list {
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
-}
-
-.file-item {
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  margin-bottom: 2px;
-}
-
-.file-item:hover {
-  background: #e9ecef;
-}
-
-.file-item.active {
-  background: #007bff;
-  color: white;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #6c757d;
-}
-
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #6c757d;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 10px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.message-section {
-  padding: 10px;
-}
-
-.message-section .alert {
-  margin: 0;
-  font-size: 14px;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1050;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 8px;
-  width: 500px;
-  max-width: 90%;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-}
-
-.modal-header {
-  padding: 15px 20px;
-  border-bottom: 1px solid #dee2e6;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-body {
-  padding: 20px;
-}
+/* Right panel */
+.right-panel { width: 280px; min-width: 280px; border-left: 1px solid #dee2e6; overflow-y: auto; background: #f8f9fa; padding: 10px; }
+.panel-section { margin-bottom: 15px; }
+.ctxt-var { padding: 2px 0; font-size: 13px; }
+.ctxt-name { font-family: Consolas, monospace; font-weight: bold; }
+.ctxt-type { font-family: Consolas, monospace; color: #555; }
+.ctxt-empty { color: #999; font-size: 13px; font-style: italic; }
+.history-item { padding: 3px 6px; font-size: 12px; cursor: pointer; border-radius: 3px; display: flex; gap: 6px; }
+.history-item:hover { background: #e9ecef; }
+.history-selected { background: #cce5ff !important; }
+.history-idx { color: #999; min-width: 20px; text-align: right; }
+.history-text { font-family: Consolas, monospace; }
 </style>

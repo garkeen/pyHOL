@@ -1,0 +1,94 @@
+theory card
+imports products
+description "Basic notions of cardinal arithmetic. Refer to card.ml from HOL Light."
+
+theorem nat_countable
+  prop countable (univ::nat set)
+  [hint_backward]
+
+theorem countable_subset
+  fixes s :: 'a set, t :: 'a set
+  prop countable t ⟶ s ⊆ t ⟶ countable s
+  [hint_backward,hint_backward1]
+
+theorem countable_restrict
+  fixes P :: 'a ⇒ bool, s :: 'a set
+  prop countable s ⟶ countable ({x. x ∈ s ∧ P x})
+  [hint_backward]
+  proof
+    1: apply_backward_step countable_subset @0
+    1: z3
+  qed
+
+theorem countable_subset_nat
+  fixes s :: nat set
+  prop countable s
+  [hint_backward]
+  proof
+    0: apply_backward_step countable_subset param_t="(univ::nat set)"
+    0: apply_backward_step nat_countable
+    1: apply_backward_step subset_univ
+  qed
+
+theorem finite_imp_countable
+  fixes s :: 'a set
+  prop finite s ⟶ countable s
+  [hint_backward]
+
+theorem countable_image
+  fixes f :: 'a ⇒ 'b, s :: 'a set
+  prop countable s ⟶ countable (image f s)
+  [hint_backward]
+
+theorem countable_empty
+  prop countable (∅::'a set)
+  [hint_backward]
+
+theorem countable_inter
+  fixes s :: 'a set, t :: 'a set
+  prop countable s ∨ countable t ⟶ countable (s ∩ t)
+  [hint_backward]
+  proof
+    1: apply_backward_step disjE @0
+    1: introduction
+    1.1: apply_backward_step countable_subset @1.0
+    1.1: apply_backward_step inter_subset_id
+    2: introduction
+    2.1: apply_backward_step countable_subset @2.0
+    2.1: rewrite_goal inter_comm sym=false
+    2.1: apply_backward_step inter_subset_id
+  qed
+
+theorem countable_union_imp
+  fixes s :: 'a set, t :: 'a set
+  prop countable s ⟶ countable t ⟶ countable (s ∪ t)
+  [hint_backward]
+
+theorem countable_union
+  fixes s :: 'a set, t :: 'a set
+  prop countable (s ∪ t) ⟷ countable s ∧ countable t
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step conjI
+    0.1: apply_backward_step countable_subset @0.0
+    0.1: apply_backward_step subset_union_id
+    0.3: apply_backward_step countable_subset @0.0
+    0.3: rewrite_goal union_comm sym=false
+    0.3: apply_backward_step subset_union_id
+    1: introduction
+    1.1: apply_forward_step conjD1 @1.0
+    1.2: apply_forward_step conjD2 @1.0
+    1.3: apply_backward_step countable_union_imp @1.1,1.2
+  qed
+
+theorem countable_sing
+  fixes x :: 'a
+  prop countable ({x})
+  [hint_backward]
+  proof
+    0: apply_backward_step finite_imp_countable
+    0: apply_backward_step finite_insert
+    0: apply_backward_step finite_empty
+  qed

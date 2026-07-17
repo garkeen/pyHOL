@@ -9,6 +9,7 @@ from kernel.type import TFun, RealType
 from kernel import term
 from kernel.term import Term, Const, Eq, Nat, Real, Sum, Prod, true, false, Var, Exists, And, Implies, Not, false
 from kernel.thm import Thm
+from kernel import theory
 from kernel.theory import register_macro
 from kernel.macro import Macro
 from kernel.proofterm import TacticException
@@ -26,8 +27,6 @@ from syntax import pprint
 from server.method import Method, register_method
 from util import poly
 import functools
-
-basic.load_theory('interval_arith')
 
 # Basic definitions
 

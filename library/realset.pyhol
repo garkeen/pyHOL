@@ -1,0 +1,366 @@
+theory realset
+imports real
+description "Supremum and infimum. Relaitonal counterparts of sup and inf. Refer to sets.ml from HOL light"
+
+def sup :: real set ⇒ real = sup s = (THE a. (∀x. x ∈ s ⟶ x ≤ a) ∧ (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ a ≤ b)) [hint_rewrite]
+
+theorem sup_eq
+  fixes s :: real set, t :: real set
+  prop (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟷ (∀x. x ∈ t ⟶ x ≤ b)) ⟶ sup s = sup t
+  [hint_backward]
+  proof
+    1: rewrite_goal sup_def sym=false
+    1: rewrite_goal_with_prev @0
+  qed
+
+theorem sup
+  fixes s :: real set
+  prop ¬(s = ∅) ⟶ (∃b. ∀x. x ∈ s ⟶ x ≤ b) ⟶ (∀x. x ∈ s ⟶ x ≤ sup s) ∧ (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b)
+  [hint_backward,hint_backward1]
+
+theorem sup_finite_lemma
+  fixes s :: real set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∃b. b ∈ s ∧ (∀x. x ∈ s ⟶ x ≤ b))
+  [hint_backward,hint_backward1]
+  proof
+    2: revert_intro @1
+    1: apply_backward_step finite_induct_strong @0
+    1: rewrite_goal member_empty_simp sym=false
+    1: introduction
+    1.1: apply_backward_step negE_gen @1.0
+    1.1: apply_backward_step eq_refl
+    3: introduction x,s1
+    3.6: rewrite_fact set_equal_iff @3.2 sym=false
+    3.7: rewrite_fact not_all @3.6 sym=false
+    3.8: rewrite_fact member_empty_simp @3.7 sym=false
+    3.9: rewrite_goal member_insert sym=false
+    3.9: z3 @3.8
+  qed
+
+theorem sup_finite
+  fixes s :: real set
+  prop finite s ⟶ ¬(s = ∅) ⟶ sup s ∈ s ∧ (∀x. x ∈ s ⟶ x ≤ sup s)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step sup_finite_lemma @0,1
+    3: apply_backward_step conjI
+    3: apply_forward_step sup @1
+    4: exists_elim b @2
+    6: apply_forward_step conjD2 @5
+    7: cut "(∃b. ∀x. x ∈ s ⟶ x ≤ b)"
+    7: apply_backward_step exI @6
+    8: apply_fact @3,7
+    9: apply_forward_step conjD1 @8
+    10: apply_forward_step conjD2 @8
+    11: apply_forward_step conjD1 @5
+    12: cut "sup s = b"
+    12: rewrite_goal real_le_antisym sym=true
+    12: apply_backward_step conjI
+    12: apply_prev @10
+    13: apply_prev @9
+    16: rewrite_goal_with_prev @15
+    17: apply_backward_step conjD1 @8
+  qed
+
+theorem real_le_sup_finite
+  fixes a :: real, s :: real set
+  prop finite s ⟶ ¬(s = ∅) ⟶ a ≤ sup s ⟷ (∃x. x ∈ s ∧ a ≤ x)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step sup_finite @0,1
+    3: apply_backward_step iffI
+    3: introduction
+    3.1: inst_exists_goal "sup s"
+    3.1: apply_backward_step conjI
+    3.1: apply_backward_step conjD1 @2
+    4: introduction
+    4.1: apply_forward_step conjD2 @2
+    4.2: exists_elim a1 @4.0
+    4.4: apply_forward_step conjD1 @4.3
+    4.5: apply_forward_step conjD2 @4.3
+    4.6: apply_fact @4.1,4.4
+    4.7: apply_backward_step real_le_trans @4.5,4.6
+  qed
+
+theorem real_sup_le
+  fixes b :: real, s :: real set
+  prop ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: apply_forward_step sup @0
+    3: cut "(∃b. ∀x. x ∈ s ⟶ x ≤ b)"
+    3: apply_backward_step exI @1
+    4: apply_fact @2,3
+    5: apply_forward_step conjD2 @4
+    6: apply_prev @5,1
+  qed
+
+theorem real_le_sup
+  fixes a :: real, b :: real, s :: real set, y :: real
+  prop y ∈ s ⟶ a ≤ y ⟶ (∀x. x ∈ s ⟶ x ≤ b) ⟶ a ≤ sup s
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_forward_step sup param_s=s
+    4: cut "¬(s = ∅)" @3
+    4: z3 @0
+    5: apply_fact @3,4
+    6: cut "(∃b. ∀x. x ∈ s ⟶ x ≤ b)" @5
+    6: apply_backward_step exI @2
+    7: apply_fact @5,6
+    8: apply_forward_step conjD1 @7
+    9: apply_backward_step real_le_trans @1
+    9: apply_prev @8
+  qed
+
+theorem element_le_sup
+  fixes a :: real, s :: real set
+  prop (∃b. ∀x. x ∈ s ⟶ x ≤ b) ⟶ a ∈ s ⟶ a ≤ sup s
+  [hint_backward,hint_backward1]
+  proof
+    2: exists_elim b @0
+    4: apply_backward_step real_le_sup @1 param_b=b
+    4: apply_backward_step real_le_refl
+  qed
+
+theorem sup_approach
+  fixes c :: real, s :: real set
+  prop ¬(s = ∅) ⟶ (∃b. ∀x. x ∈ s ⟶ x ≤ b) ⟶ c < sup s ⟶ (∃x. x ∈ s ∧ c < x)
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_goal double_neg sym=true
+    3: apply_backward_step negI
+    3: introduction
+    3.1: rewrite_fact not_exists @3.0 sym=false
+    3.2: rewrite_fact de_morgan_thm1 @3.1 sym=false
+    3.3: rewrite_fact real_not_lt @3.2 sym=false
+    3.4: apply_backward_step contrapositive @2
+    3.4: introduction
+    3.4.1: rewrite_goal real_not_lt sym=false
+    3.4.1: apply_forward_step sup @0,1
+    3.4.2: apply_forward_step conjD2 @3.4.1
+    3.4.3: apply_prev @3.4.2
+    3.4.3: z3 @3.3
+  qed
+
+def inf :: real set ⇒ real = inf s = (THE a. (∀x. x ∈ s ⟶ a ≤ x) ∧ (∀b. (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ a)) [hint_rewrite]
+
+theorem inf_eq
+  fixes s :: real set, t :: real set
+  prop (∀a. (∀x. x ∈ s ⟶ a ≤ x) ⟷ (∀x. x ∈ t ⟶ a ≤ x)) ⟶ inf s = inf t
+  [hint_backward,hint_forward]
+  proof
+    1: rewrite_goal inf_def sym=false
+    1: rewrite_goal_with_prev @0
+  qed
+
+theorem inf
+  fixes s :: real set
+  prop ¬(s = ∅) ⟶ (∃b. ∀x. x ∈ s ⟶ b ≤ x) ⟶ (∀x. x ∈ s ⟶ inf s ≤ x) ∧ (∀b. (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ inf s)
+  [hint_backward,hint_backward1]
+
+theorem inf_finite_lemma
+  fixes s :: real set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∃b. b ∈ s ∧ (∀x. x ∈ s ⟶ b ≤ x))
+  [hint_backward,hint_backward1]
+
+theorem inf_finite
+  fixes s :: real set
+  prop finite s ⟶ ¬(s = ∅) ⟶ inf s ∈ s ∧ (∀x. x ∈ s ⟶ inf s ≤ x)
+  [hint_backward,hint_backward1]
+
+theorem real_le_inf_finite
+  fixes a :: real, s :: real set
+  prop finite s ⟶ ¬(s = ∅) ⟶ a ≤ inf s ⟷ (∀x. x ∈ s ⟶ a ≤ x)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step inf_finite @0,1
+    3: apply_forward_step conjD1 @2
+    4: apply_forward_step conjD2 @2
+    5: apply_backward_step iffI
+    5: introduction
+    5.1: introduction x
+    5.1.2: apply_fact @4,5.1.1
+    5.1.3: apply_backward_step real_le_trans @5.0,5.1.2
+    6: introduction
+    6.1: apply_prev @6.0
+  qed
+
+theorem real_inf_le_finite
+  fixes a :: real, s :: real set
+  prop finite s ⟶ ¬(s = ∅) ⟶ inf s ≤ a ⟷ (∃x. x ∈ s ∧ x ≤ a)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step inf_finite @0,1
+    3: apply_forward_step conjD1 @2
+    4: apply_forward_step conjD2 @2
+    5: apply_backward_step iffI
+    5: introduction
+    5.1: inst_exists_goal "inf s"
+    5.1: apply_backward_step conjI
+    6: introduction
+    6.1: exists_elim a1 @6.0
+    6.3: apply_backward_step real_le_trans param_y=a1
+    6.3: apply_prev @4
+    6.3: apply_backward_step conjD1 @6.2
+    6.5: apply_backward_step conjD2 @6.2
+  qed
+
+theorem real_inf_le
+  fixes a :: real, b :: real, s :: real set, y :: real
+  prop y ∈ s ⟶ y ≤ b ⟶ (∀x. x ∈ s ⟶ a ≤ x) ⟶ inf s ≤ b
+  [hint_backward,hint_backward1]
+  proof
+    3: apply_forward_step inf param_s=s
+    4: cut "¬(s = ∅)"
+    4: z3 @0
+    5: apply_fact @3,4
+    6: cut "(∃b. ∀x. x ∈ s ⟶ b ≤ x)" @5
+    6: apply_backward_step exI @2
+    7: apply_fact @5,6
+    8: apply_forward_step conjD1 @7
+    9: apply_backward_step real_le_trans param_y=y
+    9: apply_prev @8
+  qed
+
+theorem real_le_inf
+  fixes b :: real, s :: real set
+  prop ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ inf s
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_forward_step inf @0
+    3: cut "(∃b. ∀x. x ∈ s ⟶ b ≤ x)"
+    3: apply_backward_step exI @1
+    4: apply_fact @2,3
+    5: apply_forward_step conjD2 @4
+    6: apply_prev @5
+  qed
+
+theorem inf_le_element
+  fixes a :: real, s :: real set
+  prop (∃b. ∀x. x ∈ s ⟶ b ≤ x) ⟶ a ∈ s ⟶ inf s ≤ a
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: exists_elim b @0
+    4: apply_backward_step real_inf_le @1 param_a=b
+    4: apply_backward_step real_le_refl
+  qed
+
+theorem inf_approach
+  fixes c :: real, s :: real set
+  prop ¬(s = ∅) ⟶ (∃b. ∀x. x ∈ s ⟶ b ≤ x) ⟶ inf s < c ⟶ (∃x. x ∈ s ∧ x < c)
+  [hint_backward,hint_backward1]
+  proof
+    3: rewrite_fact real_less_def @2 sym=false
+    4: apply_backward_step contrapositive @3
+    4: rewrite_goal double_neg sym=false
+    4: introduction
+    4.1: rewrite_fact not_exists @4.0 sym=false
+    4.2: rewrite_fact de_morgan_thm1 @4.1 sym=false
+    4.3: rewrite_fact real_not_lt @4.2 sym=false
+    4.4: apply_forward_step inf @0,1
+    4.5: apply_forward_step conjD2 @4.4
+    4.6: apply_prev @4.5
+    4.6: z3 @4.3
+  qed
+
+def has_inf :: real set ⇒ real ⇒ bool = has_inf s b ⟷ (∀c. (∀x. x ∈ s ⟶ c ≤ x) ⟷ c ≤ b) [hint_rewrite]
+
+def has_sup :: real set ⇒ real ⇒ bool = has_sup s b ⟷ (∀c. (∀x. x ∈ s ⟶ x ≤ c) ⟷ b ≤ c) [hint_rewrite]
+
+theorem has_inf_lbound
+  fixes b :: real, s :: real set, x :: real
+  prop has_inf s b ⟶ x ∈ s ⟶ b ≤ x
+  [hint_backward1,hint_forward]
+  proof
+    2: rewrite_fact has_inf_def @0 sym=false
+    3: forall_elim b @2
+    4: cut "(∀x. x ∈ s ⟶ b ≤ x)" @3
+    4: z3 @3
+    5: apply_prev @4
+  qed
+
+theorem has_sup_ubound
+  fixes b :: real, s :: real set, x :: real
+  prop has_sup s b ⟶ x ∈ s ⟶ x ≤ b
+  [hint_backward1,hint_forward]
+  proof
+    2: rewrite_fact has_sup_def @0 sym=false
+    3: forall_elim b @2
+    4: cut "(∀x. x ∈ s ⟶ x ≤ b)" @3
+    4: rewrite_goal_with_prev @3
+    4: z3
+    6: apply_prev @5
+  qed
+
+theorem has_inf_inf
+  fixes l :: real, s :: real set
+  prop has_inf s l ⟷ ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x) ∧ inf s = l
+  [hint_rewrite]
+  proof
+    0: rewrite_goal has_inf_def sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step conjI
+    0.1: apply_backward_step negI
+    0.1: introduction
+    0.1.1: rewrite_fact_with_prev @0.1.0,0.0
+    0.1.2: z3 @0.1.1
+    0.3: apply_backward_step conjI
+    0.3: inst_exists_goal l
+    0.3: z3 @0.0
+  qed
+
+theorem has_sup_sup
+  fixes l :: real, s :: real set
+  prop has_sup s l ⟷ ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ x ≤ b) ∧ sup s = l
+  [hint_rewrite]
+
+theorem inf_exists
+  fixes s :: real set
+  prop (∃l. has_inf s l) ⟷ ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal has_inf_inf sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: exists_elim l @0.0
+    0.3: rewrite_fact conj_assoc @0.2 sym=false
+    0.4: apply_backward_step conjD1 @0.3
+    1: introduction
+    1.1: apply_forward_step conjD1 @1.0
+    1.2: apply_forward_step conjD2 @1.0
+    1.3: exists_elim b @1.2
+    1.5: inst_exists_goal b
+    1.5: apply_backward_step conjI
+    1.5: apply_backward_step conjI
+  qed
+
+theorem sup_exists
+  fixes s :: real set
+  prop (∃l. has_sup s l) ⟷ ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ x ≤ b)
+  [hint_rewrite]
+
+theorem has_inf_approach
+  fixes c :: real, l :: real, s :: real set
+  prop has_inf s l ⟶ l < c ⟶ (∃x. x ∈ s ∧ x < c)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_sup_approach
+  fixes c :: real, l :: real, s :: real set
+  prop has_sup s l ⟶ c < l ⟶ (∃x. x ∈ s ∧ c < x)
+  [hint_backward,hint_backward1]
+
+theorem has_inf
+  fixes l :: real, s :: real set
+  prop has_inf s l ⟷ ¬(s = ∅) ∧ (∀x. x ∈ s ⟶ l ≤ x) ∧ (∀c. l < c ⟶ (∃x. x ∈ s ∧ x < c))
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step conjI
+  qed
+
+theorem has_sup
+  fixes l :: real, s :: real set
+  prop has_sup s l ⟷ ¬(s = ∅) ∧ (∀x. x ∈ s ⟶ x ≤ l) ∧ (∀c. c < l ⟶ (∃x. x ∈ s ∧ c < x))
+  [hint_rewrite]

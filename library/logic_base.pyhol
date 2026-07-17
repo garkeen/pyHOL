@@ -1,0 +1,505 @@
+theory logic_base
+imports
+description "Foundation of higher-order logic"
+
+header "Basic operators in logic"
+
+const conj :: bool ⇒ bool ⇒ bool
+
+const neg :: bool ⇒ bool
+
+const disj :: bool ⇒ bool ⇒ bool
+
+const true :: bool
+
+const false :: bool
+
+const exists :: ('a ⇒ bool) ⇒ bool
+
+const IF :: bool ⇒ 'a ⇒ 'a ⇒ 'a
+
+const Some :: ('a ⇒ bool) ⇒ 'a
+
+const The :: ('a ⇒ bool) ⇒ 'a
+
+def exists1 :: ('a ⇒ bool) ⇒ bool = (exists1 P) ⟷ (∃x. P x ∧ (∀y. P y ⟶ y = x))
+
+axiom conjI
+  fixes A :: bool, B :: bool
+  prop A ⟶ B ⟶ A ∧ B
+  [hint_backward]
+
+axiom conjD1
+  fixes A :: bool, B :: bool
+  prop A ∧ B ⟶ A
+  [hint_backward1,hint_forward]
+
+axiom conjD2
+  fixes A :: bool, B :: bool
+  prop A ∧ B ⟶ B
+  [hint_backward1,hint_forward]
+
+axiom disjI1
+  fixes A :: bool, B :: bool
+  prop A ⟶ A ∨ B
+  [hint_backward]
+
+axiom disjI2
+  fixes A :: bool, B :: bool
+  prop B ⟶ A ∨ B
+  [hint_backward]
+
+axiom disjE
+  fixes A :: bool, B :: bool, C :: bool
+  prop A ∨ B ⟶ (A ⟶ C) ⟶ (B ⟶ C) ⟶ C
+  [hint_backward1]
+
+axiom negI
+  fixes A :: bool
+  prop (A ⟶ false) ⟶ ¬A
+  [hint_backward]
+
+axiom negE
+  fixes A :: bool
+  prop ¬A ⟶ A ⟶ false
+  [hint_backward]
+
+axiom falseE
+  fixes A :: bool
+  prop false ⟶ A
+
+axiom trueI
+  prop true
+  [hint_backward,hint_resolve]
+
+axiom exI
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop P a ⟶ (∃a1. P a1)
+
+axiom eta_conversion
+  fixes f :: 'a ⇒ 'b
+  prop (λx. f x) = f
+
+axiom exE
+  fixes C :: bool, P :: 'a ⇒ bool, a :: 'a
+  prop (∃a. P a) ⟶ (∀a. P a ⟶ C) ⟶ C
+
+axiom classical
+  fixes A :: bool
+  prop A ∨ ¬A
+
+axiom extension
+  fixes f :: 'a ⇒ 'b, g :: 'a ⇒ 'b
+  prop (∀x. f x = g x) ⟶ f = g
+  [hint_backward]
+
+axiom if_P
+  fixes P :: bool, x :: 'a, y :: 'a
+  prop P ⟶ (if P then x else y) = x
+  [hint_rewrite]
+
+axiom if_not_P
+  fixes P :: bool, x :: 'a, y :: 'a
+  prop ¬P ⟶ (if P then x else y) = y
+  [hint_rewrite]
+
+axiom some_AX
+  fixes P :: 'a ⇒ bool, x :: 'a
+  prop P x ⟶ P (Some P)
+  [hint_backward]
+
+axiom the_equality
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop P a ⟶ (∀x. P x ⟶ x = a) ⟶ (THE x. P x) = a
+
+header "Definitions for internal use"
+
+const _VAR :: 'a ⇒ bool
+
+header "Some simple results"
+
+theorem trivial
+  fixes A :: bool
+  prop A ⟶ A
+  proof
+    1: revert_intro @0
+    0: introduction
+  qed
+
+theorem syllogism
+  fixes A :: bool, B :: bool, C :: bool
+  prop (A ⟶ B) ⟶ (B ⟶ C) ⟶ A ⟶ C
+  proof
+    3: apply_prev @1
+    3: apply_prev @0
+  qed
+
+theorem disjE2
+  fixes A :: bool, B :: bool, C :: bool
+  prop (A ⟶ C) ⟶ (B ⟶ C) ⟶ A ∨ B ⟶ C
+  proof
+    3: apply_backward_step disjE @2
+  qed
+
+theorem not_false_res
+  prop ¬false
+  [hint_resolve]
+  proof
+    0: apply_backward_step negI
+  qed
+
+theorem eq_refl
+  fixes x :: 'a
+  prop x = x
+  [hint_backward]
+
+theorem classical_cases
+  fixes A :: bool, C :: bool
+  prop (A ⟶ C) ⟶ (¬A ⟶ C) ⟶ C
+  proof
+    2: apply_forward_step classical param_A=A
+    3: apply_backward_step disjE @2
+  qed
+
+theorem negE_gen
+  fixes A :: bool, C :: bool
+  prop ¬A ⟶ A ⟶ C
+  [hint_backward1]
+
+theorem contradiction
+  fixes P :: bool
+  prop (¬P ⟶ P) ⟶ P
+  proof
+    1: cases P
+  qed
+
+theorem contrapositive
+  fixes P :: bool, Q :: bool
+  prop P ⟶ (¬Q ⟶ ¬P) ⟶ Q
+  proof
+    2: cases Q
+    3: introduction
+    3.1: apply_fact @1,3.0
+    3.2: apply_backward_step negE_gen @3.1
+  qed
+
+theorem iffI
+  fixes A :: bool, B :: bool
+  prop (A ⟶ B) ⟶ (B ⟶ A) ⟶ A ⟷ B
+  [hint_backward]
+
+theorem ineq_sym
+  fixes x :: 'a, y :: 'a
+  prop ¬(x = y) ⟶ ¬(y = x)
+  [hint_backward]
+  proof
+    1: apply_backward_step negI
+    1: introduction ""
+    1.1: rewrite_fact_with_prev @1.0,0
+    1.2: apply_backward_step negE @1.1
+    1.2: apply_backward_step eq_refl
+  qed
+
+theorem eq_sym_eq
+  fixes x :: 'a, y :: 'a
+  prop x = y ⟷ y = x
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: rewrite_goal_with_prev @0.0
+    1: introduction
+    1.1: rewrite_goal_with_prev @1.0
+  qed
+
+theorem someI
+  fixes P :: 'a ⇒ bool, x :: 'a
+  prop P x ⟶ P (SOME x1. P x1)
+  [hint_backward]
+  proof
+    1: apply_forward_step some_AX @0
+    2: cut "(Some P) = (SOME x1. P x1)" @1
+    2: rewrite_goal eq_sym_eq sym=false
+    2: rewrite_goal eta_conversion sym=false
+    4: rewrite_fact_with_prev @3,1
+  qed
+
+theorem exists_thm
+  prop exists = (λP::'a ⇒ bool. P (Some P))
+  proof
+    0: apply_backward_step extension
+    0: introduction P
+    0.1: cut "(exists P) = ?x. P x"
+    0.1: rewrite_goal eta_conversion sym=""
+    0.2: rewrite_goal_with_prev @0.1
+    0.2: apply_backward_step iffI
+    0.2: introduction
+    0.2.1: exists_elim x @0.2.0
+    0.2.3: apply_backward_step some_AX @0.2.2
+    0.3: introduction
+    0.3.1: inst_exists_goal "(Some P)"
+  qed
+
+theorem some_refl
+  fixes x :: 'a
+  prop (SOME y. y = x) = x
+  [hint_rewrite]
+  proof
+    0: cut "(SOME y. y = x) = x <--> ?y. y = x"
+    0: rewrite_goal exists_thm sym=""
+    1: rewrite_goal_with_prev @0
+    1: inst_exists_goal x
+    1: apply_backward_step eq_refl
+  qed
+
+theorem some_unique
+  fixes P :: 'a ⇒ bool, x :: 'a
+  prop (∀y. P y ⟷ y = x) ⟶ (Some P) = x
+  [hint_backward]
+  proof
+    1: apply_forward_step extension @0
+    2: rewrite_goal_with_prev @1
+    2: rewrite_goal some_refl sym=false
+  qed
+
+theorem theI
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop P a ⟶ (∀x. P x ⟶ x = a) ⟶ P (THE x. P x)
+  proof
+    2: cut "(THE x. P x) = a"
+    2: apply_backward_step the_equality
+    3: rewrite_goal_with_prev @2
+  qed
+
+theorem some_the
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop P a ⟶ (∀x. P x ⟶ x = a) ⟶ (THE x. P x) = (SOME x. P x)
+  [hint_backward,hint_backward1]
+  proof
+    2: apply_backward_step the_equality
+    2: apply_forward_step some_AX @0
+    3: cut "(Some P) = (SOME x. P x)" @1
+    3: rewrite_goal eq_sym_eq sym=false
+    3: rewrite_goal eta_conversion sym=false
+    5: rewrite_fact_with_prev @4,2
+    6: apply_fact @1,5
+    7: rewrite_goal_with_prev @6
+  qed
+
+theorem theI'
+  fixes P :: 'a ⇒ bool
+  prop (∃!x. P x) ⟶ P (THE x. P x)
+  proof
+    1: rewrite_fact exists1_def @0 sym=""
+    2: exists_elim a @1
+    4: apply_backward_step theI param_a=a
+    4: apply_backward_step conjD1 @3
+    5: apply_backward_step conjD2 @3
+  qed
+
+theorem if_true
+  fixes a :: 'a, b :: 'a
+  prop (if true then a else b) = a
+  [hint_rewrite]
+  proof
+    0: cut true
+    0: apply_backward_step trueI
+    1: rewrite_goal if_P @0
+  qed
+
+theorem if_false
+  fixes a :: 'a, b :: 'a
+  prop (if false then a else b) = b
+  [hint_rewrite]
+  proof
+    0: cut ~false
+    0: apply_backward_step negI
+    2: rewrite_goal if_not_P @1
+  qed
+
+theorem if_P1
+  fixes P :: bool, a :: 'a, b :: 'a
+  prop P ⟶ (if P then a else b) = a
+  [hint_backward]
+  proof
+    1: rewrite_goal if_P @0 sym=false
+  qed
+
+theorem if_not_P1
+  fixes P :: bool, a :: 'a, b :: 'a
+  prop ¬P ⟶ (if P then a else b) = b
+  [hint_backward]
+  proof
+    1: rewrite_goal if_not_P @0 sym=false
+  qed
+
+theorem if_not_P2
+  fixes P :: bool, a :: 'a, b :: 'a
+  prop P ⟶ (if ¬P then a else b) = b
+  [hint_backward]
+  proof
+    1: cases ¬P
+    1: introduction
+    1.1: apply_backward_step negE_gen @1.0
+    2: introduction
+    2.1: rewrite_goal if_not_P @2.0 sym=false
+  qed
+
+theorem cond_id
+  fixes P :: bool, t :: 'a
+  prop (if P then t else t) = t
+  [hint_rewrite]
+  proof
+    0: cases P
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+  qed
+
+theorem cond_rand
+  fixes P :: bool, f :: 'a ⇒ 'b, x :: 'a, y :: 'a
+  prop f (if P then x else y) = (if P then f x else f y)
+  [hint_rewrite]
+  proof
+    0: cases P
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+  qed
+
+theorem cond_rator
+  fixes P :: bool, f :: 'a ⇒ 'b, g :: 'a ⇒ 'b, x :: 'a
+  prop (if P then f else g) x = (if P then f x else g x)
+  [hint_rewrite]
+  proof
+    0: cases P
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+  qed
+
+theorem cond_abs
+  fixes P :: bool, f :: 'a ⇒ 'b, g :: 'a ⇒ 'b
+  prop (λx. if P then f x else g x) = (if P then f else g)
+  [hint_rewrite]
+  proof
+    0: apply_backward_step extension
+    0: introduction x
+    0.1: rewrite_goal cond_rator sym=false
+  qed
+
+theorem cond_swap
+  fixes P :: bool, x :: 'a, y :: 'a
+  prop (if ¬P then x else y) = (if P then y else x)
+  [hint_rewrite]
+  proof
+    0: cases P
+    0: introduction
+    0.1: rewrite_goal if_P @0.0 sym=false
+    0.1: apply_backward_step if_not_P2
+    1: introduction
+    1.1: rewrite_goal if_not_P @1.0 sym=false
+    1.1: apply_backward_step if_P1
+  qed
+
+theorem mono_cond
+  fixes A :: bool, B :: bool, C :: bool, D :: bool, P :: bool
+  prop (A ⟶ B) ⟶ (C ⟶ D) ⟶ (if P then A else C) ⟶ (if P then B else D)
+  [hint_backward,hint_backward1]
+  proof
+    3: cases P
+    3: introduction
+    3.1: rewrite_goal if_P @3.0 sym=false
+    3.1: rewrite_fact if_P @2,3.0 sym=false
+    3.2: apply_prev @0,3.1
+    4: introduction
+    4.1: rewrite_goal if_not_P @4.0 sym=false
+    4.1: rewrite_fact if_not_P @2,4.0 sym=false
+    4.2: apply_prev @1,4.1
+  qed
+
+theorem cond_elim_thm
+  fixes P :: 'a ⇒ bool, c :: bool, x :: 'a, y :: 'a
+  prop P (if c then x else y) ⟷ (c ⟶ P x) ∧ (¬c ⟶ P y)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal cond_rand sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step conjI
+    0.1: introduction
+    0.1.1: rewrite_fact if_P @0.0,0.1.0 sym=false
+    0.2: introduction
+    0.2.1: rewrite_fact if_not_P @0.0,0.2.0 sym=false
+    1: introduction
+    1.1: apply_forward_step conjD1 @1.0
+    1.2: apply_forward_step conjD2 @1.0
+    1.3: apply_backward_step mono_cond @1.1,1.2
+    1.3: cases c
+    1.3: introduction
+    1.3.1: rewrite_goal if_P @1.3.0 sym=false
+    1.4: introduction
+    1.4.1: rewrite_goal if_not_P @1.4.0 sym=false
+  qed
+
+theorem resolution_left
+  fixes A :: bool, B :: bool
+  prop A ∨ B ⟶ ¬A ⟶ B
+  proof
+    2: apply_backward_step disjE @0
+    2: introduction
+    2.1: apply_backward_step negE_gen @1
+  qed
+
+theorem resolution_right
+  fixes A :: bool, B :: bool
+  prop A ⟶ ¬A ∨ B ⟶ B
+  proof
+    2: apply_backward_step disjE @1
+    2: introduction
+    2.1: apply_backward_step negE_gen @2.0
+  qed
+
+theorem resolution
+  fixes A :: bool, B :: bool, C :: bool
+  prop A ∨ B ⟶ ¬A ∨ C ⟶ B ∨ C
+  proof
+    2: cases A
+    2: introduction
+    2.1: apply_forward_step resolution_right @2.0,1
+    2.2: apply_backward_step disjI2 @2.1
+    3: introduction
+    3.1: apply_forward_step resolution_left @0,3.0
+    3.2: apply_backward_step disjI1 @3.1
+  qed
+
+theorem conjE
+  fixes A :: bool, B :: bool, C :: bool
+  prop A ∧ B ⟶ (A ⟶ B ⟶ C) ⟶ C
+  proof
+    2: apply_forward_step conjD1 @0
+    3: apply_forward_step conjD2 @0
+    4: apply_fact @1,2
+    5: apply_prev @4,3
+  qed
+
+theorem allE
+  fixes P :: 'a ⇒ bool, R :: bool, x :: 'a
+  prop (∀x1. P x1) ⟶ (P x ⟶ R) ⟶ R
+  proof
+    2: apply_prev @1
+    2: apply_prev @0
+  qed
+
+theorem ABBBB
+  fixes A :: bool
+  prop A ⟶ A
+  proof
+    1: apply_prev @0
+  qed
+
+theorem ACCCC
+  fixes A :: bool, B :: bool
+  prop (A ⟶ B) ⟶ A ⟶ B

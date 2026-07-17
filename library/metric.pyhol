@@ -1,0 +1,776 @@
+theory metric
+imports misc
+description "Formalization of general topological and metric spaces. Refer to metric.ml from HOL Light."
+
+type net 'a
+
+const within :: 'a net ⇒ 'a set ⇒ 'a net
+
+theorem net_within_univ
+  fixes net :: 'a net
+  prop within net univ = net
+  [hint_rewrite]
+
+theorem within_within
+  fixes net :: 'a net, s :: 'a set, t :: 'a set
+  prop within (within net s) t = within net (s ∩ t)
+  [hint_rewrite,hint_rewrite_sym]
+
+const eventually :: ('a ⇒ bool) ⇒ 'a net ⇒ bool
+
+def trivial_limit :: 'a net ⇒ bool = trivial_limit net ⟷ eventually (λx. false) net [hint_rewrite,hint_rewrite_sym]
+
+theorem eventually_within_imp
+  fixes P :: 'a ⇒ bool, net :: 'a net, s :: 'a set
+  prop eventually P (within net s) ⟷ eventually (λx. x ∈ s ⟶ P x) net
+  [hint_rewrite]
+
+theorem eventually_imp_within
+  fixes P :: 'a ⇒ bool, net :: 'a net, s :: 'a set
+  prop eventually P net ⟶ eventually P (within net s)
+  [hint_backward,hint_forward]
+  proof
+    1: rewrite_goal eventually_within_imp sym=false
+  qed
+
+theorem eventually_within_inter_imp
+  fixes P :: 'a ⇒ bool, net :: 'a net, s :: 'a set, t :: 'a set
+  prop eventually P (within net (s ∩ t)) ⟷ eventually (λx. x ∈ t ⟶ P x) (within net s)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal within_within sym=true
+    0: rewrite_goal eventually_within_imp sym=false
+    0: rewrite_goal eventually_within_imp sym=false
+  qed
+
+theorem nontrivial_limit_within
+  fixes net :: 'a net, s :: 'a set
+  prop trivial_limit net ⟶ trivial_limit (within net s)
+  [hint_backward,hint_forward]
+  proof
+    1: rewrite_goal trivial_limit_def sym=false
+    1: rewrite_fact trivial_limit_def @0 sym=false
+    2: apply_backward_step eventually_imp_within
+  qed
+
+theorem eventually_happens
+  fixes P :: 'a ⇒ bool, net :: 'a net
+  prop eventually P net ⟶ trivial_limit net ∨ (∃x. P x)
+  [hint_backward,hint_forward]
+
+theorem always_eventually
+  fixes P :: 'a ⇒ bool, net :: 'a net
+  prop (∀x. P x) ⟶ eventually P net
+  [hint_backward]
+
+theorem eventually_mono
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, net :: 'a net
+  prop (∀x. P x ⟶ Q x) ⟶ eventually P net ⟶ eventually Q net
+  [hint_backward,hint_backward1]
+
+theorem eventually_and
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, net :: 'a net
+  prop eventually (λx. P x ∧ Q x) net ⟷ eventually P net ∧ eventually Q net
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step conjI
+    0.1: apply_backward_step eventually_mono param_P="(λx. P x ∧ Q x)"
+    0.1: z3
+    0.3: apply_backward_step eventually_mono param_P="(λx. P x ∧ Q x)"
+    0.3: z3
+    1: introduction
+  qed
+
+theorem eventually_mp
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, net :: 'a net
+  prop eventually (λx. P x ⟶ Q x) net ⟶ eventually P net ⟶ eventually Q net
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: apply_forward_step conjI @1,0
+  qed
+
+theorem eventually_eq_mp
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, net :: 'a net
+  prop eventually (λx. P x ⟷ Q x) net ⟶ eventually P net ⟶ eventually Q net
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: apply_backward_step eventually_mp param_P=P
+    2: apply_backward_step eventually_mp param_P="(λx. P x ⟷ Q x)"
+    2: apply_backward_step always_eventually
+    2: z3
+  qed
+
+theorem eventually_iff
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, net :: 'a net
+  prop eventually (λx. P x ⟷ Q x) net ⟶ eventually P net ⟷ eventually Q net
+  [hint_backward,hint_forward]
+  proof
+    1: apply_backward_step iffI
+    1: introduction
+    1.1: apply_backward_step eventually_eq_mp param_P=P
+    2: introduction
+    2.1: apply_backward_step eventually_eq_mp param_P=Q
+    2.1: rewrite_goal eq_sym_eq sym=false
+  qed
+
+theorem eventually_true
+  fixes net :: 'a net
+  prop eventually (λx. true) net ⟷ true
+  [hint_rewrite]
+
+theorem eventually_within_subset
+  fixes P :: 'a ⇒ bool, net :: 'a net, s :: 'a set, t :: 'a set
+  prop eventually P (within net s) ⟶ t ⊆ s ⟶ eventually P (within net t)
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal eventually_within_imp sym=false
+    2: rewrite_fact eventually_within_imp @0 sym=false
+    3: apply_backward_step eventually_mono param_P="(λx. x ∈ s ⟶ P x)"
+    3: z3 @1
+  qed
+
+theorem always_within_eventually
+  fixes P :: 'a ⇒ bool, net :: 'a net, s :: 'a set
+  prop (∀x. x ∈ s ⟶ P x) ⟶ eventually P (within net s)
+  [hint_backward,hint_backward1]
+  proof
+    1: rewrite_goal eventually_within_imp sym=false
+    1: apply_backward_step always_eventually @0
+  qed
+
+theorem not_eventually
+  fixes P :: 'a ⇒ bool, net :: 'a net
+  prop (∀x. ¬(P x)) ⟶ ¬(trivial_limit net) ⟶ ¬(eventually P net)
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: rewrite_fact not_exists @0 sym=true
+    3: apply_forward_step conjI @2,1
+    4: apply_backward_step contrapositive @3
+    4: introduction
+    4.1: rewrite_fact double_neg @4.0 sym=false
+    4.2: apply_forward_step eventually_happens @4.1
+    4.3: rewrite_goal de_morgan_thm1 sym=false
+    4.3: rewrite_goal double_neg sym=false
+    4.3: rewrite_goal disj_comm sym=false
+  qed
+
+theorem eventually_forall
+  fixes P :: 'b ⇒ 'a ⇒ bool, net :: 'a net, s :: 'b set
+  prop finite s ⟶ ¬(s = ∅) ⟶ eventually (λx. ∀a. a ∈ s ⟶ P a x) net ⟷ (∀a. a ∈ s ⟶ eventually (P a) net)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem forall_eventually
+  fixes P :: 'b ⇒ 'a ⇒ bool, net :: 'a net, s :: 'b set
+  prop finite s ⟶ ¬(s = ∅) ⟶ (∀a. a ∈ s ⟶ eventually (P a) net) ⟷ eventually (λx. ∀a. a ∈ s ⟶ P a x) net
+  [hint_backward,hint_backward1,hint_forward]
+  proof
+    2: rewrite_goal eq_sym_eq sym=false
+    2: apply_backward_step eventually_forall
+  qed
+
+theorem eventually_trivial
+  fixes P :: 'a ⇒ bool, net :: 'a net
+  prop trivial_limit net ⟶ eventually P net
+  [hint_backward]
+  proof
+    1: rewrite_fact trivial_limit_def @0 sym=false
+    2: apply_backward_step eventually_mono param_P="(λx::'a. false)"
+    2: z3
+  qed
+
+const sequentially :: nat net
+
+theorem eventually_sequentially
+  fixes P :: nat ⇒ bool
+  prop eventually P sequentially ⟷ (∃N. ∀n. N ≤ n ⟶ P n)
+  [hint_rewrite]
+
+theorem trivial_limit_sequentially
+  prop ¬(trivial_limit sequentially)
+  [hint_backward]
+  proof
+    0: rewrite_goal trivial_limit_def sym=false
+    0: rewrite_goal eventually_sequentially sym=false
+    0: z3
+  qed
+
+theorem eventually_happens_sequentially
+  fixes P :: nat ⇒ bool
+  prop eventually P sequentially ⟶ (∃n. P n)
+  [hint_backward,hint_forward]
+  proof
+    1: apply_forward_step eventually_happens @0
+    2: apply_backward_step disjE @1
+    2: introduction
+    2.1: rewrite_fact double_neg @2.0 sym=true
+    2.2: apply_backward_step negE_gen @2.1
+    2.2: apply_backward_step trivial_limit_sequentially
+  qed
+
+theorem eventually_sequentially_within
+  fixes P :: nat ⇒ bool, k :: nat set
+  prop eventually P (within sequentially k) ⟷ finite k ∨ (∃N. ∀n. n ∈ k ⟶ N ≤ n ⟶ P n)
+  [hint_rewrite,hint_rewrite_sym]
+  proof
+    0: rewrite_goal eventually_within_imp sym=false
+    0: rewrite_goal eventually_sequentially sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step disjI2
+    0.1: exists_elim N @0.0
+    0.3: inst_exists_goal N
+    0.3: z3 @0.2
+    1: introduction
+    1.1: apply_backward_step disjE @1.0
+    1.1: introduction
+    1.1.1: rewrite_fact nat_finite @1.1.0 sym=false
+    1.1.2: exists_elim a @1.1.1
+    1.1.4: inst_exists_goal "a + 1"
+    1.1.4: introduction n
+    1.1.4.3: apply_fact @1.1.3,1.1.4.2
+    1.1.4.4: z3 @1.1.4.1,1.1.4.3
+    1.2: introduction
+    1.2.1: exists_elim N @1.2.0
+    1.2.3: inst_exists_goal N
+    1.2.3: z3 @1.2.2
+  qed
+
+theorem trivial_limit_sequentially_within
+  fixes k :: nat set
+  prop trivial_limit (within sequentially k) ⟷ finite k
+  [hint_rewrite]
+  proof
+    0: rewrite_goal trivial_limit_def sym=false
+    0: rewrite_goal eventually_sequentially_within sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step disjE @0.0
+    0.2: introduction
+    0.2.1: apply_backward_step contrapositive @0.2.0
+    0.2.1: introduction
+    0.2.1.1: rewrite_goal not_exists sym=false
+    0.2.1.1: introduction x
+    0.2.1.1.1: rewrite_goal not_all sym=false
+    0.2.1.1.1: rewrite_fact infinite_def @0.2.1.0 sym=true
+    0.2.1.1.2: rewrite_fact nat_infinite_eq @0.2.1.1.1 sym=false
+    0.2.1.1.3: forall_elim x @0.2.1.1.2
+    0.2.1.1.4: z3 @0.2.1.1.3
+    1: introduction
+    1.1: apply_backward_step disjI1
+  qed
+
+theorem eventually_subsequence
+  fixes P :: nat ⇒ bool, R :: nat ⇒ nat
+  prop (∀m. ∀n. m < n ⟶ R m < R n) ⟶ eventually P sequentially ⟶ eventually (P ∘ R) sequentially
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal eventually_sequentially sym=false
+    2: rewrite_fact eventually_sequentially @1 sym=false
+    3: rewrite_goal comp_fun_def sym=false
+    3: exists_elim N @2
+    5: apply_forward_step monotone_bigger @0
+    6: inst_exists_goal N
+    6: z3 @4,5
+  qed
+
+theorem arch_eventually_lt
+  fixes x :: real
+  prop eventually (λn. x < of_nat n) sequentially
+  [hint_backward]
+  proof
+    0: apply_forward_step real_arch_simple param_x=x+1
+    1: rewrite_goal eventually_sequentially sym=false
+    1: exists_elim N @0
+    3: inst_exists_goal N
+    3: introduction n
+    3.2: rewrite_fact real_of_nat_le @3.1 sym=true
+    3.3: z3 @3.2,2
+  qed
+
+theorem arch_eventually_le
+  fixes x :: real
+  prop eventually (λn. x ≤ of_nat n) sequentially
+  [hint_backward]
+  proof
+    0: apply_forward_step real_arch_simple param_x=x
+    1: rewrite_goal eventually_sequentially sym=false
+    1: rewrite_goal real_of_nat_le sym=true
+    1: exists_elim N @0
+    3: inst_exists_goal N
+    3: z3 @2
+  qed
+
+theorem arch_eventually_abs_inv_offset
+  fixes a :: real, e :: real
+  prop eventually (λn. abs (real_inverse (of_nat n + a)) < e) sequentially ⟷ 0 < e
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_forward_step eventually_happens @0.0
+    0.2: apply_backward_step disjE @0.1
+    0.2: introduction
+    0.2.1: apply_backward_step contrapositive @0.2.0
+    0.2.1: introduction
+    0.2.1.1: apply_backward_step trivial_limit_sequentially
+    0.3: z3
+    1: introduction
+    1.1: apply_backward_step eventually_mono param_P="(λn. max 0 (max (2 * abs a) (2/e)) < of_nat n)"
+    1.1: introduction n
+    1.1.2: rewrite_fact real_max_lt @1.1.1 sym=false
+    1.1.3: apply_backward_step real_let_trans param_y="real_inverse (of_nat n /2)"
+    1.1.3: apply_forward_step conjD2 @1.1.2
+    1.1.4: rewrite_fact real_max_lt @1.1.3 sym=false
+    1.1.5: rewrite_goal real_abs_inv sym=false
+    1.1.5: apply_backward_step real_le_inv2
+    1.1.5: z3 @1.1.2
+    1.1.6: z3 @1.1.4,1.0
+    1.1.9: cut "e = real_inverse (real_inverse e)"
+    1.1.9: rewrite_goal real_inv_inv sym=false
+    1.1.10: rewrite_goal_with_prev @1.1.9
+    1.1.10: apply_backward_step real_lt_inv2
+    1.1.10: apply_backward_step real_lt_inv
+    1.1.11: z3 @1.1.4,1.0
+    1.2: apply_backward_step arch_eventually_lt
+  qed
+
+theorem arch_eventually_inv_offset
+  fixes a :: real, e :: real
+  prop eventually (λn. real_inverse (of_nat n + a) < e) sequentially ⟷ 0 < e
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: apply_forward_step arch_eventually_lt param_x="abs a"
+    1: introduction
+    1.1: apply_forward_step conjI @1.0,0
+    1.2: rewrite_fact eventually_and @1.1 sym=true
+    1.3: apply_forward_step eventually_happens @1.2
+    1.4: apply_backward_step disjE @1.3
+    1.4: introduction
+    1.4.1: apply_backward_step contrapositive @1.4.0
+    1.4.1: introduction
+    1.4.1.1: apply_backward_step trivial_limit_sequentially
+    1.5: introduction
+    1.5.1: exists_elim n @1.5.0
+    1.5.3: z3 @1.5.2
+    2: introduction
+    2.1: apply_backward_step eventually_mono param_P="(λn. abs (real_inverse (of_nat n + a)) < e)"
+    2.1: z3
+    2.2: rewrite_goal arch_eventually_abs_inv_offset sym=false
+  qed
+
+theorem arch_eventually_inv1
+  fixes e :: real
+  prop eventually (λn. real_inverse (of_nat n + 1) < e) sequentially ⟷ 0 < e
+  [hint_rewrite]
+  proof
+    0: rewrite_goal arch_eventually_inv_offset sym=false
+  qed
+
+theorem arch_eventually_inv
+  fixes e :: real
+  prop eventually (λn. real_inverse (of_nat n) < e) sequentially ⟷ 0 < e
+  [hint_rewrite]
+  proof
+    0: cut "!n. of_nat n = of_nat n + (0::real)"
+    0: introduction n
+    0.1: rewrite_goal real_add_rid sym=false
+    1: rewrite_goal_with_prev @0
+    1: rewrite_goal arch_eventually_inv_offset sym=false
+  qed
+
+theorem arch_eventually_pow
+  fixes b :: real, x :: real
+  prop 1 < x ⟶ eventually (λn. b < x ^ n) sequentially
+  [hint_backward]
+  proof
+    1: rewrite_goal eventually_sequentially sym=false
+    1: apply_forward_step real_arch_pow @0 param_y=b
+    2: exists_elim N @1
+    4: inst_exists_goal N
+    4: introduction n
+    4.2: apply_backward_step real_lte_trans param_y="x ^ N"
+    4.2: apply_backward_step real_pow_mono
+    4.2: apply_backward_step real_lt_imp_le
+  qed
+
+theorem arch_eventually_pow_inv
+  fixes e :: real, x :: real
+  prop 1 < e ⟶ abs x < 1 ⟶ eventually (λn. abs (x ^ n) < e) sequentially
+  [hint_backward,hint_backward1]
+  proof
+    2: cases "x = 0"
+    2: introduction
+    2.1: rewrite_goal_with_prev @2.0
+    2.1: rewrite_goal real_pow_zero sym=false
+    2.1: rewrite_goal eventually_sequentially sym=false
+    2.1: inst_exists_goal "(1::nat)"
+    2.1: z3 @0
+    3: introduction
+    3.1: apply_forward_step arch_eventually_pow param_b="real_inverse e" param_x="real_inverse (abs x)"
+    3.2: cut "1 < real_inverse (abs x)"
+    3.2: z3 @3.0,1
+    3.3: apply_fact @3.1,3.2
+    3.4: apply_backward_step eventually_mono param_P="(λn::nat. real_inverse e < real_inverse (abs x) ^ n)"
+    3.4: introduction n
+    3.4.2: rewrite_goal real_abs_pow sym=false
+    3.4.2: rewrite_goal real_inv_inv sym=true
+    3.4.2: apply_backward_step real_lt_inv2
+    3.4.2: z3 @0
+    3.4.3: rewrite_fact real_pow_inv @3.4.1 sym=false
+  qed
+
+theorem eventually_in_sequentially
+  fixes P :: nat ⇒ bool
+  prop eventually P sequentially ⟷ finite ({n. ¬(P n)})
+  [hint_rewrite,hint_rewrite_sym]
+  proof
+    0: rewrite_goal nat_finite sym=false
+    0: rewrite_goal eventually_sequentially sym=false
+    0: rewrite_goal member_collect sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: exists_elim N @0.0
+    0.3: inst_exists_goal N
+    0.3: z3 @0.2
+    1: introduction
+    1.1: exists_elim N @1.0
+    1.3: inst_exists_goal "N + 1"
+    1.3: z3 @1.2
+  qed
+
+theorem eventually_no_subsequence
+  fixes P :: nat ⇒ bool
+  prop eventually P sequentially ⟷ ¬(∃r. (∀m::nat. ∀n. m < n ⟶ r m < r n) ∧ (∀n. ¬(P (r n))))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal eventually_in_sequentially sym=false
+    0: cut "!p. !q. (p <--> ~q) <-->  (~p <--> q)"
+    0: z3
+    1: rewrite_goal_with_prev @0
+    1: rewrite_goal infinite_def sym=true
+    1: rewrite_goal infinite_enumerate_eq_alt sym=false
+    1: rewrite_goal member_collect sym=false
+  qed
+
+theorem eventually_ubound_le_sequentially
+  fixes f :: nat ⇒ real
+  prop (∃b. eventually (λn. f n ≤ b) sequentially) ⟷ (∃b. ∀n. f n ≤ b)
+  [hint_rewrite]
+  proof
+    0: apply_backward_step iffI
+    0: rewrite_goal eventually_sequentially sym=false
+    0: introduction
+    0.1: exists_elim b @0.0
+    0.3: exists_elim N @0.2
+    0.5: cases "N=0"
+    0.5: introduction
+    0.5.1: inst_exists_goal b
+    0.5.1: introduction n
+    0.5.1.1: apply_prev @0.4
+    0.5.1.1: rewrite_goal_with_prev @0.5.0
+    0.5.1.1: apply_backward_step le_0
+    0.6: introduction
+    0.6.1: inst_exists_goal "max b (sup {y. ?m. y = f m & m <N})"
+    0.6.1: introduction m
+    0.6.1.1: rewrite_goal real_le_max sym=false
+    0.6.1.1: cases "m < N"
+    0.6.1.1: introduction
+    0.6.1.1.1: apply_backward_step disjI2
+    0.6.1.1.1: cut "finite ({y. ∃m1. y = f m1 ∧ m1 < N})"
+    0.6.1.1.1: cut "{y. ∃m1. y = f m1 ∧ m1 < N} = image f {m. m < N}"
+    0.6.1.1.1: rewrite_goal set_equal_iff sym=false
+    0.6.1.1.1: rewrite_goal in_image sym=false
+    0.6.1.1.1: rewrite_goal member_collect sym=false
+    0.6.1.1.1: introduction x
+    0.6.1.1.1.1: apply_backward_step eq_refl
+    0.6.1.1.5: rewrite_goal_with_prev @0.6.1.1.4
+    0.6.1.1.5: apply_backward_step finite_image
+    0.6.1.1.5: apply_backward_step finite_natseg_lt
+    0.6.1.1.8: cut "~({y. ∃m1. y = f m1 ∧ m1 < N} = {})"
+    0.6.1.1.8: rewrite_goal set_equal_iff sym=false
+    0.6.1.1.8: rewrite_goal member_empty_simp sym=false
+    0.6.1.1.8: apply_backward_step negI
+    0.6.1.1.8: introduction
+    0.6.1.1.8.1: forall_elim "f 0" @0.6.1.1.8.0
+    0.6.1.1.8.2: rewrite_fact eq_sym_eq @0.6.1.1.8.1 sym=false
+    0.6.1.1.8.3: rewrite_goal_with_prev @0.6.1.1.8.2
+    0.6.1.1.8.3: rewrite_goal member_collect sym=false
+    0.6.1.1.8.3: inst_exists_goal "(0::nat)"
+    0.6.1.1.8.3: apply_backward_step conjI
+    0.6.1.1.8.3: apply_backward_step eq_refl
+    0.6.1.1.8.4: apply_backward_step le_1_1 @0.6.0
+    0.6.1.1.12: apply_forward_step real_le_sup_finite @0.6.1.1.7,0.6.1.1.11 param_a="f m"
+    0.6.1.1.13: rewrite_goal_with_prev @0.6.1.1.12
+    0.6.1.1.13: rewrite_goal member_collect sym=false
+    0.6.1.1.13: inst_exists_goal "f m"
+    0.6.1.1.13: apply_backward_step conjI
+    0.6.1.1.13: inst_exists_goal m
+    0.6.1.1.13: apply_backward_step conjI
+    0.6.1.1.13: apply_backward_step eq_refl
+    0.6.1.1.16: apply_backward_step real_le_refl
+    0.6.1.2: introduction
+    0.6.1.2.1: apply_backward_step disjI1
+    0.6.1.2.1: apply_prev @0.4
+    0.6.1.2.1: z3 @0.6.1.2.0
+    2: introduction
+    2.1: exists_elim b @2.0
+    2.3: inst_exists_goal b
+    2.3: apply_backward_step always_eventually @2.2
+  qed
+
+theorem eventually_lbound_le_sequentially
+  fixes f :: nat ⇒ real
+  prop (∃b. eventually (λn. b ≤ f n) sequentially) ⟷ (∃b. ∀n. b ≤ f n)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal eventually_sequentially sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: exists_elim b @0.0
+    0.3: exists_elim N @0.2
+    0.5: cases "N=0"
+    0.5: introduction
+    0.5.1: inst_exists_goal b
+    0.5.1: introduction n
+    0.5.1.1: apply_prev @0.4
+    0.5.1.1: rewrite_goal_with_prev @0.5.0
+    0.5.1.1: apply_backward_step le_0
+    0.6: introduction
+    0.6.1: inst_exists_goal "min b (inf {y. ?m. y = f m & m < N})"
+    0.6.1: introduction m
+    0.6.1.1: rewrite_goal real_min_le sym=false
+    0.6.1.1: cases "m < N"
+    0.6.1.1: introduction
+    0.6.1.1.1: apply_backward_step disjI2
+    0.6.1.1.1: cut "finite ({y. ∃m. y = f m ∧ m < N})"
+    0.6.1.1.1: cut "{y. ∃m. y = f m ∧ m < N} = image f {m. m < N}"
+    0.6.1.1.1: rewrite_goal image_def sym=false
+    0.6.1.1.1: z3
+    0.6.1.1.3: rewrite_goal_with_prev @0.6.1.1.2
+    0.6.1.1.3: apply_backward_step finite_image
+    0.6.1.1.3: apply_backward_step finite_natseg_lt
+    0.6.1.1.6: cut "~({y. ∃m. y = f m ∧ m < N} = {})"
+    0.6.1.1.6: z3
+    0.6.1.1.7: apply_forward_step real_inf_le_finite @0.6.1.1.5,0.6.1.1.6 param_a="f m"
+    0.6.1.1.8: rewrite_goal_with_prev @0.6.1.1.7
+    0.6.1.1.8: inst_exists_goal "f m"
+    0.6.1.1.8: apply_backward_step conjI
+    0.6.1.1.8: rewrite_goal member_collect sym=false
+    0.6.1.1.8: inst_exists_goal m
+    0.6.1.1.8: apply_backward_step conjI
+    0.6.1.1.8: apply_backward_step eq_refl
+    0.6.1.1.12: apply_backward_step real_le_refl
+    0.6.1.2: introduction
+    0.6.1.2.1: apply_backward_step disjI1
+    0.6.1.2.1: apply_prev @0.4
+    0.6.1.2.1: z3 @0.6.1.2.0
+    1: introduction
+    1.1: exists_elim b @1.0
+    1.3: inst_exists_goal b
+    1.3: z3 @1.2
+  qed
+
+const netlimit :: 'a net ⇒ 'a
+
+const at_infinity :: real net
+
+def at_posinfinity :: real net = at_posinfinity = at_infinity
+
+def at_neginfinity :: real net = at_neginfinity = at_infinity
+
+def real_open :: real set ⇒ bool = real_open s ⟷ (∀x. x ∈ s ⟶ (∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s))) [hint_rewrite]
+
+def real_closed :: real set ⇒ bool = real_closed s ⟷ real_open (diff univ s) [hint_rewrite]
+
+theorem real_open_empty
+  prop real_open ∅
+  [hint_backward]
+  proof
+    0: rewrite_goal real_open_def sym=false
+    0: introduction x
+    0.2: apply_resolve_step member_empty @0.1
+  qed
+
+theorem real_open_univ
+  prop real_open univ
+  [hint_backward]
+  proof
+    0: rewrite_goal real_open_def sym=false
+    0: introduction x
+    0.2: inst_exists_goal "(1::real)"
+    0.2: apply_backward_step conjI
+    0.2: z3
+    0.3: introduction x1
+    0.3.2: apply_backward_step member_univ
+  qed
+
+theorem real_open_inter
+  fixes s :: real set, t :: real set
+  prop real_open s ⟶ real_open t ⟶ real_open (s ∩ t)
+  [hint_backward,hint_backward1]
+  proof
+    2: rewrite_goal real_open_def sym=false
+    2: rewrite_fact real_open_def @0 sym=false
+    3: rewrite_fact real_open_def @1 sym=false
+    4: introduction x
+    4.2: rewrite_fact member_inter_iff @4.1 sym=false
+    4.3: apply_forward_step conjD1 @4.2
+    4.4: apply_forward_step conjD2 @4.2
+    4.5: apply_fact @2,4.3
+    4.6: apply_fact @3,4.4
+    4.7: exists_elim d1 @4.5
+    4.9: exists_elim d2 @4.6
+    4.11: rewrite_goal member_inter_iff sym=false
+    4.11: apply_forward_step conjD1 @4.8
+    4.12: apply_forward_step conjD1 @4.10
+    4.13: apply_forward_step real_down2 param_d1=d1 param_d2=d2
+    4.14: apply_fact @4.13,4.11,4.12
+    4.15: exists_elim e @4.14
+    4.17: inst_exists_goal e
+    4.17: apply_backward_step conjI
+    4.17: apply_backward_step conjD1 @4.16
+    4.18: apply_forward_step conjD2 @4.8
+    4.19: apply_forward_step conjD2 @4.10
+    4.20: introduction x1
+    4.20.2: apply_backward_step conjI
+    4.20.2: apply_prev @4.18
+    4.20.2: apply_backward_step real_lt_trans param_y=e
+    4.20.2: apply_forward_step conjD2 @4.16
+    4.20.3: apply_backward_step conjD1 @4.20.2
+    4.20.6: apply_prev @4.19
+    4.20.6: apply_backward_step real_lt_trans param_y=e
+    4.20.6: apply_backward_step conjD2 @4.20.2
+  qed
+
+theorem real_open_halfspace_gt
+  fixes a :: real
+  prop real_open ({x. a < x})
+  [hint_backward]
+  proof
+    0: rewrite_goal real_open_def sym=false
+    0: introduction x
+    0.2: rewrite_fact member_collect @0.1 sym=false
+    0.3: rewrite_goal member_collect sym=false
+    0.3: inst_exists_goal "abs (a - x)"
+    0.3: apply_backward_step conjI
+    0.3: z3 @0.2
+    0.4: introduction x1
+    0.4.2: z3 @0.2,0.4.1
+  qed
+
+theorem real_open_halfspace_lt
+  fixes a :: real
+  prop real_open ({x. x < a})
+  [hint_backward]
+  proof
+    0: rewrite_goal real_open_def sym=false
+    0: introduction x
+    0.2: inst_exists_goal "abs (a - x)"
+    0.2: rewrite_fact member_collect @0.1 sym=false
+    0.3: apply_backward_step conjI
+    0.3: z3 @0.2
+    0.4: introduction x1
+    0.4.2: rewrite_goal member_collect sym=false
+    0.4.2: z3 @0.4.1,0.2
+  qed
+
+theorem real_open_real_interval
+  fixes a :: real, b :: real
+  prop real_open (real_open_interval a b)
+  [hint_backward]
+  proof
+    0: rewrite_goal real_open_interval_def sym=false
+    0: cut "{p. a < p ∧ p < b} = inter {p. a < p}  {p. p < b} "
+    0: z3
+    1: rewrite_goal_with_prev @0
+    1: apply_backward_step real_open_inter
+    1: apply_backward_step real_open_halfspace_gt
+    2: apply_backward_step real_open_halfspace_lt
+  qed
+
+def real_bounded :: real set ⇒ bool = real_bounded s ⟷ (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) [hint_rewrite]
+
+theorem real_bounded_pos
+  fixes s :: real set
+  prop real_bounded s ⟷ (∃B. 0 < B ∧ (∀x. x ∈ s ⟶ abs x ≤ B))
+  [hint_rewrite]
+  proof
+    0: rewrite_goal real_bounded_def sym=false
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: exists_elim B @0.0
+    0.3: inst_exists_goal "1+abs B"
+    0.3: apply_backward_step conjI
+    0.3: z3
+    0.4: introduction x
+    0.4.2: apply_fact @0.2,0.4.1
+    0.4.3: z3 @0.4.2
+    1: introduction
+    1.1: exists_elim B @1.0
+    1.3: apply_forward_step conjD2 @1.2
+    1.4: apply_backward_step exI @1.3
+  qed
+
+theorem real_bounded_real_closed_interval
+  fixes a :: real, b :: real
+  prop real_bounded (real_closed_interval a b)
+  [hint_backward]
+  proof
+    0: rewrite_goal real_bounded_def sym=false
+    0: rewrite_goal real_closed_interval_def sym=false
+    0: inst_exists_goal "max (abs a) (abs b)"
+    0: rewrite_goal member_collect sym=false
+    0: z3
+  qed
+
+theorem real_bounded_real_open_interval
+  fixes a :: real, b :: real
+  prop real_bounded (real_open_interval a b)
+  [hint_backward]
+  proof
+    0: rewrite_goal real_bounded_def sym=false
+    0: rewrite_goal real_open_interval_def sym=false
+    0: inst_exists_goal "max (abs a) (abs b)"
+    0: rewrite_goal member_collect sym=false
+    0: z3
+  qed
+
+theorem real_bounded_shrink
+  fixes s :: real set
+  prop real_bounded (image (λx. x / (1 + abs x)) s)
+  [hint_backward]
+  proof
+    0: rewrite_goal real_bounded_def sym=false
+    0: rewrite_goal in_image sym=false
+    0: inst_exists_goal "(1::real)"
+    0: introduction x
+    0.2: exists_elim a @0.1
+    0.4: apply_forward_step conjD1 @0.3
+    0.5: rewrite_goal_with_prev @0.4
+    0.5: apply_backward_step real_lt_imp_le
+  qed
+
+theorem not_real_bounded_univ
+  prop ¬(real_bounded univ)
+  [hint_backward]
+  proof
+    0: rewrite_goal real_bounded_def sym=false
+    0: rewrite_goal not_exists sym=false
+    0: introduction a
+    0.1: rewrite_goal not_all sym=false
+    0.1: inst_exists_goal "abs a + 1"
+    0.1: rewrite_goal not_imp sym=false
+    0.1: apply_backward_step conjI
+    0.1: apply_backward_step member_univ
+    0.2: z3
+  qed
+
+const real_compact :: real set ⇒ bool
+
+theorem real_compact_interval
+  fixes a :: real, b :: real
+  prop real_compact (real_closed_interval a b)
+  [hint_backward]

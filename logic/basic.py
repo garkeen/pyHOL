@@ -10,6 +10,7 @@ from kernel.theory import Theory, TheoryException
 from kernel.thm import Thm
 from kernel import extension
 from server import items
+from format import pyhol
 
 import sys
 
@@ -40,22 +41,23 @@ def user_dir():
     return os.path.join(dirname, '../library/')
 
 def user_file(filename):
-    """Return json file for the user and given filename."""
-    return os.path.join(dirname, '../library/' + filename + '.json')
+    """Return pyhol file for the user and given filename."""
+    return os.path.join(dirname, '../library/' + filename + '.pyhol')
 
-def load_json_data(filename):
-    """Load json data for the given theory name."""
+def load_pyhol_data(filename):
+    """Load pyhol data for the given theory name."""
     with open(user_file(filename), encoding='utf-8') as f:
-        return json.load(f)
+        text = f.read()
+    return pyhol.parse_pyhol(text)
 
 def load_metadata():
     """Load metadata for all theory files."""
     theory_cache.clear()
     item_index.clear()
     for f in os.listdir(user_dir()):
-        if f.endswith('.json'):
-            filename = f[:-5]
-            data = load_json_data(filename)
+        if f.endswith('.pyhol'):
+            filename = f[:-6]
+            data = load_pyhol_data(filename)
             timestamp = os.path.getmtime(user_file(filename))
             theory_cache[filename] = {
                 'imports': data['imports'],
@@ -161,7 +163,7 @@ def load_theory_cache(filename):
 
         # Use this theory to parse the content of current theory
         cache['timestamp'] = timestamp
-        data = load_json_data(filename)
+        data = load_pyhol_data(filename)
         cache['content'] = []
         for index, item in enumerate(data['content']):
             item = items.parse_item(item)
