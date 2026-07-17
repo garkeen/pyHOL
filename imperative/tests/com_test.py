@@ -11,7 +11,7 @@ from imperative.com import Skip, Assign, Seq, Cond, While
 from imperative.parser2 import cond_parser
 from imperative import imp
 from server import server
-from server import method
+from server import methods as method
 
 basic.load_theory('hoare')
 

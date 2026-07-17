@@ -1,6 +1,7 @@
 # Author: Bohua Zhan
 
 import importlib
+import importlib.util
 
 if importlib.util.find_spec("z3"):
     import z3
@@ -16,8 +17,6 @@ from kernel.type import TFun, BoolType, NatType, IntType, RealType
 from kernel import term
 from kernel.term import Term, Var, BoolType, Implies, true, false
 from kernel.thm import Thm
-from kernel.macro import Macro
-from kernel.theory import register_macro
 from kernel.proofterm import ProofTerm
 from kernel import theory
 from logic import logic
@@ -25,7 +24,6 @@ from logic import conv
 from data import nat
 from data import set as hol_set
 from syntax import pprint, settings
-from server.method import Method, register_method
 from prover import fologic
 from util import name
 
@@ -255,58 +253,8 @@ def solve_and_proof(t, debug=False):
     assert str(s.check()) == 'unsat'
     return s.proof(), s.assertions()
 
-@register_macro('z3')
-class Z3Macro(Macro):
-    """Macro invoking SMT solver Z3."""
-    def __init__(self):
-        self.level = 0  # No expand implemented for Z3.
-        self.sig = Term
-        self.limit = None
-
-    def eval(self, args, prevs):
-        if z3_loaded:
-            assms = [prev.prop for prev in prevs]
-            if check_z3:
-                assert solve(Implies(*(assms + [args]))), "Z3: not solved."
-        else:
-            print("Warning: Z3 is not installed")
-
-        return Thm(args, *(th.hyps for th in prevs))
-
-    def expand(self, prefix, args, prevs):
-        raise NotImplementedError
-
 def apply_z3(t):
     return ProofTerm('z3', args=t)
 
 
-@register_method('z3')
-class Z3Method(Method):
-    """Method invoking SMT solver Z3."""
-    def __init__(self):
-        self.sig = []
-        self.limit = None
-        self.no_order = True
-
-    def search(self, state, id, prevs, data=None):
-        # if data:
-        #     return [data]
-
-        # return [{}]
-        return []
-
-    def display_step(self, state, data):
-        return pprint.N("Apply Z3")
-
-    def apply(self, state, id, data, prevs):
-        assert z3_loaded, "Z3 method: not installed"
-        prev_ths = [state.get_proof_item(prev).th for prev in prevs]
-        assms = [prev.prop for prev in prev_ths]
-
-        cur_item = state.get_proof_item(id)
-        assert cur_item.rule == "sorry", "introduction: id is not a gap"
-        goal = cur_item.th.prop
-
-        if check_z3:
-            assert solve(Implies(*(assms + [goal]))), "Z3 method: not solved"
-        state.set_line(id, 'z3', args=goal, prevs=prevs)
+# Z3Macro and Z3Method moved to logic/macros/z3.py and server/methods/z3.py

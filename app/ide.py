@@ -10,7 +10,7 @@ import cProfile
 from kernel import theory
 from kernel.theory import TheoryException
 from syntax import parser, printer, settings, pprint
-from server import server, method
+from server import server, methods as method
 from logic import basic
 from logic import context
 from server import monitor

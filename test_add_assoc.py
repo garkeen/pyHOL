@@ -3,7 +3,7 @@ import sys
 sys.path.insert(0, '.')
 
 from logic import basic
-from server import method
+from server import methods as method
 from kernel import theory
 
 basic.load_theory('nat')

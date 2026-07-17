@@ -17,7 +17,7 @@ from logic import tactic
 from logic.context import Context
 from syntax import parser, printer
 from syntax.settings import settings, global_setting
-from server.method import ProofState
+from server.methods.core import ProofState
 from util import typecheck
 
 

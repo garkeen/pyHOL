@@ -12,7 +12,7 @@ from data import nat
 from data import function
 from logic.conv import arg_conv
 from kernel.proofterm import ProofTerm
-from server.method import Method, register_method
+from server.methods.core import Method, register_method
 from syntax import pprint, settings
 
 """Automation for arithmetic expressions."""

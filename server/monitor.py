@@ -13,7 +13,7 @@ from kernel import theory
 from logic import basic
 from logic import context
 from server import server
-from server import method
+from server import methods as method
 from logic import logic
 from server import items
 from syntax import parser

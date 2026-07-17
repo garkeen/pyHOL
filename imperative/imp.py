@@ -14,7 +14,7 @@ from kernel.proofterm import ProofTerm
 from logic.logic import apply_theorem
 from logic.tactic import Tactic, MacroTactic
 from syntax import pprint, settings
-from server.method import Method, register_method
+from server.methods.core import Method, register_method
 from prover import z3wrapper
 
 

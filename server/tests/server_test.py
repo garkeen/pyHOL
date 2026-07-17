@@ -13,7 +13,7 @@ from logic import logic
 from logic import basic
 from logic import context
 from logic import tactic
-from server import method, server
+from server import methods as method, server
 from syntax import parser
 
 
