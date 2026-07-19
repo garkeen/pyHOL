@@ -20,11 +20,6 @@ const routes = [
     path: '/program',
     name: 'program',
     component: () => import('./views/ProVerify.vue')
-  },
-  {
-    path: '/monitor',
-    name: 'monitor',
-    component: () => import('./views/Monitor.vue')
   }
 ]
 

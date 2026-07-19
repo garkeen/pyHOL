@@ -400,23 +400,6 @@ def check_proof():
         })
 
 
-@app.route('/api/check-theory', methods=['POST'])
-def check_theory():
-    """Check a theory.
-    
-    Input:
-    * filename: name of the theory file.
-    * rewrite: whether to rewrite.
-
-    """
-    data = json.loads(request.get_data().decode("utf-8"))
-    filename = data['filename']
-
-    with theory.fresh_theory():
-        res = monitor.check_theory(filename, rewrite=data['rewrite'])
-    return jsonify(res)
-
-
 @app.route('/api/remove-file', methods=['PUT'])
 def remove_file():
     """Remove file with the given name.
