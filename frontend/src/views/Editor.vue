@@ -59,7 +59,8 @@
           <div class="file-header">
             <div class="file-header-row">
               <button class="btn btn-sm btn-danger" @click="delete_file">Delete File</button>
-              <button class="btn btn-sm btn-primary" @click="validate_all">Validate All</button>
+              <button class="btn btn-sm btn-primary" @click="validate_all(false)">Validate All</button>
+              <button class="btn btn-sm btn-warning" @click="validate_all(true)" title="Ignore cache, re-validate everything">Force Validate</button>
             </div>
             <!-- Metadata -->
             <div class="metadata-section">
@@ -513,13 +514,14 @@ const save_proof = async (index, steps) => {
 }
 
 // ==================== Validate All ====================
-const validate_all = async () => {
+const validate_all = async (force = false) => {
   if (!filename.value) return
   validating.value = true
   try {
-    const resp = await api.post('/validate-theory', { filename: filename.value })
+    const resp = await api.post('/validate-theory', { filename: filename.value, force })
     thm_status.value = resp.data.statuses
-    toast({ type: 'OK', data: `Validation: ${resp.data.valid} valid, ${resp.data.invalid} invalid` })
+    const d = resp.data
+    toast({ type: 'OK', data: `Valid: ${d.valid} | Axiom: ${d.axiom} | Unproved: ${d.unproved} | Failed: ${d.failed} | Total: ${d.total}` })
   } catch (e) {
     toast({ type: 'error', data: 'Validation failed' })
   } finally {

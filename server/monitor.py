@@ -153,18 +153,20 @@ def check_theory(filename, rewrite=False):
     }
 
 
-def validate_theory(filename):
+def validate_theory(filename, *, force=False):
     """Validate all theorems in a theory file.
 
     Uses .json cache: if the .pyhol file has not changed, returns cached
     statuses without re-validating. Otherwise re-validates all theorems
     and writes new cache.
 
+    If force=True, ignores cache and re-validates everything.
+
     Returns dict of {theorem_name: status} where status is one of
     'VALID', 'STEP_FAILED', 'DEP_FAILED', 'AXIOM', 'UNPROVED'.
     """
-    # File unchanged, return cached results
-    if basic.is_cache_valid(filename):
+    # File unchanged, return cached results (unless force)
+    if not force and basic.is_cache_valid(filename):
         basic.load_theory(filename)
         return theory.get_all_statuses()
 

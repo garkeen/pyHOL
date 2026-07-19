@@ -473,21 +473,29 @@ def validate_theory():
 
     Input:
     * filename: name of the theory file.
+    * force: (optional) if true, ignore cache and re-validate.
 
     Returns:
     * statuses: dict of {name: status}.
-    * valid: number of valid theorems.
-    * invalid: number of invalid theorems.
+    * valid: number of VALID theorems.
+    * axiom: number of AXIOM theorems.
+    * unproved: number of UNPROVED theorems.
+    * failed: number of STEP_FAILED + DEP_FAILED theorems.
     * total: total number of theorems.
 
     """
     data = json.loads(request.get_data().decode("utf-8"))
-    statuses = monitor.validate_theory(data['filename'])
-    valid = sum(1 for s in statuses.values() if s == 'VALID')
+    force = data.get('force', False)
+    statuses = monitor.validate_theory(data['filename'], force=force)
+    counts = {}
+    for s in statuses.values():
+        counts[s] = counts.get(s, 0) + 1
     return jsonify({
         'statuses': statuses,
-        'valid': valid,
-        'invalid': len(statuses) - valid,
+        'valid': counts.get('VALID', 0),
+        'axiom': counts.get('AXIOM', 0),
+        'unproved': counts.get('UNPROVED', 0),
+        'failed': counts.get('STEP_FAILED', 0) + counts.get('DEP_FAILED', 0),
         'total': len(statuses)
     })
 
