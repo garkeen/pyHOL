@@ -342,6 +342,23 @@ class assumption(Tactic):
         
         return ProofTerm.assume(goal.prop)
 
+class reflexive(Tactic):
+    """Prove |- t = t by the reflexive primitive rule."""
+    def get_proof_term(self, goal, *, args=None, prevs=None):
+        if not goal.prop.is_equals() or goal.prop.arg1 != goal.prop.arg:
+            raise TacticException('reflexive: goal is not of the form t = t')
+        return ProofTerm.reflexive(goal.prop.arg1)
+
+class equal_intr(Tactic):
+    """Prove |- A = B by proving A --> B and B --> A separately."""
+    def get_proof_term(self, goal, *, args=None, prevs=None):
+        if not goal.prop.is_equals():
+            raise TacticException('equal_intr: goal is not an equality')
+        A, B = goal.prop.arg1, goal.prop.arg
+        pt_AB = ProofTerm.sorry(Thm(Implies(A, B), goal.hyps))
+        pt_BA = ProofTerm.sorry(Thm(Implies(B, A), goal.hyps))
+        return ProofTerm.equal_intr(pt_AB, pt_BA)
+
 class then_tac(Tactic):
     def __init__(self, tac1, tac2):
         self.tac1 = tac1

@@ -152,6 +152,9 @@ theorem eq_refl
   fixes x :: 'a
   prop x = x
   [hint_backward]
+  proof
+    0: reflexive
+  qed
 
 theorem classical_cases
   fixes A :: bool, C :: bool
@@ -165,6 +168,10 @@ theorem negE_gen
   fixes A :: bool, C :: bool
   prop ¬A ⟶ A ⟶ C
   [hint_backward1]
+  proof
+    2: apply_backward_step falseE
+    2: apply_backward_step negE @0,1
+  qed
 
 theorem contradiction
   fixes P :: bool
@@ -187,6 +194,9 @@ theorem iffI
   fixes A :: bool, B :: bool
   prop (A ⟶ B) ⟶ (B ⟶ A) ⟶ A ⟷ B
   [hint_backward]
+  proof
+    2: equal_intr
+  qed
 
 theorem ineq_sym
   fixes x :: 'a, y :: 'a

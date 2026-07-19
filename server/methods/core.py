@@ -1319,6 +1319,52 @@ class sym_method(Method):
         state.set_line(id, 'sorry', th=Thm(new_prop, goal_th.hyps))
 
 
+@register_method('reflexive')
+class reflexive_method(Method):
+    """Prove an equality goal t = t by reflexivity."""
+    def __init__(self):
+        self.sig = []
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        if len(prevs) > 0:
+            return []
+        cur_item = state.get_proof_item(id)
+        prop = cur_item.th.prop
+        if prop.is_equals() and prop.arg1 == prop.arg:
+            return [{}]
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("reflexive")
+
+    def apply(self, state, id, data, prevs):
+        state.apply_tactic(id, tactic.reflexive())
+
+
+@register_method('equal_intr')
+class equal_intr_method(Method):
+    """Prove an equality goal A = B by proving A --> B and B --> A."""
+    def __init__(self):
+        self.sig = []
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        if len(prevs) > 0:
+            return []
+        cur_item = state.get_proof_item(id)
+        prop = cur_item.th.prop
+        if prop.is_equals():
+            return [{}]
+        return []
+
+    def display_step(self, state, data):
+        return pprint.N("equal_intr")
+
+    def apply(self, state, id, data, prevs):
+        state.apply_tactic(id, tactic.equal_intr())
+
+
 @register_method('subst')
 class subst_method(Method):
     """Substitute using an equality theorem: replace LHS with RHS in goal."""
