@@ -102,6 +102,12 @@ def first_order_match(pat, t, inst=None):
                 # bound variables
                 if bd_vars and t.has_vars(bd_vars):
                     raise MatchException(trace)
+                # Check that types are compatible
+                if pat.T is not None and t.get_type() is not None:
+                    try:
+                        pat.T.match_incr(t.get_type(), inst.tyinst)
+                    except TypeMatchException:
+                        raise MatchException(trace)
                 inst[pat.head.name] = t
             else:
                 if inst[pat.head.name] != t:

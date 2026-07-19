@@ -2,6 +2,12 @@ theory iterate
 imports set, real
 description "Basic results about iterate."
 
+const neutral :: ('a ⇒ 'a ⇒ 'a) ⇒ 'a
+
+const monoidal :: ('a ⇒ 'a ⇒ 'a) ⇒ bool
+
+const itset :: ('b ⇒ 'a ⇒ 'a) ⇒ 'b set ⇒ 'a ⇒ 'a
+
 def nat_interval :: nat ⇒ nat ⇒ nat set = {m..n} = {p. m ≤ p ∧ p ≤ n} [hint_rewrite]
 
 theorem finite_natseg

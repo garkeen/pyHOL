@@ -6,7 +6,6 @@ import importlib.util
 if importlib.util.find_spec("z3"):
     import z3
     z3_loaded = True
-    z3.set_param(proof=True)
 else:
     z3_loaded = False
 
@@ -241,17 +240,29 @@ def solve_core(s, t, debug=False):
     
     return s
 
+Z3_TIMEOUT = 5000  # milliseconds
+
 def solve(t, debug=False):
-    """Solve the given goal using Z3."""
-    s = solve_core(z3.Solver(), t, debug)
-    return str(s.check()) == 'unsat'
- 
+    """Solve the given goal using Z3. Returns True if unsatisfiable (goal proved)."""
+    s = z3.Solver()
+    s.set("timeout", Z3_TIMEOUT)
+    s = solve_core(s, t, debug)
+    result = str(s.check())
+    return result == 'unsat'
+
 
 def solve_and_proof(t, debug=False):
     """Solve the given goal using Z3 and get proof."""
-    s = solve_core(z3.Solver(ctx=z3.Context()) ,t, debug)
-    assert str(s.check()) == 'unsat'
-    return s.proof(), s.assertions()
+    z3.set_param(proof=True)
+    try:
+        s = z3.Solver(ctx=z3.Context())
+        s.set("timeout", Z3_TIMEOUT)
+        s = solve_core(s, t, debug)
+        result = s.check()
+        assert str(result) == 'unsat', "Z3: not solved (result=%s)" % result
+        return s.proof(), s.assertions()
+    finally:
+        z3.set_param(proof=False)
 
 def apply_z3(t):
     return ProofTerm('z3', args=t)

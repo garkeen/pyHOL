@@ -19,6 +19,7 @@ from logic import context
 from logic import tactic
 from logic.tactic import Tactic
 from logic import conv
+from logic.macros.core import trivial_macro, apply_theorem_macro, rewrite_fact_macro, rewrite_fact_with_prev_macro, apply_fact_macro
 from syntax import parser, printer, pprint
 from syntax.settings import settings, global_setting
 
@@ -226,7 +227,7 @@ class ProofState():
         # Resolve trivial subgoals
         for item in new_prf.items:
             if item.rule == 'sorry':
-                if logic.trivial_macro().can_eval(item.th.prop):
+                if trivial_macro().can_eval(item.th.prop):
                     self.set_line(item.id, 'trivial', args=item.th.prop)
 
     def parse_steps(self, steps):
@@ -528,7 +529,7 @@ class rewrite_fact(Method):
         def search_thm(th_name, sym):
             try:
                 sym_b = True if sym == 'true' else False
-                pt = logic.rewrite_fact_macro(sym=sym_b).get_proof_term(th_name, prevs)
+                pt = rewrite_fact_macro(sym=sym_b).get_proof_term(th_name, prevs)
                 results.append({"theorem": th_name, "sym": sym, "_fact": [pt.prop]})
             except (AssertionError, matcher.MatchException, InvalidDerivationException) as e:
                 # print(e)
@@ -552,7 +553,7 @@ class rewrite_fact(Method):
         try:
             prev_pts = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
             sym_b = 'sym' in data and data['sym'] == 'true'
-            pt = logic.rewrite_fact_macro(sym=sym_b).get_proof_term(data['theorem'], prev_pts)
+            pt = rewrite_fact_macro(sym=sym_b).get_proof_term(data['theorem'], prev_pts)
         except InvalidDerivationException as e:
             raise e
 
@@ -578,7 +579,7 @@ class rewrite_fact_with_prev(Method):
     def search(self, state: ProofState, id, prevs):
         prevs = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
         try:
-            macro = logic.rewrite_fact_with_prev_macro()
+            macro = rewrite_fact_with_prev_macro()
             pt = macro.get_proof_term(args=None, pts=prevs)
             return [{"_fact": [pt.prop]}]
         except (AssertionError, matcher.MatchException):
@@ -590,7 +591,7 @@ class rewrite_fact_with_prev(Method):
     def apply(self, state: ProofState, id, args, prevs):
         try:
             prev_pts = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
-            pt = logic.rewrite_fact_with_prev_macro().get_proof_term(None, prev_pts)
+            pt = rewrite_fact_with_prev_macro().get_proof_term(None, prev_pts)
         except AssertionError as e:
             raise e
 
@@ -620,7 +621,7 @@ class apply_forward_step(Method):
                 return
 
             try:
-                macro = logic.apply_theorem_macro()
+                macro = apply_theorem_macro()
                 res_th = macro.eval(th_name, prev_ths)
                 results.append({"theorem": th_name, "_fact": [res_th.prop]})
             except theory.ParameterQueryException:
@@ -657,7 +658,7 @@ class apply_forward_step(Method):
 
         # First test apply_theorem
         prev_ths = [state.get_proof_item(prev).th for prev in prevs]
-        macro = logic.apply_theorem_macro(with_inst=True)
+        macro = apply_theorem_macro(with_inst=True)
         res_th = macro.eval((data['theorem'], inst), prev_ths)
 
         state.add_line_before(id, 1)
@@ -1035,7 +1036,7 @@ class apply_fact(Method):
         prev_ths = [state.get_proof_item(prev).th for prev in prevs]
 
         try:
-            macro = logic.apply_fact_macro()
+            macro = apply_fact_macro()
             pt = macro.eval(args=None, prevs=prev_ths)
             return [{"_fact": [pt.prop]}]
         except (AssertionError, matcher.MatchException):
@@ -1465,7 +1466,7 @@ class drule_method(Method):
         prev_ths = [state.get_proof_item(p).th for p in prevs]
         
         # Use apply_theorem_macro for forward reasoning
-        macro_obj = logic.apply_theorem_macro()
+        macro_obj = apply_theorem_macro()
         result_th = macro_obj.eval(thm_name, prev_ths)
         
         state.add_line_before(id, 1)
@@ -1496,7 +1497,7 @@ class frule_method(Method):
         thm = theory.thy.get_theorem(thm_name)
         prev_ths = [state.get_proof_item(p).th for p in prevs]
         
-        macro_obj = logic.apply_theorem_macro()
+        macro_obj = apply_theorem_macro()
         result_th = macro_obj.eval(thm_name, prev_ths)
         
         state.add_line_before(id, 1)

@@ -30,6 +30,24 @@ const Inter :: 'a set set ⇒ 'a set
 
 const comp_fun :: ('a ⇒ 'b) ⇒ ('b ⇒ 'c) ⇒ ('a ⇒ 'c)
 
+const finite :: 'a set ⇒ bool
+
+const delete :: 'a set ⇒ 'a ⇒ 'a set
+
+const image :: ('a ⇒ 'b) ⇒ 'a set ⇒ 'b set
+
+const disjoint :: 'a set ⇒ 'a set ⇒ bool
+
+const from :: nat ⇒ nat set
+
+const univ :: 'a set
+
+const card :: 'a set ⇒ nat
+
+const has_size :: 'a set ⇒ nat ⇒ bool
+
+const infinite :: 'a set ⇒ bool
+
 axiom member_empty_simp
   fixes x :: 'a
   prop x ∈ ∅ ⟷ false
