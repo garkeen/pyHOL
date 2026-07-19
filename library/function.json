@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "theory": "function",
+    "source_mtime": 1784351004.7926793
+  },
+  "theorems": {
+    "fun_upd_same": "VALID",
+    "fun_upd_other": "VALID",
+    "fun_upd_triv": "VALID",
+    "fun_upd_upd": "VALID",
+    "fun_upd_twist": "VALID",
+    "fun_upd_eval_test1": "VALID",
+    "fun_upd_eval_test2": "VALID",
+    "comp_fun_eval": "VALID",
+    "comp_fun_assoc": "VALID",
+    "injectiveI": "VALID",
+    "injectiveD": "VALID",
+    "surjectiveI": "VALID",
+    "surjectiveD": "VALID",
+    "injective_id_fun": "VALID",
+    "surjective_id_fun": "VALID",
+    "injective_comp_fun": "VALID",
+    "surjective_comp_fun": "VALID"
+  }
+}

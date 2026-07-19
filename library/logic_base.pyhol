@@ -503,3 +503,6 @@ theorem ABBBB
 theorem ACCCC
   fixes A :: bool, B :: bool
   prop (A ⟶ B) ⟶ A ⟶ B
+  proof
+    2: apply_prev @0,1
+  qed

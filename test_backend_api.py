@@ -11,7 +11,7 @@ sys.path.insert(0, '.')
 
 from app.app import app as flask_app
 from logic import basic
-from format import pyhol
+from syntax import pyhol
 
 # Real library dir
 LIBRARY_DIR = basic.user_dir()

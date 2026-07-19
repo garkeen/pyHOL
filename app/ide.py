@@ -16,7 +16,7 @@ from logic import context
 from server import monitor
 from server import items
 from app.app import app
-from format import pyhol
+from syntax import pyhol
 
 
 def _load_theory_for_proof(theory_name, thm_name, vars):

@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "theory": "trig_exp_log",
+    "source_mtime": 1784351004.8316588
+  },
+  "theorems": {
+    "exp_pos_poly_lower_bound": "VALID",
+    "exp_ge1": "VALID",
+    "neg_exp_le1": "VALID",
+    "neg_exp_series": "VALID",
+    "neg_exp_infsum": "VALID",
+    "n_le_fact": "VALID",
+    "exp_alt_sign_lemma": "VALID",
+    "exp_neg_poly_upper_bound": "VALID",
+    "exp_neg_poly_lower_bound": "VALID",
+    "exp_reduce": "VALID",
+    "exp_full_reduce": "VALID",
+    "log_alt_sign_lemma": "VALID",
+    "log_poly_upper_bound": "VALID",
+    "log_poly_lower_bound": "VALID",
+    "log_reduce_pos_pow": "VALID",
+    "log_reduce_neg_pow": "VALID"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "theory": "list",
+    "source_mtime": 1784351004.7992325
+  },
+  "theorems": {
+    "append_right_neutral": "VALID",
+    "append_assoc": "VALID",
+    "length_append": "VALID",
+    "rev_append": "VALID",
+    "rev_rev": "VALID",
+    "rev_length": "VALID",
+    "not_member_nil": "VALID",
+    "not_member_cons": "VALID"
+  }
+}

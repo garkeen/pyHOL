@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "theory": "hoare",
+    "source_mtime": 1784351004.7956781
+  },
+  "theorems": {
+    "Sem_Seq_elim": "UNPROVED",
+    "Sem_Skip": "UNPROVED",
+    "Sem_Assign": "UNPROVED",
+    "Sem_Assign_elim": "UNPROVED",
+    "P1_test": "VALID",
+    "P2_test": "VALID",
+    "P3_test": "VALID",
+    "pre_rule": "VALID",
+    "skip_rule": "UNPROVED",
+    "assign_rule": "VALID",
+    "seq_rule": "VALID",
+    "if_rule": "UNPROVED",
+    "while_rule": "UNPROVED",
+    "abs_test": "VALID",
+    "max_test": "VALID"
+  }
+}

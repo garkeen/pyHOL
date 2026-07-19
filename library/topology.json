@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "theory": "topology",
+    "source_mtime": 1784351004.8280468
+  },
+  "theorems": {
+    "open_empty": "STEP_FAILED",
+    "open_union": "STEP_FAILED"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "theory": "trig_sin_cos",
+    "source_mtime": 1784351004.8351195
+  },
+  "theorems": {
+    "cos_pi_2": "VALID",
+    "cos_derivatives": "STEP_FAILED",
+    "taylor_cos_raw": "DEP_FAILED",
+    "sum_pair_from_0": "VALID",
+    "taylor_cos": "DEP_FAILED",
+    "cos_poly_upper_bound": "DEP_FAILED",
+    "cos_poly_lower_bound": "DEP_FAILED",
+    "sin_pi_2": "VALID",
+    "sin_derivatives": "STEP_FAILED",
+    "taylor_sin_raw": "DEP_FAILED",
+    "taylor_sin": "DEP_FAILED",
+    "sin_pos_poly_upper_bound": "STEP_FAILED",
+    "sin_pos_poly_lower_bound": "DEP_FAILED",
+    "sin_neg_poly_upper_bound": "DEP_FAILED",
+    "sin_neg_poly_lower_bound": "DEP_FAILED"
+  }
+}

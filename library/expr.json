@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "theory": "expr",
+    "source_mtime": 1784351004.790677
+  },
+  "theorems": {
+    "aval_test1": "VALID",
+    "aval_test2": "VALID",
+    "avalI_test1": "UNPROVED",
+    "avalI_test2": "UNPROVED"
+  }
+}

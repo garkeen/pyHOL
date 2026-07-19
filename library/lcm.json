@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "theory": "lcm",
+    "source_mtime": 1784351004.7992325
+  },
+  "theorems": {
+    "lcm_divides": "VALID",
+    "lcm_sym": "VALID",
+    "lcm1": "VALID",
+    "lcm2": "VALID",
+    "lcm3": "VALID",
+    "lcm_divides_mul": "VALID",
+    "divides_lcm": "VALID",
+    "lcm_0": "VALID",
+    "lcm_1": "VALID",
+    "divides_lcm_gcd": "VALID",
+    "primepow_divides_lcm": "VALID",
+    "lcm_zero": "VALID",
+    "index_lcm": "VALID",
+    "lcm_assoc": "VALID",
+    "lcm_refl": "VALID",
+    "lcm_multiple": "VALID",
+    "lcm_gcd_distrib": "VALID",
+    "gcd_lcm_distrib": "VALID",
+    "lcm_unique": "VALID",
+    "lcm_eq": "VALID",
+    "divides_lcm_left": "VALID",
+    "divides_lcm_right": "VALID",
+    "mult_lcm_gcd": "VALID",
+    "mult_gcd_lcm": "VALID",
+    "lcm_lmul": "VALID",
+    "lcm_rmul": "VALID",
+    "lcm_exp": "VALID",
+    "lcm_coprime_decomp": "VALID",
+    "le_lcm1": "VALID",
+    "le_lcm2": "VALID",
+    "lcm_le_mult": "VALID",
+    "lcm_eq_mult": "VALID",
+    "max_le_lcm_eq": "VALID",
+    "max_le_lcm": "VALID"
+  }
+}

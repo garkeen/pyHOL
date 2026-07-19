@@ -9,7 +9,7 @@ from kernel import proof
 from logic import basic
 from server import items
 from syntax import printer
-from format import pyhol
+from syntax import pyhol
 
 class JSONTheory():
     def __init__(self, name, imports, description):
