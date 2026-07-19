@@ -293,9 +293,25 @@ theorem eq_false
 
 theorem not_true
   prop ¬true ⟷ false
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: insert trueI
+    0.2: apply_backward_step negE @0.0,0.1
+    1: introduction
+    1.1: apply_backward_step negI
+    1.1: apply_backward_step falseE @1.0
+  qed
 
 theorem not_false
   prop ¬false ⟷ true
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step trueI
+    1: introduction
+    1.1: apply_backward_step negI
+  qed
 
 theorem pierce
   fixes A :: bool, B :: bool
@@ -624,18 +640,48 @@ theorem not_or_elim2
 theorem conj_true_left
   fixes P :: bool
   prop true ∧ P ⟷ P
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step conjD2 @0.0
+    1: introduction
+    1.1: apply_backward_step conjI
+    1.1: apply_backward_step trueI
+  qed
 
 theorem conj_true_right
   fixes P :: bool
   prop P ∧ true ⟷ P
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step conjD1 @0.0
+    1: introduction
+    1.1: apply_backward_step conjI
+    1.1: apply_backward_step trueI
+  qed
 
 theorem disj_true_left
   fixes P :: bool
   prop true ∨ P ⟷ true
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step trueI
+    1: introduction
+    1.1: apply_backward_step disjI1 @1.0
+  qed
 
 theorem disj_true_right
   fixes P :: bool
   prop P ∨ true ⟷ true
+  proof
+    0: apply_backward_step iffI
+    0: introduction
+    0.1: apply_backward_step trueI
+    1: introduction
+    1.1: apply_backward_step disjI2 @1.0
+  qed
 
 theorem conj_pos_neg
   fixes P :: bool
