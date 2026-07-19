@@ -1,5 +1,6 @@
 # Author: Bohua Zhan
 
+from functools import cmp_to_key
 from typing import Tuple
 from kernel.type import TFun, BoolType, TyInst
 from kernel import term
@@ -94,7 +95,10 @@ class Thm:
         return str(self)
 
     def __hash__(self):
-        return hash(("HYPS", self.hyps, "PROP", self.prop))
+        if not hasattr(self, "_hash_val"):
+            sorted_hyps = sorted(self.hyps, key=cmp_to_key(term_ord.fast_compare))
+            self._hash_val = hash(("HYPS", tuple(sorted_hyps), "PROP", self.prop))
+        return self._hash_val
 
     def __eq__(self, other):
         """Note order of hypotheses does not matter when comparing for

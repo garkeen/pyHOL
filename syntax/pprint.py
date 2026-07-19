@@ -135,7 +135,7 @@ class BinderAppl(AST):
         self.body = body
 
     def __repr__(self):
-        return "Binder(%s,%s,%s,%s)" % (self.op, self.bind_var, self.body, self.T)
+        return "BinderAppl(%s,%s,%s)" % (self.op, self.bind_var, self.body)
 
 class Bound(AST):
     def __init__(self, name, T):

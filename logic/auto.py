@@ -170,6 +170,8 @@ def solve_rules(th_names):
         for th_name in th_names:
             if theory.thy.has_theorem(th_name):
                 th = theory.get_theorem(th_name)
+            else:
+                continue
             try:
                 inst = matcher.first_order_match(th.concl, goal)
             except matcher.MatchException:

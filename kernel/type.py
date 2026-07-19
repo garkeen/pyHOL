@@ -183,9 +183,10 @@ class Type:
         if not hasattr(self, "_hash_val"):
             if self.is_stvar():
                 self._hash_val = hash(("STVAR", self.name))
-            if self.is_tvar():
+            elif self.is_tvar():
                 self._hash_val = hash(("TVAR", self.name))
-            elif self.is_tconst():
+            else:
+                assert self.is_tconst()
                 self._hash_val = hash(("TCONST", self.name, tuple(hash(arg) for arg in self.args)))
         return self._hash_val
     
