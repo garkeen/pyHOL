@@ -126,3 +126,4 @@ package-lock.json
 # Holpy specific
 users/*
 smt/veriT/tests/smtlib_path.txt
+library/*.json
