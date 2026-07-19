@@ -2,125 +2,226 @@
 
 ## 概述
 
-策略（Tactic）和转换（Conversion）是证明构造的核心工具。策略将目标分解为子目标，转换对项进行等价变换。两者通过组合子可以构建复杂的证明自动化。
+策略（Tactic）将目标分解为子目标。转换（Conversion）对项做等价变换。两者通过组合子构建复杂自动化。
 
-## 转换（Conversion）
-
-转换将一个项 `t` 变换为 `t'`，返回 `|- t = t'` 的证明。
-
-### 原子转换
-
-| 转换 | 说明 |
-|------|------|
-| `all_conv(t)` | 恒等：返回 `refl(t)` |
-| `no_conv(t)` | 总是失败 |
-| `beta_conv(t)` | 单步 beta 化简：`(%x. t1) t2 = t1[t2/x]` |
-| `beta_norm_conv(t)` | 完全 beta 归一化 |
-| `eta_conv(t)` | Eta 转换：`%x. f x = f`（x 不在 f 中自由出现） |
-
-### 组合子
-
-| 组合子 | 说明 |
-|--------|------|
-| `then_conv(cv1, cv2)` | 先 cv1 再 cv2，用传递性组合 |
-| `else_conv(cv1, cv2)` | 尝试 cv1，失败则 cv2 |
-| `combination_conv(cv1, cv2)` | 对 `f x` 分别转换 f 和 x |
-| `arg_conv(cv)` | 只转换参数：`all_conv` 和 `cv` |
-| `fun_conv(cv)` | 只转换函数：`cv` 和 `all_conv` |
-| `binop_conv(cv)` | 对二元运算的两个参数都转换 |
-| `every_conv(cv1, cv2, ...)` | 依次应用多个转换 |
-| `repeat_conv(cv)` | 重复应用直到失败 |
-| `abs_conv(cv)` | 进入 lambda 抽象的 body |
-| `sub_conv(cv)` | 对 immediate subterms 应用 |
-| `try_conv(cv)` | `else_conv(cv, all_conv)`，永不失败 |
-
-### 遍历策略
-
-| 策略 | 说明 |
-|------|------|
-| `top_conv(cv)` | 自顶向下：先应用 cv，再递归子项 |
-| `top_sweep_conv(cv)` | 自顶向下扫描：成功就停，失败才递归 |
-| `bottom_conv(cv)` | 自底向上：先递归子项，再应用 cv |
-
-### 重写转换
-
-| 转换 | 说明 |
-|------|------|
-| `rewr_conv(th)` | 用 `|- lhs = rhs` 重写。最核心的转换。 |
-| `rewr_conv(th, sym=True)` | 用 `|- rhs = lhs` 重写（反向） |
-
-`rewr_conv` 的工作方式：
-1. 匹配 lhs（或 rhs）与目标项
-2. 实例化等式
-3. 用 beta_norm 处理高阶匹配结果
-
-## 策略（Tactic）
-
-策略将目标分解为子目标。返回 ProofTerm，可能包含 `sorry` gap。
+## 全部策略（23 个，`logic/tactic.py`）
 
 ### 原子策略
 
-| 策略 | 目标 → 子目标 | 说明 |
-|------|---------------|------|
-| `rule(th_name)` | `?- G` → `?- A1, ..., ?- An` | 向后应用定理 |
-| `assumption` | `A |- A` → 无 | 目标在假设中 |
-| `reflexive` | `?- t = t` → 无 | 自反性 |
-| `equal_intr` | `?- A = B` → `?- A-->B, ?- B-->A` | 等价拆分 |
-| `intros` | `?- !x. A-->B` → `x, A |- B` | 引入变量和假设 |
-| `var_induct` | `?- P x` → 归纳情况 | 结构归纳 |
-| `rewrite_goal(th)` | `?- G` → `?- G'` | 用定理重写目标 |
-| `rewrite_goal_with_prev` | `?- G` → `?- G'` | 用已有事实重写 |
-| `apply_prev` | `?- C` → 无或子目标 | 应用已有事实 |
-| `cases(A)` | `?- C` → `A-->C, ~A-->C` | 分情况讨论 |
+| # | 类名 | 说明 |
+|---|------|------|
+| 1 | `MacroTactic` | 从宏构造策略 |
+| 2 | `rule` | 向后应用定理（最核心） |
+| 3 | `resolve` | 消解：用 ~A 和事实 A 解目标 |
+| 4 | `intros` | 引入变量和假设 |
+| 5 | `var_induct` | 对变量应用归纳 |
+| 6 | `rewrite_goal` | 用定理重写目标 |
+| 7 | `rewrite_goal_with_conv` | 用预建 Conv 重写目标 |
+| 8 | `rewrite_goal_with_prev` | 用已有事实重写目标 |
+| 9 | `apply_prev` | 向后应用已有事实 |
+| 10 | `cases` | 分情况讨论 |
+| 11 | `inst_exists_goal` | 实例化存在量词目标 |
+| 12 | `intro_imp_tac` | 引入蕴含假设 |
+| 13 | `intro_forall_tac` | 引入全称变量 |
+| 14 | `assumption` | 从假设证明 |
+| 15 | `reflexive` | 自反性证明 t = t |
+| 16 | `equal_intr` | 等价拆分 A=B → A-->B, B-->A |
+| 17 | `rule_tac` | 匹配定理创建子目标 |
+| 18 | `elim_tac` | 消除策略 |
+| 19 | `conj_elim_tac` | 合取消除 |
 
 ### 组合子
 
-| 组合子 | 说明 |
-|--------|------|
-| `then_tac(t1, t2)` | 先 t1，对所有子目标应用 t2 |
-| `else_tac(t1, t2)` | 尝试 t1，失败则 t2 |
-| `repeat_tac(t)` | 重复应用直到失败 |
-| `try_tac(t)` | 应用 t，失败则什么都不做 |
-| `first_tac([t1, t2, ...])` | 依次尝试，第一个成功的 |
-| `every_tac([t1, t2, ...])` | 依次应用所有 |
-| `thenl_tac(t, [t1, t2, ...])` | 先 t，然后 ti 应用到第 i 个子目标 |
+| # | 类名 | 说明 |
+|---|------|------|
+| 20 | `then_tac(t1, t2)` | 先 t1 再 t2（对所有子目标） |
+| 21 | `else_tac(t1, t2)` | 尝试 t1，失败则 t2 |
+| 22 | `repeat_tac(t)` | 重复直到失败 |
 
-### 证明模式
+### 预定义组合
 
-**蕴含引入**：
+| 名称 | 定义 | 说明 |
+|------|------|------|
+| `intros_tac` | `repeat_tac(else_tac(intro_imp_tac(), intro_forall_tac()))` | 自动引入 |
+
+### 领域策略
+
+| # | 类名 | 文件 | 说明 |
+|---|------|------|------|
+| 23 | `vcg_tactic` | `imperative/imp.py` | 验证条件生成 |
+
+---
+
+## 全部转换（~110 个）
+
+### 核心转换 (`logic/conv/core.py`)
+
+**类（20 个）：**
+
+| # | 类名 | 说明 |
+|---|------|------|
+| 1 | `all_conv` | 恒等 t = t |
+| 2 | `no_conv` | 总是失败 |
+| 3 | `combination_conv(cv1, cv2)` | 对 f x 分别转换 |
+| 4 | `then_conv(cv1, cv2)` | 顺序组合 |
+| 5 | `else_conv(cv1, cv2)` | 备选 |
+| 6 | `beta_conv` | 单步 beta |
+| 7 | `beta_norm_conv` | 完全 beta 归一化 |
+| 8 | `eta_conv` | Eta 转换 |
+| 9 | `abs_conv(cv)` | 进入 lambda body |
+| 10 | `repeat_conv(cv)` | 重复 |
+| 11 | `argn_conv(n, cv)` | 第 n 个参数 |
+| 12 | `assums_conv(cv)` | 对所有假设 |
+| 13 | `sub_conv(cv)` | 对 immediate subterms |
+| 14 | `bottom_conv(cv)` | 自底向上 |
+| 15 | `top_conv(cv)` | 自顶向下 |
+| 16 | `top_sweep_conv(cv)` | 自顶向下扫描 |
+| 17 | `rewr_conv(th)` | 用等式定理重写（最核心） |
+| 18 | `replace_conv(pt)` | 直接替换 |
+
+**函数（7 个）：**
+
+| # | 函数 | 等价于 |
+|---|------|--------|
+| 1 | `try_conv(cv)` | `else_conv(cv, all_conv())` |
+| 2 | `comb_conv(cv)` | `combination_conv(cv, cv)` |
+| 3 | `arg_conv(cv)` | `combination_conv(all_conv(), cv)` |
+| 4 | `fun_conv(cv)` | `combination_conv(cv, all_conv())` |
+| 5 | `arg1_conv(cv)` | `fun_conv(arg_conv(cv))` |
+| 6 | `binop_conv(cv)` | `combination_conv(arg_conv(cv), cv)` |
+| 7 | `every_conv(*cvs)` | 依次 then_conv |
+
+### 自然数转换 (`logic/conv/nat.py`, 21 个)
+
+| # | 类名 | 说明 |
+|---|------|------|
+| 1 | `Suc_conv` | Suc 计算 |
+| 2 | `add_conv` | 加法计算 |
+| 3 | `mult_conv` | 乘法计算 |
+| 4 | `rewr_of_nat_conv` | of_nat 处理 |
+| 5 | `nat_conv` | 算术简化 |
+| 6 | `nat_eval_conv` | 宏驱动的算术计算 |
+| 7 | `swap_add_r` | (a+b)+c → (a+c)+b |
+| 8 | `norm_add_atom_1` | 加法归一化 |
+| 9 | `norm_add_1` | 多项式加法 |
+| 10 | `swap_times_r` | (a*b)*c → (a*c)*b |
+| 11 | `norm_mult_atom` | 乘法归一化 |
+| 12 | `norm_mult_monomial` | 单项式乘法 |
+| 13 | `to_coeff_form` | 转系数形式 |
+| 14 | `from_coeff_form` | 从系数形式 |
+| 15 | `combine_monomial` | 合并同类项 |
+| 16 | `norm_add_monomial` | 单项式加法 |
+| 17 | `norm_add_polynomial` | 多项式加法 |
+| 18 | `norm_mult_poly_monomial` | 多项式×单项式 |
+| 19 | `norm_mult_polynomial` | 多项式×多项式 |
+| 20 | `norm_full` | 完全归一化 |
+| 21 | `nat_eq_conv` | 等式简化为 True/False |
+
+### 整数转换 (`data/integer.py`, 26 个)
+
+| # | 类名 | 说明 |
+|---|------|------|
+| 1 | `swap_mult_r` | 乘法交换 |
+| 2 | `int_eval_conv` | 整数计算 |
+| 3-11 | `norm_mult_*`, `norm_add_*`, `simp_full` | 多项式归一化 |
+| 12 | `int_norm_conv` | 整数归一化 |
+| 13 | `norm_eq` | 等式归一化 |
+| 14-16 | `omega_*` | Omega 归一化 |
+| 17 | `int_norm_eq` | 整数等式归一化 |
+| 18 | `int_norm_neg_compares` | 否定比较归一化 |
+| 19 | `int_gcd_compares` | GCD 比较 |
+| 20 | `int_neq_false_conv` | 不等式转 false |
+| 21 | `int_compare_to_real` | 整数比较转实数 |
+| 22 | `int_simplex_form` | Simplex 形式 |
+| 23 | `int_const_compares` | 常量比较 |
+
+### 实数转换 (`data/real.py`, 27 个)
+
+| # | 类名 | 说明 |
+|---|------|------|
+| 1 | `real_eval_conv` | 实数计算 |
+| 2-14 | `to_coeff_form`, `norm_*`, `real_*_conv` | 多项式归一化 |
+| 15 | `real_nat_power_conv` | 自然数幂 |
+| 16 | `real_power_conv` | 实数幂 |
+| 17 | `real_norm_conv` | 实数归一化 |
+| 18 | `norm_real_ineq_conv` | 不等式归一化 |
+| 19 | `norm_neg_real_ineq_conv` | 否定不等式归一化 |
+| 20 | `real_const_eq_conv` | 常量等式 |
+| 21 | `real_norm_comparison` | 比较归一化 |
+| 22 | `real_simplex_form` | Simplex 形式 |
+| 23 | `replace_conv` | 替换 |
+| 24 | `real_const_compares` | 常量比较 |
+
+### 命题逻辑转换 (`data/proplogic.py`, 10 个)
+
+| # | 类名 | 说明 |
+|---|------|------|
+| 1 | `nnf_conv` | 否定范式 |
+| 2 | `swap_conj_r` | 合取交换 |
+| 3 | `norm_conj_atom` | 合取归一化 |
+| 4 | `norm_conj_conjunction` | 合取链归一化 |
+| 5 | `swap_disj_r` | 析取交换 |
+| 6 | `norm_disj_atom` | 析取归一化 |
+| 7 | `norm_disj_disjunction` | 析取链归一化 |
+| 8 | `norm_full` | 完全归一化 |
+| 9 | `sort_conj` | 合取排序 |
+| 10 | `sort_disj` | 析取排序 |
+
+### 函数转换 (`data/function.py`, 3 个)
+
+| # | 类名 | 说明 |
+|---|------|------|
+| 1 | `fun_upd_eval_conv` | 函数更新计算 |
+| 2 | `fun_upd_norm_one_conv` | 单步归一化 |
+| 3 | `fun_upd_norm_conv` | 完全归一化 |
+
+### 其他转换
+
+| 类名 | 文件 | 说明 |
+|------|------|------|
+| `numseg_conv` | `data/interval.py` | 区间转换 |
+| `auto_conv` | `logic/auto.py` | 自动转换 |
+| `const_min_conv` | `integral/inequality.py` | 常量最小值 |
+| `const_max_conv` | `integral/inequality.py` | 常量最大值 |
+| `norm_sin_conv` | `integral/proof.py` | sin 归一化 |
+| `norm_cos_conv` | `integral/proof.py` | cos 归一化 |
+| `norm_exp_conv` | `integral/proof.py` | exp 归一化 |
+| `norm_log_conv` | `integral/proof.py` | log 归一化 |
+| `real_integral_cong` | `integral/proof.py` | 积分同余 |
+| `simplify_rewr_conv` | `integral/proof.py` | 简化重写 |
+| `combine_fraction` | `integral/proof.py` | 分数合并 |
+| `fraction_rewr_conv` | `integral/proof.py` | 分数重写 |
+| `substitution` | `integral/proof.py` | 替换 |
+| `substitution_inverse` | `integral/proof.py` | 反向替换 |
+| `integrate_by_parts` | `integral/proof.py` | 分部积分 |
+| `trig_rewr_conv` | `integral/proof.py` | 三角重写 |
+| `split_region_conv` | `integral/proof.py` | 区域分割 |
+| `location_conv` | `integral/proof.py` | 位置转换 |
+| `replace_conv` | `sat/zchaff.py` | 替换（zChaff） |
+| `replace_conv` | `prover/simplex_strict.py` | 替换（Simplex） |
+| `flat_left_assoc_conj_conv` | `prover/proofrec.py` | 合取展平 |
+| `flat_left_assoc_disj_conv` | `prover/proofrec.py` | 析取展平 |
+
+---
+
+## 转换组合模式
+
+```python
+# 重写链
+then_conv(rewr_conv('th1'), rewr_conv('th2'))
+
+# 全局重写
+top_conv(rewr_conv('th'))
+
+# 条件重写（只在匹配时应用）
+try_conv(rewr_conv('th'))
+
+# 深度遍历 + 重写
+bottom_conv(then_conv(rewr_conv('th1'), rewr_conv('th2')))
+
+# 进入 lambda 后重写
+abs_conv(rewr_conv('th'))
+
+# 对参数重写
+arg_conv(rewr_conv('th'))
 ```
-目标: ?- A --> B
-策略: intro_imp_tac
-结果: A |- B
-```
-
-**全称引入**：
-```
-目标: ?- !x. P x
-策略: intro_forall_tac
-结果: P x（x 是新变量）
-```
-
-**定理应用**：
-```
-目标: ?- C
-策略: rule('conjI')
-结果: ?- A, ?- B（其中 A-->B-->C 是 conjI 的实例）
-```
-
-**重写链**：
-```
-目标: ?- C
-策略: then_tac(rewrite_goal('th1'), rewrite_goal('th2'))
-结果: ?- C''
-```
-
-## 设计原则
-
-1. **原子策略做一件事**：`rule` 只做匹配和应用，`assumption` 只检查假设，`reflexive` 只证等式。
-
-2. **组合子构建复杂策略**：`repeat_tac(first_tac([conjI_tac, negI_tac, assumption_tac]))` 可以自动处理多种情况。
-
-3. **转换可复用**：同一个 `rewr_conv` 在 `rewrite_goal`、`rewrite_fact`、`simp` 中都使用。
-
-4. **策略和宏的关系**：策略返回 ProofTerm（可能有 gap），宏提供 eval（快速）和 get_proof_term（详细）。策略调用宏来构造证明。

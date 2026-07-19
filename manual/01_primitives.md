@@ -1,155 +1,199 @@
-# 第一层：内核原语
+# 第一层：内核原语与宏
 
 ## 概述
 
-内核是 HOL 系统的可信计算基。所有证明最终必须归结到这 15 条原始规则。内核之外的任何代码（宏、策略、转换、方法）如果出错，都不会破坏系统 soundness——因为它们最终都要经过内核验证。
+内核是可信计算基。15 条原始规则 + ~100 个宏。所有证明最终归结到原始规则。
 
 ## 数据结构
 
-### Type（类型）
-
 ```
-STVar(name)     — 模式类型变量（可实例化，?'a）
-TVar(name)      — 固定类型变量（不可实例化，'a）
-TConst(name, *) — 类型常量（bool, fun, nat, list, real, ...）
-```
-
-辅助构造：`TFun(a, b)` = `a => b`（函数类型）
-
-### Term（项）
-
-```
-SVar(name, T)  — 模式变量（可实例化）
-Var(name, T)   — 固定变量
-Const(name, T) — 理论常量
-Comb(f, x)     — 函数应用 f x
-Abs(n, T, body)— Lambda 抽象 %x::T. body（de Bruijn）
-Bound(n)       — de Bruijn 索引变量
+Type:  STVar | TVar | TConst
+Term:  SVar | Var | Const | Comb | Abs | Bound
+Thm:   (hyps: Tuple[Term], prop: Term)
+Proof: List[ProofItem]
+ProofTerm: 树形证明（rule, args, prevs, th, gaps）
 ```
 
-de Bruijn 索引：`Bound(0)` 指向最内层绑定。`Abs("x", T, Bound(0))` = `%x. x`。
+## 15 条原始规则 (`kernel/thm.py`)
 
-### Thm（定理）
+| 规则 | 参数类型 | 签名 | 说明 |
+|------|----------|------|------|
+| `assume` | Term | `A \|- A` | 假设 |
+| `implies_intr` | Term | `A \|- B` → `\|- A --> B` | 蕴含引入 |
+| `implies_elim` | — | `\|- A-->B, \|- A` → `\|- B` | MP |
+| `reflexive` | Term | `\|- x = x` | 自反性 |
+| `symmetric` | — | `\|- x=y` → `\|- y=x` | 对称性 |
+| `transitive` | — | `\|- x=y, \|- y=z` → `\|- x=z` | 传递性 |
+| `combination` | — | `\|- f=g, \|- x=y` → `\|- f x = g y` | 同余 |
+| `equal_intr` | — | `\|- A-->B, \|- B-->A` → `\|- A=B` | 等价引入 |
+| `equal_elim` | — | `\|- A=B, \|- A` → `\|- B` | 等价消除 |
+| `substitution` | Inst | 项替换 | |
+| `subst_type` | TyInst | 类型替换 | |
+| `beta_conv` | Term | `\|- (%x.t1) t2 = t1[t2/x]` | Beta |
+| `abstraction` | Term | `\|- t1=t2` → `\|- (%x.t1)=(%x.t2)` | 抽象 |
+| `forall_intr` | Term | `\|- t` → `\|- !x. t` | 全称引入 |
+| `forall_elim` | Term | `\|- !x. t` → `\|- t[s/x]` | 全称消除 |
 
-```python
-class Thm:
-    prop: Term        # 命题
-    hyps: Tuple[Term] # 假设集合
-```
+## 全部宏（~100 个）
 
-表示 `A1, ..., An |- C`。只能通过原始规则构造，不能直接 `Thm(prop, *hyps)`（运行时不检查，但 check_proof 会验证）。
+### 核心宏 (`logic/macros/core.py`, 通过 `global_macros.update` 注册)
 
-## 15 条原始规则
+| 宏名 | 类 | 说明 |
+|------|-----|------|
+| `beta_norm` | `beta_norm_macro` | Beta 归一化 |
+| `intros` | `intros_macro` | 引入变量和假设 |
+| `apply_theorem` | `apply_theorem_macro` | 应用定理（最核心） |
+| `apply_theorem_for` | `apply_theorem_macro(with_inst=True)` | 带显式实例化的应用定理 |
+| `apply_induct` | `apply_induct_macro` | 应用归纳原理 |
+| `resolve_theorem` | `resolve_theorem_macro` | 消解 |
+| `apply_fact` | `apply_fact_macro` | 应用已有事实 |
+| `apply_fact_for` | `apply_fact_macro(with_inst=True)` | 带实例化的应用事实 |
+| `rewrite_goal` | `rewrite_goal_macro` | 重写目标 |
+| `rewrite_goal_sym` | `rewrite_goal_macro(sym=True)` | 反向重写目标 |
+| `rewrite_goal_with_prev` | `rewrite_goal_with_prev_macro` | 用已有事实重写目标 |
+| `rewrite_goal_with_prev_sym` | `rewrite_goal_with_prev_macro(sym=True)` | 反向 |
+| `rewrite_fact` | `rewrite_fact_macro` | 重写事实 |
+| `rewrite_fact_sym` | `rewrite_fact_macro(sym=True)` | 反向重写事实 |
+| `rewrite_fact_with_prev` | `rewrite_fact_with_prev_macro` | 用事实重写事实 |
+| `forall_elim_gen` | `forall_elim_gen_macro` | 通用全称消除 |
+| `trivial` | `trivial_macro` | 平凡证明（C 在假设中） |
 
-### 假设与蕴含
+### `@register_macro` 注册的宏
 
-| 规则 | 签名 | 说明 |
-|------|------|------|
-| `assume(A)` | `A \|- A` | 假设 |
-| `implies_intr(A, th)` | `A \|- B` → `\|- A --> B` | 蕴含引入 |
-| `implies_elim(th1, th2)` | `\|- A-->B, \|- A` → `\|- B` | 蕴含消除（MP） |
+**`logic/macros/core.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `imp_conj` | 蕴含合取 |
+| `imp_disj` | 蕴含析取 |
+| `resolution` | 命题消解 |
 
-### 等式
+**`logic/macros/nat.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `nat_eval` | 自然数计算 |
+| `nat_norm` | 自然数归一化 |
+| `nat_const_ineq` | 自然数常量不等式 |
+| `nat_const_less_eq` | 自然数常量 <= |
+| `nat_const_less` | 自然数常量 < |
 
-| 规则 | 签名 | 说明 |
-|------|------|------|
-| `reflexive(x)` | `\|- x = x` | 自反性 |
-| `symmetric(th)` | `\|- x=y` → `\|- y=x` | 对称性 |
-| `transitive(th1, th2)` | `\|- x=y, \|- y=z` → `\|- x=z` | 传递性 |
-| `combination(th1, th2)` | `\|- f=g, \|- x=y` → `\|- f x = g y` | 组合（同余） |
-| `equal_intr(th1, th2)` | `\|- A-->B, \|- B-->A` → `\|- A=B` | 等价引入 |
-| `equal_elim(th1, th2)` | `\|- A=B, \|- A` → `\|- B` | 等价消除 |
+**`logic/macros/z3.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `z3` | Z3 SMT 求解器 |
 
-### 替换
+**`logic/auto.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `auto` | 自动证明（分发到 solve/norm） |
 
-| 规则 | 签名 | 说明 |
-|------|------|------|
-| `substitution(inst, th)` | 项替换 | 用 Inst 替换模式变量 |
-| `subst_type(tyinst, th)` | 类型替换 | 用 TyInst 替换模式类型变量 |
+**`data/integer.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `int_eval` | 整数计算 |
+| `int_eq_macro` | 整数等式 |
+| `int_ineq` | 整数不等式 |
+| `int_ineq_mul_const` | 整数乘常数不等式 |
+| `int_const_ineq` | 整数常量不等式 |
+| `int_multiple_ineq_equiv` | 整数多不等式等价 |
+| `omega_norm_int_ineq` | Omega 归一化 |
+| `int_eq_comparison` | 整数等式比较 |
 
-### Lambda 演算
+**`data/real.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `real_eval` | 实数计算 |
+| `real_norm` | 实数归一化 |
+| `real_const_eq` | 实数常量等式 |
+| `real_compare` | 实数比较 |
+| `real_const_ineq` | 实数常量不等式 |
+| `real_eq_comparison` | 实数等式比较 |
+| `non_strict_simplex` | 非严格 Simplex |
 
-| 规则 | 签名 | 说明 |
-|------|------|------|
-| `beta_conv(t)` | `\|- (%x. t1) t2 = t1[t2/x]` | Beta 转换 |
-| `abstraction(x, th)` | `\|- t1=t2` → `\|- (%x.t1) = (%x.t2)` | 抽象 |
+**`data/function.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `fun_upd_eval` | 函数更新计算 |
 
-### 量词
+**`data/expr.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `prove_avalI` | 表达式求值证明 |
 
-| 规则 | 签名 | 说明 |
-|------|------|------|
-| `forall_intr(x, th)` | `\|- t` → `\|- !x. t` | 全称引入（x 不在 hyps 中） |
-| `forall_elim(s, th)` | `\|- !x. t` → `\|- t[s/x]` | 全称消除 |
+**`imperative/imp.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `eval_Sem` | 语义求值 |
+| `vcg` | 验证条件生成 |
 
-## 可用的逻辑常量
+**`prover/simplex.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `simplex_macro` | Simplex 线性规划 |
+| `integer_simplex` | 整数 Simplex |
 
-内核初始化时注册：
+**`prover/simplex_strict.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `simplex_delta_macro` | Delta Simplex |
+| `simplex_norm_form` | Simplex 归一化 |
+| `strict_simplex_macro` | 严格 Simplex |
 
-```
-equals  :: 'a => 'a => bool   （等式）
-implies :: bool => bool => bool（蕴含）
-all     :: ('a => bool) => bool（全称量词）
-```
+**`prover/sympywrapper.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `sympy` | SymPy CAS 集成 |
 
-其他常量（`conj`, `disj`, `neg`, `exists`, `false`, `true` 等）通过 theory extension 添加。
+**`sat/zchaff.py`:**
+| 宏名 | 说明 |
+|------|------|
+| `disj_force` | 析取强制 |
+| `disj_false` | 析取假 |
 
-## ProofTerm（证明项）
+**`smt/veriT/verit_macro.py`** (57 个)：veriT 证明重建宏，前缀 `verit_`。
 
-树形证明表示，比线性 Proof 更方便构造：
+**`smt/veriT/la_generic.py`** (4 个)：`verit_norm_lia`, `verit_norm_lra`, `verit_round_lia`, `verit_la_generic`
+
+## ProofTerm 操作
 
 ```python
 # 构造
-pt = ProofTerm.assume(A)           # A |- A
-pt = ProofTerm.reflexive(x)        # |- x = x
-pt = ProofTerm.theorem('conjI')    # |- ?A --> ?B --> ?A & ?B
-pt = ProofTerm.sorry(th)           # 创建 gap
+ProofTerm.assume(A)            # A |- A
+ProofTerm.reflexive(x)         # |- x = x
+ProofTerm.theorem('conjI')     # 查找定理
+ProofTerm.sorry(th)            # 创建 gap
+ProofTerm.atom(id, th)         # 引用已有证明行
 
-# 操作
-pt.implies_intr(A)                 # 蕴含引入
-pt.implies_elim(pt2)               # 蕴含消除
-pt.symmetric()                     # 对称
-pt.transitive(pt2)                 # 传递
-pt.equal_intr(pt2)                 # 等价引入
-pt.substitution(inst)              # 替换
-pt.subst_type(tyinst)              # 类型替换
-pt.on_prop(*convs)                 # 对命题应用转换
+# 组合
+pt.implies_intr(A)             # 蕴含引入
+pt.implies_elim(pt2)           # 蕴含消除
+pt.symmetric()                 # 对称
+pt.transitive(pt2)             # 传递
+pt.equal_intr(pt2)             # 等价引入
+pt.equal_elim(pt2)             # 等价消除
+pt.substitution(inst)          # 替换
+pt.subst_type(tyinst)          # 类型替换
+pt.forall_intr(x)              # 全称引入
+pt.forall_elim(s)              # 全称消除
+pt.abstraction(x)              # 抽象
+pt.on_prop(*convs)             # 对命题应用转换
+pt.on_rhs(*convs)              # 对右侧应用转换
+pt.on_lhs(*convs)              # 对左侧应用转换
+pt.tac(tac)                    # 对第一个 gap 应用策略
+pt.tacs(*tacs)                 # 对多个 gap 依次应用策略
 
 # 导出
-pt.export()                        # 转为线性 Proof
-pt.th                              # 获取结果 Thm
-pt.gaps                            # 获取所有 sorry gap
+pt.export()                    # 转为线性 Proof
+pt.th                          # 结果 Thm
+pt.gaps                        # 所有 sorry gap
 ```
 
-## Theory（理论）
-
-全局理论状态，存储：
+## Theory 数据
 
 ```python
-theory.thy.data['type_sig']    # 类型签名 {name: arity}
-theory.thy.data['term_sig']    # 常量签名 {name: Type}
-theory.thy.data['theorems']    # 定理 {name: Thm}
-theory.thy.data['attributes']  # 属性 {name: (attr, ...)}
-theory.thy.data['overload']    # 重载常量 {name: True}
-theory.thy.data['thm_status']  # 证明状态 {name: status}
+theory.thy.data['type_sig']    # {name: arity}
+theory.thy.data['term_sig']    # {name: Type}
+theory.thy.data['theorems']    # {name: Thm}
+theory.thy.data['attributes']  # {name: (attr, ...)}
+theory.thy.data['overload']    # {name: True}
+theory.thy.data['thm_status']  # {name: status}
 ```
-
-## 宏（Macro）
-
-派生证明方法，有信任级别：
-
-```python
-@register_macro('my_macro')
-class MyMacro(Macro):
-    level = 1  # 信任级别（越低越可信）
-
-    def eval(self, args, prevs) -> Thm:
-        # 快速计算（信任路径）
-        ...
-
-    def get_proof_term(self, args, prevs) -> ProofTerm:
-        # 详细证明（可展开检查）
-        ...
-```
-
-- `level <= check_level`：直接 eval，信任结果
-- `level > check_level`：展开为原始步骤，逐步验证

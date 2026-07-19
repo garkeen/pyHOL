@@ -2,218 +2,175 @@
 
 ## 概述
 
-方法是用户面对的 API。每种方法封装一个证明操作，提供搜索（search）和执行（apply）两个接口。方法内部调用策略和宏来完成实际工作。
+方法是用户面对的 API，对应前端按钮和 `.pyhol` 证明步骤。每种方法封装一个证明操作，内部调用策略和宏。
 
-## 方法接口
+## 全部方法（41 个）
 
-```python
-class Method:
-    sig: list           # 参数签名，如 ['theorem'] 或 ['theorem', 'sym']
-    limit: str | None   # 依赖的定理名（如果不存在则方法不可用）
+### 核心方法 (`server/methods/core.py`, 34 个)
 
-    def search(self, state, id, prevs) -> list[dict]:
-        # 搜索可用操作，返回建议列表
-        ...
+| # | 方法名 | 参数 | 说明 |
+|---|--------|------|------|
+| 1 | `cut` | goal | 插入中间目标（have） |
+| 2 | `cases` | case | 分情况讨论 |
+| 3 | `apply_prev` | [fact_ids] | 向后应用已有事实 |
+| 4 | `rewrite_goal_with_prev` | [fact_ids] | 用已有等式重写目标 |
+| 5 | `rewrite_goal` | theorem, [sym] | 用定理重写目标 |
+| 6 | `rewrite_fact` | theorem, [fact_ids] | 用定理重写事实 |
+| 7 | `rewrite_fact_with_prev` | [fact_ids] | 用事实重写事实 |
+| 8 | `apply_forward_step` | theorem, [fact_ids] | 向前应用定理 |
+| 9 | `apply_backward_step` | theorem, [fact_ids], [params] | 向后应用定理（最常用） |
+| 10 | `apply_resolve_step` | theorem, [fact_ids] | 消解 |
+| 11 | `introduction` | [names] | 引入变量和假设 |
+| 12 | `revert_intro` | — | 撤销引入 |
+| 13 | `exists_elim` | [names] | 消除存在量词 |
+| 14 | `forall_elim` | term | 实例化全称量词 |
+| 15 | `inst_exists_goal` | term | 实例化存在量词目标 |
+| 16 | `induction` | theorem, var | 结构归纳 |
+| 17 | `new_var` | name, type | 声明新变量 |
+| 18 | `apply_fact` | [fact_ids] | 应用 forall/implies 事实 |
+| 19 | `call_tactic` | tactic_name, [params] | 直接调用策略（逃生口） |
+| 20 | `call_macro` | macro_name | 直接调用宏（逃生口） |
+| 21 | `simp` | — | 简化（用 hint_rewrite 定理） |
+| 22 | `norm` | — | 归一化（自动选 nat/real） |
+| 23 | `eval` | — | 计算（自动选 nat/real） |
+| 24 | `sym` | — | 翻转等式 a=b → b=a |
+| 25 | `reflexive` | — | 证明 t = t |
+| 26 | `equal_intr` | — | 证明 A=B（拆为两个子目标） |
+| 27 | `subst` | theorem | 用等式替换 |
+| 28 | `unfold` | theorem | 展开定义 |
+| 29 | `fold` | theorem | 折叠定义 |
+| 30 | `thin` | index | 删除假设（weakening） |
+| 31 | `insert` | theorem | 插入定理 |
+| 32 | `drule` | theorem, [fact_ids] | 向前推理（消耗事实） |
+| 33 | `frule` | theorem, [fact_ids] | 向前推理（保留事实） |
+| 34 | `linarith` | — | 线性算术（自动选 nat/real/int） |
 
-    def display_step(self, state, data) -> str:
-        # 显示步骤描述
-        ...
+### 领域方法
 
-    def apply(self, state, id, data, prevs):
-        # 执行方法，修改 proof state
-        ...
+**`server/methods/nat.py` (2 个)：**
+
+| # | 方法名 | 参数 | 说明 |
+|---|--------|------|------|
+| 35 | `nat_norm` | — | 自然数归一化 |
+| 36 | `nat_const_ineq` | — | 自然数常量不等式 |
+
+**`server/methods/z3.py` (1 个)：**
+
+| # | 方法名 | 参数 | 说明 |
+|---|--------|------|------|
+| 37 | `z3` | — | Z3 SMT 求解器 |
+
+**`data/real.py` (1 个)：**
+
+| # | 方法名 | 参数 | 说明 |
+|---|--------|------|------|
+| 38 | `real_norm` | — | 实数归一化 |
+
+**`data/expr.py` (1 个)：**
+
+| # | 方法名 | 参数 | 说明 |
+|---|--------|------|------|
+| 39 | `prove_avalI` | — | 表达式求值 |
+
+**`imperative/imp.py` (2 个)：**
+
+| # | 方法名 | 参数 | 说明 |
+|---|--------|------|------|
+| 40 | `eval_Sem` | — | 语义求值 |
+| 41 | `vcg` | — | 验证条件生成 |
+
+---
+
+## `.pyhol` 证明步骤格式
+
+```
+goal_id: method_name [args] [@fact_ids] [param_key=value]
 ```
 
-## 核心方法
+**goal_id**：层级 ID（`0`, `0.1`, `1.1.0`）
+**@fact_ids**：引用已有行（`@0.0`, `@1.0,1.1`）
+**param_***：额外参数（`param_A=true`, `param_t="{x. x <= n}"`）
 
-### 向后推理
+## 证明模式速查
 
-| 方法 | 参数 | 说明 |
-|------|------|------|
-| `apply_backward_step` | theorem, [fact_ids], [params] | 向后应用定理。匹配结论，创建假设子目标。 |
-| `apply_prev` | [fact_ids] | 向后应用已有事实。 |
+### 等式
 
-**示例**：目标 `?- A & B`，应用 `conjI`：
 ```
-0: apply_backward_step conjI
-0: introduction
-0.1: ... prove A ...
-0.2: ... prove B ...
+?- t = t           →  reflexive
+?- a = b (有 b=a)  →  apply_backward_step eq_sym_eq
+?- A = B           →  equal_intr (拆为 A-->B 和 B-->A)
 ```
 
-### 向前推理
+### 合取
 
-| 方法 | 参数 | 说明 |
-|------|------|------|
-| `apply_forward_step` | theorem, [fact_ids] | 向前应用定理。从已有事实推导新事实。 |
-| `apply_fact` | [fact_ids] | 应用 forall/implies 事实。 |
-| `drule` | theorem, [fact_ids] | 消耗事实（替换为推导结果）。 |
-| `frule` | theorem, [fact_ids] | 保留事实，添加推导结果。 |
-
-### 引入
-
-| 方法 | 参数 | 说明 |
-|------|------|------|
-| `introduction` | [names] | 引入变量和假设。处理 `!x. A --> B` 形式。 |
-
-**示例**：目标 `?- !x. A x --> B x`：
 ```
-0: introduction
-0.1: A x |- B x（x 是新变量，A x 是假设）
+?- A & B           →  apply_backward_step conjI
+?- A (有 A & B)    →  apply_backward_step conjD1 @fact
+?- B (有 A & B)    →  apply_backward_step conjD2 @fact
+```
+
+### 析取
+
+```
+?- A | B           →  apply_backward_step disjI1 (或 disjI2)
+?- C (有 A|B)      →  apply_backward_step disjE @fact
+```
+
+### 否定
+
+```
+?- ~A              →  apply_backward_step negI
+?- false (有 ~A,A) →  apply_backward_step negE @fact1,fact2
+?- C (有 false)    →  apply_backward_step falseE @fact
+```
+
+### 蕴含
+
+```
+?- A --> B         →  introduction (把 A 加入假设)
+?- B (有 A-->B, A) →  apply_backward_step implies_elim @fact1,fact2
+```
+
+### 量词
+
+```
+?- !x. P x         →  introduction (引入 x)
+?- P t (有 !x.P x) →  apply_backward_step forall_elim @fact param_t=t
+?- ?x. P x         →  apply_backward_step exI param_x=t
+?- C (有 ?x. P x)  →  apply_backward_step exE @fact
+```
+
+### 等价
+
+```
+?- A <--> B        →  apply_backward_step iffI
 ```
 
 ### 重写
 
-| 方法 | 参数 | 说明 |
-|------|------|------|
-| `rewrite_goal` | theorem, [sym] | 用定理重写目标。 |
-| `rewrite_goal_with_prev` | [fact_ids] | 用已有等式事实重写目标。 |
-| `rewrite_fact` | theorem, [fact_ids] | 用定理重写已有事实。 |
-| `rewrite_fact_with_prev` | [fact_ids] | 用一个事实重写另一个。 |
-
-**示例**：目标 `?- x + 0 = x`，用 `add_0_right` 重写：
 ```
-0: rewrite_goal add_0_right
+?- G (用定理 th)    →  rewrite_goal th
+?- G (用事实 @f)    →  rewrite_goal_with_prev @f
+?- G (多步)         →  rewrite_goal th1 / rewrite_goal th2 / ...
 ```
-
-### 等式
-
-| 方法 | 参数 | 说明 |
-|------|------|------|
-| `reflexive` | — | 证明 `t = t`。 |
-| `equal_intr` | — | 证明 `A = B`，拆为 `A-->B` 和 `B-->A`。 |
-| `sym` | — | 翻转等式 `a = b` → `b = a`。 |
-
-### 逻辑
-
-| 方法 | 参数 | 说明 |
-|------|------|------|
-| `cases` | term | 分情况讨论。 |
-| `induction` | theorem, var | 结构归纳。 |
-| `forall_elim` | term | 实例化全称量词。 |
-| `inst_exists_goal` | term | 实例化存在量词目标。 |
-| `insert` | theorem | 插入定理作为新行。 |
 
 ### 自动化
 
-| 方法 | 参数 | 说明 |
-|------|------|------|
-| `simp` | — | 用 `hint_rewrite` 属性的定理简化目标。 |
-| `norm` | — | 归一化（nat/real，根据目标类型自动选择）。 |
-| `eval` | — | 计算（nat/real）。 |
-| `z3` | — | 调用 Z3 求解器。 |
-
-### 逃生口
-
-| 方法 | 参数 | 说明 |
-|------|------|------|
-| `call_tactic` | tactic_name, [params] | 直接调用策略。 |
-| `call_macro` | macro_name | 直接调用宏。 |
-
-## 证明状态
-
-```python
-class ProofState:
-    vars: list[Var]    # 上下文变量
-    prf: Proof         # 证明对象
-    rpt: ProofReport   # 检查报告
+```
+?- G (简化)         →  simp
+?- G (算术)         →  norm 或 linarith 或 eval
+?- G (Z3)           →  z3
 ```
 
-状态操作：
+---
 
-```python
-state = server.parse_init_state(prop)  # 创建初始状态
-state.apply_tactic(id, tactic, ...)    # 应用策略
-state.check_proof()                    # 验证证明
-state.export_proof()                   # 导出证明
-state.json_data()                      # JSON 格式
-```
+## 属性
 
-## 前端交互流程
-
-```
-1. 用户输入命题
-2. parse_init_state 创建初始状态（sorry 作为目标）
-3. 用户选择方法和参数
-4. apply_method 执行方法
-5. 状态更新，显示新子目标
-6. 重复 3-5 直到无 sorry
-7. check_proof 验证
-8. 保存到 .pyhol
-```
-
-## 证明步骤格式
-
-在 `.pyhol` 文件中：
-
-```yaml
-proof
-  0: apply_backward_step iffI
-  0: introduction
-  0.1: apply_backward_step conjD2 @0.0
-  1: introduction
-  1.1: apply_backward_step conjI
-  1.1: apply_backward_step trueI
-qed
-```
-
-格式：`goal_id: method_name [args] [@fact_ids] [param_key=value]`
-
-- `goal_id`：目标的层级 ID（如 `0`, `0.1`, `1.1.0`）
-- `method_name`：方法名
-- `@fact_ids`：引用已有事实（如 `@0.0`, `@1.0,1.1`）
-- `param_key=value`：额外参数（如 `param_A=true`）
-
-## .pyhol 文件格式
-
-```yaml
-theory nat
-imports logic
-description "Natural numbers"
-
-const zero :: nat
-const Suc :: nat ⇒ nat
-
-datatype nat = zero | Suc (n :: nat)
-
-fun plus :: nat ⇒ nat ⇒ nat
-  | 0 + n = n
-  | Suc m + n = Suc (m + n)
-
-theorem add_0_right
-  fixes x :: nat
-  prop x + 0 = x
-  [hint_rewrite]
-  proof
-    0: induction x nat_induct
-    0: rewrite_goal nat_plus_def_1
-    1: introduction m
-    1.2: rewrite_goal nat_plus_def_2
-    1.2: rewrite_goal_with_prev @1.1
-  qed
-```
-
-### 项类型
-
-| 类型 | 关键字 | 说明 |
-|------|--------|------|
-| `def.ax` | `const` | 常量声明 |
-| `def` | `def` | 常量定义 |
-| `def.ind` | `fun` | 归纳定义函数 |
-| `def.pred` | `inductive` | 归纳定义谓词 |
-| `type.ax` | `type` | 类型声明 |
-| `type.ind` | `datatype` | 归纳数据类型 |
-| `thm.ax` | `axiom` | 公理（无证明） |
-| `thm` | `theorem` | 定理（有证明） |
-| `header` | `header` | 章节标题 |
-
-### 属性
-
-| 属性 | 说明 |
+| 属性 | 作用 |
 |------|------|
-| `hint_rewrite` | 可用于 `simp` 自动重写 |
-| `hint_backward` | 可用于向后推理搜索 |
-| `hint_backward1` | 需要至少一个事实的向后推理 |
-| `hint_forward` | 可用于向前推理搜索 |
-| `hint_resolve` | 可用于消解 |
+| `hint_rewrite` | 可用于 `simp` |
+| `hint_backward` | 向后推理搜索 |
+| `hint_backward1` | 需要 ≥1 个事实的向后推理 |
+| `hint_forward` | 向前推理搜索 |
+| `hint_resolve` | 消解搜索 |
 | `var_induct` | 归纳原理 |
