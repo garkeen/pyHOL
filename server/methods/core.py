@@ -1388,9 +1388,15 @@ class fold_method(Method):
 
 @register_method('thin')
 class thin_method(Method):
-    """Delete an assumption from the goal.
-    
-    If goal is A1, ..., An |- C, thin(1) removes A1, giving A2, ..., An |- C.
+    """Weakening: remove an assumption from the goal.
+
+    If goal is A1, ..., An |- C, thin(i) removes Ai, giving
+    A1, ..., A(i-1), A(i+1), ..., An |- C.
+
+    This works because HOL's proof checker accepts a proof of H |- C
+    as also proving H' |- C when H' is a superset of H (hyps subset
+    semantics in can_prove). We create a sorry with fewer hypotheses,
+    then find_goal locates the original proof which can_prove accepts.
     """
     def __init__(self):
         self.sig = ['index']
@@ -1406,15 +1412,22 @@ class thin_method(Method):
         idx = int(data.get('index', 0))
         cur_item = state.get_proof_item(id)
         goal_th = cur_item.th
-        
+
         if idx < 0 or idx >= len(goal_th.hyps):
             raise AssertionError("thin: index %d out of range (0-%d)" % (idx, len(goal_th.hyps) - 1))
-        
-        # Remove the assumption at index idx
+
+        # Build new theorem with the idx-th hypothesis removed.
         new_hyps = list(goal_th.hyps)
-        removed = new_hyps.pop(idx)
-        new_th = Thm(goal_th.prop, tuple(new_hyps))
+        new_hyps.pop(idx)
+        new_th = Thm(goal_th.prop, *new_hyps)
+
+        # Set as sorry, then find an existing proof that can_prove it.
+        # can_prove accepts when the existing proof's hyps are a superset,
+        # so H |- C can prove H\{A} |- C automatically.
         state.set_line(id, 'sorry', th=new_th)
+        proof_id = state.find_goal(new_th, id)
+        if proof_id is not None:
+            state.replace_id(id, proof_id)
 
 
 @register_method('insert')
@@ -1442,9 +1455,11 @@ class insert_method(Method):
 @register_method('drule')
 class drule_method(Method):
     """Forward reasoning: consume a fact to derive a new fact.
-    
-    If fact is A ⟶ B and we have A, derive B (removing the fact).
-    If fact is ∀x. P x, instantiate with a given term.
+
+    Given a theorem name and previous facts, applies the theorem in the
+    forward direction. The first fact (prevs[0]) is CONSUMED: its proof
+    line is replaced with the derived result. Use frule to preserve the
+    original fact.
     """
     def __init__(self):
         self.sig = ['theorem']
@@ -1460,24 +1475,32 @@ class drule_method(Method):
         thm_name = data.get('theorem')
         if not thm_name:
             raise AssertionError("drule: theorem required")
-        
-        # Apply the theorem forward using the facts
+        if not prevs:
+            raise AssertionError("drule: at least one fact required")
+
         thm = theory.thy.get_theorem(thm_name)
         prev_ths = [state.get_proof_item(p).th for p in prevs]
-        
-        # Use apply_theorem_macro for forward reasoning
+
+        # Apply the theorem forward to derive a new fact
         macro_obj = apply_theorem_macro()
         result_th = macro_obj.eval(thm_name, prev_ths)
-        
-        state.add_line_before(id, 1)
-        state.set_line(id, 'apply_theorem', args=thm_name, prevs=prevs, th=result_th)
+
+        # drule consumes the first fact: replace the fact line with the result.
+        # This makes the original fact unavailable for later proof steps.
+        fact_id = prevs[0]
+        state.set_line(fact_id, 'apply_theorem', args=thm_name, prevs=prevs, th=result_th)
+        # Point the goal to reference the new result line
+        state.replace_id(id, fact_id)
 
 
 @register_method('frule')
 class frule_method(Method):
     """Forward reasoning: keep the fact and derive a new fact.
-    
-    Similar to drule but does not consume the original fact.
+
+    Given a theorem name and previous facts, applies the theorem in the
+    forward direction. Unlike drule, the original facts are PRESERVED:
+    a new line is inserted with the derived result, and the goal is
+    updated to reference it.
     """
     def __init__(self):
         self.sig = ['theorem']
@@ -1493,13 +1516,16 @@ class frule_method(Method):
         thm_name = data.get('theorem')
         if not thm_name:
             raise AssertionError("frule: theorem required")
-        
+
         thm = theory.thy.get_theorem(thm_name)
         prev_ths = [state.get_proof_item(p).th for p in prevs]
-        
+
+        # Apply the theorem forward to derive a new fact
         macro_obj = apply_theorem_macro()
         result_th = macro_obj.eval(thm_name, prev_ths)
-        
+
+        # frule preserves facts: insert a new line with the derived result.
+        # The original fact lines remain unchanged and available.
         state.add_line_before(id, 1)
         state.set_line(id, 'apply_theorem', args=thm_name, prevs=prevs, th=result_th)
 
