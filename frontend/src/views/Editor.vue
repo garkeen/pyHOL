@@ -31,7 +31,7 @@
         <div class="ms-auto d-flex align-items-center gap-3">
           <span class="text-light" v-if="filename">{{ filename }}</span>
           <span class="text-light" v-if="saving">Saving...</span>
-          <span class="text-light" v-if="validating">Validating {{ val_progress }}/{{ val_total }}...</span>
+          <span class="text-light" v-if="validating">Validating...</span>
         </div>
       </div>
     </nav>
@@ -203,8 +203,6 @@ const editing = ref(-1)
 const proving = ref(-1)
 const thm_status = ref({})
 const validating = ref(false)
-const val_progress = ref(0)
-const val_total = ref(0)
 
 // Metadata editing
 const meta_imports = ref('')
@@ -518,42 +516,10 @@ const save_proof = async (index, steps) => {
 const validate_all = async () => {
   if (!filename.value) return
   validating.value = true
-  val_progress.value = 0
-  val_total.value = 0
-  thm_status.value = {}
-
   try {
-    const response = await fetch('/api/validate-theory', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: filename.value })
-    })
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6))
-            if (data.done) {
-              toast({ type: 'OK', data: `Validation: ${data.valid} valid, ${data.invalid} invalid` })
-            } else if (data.error) {
-              toast({ type: 'error', data: data.error })
-            } else if (data.name && data.status) {
-              thm_status.value[data.name] = data.status
-              val_progress.value = data.progress
-              val_total.value = data.total
-            }
-          } catch (e) { /* ignore parse errors */ }
-        }
-      }
-    }
+    const resp = await api.post('/validate-theory', { filename: filename.value })
+    thm_status.value = resp.data.statuses
+    toast({ type: 'OK', data: `Validation: ${resp.data.valid} valid, ${resp.data.invalid} invalid` })
   } catch (e) {
     toast({ type: 'error', data: 'Validation failed' })
   } finally {
@@ -562,15 +528,30 @@ const validate_all = async () => {
 }
 
 // ==================== Helpers ====================
-const compute_thm_status = () => {
+const compute_thm_status = async () => {
+  // Try to load cached status from backend
+  try {
+    const resp = await fetch('/api/theory-status')
+    if (resp.ok) {
+      const cached = await resp.json()
+      if (Object.keys(cached).length > 0) {
+        thm_status.value = cached
+        // Fill in missing items
+        for (const item of theory.value.content) {
+          if (!(item.name in thm_status.value)) {
+            thm_status.value[item.name] = item.ty === 'thm.ax' ? 'AXIOM' : 'UNPROVED'
+          }
+        }
+        return
+      }
+    }
+  } catch (e) {}
+
+  // No cache, show defaults
   thm_status.value = {}
   if (!theory.value) return
   for (const item of theory.value.content) {
-    if (item.ty === 'thm') {
-      thm_status.value[item.name] = (item.steps && item.steps.length > 0) ? 'PENDING' : 'UNPROVED'
-    } else if (item.ty === 'thm.ax') {
-      thm_status.value[item.name] = 'AXIOM'
-    }
+    thm_status.value[item.name] = item.ty === 'thm.ax' ? 'AXIOM' : 'UNPROVED'
   }
 }
 

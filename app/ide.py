@@ -465,201 +465,34 @@ def find_link():
         return jsonify({})
 
 
-# ==================== Validation Registry ====================
-
-# In-memory registry: {(theory_name, thm_name): {'status': str, 'gaps': int, 'errors': list}}
-validation_registry = {}
-
-# Reverse dependency map: {(theory_name, thm_name): set of (theory_name, thm_name) that depend on it}
-reverse_dep_map = {}
-
-
-def _get_theorems_to_validate(filename):
-    """Get list of (theory_name, thm_name, vars, prop, steps) for all theorems in a file and its imports."""
-    result = []
-    
-    # Get import order
-    basic.load_metadata()
-    depend_list = basic.get_import_order([filename])
-    
-    for theory_name in depend_list:
-        cache = basic.load_theory_cache(theory_name)
-        for item in cache['content']:
-            if item.ty == 'thm' and item.steps:
-                result.append((theory_name, item.name, dict(item.vars) if item.vars else {}, item.prop, item.steps))
-    
-    return result
-
-
-def _build_reverse_deps(filename):
-    """Build reverse dependency map from steps."""
-    global reverse_dep_map
-    reverse_dep_map = {}
-    
-    basic.load_metadata()
-    depend_list = basic.get_import_order([filename])
-    
-    for theory_name in depend_list:
-        cache = basic.load_theory_cache(theory_name)
-        for item in cache['content']:
-            if item.ty == 'thm' and item.steps:
-                key = (theory_name, item.name)
-                if key not in reverse_dep_map:
-                    reverse_dep_map[key] = set()
-                
-                # Find referenced theorems in steps
-                for step in item.steps:
-                    if 'theorem' in step:
-                        ref_name = step['theorem']
-                        # Find which theory this theorem belongs to
-                        ref_key = _find_theorem_theory(ref_name, theory_name, depend_list)
-                        if ref_key and ref_key != key:
-                            if ref_key not in reverse_dep_map:
-                                reverse_dep_map[ref_key] = set()
-                            reverse_dep_map[ref_key].add(key)
-
-
-def _find_theorem_theory(thm_name, current_theory, depend_list):
-    """Find which theory a theorem belongs to."""
-    # Check current theory first
-    cache = basic.load_theory_cache(current_theory)
-    for item in cache['content']:
-        if item.name == thm_name and item.ty in ('thm', 'thm.ax'):
-            return (current_theory, thm_name)
-    
-    # Check dependencies
-    for theory_name in depend_list:
-        if theory_name == current_theory:
-            continue
-        cache = basic.load_theory_cache(theory_name)
-        for item in cache['content']:
-            if item.name == thm_name and item.ty in ('thm', 'thm.ax'):
-                return (theory_name, thm_name)
-    
-    return None
-
+# ==================== Validation ====================
 
 @app.route('/api/validate-theory', methods=['POST'])
 def validate_theory():
-    """Validate all theorems in a theory file using SSE.
-    
+    """Validate all theorems in a theory file.
+
     Input:
     * filename: name of the theory file.
 
     Returns:
-    * SSE stream with validation results for each theorem.
+    * statuses: dict of {name: status}.
+    * valid: number of valid theorems.
+    * invalid: number of invalid theorems.
+    * total: total number of theorems.
 
     """
     data = json.loads(request.get_data().decode("utf-8"))
-    filename = data['filename']
-
-    def generate():
-        try:
-            with theory.fresh_theory():
-                theorems = _get_theorems_to_validate(filename)
-                _build_reverse_deps(filename)
-            
-            total = len(theorems)
-            valid = 0
-            invalid = 0
-            
-            for i, (theory_name, thm_name, vars, prop, steps) in enumerate(theorems):
-                key = (theory_name, thm_name)
-                
-                # Check if already validated
-                if key in validation_registry:
-                    result = validation_registry[key]
-                    if result['status'] == 'VALID':
-                        valid += 1
-                    else:
-                        invalid += 1
-                    yield f"data: {json.dumps({'name': thm_name, 'status': result['status'], 'gaps': result['gaps'], 'progress': i+1, 'total': total})}\n\n"
-                    continue
-                
-                # Check dependencies first
-                dep_failed = False
-                for step in steps:
-                    if 'theorem' in step:
-                        ref_key = _find_theorem_theory(step['theorem'], theory_name, [d[0] for d in theorems])
-                        if ref_key and ref_key in validation_registry:
-                            if validation_registry[ref_key]['status'] != 'VALID':
-                                dep_failed = True
-                                failed_dep = ref_key[1]
-                                break
-                
-                if dep_failed:
-                    result = {'status': 'DEP_FAILED', 'gaps': 0, 'errors': [], 'failed_dep': failed_dep}
-                    validation_registry[key] = result
-                    invalid += 1
-                    yield f"data: {json.dumps({'name': thm_name, 'status': 'DEP_FAILED', 'failed_dep': failed_dep, 'progress': i+1, 'total': total})}\n\n"
-                    continue
-                
-                # Validate by replaying steps
-                try:
-                    with theory.fresh_theory():
-                        context.set_context(theory_name, limit=('thm', thm_name), vars=vars)
-                        state = server.parse_init_state(prop)
-                        for step in steps:
-                            state.parse_steps([step])
-                        state.check_proof(compute_only=True)
-                        gaps = len(state.rpt.gaps)
-                        
-                        if gaps == 0:
-                            result = {'status': 'VALID', 'gaps': 0, 'errors': []}
-                            valid += 1
-                        else:
-                            result = {'status': 'STEP_FAILED', 'gaps': gaps, 'errors': []}
-                            invalid += 1
-                        
-                        validation_registry[key] = result
-                        yield f"data: {json.dumps({'name': thm_name, 'status': result['status'], 'gaps': result['gaps'], 'progress': i+1, 'total': total})}\n\n"
-                except Exception as e:
-                    result = {'status': 'STEP_FAILED', 'gaps': 0, 'errors': [str(e)]}
-                    validation_registry[key] = result
-                    invalid += 1
-                    yield f"data: {json.dumps({'name': thm_name, 'status': 'STEP_FAILED', 'errors': [str(e)[:100]], 'progress': i+1, 'total': total})}\n\n"
-            
-            yield f"data: {json.dumps({'done': True, 'valid': valid, 'invalid': invalid, 'total': total})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
-
-    return app.response_class(
-        generate(),
-        mimetype='text/event-stream',
-        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
-    )
+    statuses = monitor.validate_theory(data['filename'])
+    valid = sum(1 for s in statuses.values() if s == 'VALID')
+    return jsonify({
+        'statuses': statuses,
+        'valid': valid,
+        'invalid': len(statuses) - valid,
+        'total': len(statuses)
+    })
 
 
-@app.route('/api/invalidate', methods=['POST'])
-def invalidate():
-    """Invalidate validation results for a theorem and its dependents.
-    
-    Input:
-    * theory_name: name of the theory.
-    * name: name of the theorem.
-
-    """
-    data = json.loads(request.get_data().decode("utf-8"))
-    theory_name = data['theory_name']
-    thm_name = data['name']
-    
-    key = (theory_name, thm_name)
-    
-    # Invalidate self
-    validation_registry.pop(key, None)
-    
-    # Invalidate all dependents (recursively)
-    to_invalidate = [key]
-    visited = set()
-    while to_invalidate:
-        current = to_invalidate.pop()
-        if current in visited:
-            continue
-        visited.add(current)
-        
-        if current in reverse_dep_map:
-            for dep_key in reverse_dep_map[current]:
-                validation_registry.pop(dep_key, None)
-                to_invalidate.append(dep_key)
-    
-    return jsonify({})
+@app.route('/api/theory-status', methods=['GET'])
+def theory_status():
+    """Return current proof statuses for all theorems."""
+    return jsonify(theory.get_all_statuses())

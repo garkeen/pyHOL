@@ -233,6 +233,18 @@ class Theory:
         data = self.get_data("overload")
         return name in data
 
+    def get_status(self, name):
+        """Get the proof status of a theorem."""
+        return self.data['thm_status'].get(name)
+
+    def set_status(self, name, status):
+        """Set the proof status of a theorem."""
+        self.data['thm_status'][name] = status
+
+    def get_all_statuses(self):
+        """Return a copy of all theorem statuses."""
+        return dict(self.data['thm_status'])
+
     def get_overload_const_name(self, name, T):
         """Obtain the full name of the overloaded constant.
         
@@ -524,6 +536,7 @@ def EmptyTheory():
     thy.add_data_type("theorems_svar")  # cache of version of theorem with SVar.
     thy.add_data_type("attributes")
     thy.add_data_type("overload")
+    thy.add_data_type("thm_status")
 
     # Fundamental types.
     thy.add_type_sig("bool", 0)
@@ -561,6 +574,9 @@ def print_theorem(*args):
 
 def check_proof(prf, rpt=None, *, no_gaps=False, compute_only=False, check_level=0):
     return thy.check_proof(prf, rpt, no_gaps=no_gaps, compute_only=compute_only, check_level=check_level)
+
+def get_all_statuses():
+    return thy.get_all_statuses()
 
 
 """Global store of macros. Keys are names of the macros,

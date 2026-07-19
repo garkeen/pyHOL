@@ -5,6 +5,7 @@
 import traceback
 import json
 import copy
+import os
 import time
 from pstats import Stats
 import cProfile
@@ -150,6 +151,75 @@ def check_theory(filename, rewrite=False):
         'data': res,
         'stat': stat
     }
+
+
+def validate_theory(filename):
+    """Validate all theorems in a theory file.
+
+    Uses .json cache: if the .pyhol file has not changed, returns cached
+    statuses without re-validating. Otherwise re-validates all theorems
+    and writes new cache.
+
+    Returns dict of {theorem_name: status} where status is one of
+    'VALID', 'STEP_FAILED', 'DEP_FAILED', 'AXIOM', 'UNPROVED'.
+    """
+    # File unchanged, return cached results
+    if basic.is_cache_valid(filename):
+        basic.load_theory(filename)
+        return theory.get_all_statuses()
+
+    # File changed, re-validate everything
+    basic.load_theory(filename)
+    content = basic.theory_cache[filename]['content']
+    statuses = {}
+
+    for item in content:
+        name = item.name
+
+        if item.ty == 'thm.ax':
+            statuses[name] = 'AXIOM'
+            theory.thy.set_status(name, 'AXIOM')
+            continue
+
+        if item.ty != 'thm':
+            continue
+
+        if not item.steps:
+            statuses[name] = 'UNPROVED'
+            theory.thy.set_status(name, 'UNPROVED')
+            continue
+
+        # Check if any dependency has failed
+        dep_failed = False
+        for step in item.steps:
+            if 'theorem' in step and step['theorem']:
+                if statuses.get(step['theorem']) in ('STEP_FAILED', 'DEP_FAILED'):
+                    dep_failed = True
+                    break
+
+        if dep_failed:
+            statuses[name] = 'DEP_FAILED'
+            theory.thy.set_status(name, 'DEP_FAILED')
+            continue
+
+        # Replay the proof
+        try:
+            with theory.fresh_theory():
+                context.set_context(filename, limit=('thm', name),
+                                    vars=dict(item.vars) if item.vars else {})
+                state = server.parse_init_state(item.prop)
+                for step in item.steps:
+                    state.parse_steps([step])
+                state.check_proof(compute_only=True)
+                gaps = len(state.rpt.gaps)
+            statuses[name] = 'VALID' if gaps == 0 else 'STEP_FAILED'
+        except Exception:
+            statuses[name] = 'STEP_FAILED'
+
+        theory.thy.set_status(name, statuses[name])
+
+    basic.save_status(filename, statuses)
+    return statuses
 
 
 if __name__ == "__main__":

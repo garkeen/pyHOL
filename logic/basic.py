@@ -44,6 +44,37 @@ def user_file(filename):
     """Return pyhol file for the user and given filename."""
     return os.path.join(dirname, '../library/' + filename + '.pyhol')
 
+def status_cache_file(filename):
+    """Return status cache file path for the given theory name."""
+    return os.path.join(dirname, '../library/' + filename + '.json')
+
+def load_status(filename):
+    """Load proof status from .json cache into thy.thm_status."""
+    path = status_cache_file(filename)
+    if not os.path.exists(path):
+        return
+    with open(path, encoding='utf-8') as f:
+        data = json.load(f)
+    for name, status in data.get('theorems', {}).items():
+        theory.thy.set_status(name, status)
+
+def save_status(filename, status_dict):
+    """Save proof status to .json cache."""
+    path = status_cache_file(filename)
+    source_mtime = os.path.getmtime(user_file(filename))
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump({'meta': {'theory': filename, 'source_mtime': source_mtime},
+                   'theorems': status_dict}, f, indent=2, ensure_ascii=False)
+
+def is_cache_valid(filename):
+    """Check if the .json cache is up-to-date with the .pyhol source."""
+    path = status_cache_file(filename)
+    if not os.path.exists(path):
+        return False
+    with open(path, encoding='utf-8') as f:
+        data = json.load(f)
+    return data.get('meta', {}).get('source_mtime') == os.path.getmtime(user_file(filename))
+
 def load_pyhol_data(filename):
     """Load pyhol data for the given theory name."""
     with open(user_file(filename), encoding='utf-8') as f:
@@ -242,5 +273,11 @@ def load_theory(filename: str, *, limit=None):
 
     if limit and not found_limit:
         raise TheoryException("load_theory: limit %s not found" % str(limit))
+
+    # Load cached proof status
+    load_status(filename)
+    for item in cache['content']:
+        if item.ty == 'thm' and theory.thy.get_status(item.name) is None:
+            theory.thy.set_status(item.name, 'UNPROVED')
 
     return None
