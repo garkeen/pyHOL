@@ -270,12 +270,12 @@ def get_ast_term(t):
 
     # Import modules for custom parsed data
     from logic import logic
-    from data import nat
+    from util import nat
     from data import list
-    from data import set
+    from util import set
     from util import function
     from data import interval
-    from data import string
+    from util import string
 
     def get_priority_pair(t):
         """Obtain the binding priority of the top-most operation of t."""

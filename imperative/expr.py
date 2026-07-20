@@ -3,7 +3,7 @@
 from kernel.type import TFun, IntType
 from kernel import term
 from kernel.term import Var, Eq, Not, true, false, Int
-from data.list import ListType, nth, length
+from util.list import ListType, nth, length
 from logic import logic
 from util import typecheck
 

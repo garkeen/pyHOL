@@ -10,9 +10,9 @@ from kernel.macro import Macro
 from kernel.theory import register_macro
 from logic.conv import Conv, ConvException, then_conv, binop_conv, arg_conv, arg1_conv, rewr_conv
 from logic.logic import apply_theorem
-from data import nat
+from util import nat
 from data import real
-from data import set as hol_set
+from util import set as hol_set
 from logic import auto
 from integral import expr
 from integral.interval import Interval

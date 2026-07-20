@@ -7,7 +7,7 @@ from kernel.term import Term, Var, Eq, Nat
 from kernel.thm import Thm
 from kernel import theory
 from logic import basic
-from data import nat
+from util import nat
 from data import expr
 from data import function
 from data.expr import N, V, Plus, Times

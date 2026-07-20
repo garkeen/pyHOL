@@ -20,8 +20,8 @@ from kernel.proofterm import ProofTerm
 from kernel import theory
 from logic import logic
 from logic import conv
-from data import nat
-from data import set as hol_set
+from util import nat
+from util import set as hol_set
 from syntax import pprint, settings
 from prover import fologic
 from util import name

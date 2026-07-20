@@ -5,8 +5,8 @@ import unittest
 from kernel.term import Term, Var
 from kernel.thm import Thm
 from data import real
-from data.set import setT
-from data.integral import within, atreal
+from util.set import setT
+from util.integral import within, atreal
 from integral import proof
 from logic import auto
 from logic import context

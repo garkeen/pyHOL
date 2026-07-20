@@ -445,5 +445,5 @@ class nat_eq_conv(Conv):
         if a == b:
             return refl(a).on_prop(rewr_conv("eq_true"))
         else:
-            from data.nat import nat_const_ineq
+            from util.nat import nat_const_ineq
             return nat_const_ineq(a, b).on_prop(rewr_conv("eq_false"))

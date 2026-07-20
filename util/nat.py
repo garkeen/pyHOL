@@ -1,6 +1,4 @@
-# data/nat.py - Nat utility functions and constants
-# Macro classes moved to logic/macros/nat.py
-# Conv classes moved to logic/conv/nat.py
+# util/nat.py - Natural number utility functions
 
 from kernel.type import TFun, BoolType, NatType
 from kernel import term
@@ -11,28 +9,6 @@ from kernel.proofterm import ProofTerm
 from logic.logic import apply_theorem
 from util import poly
 
-
-# Basic definitions
-
-zero = term.nat_zero
-one = term.nat_one
-plus = term.plus(NatType)
-minus = term.minus(NatType)
-times = term.times(NatType)
-equals = term.equals(NatType)
-less_eq = term.less_eq(NatType)
-less = term.less(NatType)
-greater_eq = term.greater_eq(NatType)
-greater = term.greater(NatType)
-
-Suc = Const("Suc", TFun(NatType, NatType))
-Pre = Const("Pre", TFun(NatType, NatType))
-
-even = Const("even", TFun(NatType, BoolType))
-odd = Const("odd", TFun(NatType, BoolType))
-
-
-# Arithmetic on binary numbers
 
 def convert_to_poly(t):
     """Convert natural number expression to polynomial."""
@@ -125,8 +101,3 @@ def nat_less_eq(t1, t2):
 
 def nat_less(t1, t2):
     return ProofTerm("nat_const_less", t1 < t2)
-
-
-# Re-export for backward compatibility
-from logic.conv.nat import Suc_conv, add_conv, mult_conv, nat_conv, norm_full, nat_eq_conv
-from logic.macros.nat import nat_eval_macro, nat_norm_macro, nat_const_ineq_macro

@@ -15,7 +15,7 @@ from logic import logic
 from logic import basic
 from logic import matcher
 from logic.tests.conv_test import test_conv
-from data import nat
+from util import nat
 from syntax import parser
 from logic import context
 

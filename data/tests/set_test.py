@@ -5,7 +5,7 @@ import unittest
 from kernel.type import TVar
 from kernel.term import Var
 from logic import basic
-from data import set
+from util import set
 
 basic.load_theory('set')
 

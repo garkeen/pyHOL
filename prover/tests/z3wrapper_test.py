@@ -4,7 +4,7 @@ import unittest
 
 from kernel.type import TFun
 from kernel.thm import Thm
-from data import nat
+from util import nat
 from logic import basic
 from logic.tests.logic_test import test_macro
 from syntax import parser

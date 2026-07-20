@@ -13,7 +13,7 @@ from kernel.thm import Thm
 from logic import basic
 from logic import matcher, context
 from kernel.proofterm import ProofTerm
-from data import nat
+from util import nat
 from fractions import Fraction
 from syntax.parser import parse_term
 

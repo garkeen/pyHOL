@@ -6,9 +6,9 @@ from kernel.type import NatType
 from kernel.term import Eq, Nat
 from kernel.thm import Thm
 from kernel import theory
-from data import nat
+from util import nat
 from data import interval
-from data import set
+from util import set
 from logic import basic
 
 

@@ -14,8 +14,8 @@ from kernel.theory import register_macro
 from kernel.macro import Macro
 from kernel.proofterm import TacticException
 from kernel import term_ord
-from data import nat, integer
-from data.set import setT
+from util import nat, integer
+from util.set import setT
 from logic import basic
 from logic import logic
 from logic import auto

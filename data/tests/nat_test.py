@@ -5,8 +5,8 @@ import unittest
 from kernel.term import Term, Binary, Nat, true, false
 from kernel.thm import Thm
 from kernel.proof import ItemID
-from data import nat
-from data.nat import Suc, Pre
+from util import nat
+from util.nat import Suc, Pre
 from logic import basic
 from logic import logic
 from logic.tests.logic_test import test_macro

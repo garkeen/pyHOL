@@ -10,8 +10,8 @@ from kernel.theory import TheoryException
 from kernel import theory
 from logic import basic
 from logic import logic
-from data import nat
-from data import set
+from util import nat
+from util import set
 
 
 class BasicTest(unittest.TestCase):

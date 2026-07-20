@@ -2,7 +2,7 @@
 
 from kernel.type import TFun, TConst, NatType
 from kernel.term import Term, Const, Binary
-from data.list import ListType, mk_literal_list, is_literal_list, dest_literal_list
+from util.list import ListType, mk_literal_list, is_literal_list, dest_literal_list
 
 """Utility functions for characters and strings."""
 

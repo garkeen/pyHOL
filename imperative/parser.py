@@ -9,7 +9,7 @@ from kernel.report import ProofReport
 from kernel import theory
 from logic import basic
 from logic import logic
-from data import nat
+from util import nat
 from util.function import mk_const_fun, mk_fun_upd
 from imperative import imp
 from kernel.proofterm import ProofTerm

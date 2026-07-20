@@ -7,7 +7,7 @@ from kernel.term import Var, Eq, Nat
 from kernel.thm import Thm
 from kernel import theory
 from logic import basic
-from data import nat
+from util import nat
 from data import function
 from data.function import mk_fun_upd, strip_fun_upd
 

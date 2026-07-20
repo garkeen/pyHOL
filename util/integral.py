@@ -2,7 +2,7 @@
 
 from kernel.type import TConst, TFun, RealType
 from kernel.term import Const
-from data import set
+from util import set
 
 
 def netT(T):

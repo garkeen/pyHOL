@@ -8,11 +8,11 @@ from kernel.term import SVar, Var, Const, Comb, Abs, Bound, Term, And, Or, Impli
 from kernel.thm import Thm
 from logic import basic
 from logic import logic
-from data import nat
+from util import nat
 from data import real
-from data import list
-from data import set
-from data import string
+from util import list
+from util import set
+from util import string
 from data import function
 from data import interval
 from syntax import printer

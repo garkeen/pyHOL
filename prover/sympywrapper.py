@@ -15,9 +15,9 @@ from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
 from kernel.proofterm import ProofTerm, TacticException
-from data import nat
+from util import nat
 from data import real
-from data import set as hol_set
+from util import set as hol_set
 from logic import auto
 from logic import logic
 import integral

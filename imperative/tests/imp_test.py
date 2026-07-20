@@ -7,7 +7,7 @@ from kernel.term import Term, Var, Not, Eq, Lambda, true, Nat
 from kernel.thm import Thm
 from kernel import theory
 from kernel.report import ProofReport
-from data import nat
+from util import nat
 from imperative import imp
 from logic import logic
 from logic import context

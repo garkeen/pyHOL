@@ -23,7 +23,7 @@ class numseg_conv(Conv):
     
     """
     def get_proof_term(self, t):
-        from data import nat
+        from util import nat
         assert is_interval(t), "numseg_conv"
         mt, nt = t.args
         m, n = mt.dest_number(), nt.dest_number()
