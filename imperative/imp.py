@@ -6,7 +6,9 @@ from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
 from util import nat
+from logic.conv import nat as nat_conv
 from util import function
+from logic.conv import function as function_conv
 from logic import logic
 from logic.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_conv, binop_conv, \
     every_conv, rewr_conv, assums_conv, beta_norm
@@ -48,12 +50,12 @@ def Entail(T):
     return Const("Entail", TFun(TFun(T, BoolType), TFun(T, BoolType), BoolType))
 
 # Normalize evaluation of function as well as arithmetic.
-norm_cv = then_conv(top_conv(function.fun_upd_eval_conv()), nat.norm_full())
+norm_cv = then_conv(top_conv(function_conv.fun_upd_eval_conv()), nat_conv.norm_full())
 
 # Normalize a condition.
 norm_cond_cv = every_conv(
     norm_cv,
-    top_conv(nat.nat_eq_conv()),
+    top_conv(nat_conv.nat_eq_conv()),
     logic.norm_bool_expr()
 )
 
@@ -219,7 +221,7 @@ def vcg_norm(T, goal):
     return pt.on_prop(
         assums_conv(rewr_conv("Entail_def")),
         assums_conv(beta_norm_conv()),
-        assums_conv(top_conv(function.fun_upd_eval_conv())))
+        assums_conv(top_conv(function_conv.fun_upd_eval_conv())))
 
 
 @register_macro('vcg')

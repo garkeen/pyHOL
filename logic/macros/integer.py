@@ -1,7 +1,7 @@
 # logic/macros/integer.py - Integer Macro classes
-# Re-exports from data.integer
+# Imports from logic.conv.integer (moved from data.integer)
 
-from data.integer import (
+from logic.conv.integer import (
     int_eval_macro,
     int_eq_macro,
     int_ineq_macro,

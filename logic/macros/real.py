@@ -1,7 +1,7 @@
 # logic/macros/real.py - Real Macro classes
-# Re-exports from data.real
+# Imports from logic.conv.real (moved from data.real)
 
-from data.real import (
+from logic.conv.real import (
     real_eval_macro,
     real_norm_macro,
     RealEqMacro,

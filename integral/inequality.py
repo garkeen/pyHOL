@@ -11,7 +11,7 @@ from kernel.theory import register_macro
 from logic.conv import Conv, ConvException, then_conv, binop_conv, arg_conv, arg1_conv, rewr_conv
 from logic.logic import apply_theorem
 from util import nat
-from data import real
+from logic.conv import real
 from util import set as hol_set
 from logic import auto
 from integral import expr

@@ -1,7 +1,7 @@
 from kernel.type import RealType, TFun
 from kernel import term
 from logic import conv
-from data import real
+from logic.conv import real
 from util import set as hol_set
 from integral import expr
 from integral.expr import Expr

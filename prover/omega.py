@@ -14,7 +14,7 @@ from math import gcd, ceil, floor
 from kernel import term
 from kernel import term_ord
 from kernel import proofterm
-from data import integer
+from logic.conv import integer
 from logic import logic, basic
 from logic import conv
 

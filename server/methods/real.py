@@ -1,6 +1,6 @@
 # server/methods/real.py - Real Method classes
-# Re-exports from data.real
+# Imports from logic.conv.real (moved from data.real)
 
-from data.real import (
+from logic.conv.real import (
     real_norm_method,
 )

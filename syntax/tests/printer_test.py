@@ -9,7 +9,7 @@ from kernel.thm import Thm
 from logic import basic
 from logic import logic
 from util import nat
-from data import real
+from logic.conv import real
 from util import list
 from util import set
 from util import string
