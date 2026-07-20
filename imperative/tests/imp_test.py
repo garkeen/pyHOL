@@ -11,7 +11,7 @@ from data import nat
 from imperative import imp
 from logic import logic
 from logic import context
-from data.function import mk_const_fun, mk_fun_upd
+from util.function import mk_const_fun, mk_fun_upd
 from logic import basic
 from syntax import parser
 

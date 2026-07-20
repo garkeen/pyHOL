@@ -7,7 +7,7 @@ from kernel import term
 from kernel.term import Term, Const, Eq, Binary
 from logic import basic
 from logic import logic
-from data import function
+from util import function
 
 thy = basic.load_theory("gcl")
 

@@ -502,17 +502,3 @@ theorem allE
     2: apply_prev @1
     2: apply_prev @0
   qed
-
-theorem ABBBB
-  fixes A :: bool
-  prop A ⟶ A
-  proof
-    1: apply_prev @0
-  qed
-
-theorem ACCCC
-  fixes A :: bool, B :: bool
-  prop (A ⟶ B) ⟶ A ⟶ B
-  proof
-    2: apply_prev @0,1
-  qed

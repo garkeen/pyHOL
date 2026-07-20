@@ -9,7 +9,7 @@ from logic import logic
 from logic.logic import apply_theorem
 from logic.tactic import MacroTactic
 from data import nat
-from data import function
+from util import function
 from logic.conv import arg_conv
 from kernel.proofterm import ProofTerm
 from server.methods.core import Method, register_method

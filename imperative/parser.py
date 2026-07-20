@@ -10,7 +10,7 @@ from kernel import theory
 from logic import basic
 from logic import logic
 from data import nat
-from data.function import mk_const_fun, mk_fun_upd
+from util.function import mk_const_fun, mk_fun_upd
 from imperative import imp
 from kernel.proofterm import ProofTerm
 from syntax import json_output

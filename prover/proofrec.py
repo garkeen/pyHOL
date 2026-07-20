@@ -7,7 +7,7 @@ by Sascha Böhme and Tjark Weber.
 import z3
 from z3.z3consts import *
 from data import integer
-from data import proplogic
+from logic.conv import proplogic
 from data.real import norm_neg_real_ineq_conv, real_const_eq_conv, real_eval_conv, real_norm_comparison
 from kernel.type import TFun, BoolType, NatType, IntType, RealType, STVar, TVar
 from kernel.term import *

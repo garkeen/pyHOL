@@ -6,7 +6,7 @@ from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
 from data import nat
-from data import function
+from util import function
 from logic import logic
 from logic.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_conv, binop_conv, \
     every_conv, rewr_conv, assums_conv, beta_norm

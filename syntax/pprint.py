@@ -273,7 +273,7 @@ def get_ast_term(t):
     from data import nat
     from data import list
     from data import set
-    from data import function
+    from util import function
     from data import interval
     from data import string
 
