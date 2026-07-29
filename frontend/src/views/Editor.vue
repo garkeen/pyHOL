@@ -73,6 +73,10 @@
                 <input class="meta-input" v-model="meta_imports" placeholder="one per line"/>
               </div>
               <div class="meta-row">
+                <label class="meta-label">domains</label>
+                <input class="meta-input" v-model="meta_domains" placeholder="comma-separated (e.g. nat, real)"/>
+              </div>
+              <div class="meta-row">
                 <label class="meta-label">description</label>
                 <input class="meta-input" v-model="meta_description"/>
               </div>
@@ -207,6 +211,7 @@ const validating = ref(false)
 
 // Metadata editing
 const meta_imports = ref('')
+const meta_domains = ref('')
 const meta_description = ref('')
 
 // Proof context (right panel)
@@ -248,6 +253,7 @@ const open_file = async (name) => {
     res.data.content.forEach(item => { item._from_disk = true })
     theory.value = res.data
     meta_imports.value = (res.data.imports || []).join('\n')
+    meta_domains.value = (res.data.domains || []).join(', ')
     meta_description.value = res.data.description || ''
     compute_thm_status()
   } catch (e) {
@@ -266,6 +272,7 @@ const reload_file = async () => {
     res.data.content.forEach(item => { item._from_disk = true })
     theory.value = res.data
     meta_imports.value = (res.data.imports || []).join('\n')
+    meta_domains.value = (res.data.domains || []).join(', ')
     meta_description.value = res.data.description || ''
     compute_thm_status()
   } catch (e) {
@@ -282,7 +289,7 @@ const create_file = async () => {
   try {
     await api.post('/save-file', {
       filename: name,
-      content: { name, imports: [], description: '', content: [] }
+      content: { name, imports: [], domains: [], description: '', content: [] }
     })
     await load_files()
     await open_file(name)
@@ -329,6 +336,7 @@ const persist = async () => {
       content: {
         name: theory.value.name,
         imports: theory.value.imports || [],
+        domains: theory.value.domains || [],
         description: theory.value.description || '',
         content
       }
@@ -346,6 +354,7 @@ const persist = async () => {
 const save_metadata = async () => {
   if (!theory.value) return
   theory.value.imports = meta_imports.value.split('\n').map(s => s.trim()).filter(Boolean)
+  theory.value.domains = meta_domains.value.split(',').map(s => s.trim()).filter(Boolean)
   theory.value.description = meta_description.value
   const ok = await persist()
   if (ok) {

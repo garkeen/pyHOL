@@ -7,20 +7,24 @@ from server.methods.core import (
     apply_method, output_step, output_hint
 )
 
-# Import domain-specific methods to register them
-try:
-    import server.methods.nat
-except Exception:
-    pass
-try:
-    import server.methods.real
-except Exception:
-    pass
+# Import domain packages to register their methods.
+# Domains live in the top-level domains/ package. Importing them triggers
+# @register_method / @register_macro decorators.
+# basic.py also re-imports them when a .pyhol declares `domains <name>`,
+# but importing here ensures methods are registered even before any
+# theory is loaded (e.g. for IDE method listing).
+# Decorators are idempotent, so double-registration is a no-op.
+
+for _domain in ('nat', 'real', 'function', 'expr'):
+    try:
+        __import__(f'domains.{_domain}')
+    except Exception as e:
+        import sys
+        print(f"Warning: failed to load domain '{_domain}': {e}", file=sys.stderr)
+
+# z3 method is not a domain - it's a generic oracle wrapper.
 try:
     import server.methods.z3
-except Exception:
-    pass
-try:
-    import server.methods.expr
-except Exception:
-    pass
+except Exception as e:
+    import sys
+    print(f"Warning: failed to load server.methods.z3: {e}", file=sys.stderr)

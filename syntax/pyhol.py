@@ -50,6 +50,8 @@ def export_pyhol(data):
         lines.append('imports %s' % ', '.join(data['imports']))
     else:
         lines.append('imports')
+    if data.get('domains'):
+        lines.append('domains %s' % ', '.join(data['domains']))
     if data.get('description'):
         lines.append('description "%s"' % data['description'])
     lines.append('')
@@ -441,6 +443,7 @@ def parse_pyhol(text):
     result = {
         'name': '',
         'imports': [],
+        'domains': [],
         'description': '',
         'content': []
     }
@@ -448,7 +451,7 @@ def parse_pyhol(text):
     i = 0
     n = len(lines)
 
-    # Parse header (theory, imports, description)
+    # Parse header (theory, imports, domains, description)
     while i < n:
         line = lines[i].rstrip()
         if not line or line.startswith('--'):
@@ -465,6 +468,15 @@ def parse_pyhol(text):
                 imports_str = line[8:].strip()
                 if imports_str:
                     result['imports'] = [s.strip() for s in imports_str.split(',')]
+            i += 1
+        elif line == 'domains' or line.startswith('domains '):
+            # Domain declarations: which Python domain packages to load.
+            if line == 'domains':
+                result['domains'] = []
+            else:
+                domains_str = line[8:].strip()
+                if domains_str:
+                    result['domains'] = [s.strip() for s in domains_str.split(',')]
             i += 1
         elif line.startswith('description '):
             desc = line[12:].strip()

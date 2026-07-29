@@ -1,5 +1,6 @@
 theory nat
 imports logic
+domains nat
 description "Natural numbers"
 
 header "Basic definitions"

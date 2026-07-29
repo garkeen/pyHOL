@@ -1,5 +1,6 @@
 theory int
 imports list
+domains integer
 description "integers"
 
 type int

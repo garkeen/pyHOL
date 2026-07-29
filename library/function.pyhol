@@ -1,5 +1,6 @@
 theory function
 imports nat
+domains function
 description "Functions"
 
 header "Function update"

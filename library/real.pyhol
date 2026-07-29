@@ -1,5 +1,6 @@
 theory real
 imports rat
+domains real
 description "real numbers"
 
 type real

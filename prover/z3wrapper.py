@@ -20,7 +20,7 @@ from kernel.proofterm import ProofTerm
 from kernel import theory
 from logic import logic
 from logic import conv
-from util import nat
+from domains.nat import util_nat as nat
 from util import set as hol_set
 from syntax import pprint, settings
 from prover import fologic

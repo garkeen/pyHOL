@@ -6,7 +6,7 @@ from kernel.type import TFun, BoolType, NatType
 from kernel.term import Var, Term, Eq, true, false, Binary
 from logic import basic
 from logic import logic
-from util import nat
+from domains.nat import util_nat as nat
 from data import function
 from paraverifier import gcl
 from paraverifier.gcl import Para, Ident, NatV, BoolV

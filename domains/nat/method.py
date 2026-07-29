@@ -1,9 +1,9 @@
-# server/methods/nat.py - Nat Method classes
-# Extracted from data/nat.py
+# domains/nat/method.py - Nat-specific Method classes
+# Migrated from server/methods/nat.py
 
 from server.methods.core import Method, register_method
 from logic.tactic import MacroTactic
-from logic.macros.nat import nat_norm_macro, nat_const_ineq_macro
+from domains.nat.macro import nat_norm_macro, nat_const_ineq_macro
 from syntax import pprint
 
 

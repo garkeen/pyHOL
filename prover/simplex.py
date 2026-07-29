@@ -17,7 +17,7 @@ from kernel.theory import register_macro, Thm, get_theorem
 from kernel.macro import Macro
 from logic.logic import apply_theorem
 from logic import basic, matcher
-from logic.conv import real, integer
+from domains.real import conv as real, integer
 from logic.conv import Conv, ConvException, rewr_conv, top_conv, arg_conv, arg1_conv, bottom_conv
 from collections import namedtuple
 from collections import deque

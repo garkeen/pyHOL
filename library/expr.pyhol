@@ -1,5 +1,6 @@
 theory expr
 imports function
+domains expr
 description "Expressions"
 
 header "Arithmetic expressions"

@@ -289,29 +289,53 @@ class apply_prev(Tactic):
             return ProofTerm('apply_fact_for', args=inst_arg, prevs=prevs + new_goals)
 
 class cases(Tactic):
-    """Case checking on an expression."""
+    """Case checking on an expression.
+
+    Uses the classical_cases theorem by default. Pass a different theorem
+    name via the 'cases_thm' key in args (as a tuple) to override.
+    """
     def get_proof_term(self, goal, *, args=None, prevs=None):
-        assert isinstance(args, Term), "cases"
+        # args can be either a Term (the case expression) or a tuple
+        # (case_expr, cases_thm_name) where cases_thm_name defaults to
+        # 'classical_cases'.
+        if isinstance(args, tuple):
+            case_expr, cases_thm = args
+        else:
+            assert isinstance(args, Term), "cases"
+            case_expr = args
+            cases_thm = 'classical_cases'
 
         As = goal.hyps
         C = goal.prop
-        goal1 = ProofTerm.sorry(Thm(Implies(args, C), goal.hyps))
-        goal2 = ProofTerm.sorry(Thm(Implies(Not(args), C), goal.hyps))
-        return apply_theorem('classical_cases', goal1, goal2)
+        goal1 = ProofTerm.sorry(Thm(Implies(case_expr, C), goal.hyps))
+        goal2 = ProofTerm.sorry(Thm(Implies(Not(case_expr), C), goal.hyps))
+        return apply_theorem(cases_thm, goal1, goal2)
 
 class inst_exists_goal(Tactic):
-    """Instantiate an exists goal."""
+    """Instantiate an exists goal.
+
+    Uses the exI theorem by default. Pass a different theorem name via
+    the 'exists_intro_thm' key in args (as a tuple) to override.
+    """
     def get_proof_term(self, goal, *, args=None, prevs=None):
-        assert isinstance(args, Term), "inst_exists_goal"
+        # args can be either a Term (the witness) or a tuple
+        # (witness, exists_intro_thm_name) where exists_intro_thm_name
+        # defaults to 'exI'.
+        if isinstance(args, tuple):
+            witness, exists_intro_thm = args
+        else:
+            assert isinstance(args, Term), "inst_exists_goal"
+            witness = args
+            exists_intro_thm = 'exI'
 
         C = goal.prop
         assert C.is_exists(), "inst_exists_goal: goal is not exists statement"
-        argT = args.get_type()
+        argT = witness.get_type()
         assert C.arg.var_T == argT, "inst_exists_goal: incorrect type: expect %s, given %s" % (
             str(C.arg.var_T), str(argT)
         )
 
-        return rule().get_proof_term(goal, args=('exI', Inst(P=C.arg, a=args)))
+        return rule().get_proof_term(goal, args=(exists_intro_thm, Inst(P=C.arg, a=witness)))
 
 
 class intro_imp_tac(Tactic):

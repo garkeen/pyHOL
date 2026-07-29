@@ -17,8 +17,8 @@ from logic import logic
 from logic import context
 from util import set
 from util import nat
-from logic.conv import real
-from logic.conv.real import pi
+from domains.real import conv as real
+from domains.real.conv import pi
 from util.integral import netT
 from integral.expr import Location
 from integral.convert import expr_to_holpy, evalat, real_derivative, real_integral

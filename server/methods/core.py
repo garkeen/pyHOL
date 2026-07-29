@@ -294,7 +294,9 @@ def get_method_sig():
 
 def register_method(name):
     def decorator(method_cls):
-        assert name not in global_methods, 'register_method: %s already exists' % name
+        # Idempotent: skip if already registered (supports reloading theories).
+        if name in global_methods:
+            return method_cls
         global_methods[name] = method_cls()
         return method_cls
     return decorator

@@ -607,7 +607,9 @@ def get_macro(name: str):  # return Macro
 
 def register_macro(name: str):
     def decorator(macro_cls):
-        assert name not in global_macros, 'register_macro: %s already exists' % name
+        # Idempotent: skip if already registered (supports reloading theories).
+        if name in global_macros:
+            return macro_cls
         global_macros[name] = macro_cls()
         return macro_cls
     return decorator

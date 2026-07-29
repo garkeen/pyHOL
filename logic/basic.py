@@ -2,6 +2,7 @@
 import io
 import os
 import json
+import importlib
 
 from kernel import term
 from kernel.term import Var
@@ -92,6 +93,7 @@ def load_metadata():
             timestamp = os.path.getmtime(user_file(filename))
             theory_cache[filename] = {
                 'imports': data['imports'],
+                'domains': data.get('domains', []),
                 'description': data['description']
             }
 
@@ -170,15 +172,32 @@ def load_theory_cache(filename):
         return cache
 
     # Load all required macros and methods for this file.
+    # Core macros are always loaded.
     from logic.macros import core  # Always load core macros
-    if filename == 'logic':
-        from logic.macros import z3
-    if filename == 'expr':
-        from logic.macros import expr
-    if filename == 'real':
-        from logic.macros import real
-    if filename == 'hoare':
-        from imperative import imp
+
+    # Load domain packages declared in the .pyhol header.
+    # This replaces the old hardcoded if-chain:
+    #   if filename == 'logic': from logic.macros import z3
+    #   if filename == 'expr': from logic.macros import expr
+    #   ...
+    # Domain packages live in domains/<name>/ and register their
+    # conv/macro/method via decorators on import.
+    data = load_pyhol_data(filename)
+    for domain_name in data.get('domains', []):
+        try:
+            importlib.import_module('domains.' + domain_name)
+        except ImportError as e:
+            import sys
+            print(f"Warning: failed to load domain '{domain_name}': {e}", file=sys.stderr)
+
+    # Legacy fallback: if the .pyhol has no 'domains' header, load
+    # domain code via the old if-chain. Theories that have been migrated
+    # to declare `domains <name>` use the new path above and skip this.
+    if not data.get('domains'):
+        if filename == 'logic':
+            from logic.macros import z3
+        if filename == 'hoare':
+            from imperative import imp
 
     # Load all imported theories
     depend_list = get_import_order(cache['imports'])

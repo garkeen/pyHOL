@@ -129,7 +129,14 @@ def beta_norm(t: Term) -> Term:
     return beta_norm_conv().eval(t).prop.arg
 
 class eta_conv(Conv):
-    """Eta-conversion."""
+    """Eta-conversion.
+
+    Uses the 'eta_conversion' theorem by default. Pass a different theorem
+    name via the constructor to override.
+    """
+    def __init__(self, thm_name='eta_conversion'):
+        self.thm_name = thm_name
+
     def get_proof_term(self, t: Term) -> ProofTerm:
         if not t.is_abs():
             raise ConvException("eta_conv")
@@ -139,7 +146,7 @@ class eta_conv(Conv):
         if not (body.is_comb() and body.arg == v and not body.fun.occurs_var(v)):
             raise ConvException("eta_conv")
 
-        return ProofTerm.theorem('eta_conversion').substitution(f=body.fun)
+        return ProofTerm.theorem(self.thm_name).substitution(f=body.fun)
 
 class abs_conv(Conv):
     """Applies conversion to the body of abstraction."""

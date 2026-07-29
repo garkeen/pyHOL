@@ -4,7 +4,7 @@ import unittest
 
 from kernel.term import Term, Var
 from kernel.thm import Thm
-from logic.conv import real
+from domains.real import conv as real
 from util.set import setT
 from util.integral import within, atreal
 from integral import proof

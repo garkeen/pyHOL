@@ -131,6 +131,7 @@ def load_json_file():
     f_data = {
         'name': filename,
         'imports': cache['imports'],
+        'domains': cache.get('domains', []),
         'description': cache['description'],
         'content': []
     }
