@@ -7,8 +7,8 @@ from kernel import term as hol_term
 from kernel import type as hol_type
 from collections.abc import Iterable
 from smt.veriT.verit_macro import VeriTException
-from data import real
-from data import integer
+from domains.real import conv as real
+from domains.integer import conv as integer
 from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro

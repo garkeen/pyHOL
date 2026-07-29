@@ -13,8 +13,8 @@ from domains.real import conv as real
 from util import list
 from util import set
 from util import string
-from data import function
-from data import interval
+from util import function
+from logic.conv import interval
 from syntax import printer
 from syntax.settings import settings, global_setting
 

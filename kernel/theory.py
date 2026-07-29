@@ -576,6 +576,8 @@ def check_proof(prf, rpt=None, *, no_gaps=False, compute_only=False, check_level
     return thy.check_proof(prf, rpt, no_gaps=no_gaps, compute_only=compute_only, check_level=check_level)
 
 def get_all_statuses():
+    if thy is None:
+        return {}
     return thy.get_all_statuses()
 
 

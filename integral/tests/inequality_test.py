@@ -6,7 +6,7 @@ from kernel.type import RealType
 from kernel import term
 from kernel.proofterm import ProofTerm
 from logic import context
-from data import set as hol_set
+from util import set as hol_set
 from util import nat
 from integral.parser import parse_expr, parse_interval
 from integral import inequality

@@ -271,10 +271,10 @@ def get_ast_term(t):
     # Import modules for custom parsed data
     from logic import logic
     from domains.nat import util_nat as nat
-    from data import list
+    from util import list
     from util import set
     from util import function
-    from data import interval
+    from logic.conv import interval
     from util import string
 
     def get_priority_pair(t):

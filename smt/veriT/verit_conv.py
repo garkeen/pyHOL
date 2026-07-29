@@ -2,8 +2,9 @@
 
 from logic.conv import Conv, rewr_conv, ConvException, \
     arg1_conv, arg_conv, binop_conv, top_conv, beta_conv, abs_conv, try_conv, replace_conv, beta_norm_conv
-from data import integer, real
-from data import list as hol_list
+from domains.integer import conv as integer
+from domains.real import conv as real
+from util import list as hol_list
 from kernel.term_ord import fast_compare
 from kernel import term as hol_term
 from kernel.type import BoolType

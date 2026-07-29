@@ -4,7 +4,7 @@ from smt.veriT.command import Assume, Step, Anchor
 from logic import logic
 from kernel import term as hol_term
 from kernel import type as hol_type
-from data import list as hol_list
+from util import list as hol_list
 from fractions import Fraction
 
 PREMISES, ARGS, DISCHARGE = range(3)

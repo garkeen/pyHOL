@@ -17,8 +17,9 @@ from kernel.term import Lambda, Term, Not, And, Or, Eq, Implies, false, true, \
 from logic import logic
 from logic.conv import try_conv, rewr_conv, arg_conv,\
          top_conv, arg1_conv, replace_conv, abs_conv, Conv, bottom_conv, beta_conv, binop_conv
-from data import integer, real
-from data import list as hol_list
+from domains.integer import conv as integer
+from domains.real import conv as real
+from util import list as hol_list
 from kernel import term_ord
 from smt.veriT import verit_conv
 

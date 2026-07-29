@@ -196,7 +196,7 @@ class HOLTransformer(Transformer):
             return Const("of_nat", None)(Binary(int(n)))
 
     def literal_list(self, *args):
-        from data import list
+        from util import list
         return list.mk_literal_list(args, None)
 
     def char(self, c):
@@ -364,7 +364,7 @@ class HOLTransformer(Transformer):
         return Const("comp_fun", None)(f, g)
 
     def nat_interval(self, m, n):
-        from data import interval
+        from logic.conv import interval
         return interval.mk_interval(m, n)
 
     def thm(self, *args):
