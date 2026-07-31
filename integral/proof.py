@@ -16,7 +16,7 @@ from logic import auto
 from logic import logic
 from logic import context
 from util import set
-from util import nat
+from domains.nat import util_nat as nat
 from domains.real import conv as real
 from domains.real.conv import pi
 from util.integral import netT

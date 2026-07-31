@@ -6,7 +6,8 @@ from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
 from logic.logic import apply_theorem
-from util import nat, function
+from domains.nat import util_nat as nat
+from util import function
 from util.expr import N, V, Plus, Times, avalI
 from kernel.proofterm import ProofTerm
 

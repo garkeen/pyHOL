@@ -176,10 +176,6 @@ def load_theory_cache(filename):
     from logic.macros import core  # Always load core macros
 
     # Load domain packages declared in the .pyhol header.
-    # This replaces the old hardcoded if-chain:
-    #   if filename == 'logic': from logic.macros import z3
-    #   if filename == 'expr': from logic.macros import expr
-    #   ...
     # Domain packages live in domains/<name>/ and register their
     # conv/macro/method via decorators on import.
     data = load_pyhol_data(filename)

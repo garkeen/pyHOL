@@ -7,7 +7,7 @@ from kernel import term
 from kernel.proofterm import ProofTerm
 from logic import context
 from util import set as hol_set
-from util import nat
+from domains.nat import util_nat as nat
 from integral.parser import parse_expr, parse_interval
 from integral import inequality
 from integral.convert import expr_to_holpy

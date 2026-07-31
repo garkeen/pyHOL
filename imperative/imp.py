@@ -5,10 +5,10 @@ from kernel.term import Term, Var, Const, Lambda, Inst, true
 from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
-from util import nat
-from logic.conv import nat as nat_conv
+from domains.nat import util_nat as nat
+from domains.nat import conv as nat_conv
 from util import function
-from logic.conv import function as function_conv
+from domains.function import conv as function_conv
 from logic import logic
 from logic.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_conv, binop_conv, \
     every_conv, rewr_conv, assums_conv, beta_norm

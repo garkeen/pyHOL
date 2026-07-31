@@ -14,7 +14,7 @@ class fun_upd_eval_conv(Conv):
     """Evaluate the function (f)(a1 := b1, a2 := b2, ...) on an input."""
 
     def get_proof_term(self, t):
-        from util import nat
+        from domains.nat import util_nat as nat
         if not t.is_comb():
             return refl(t)
 
@@ -39,7 +39,7 @@ class fun_upd_norm_one_conv(Conv):
 
     """
     def get_proof_term(self, t):
-        from util import nat
+        from domains.nat import util_nat as nat
         pt = refl(t)
         if is_fun_upd(t) and is_fun_upd(t.args[0]):
             f, a, b = t.args

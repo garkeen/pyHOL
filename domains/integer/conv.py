@@ -11,7 +11,7 @@ from logic import basic
 from logic import context
 from logic.logic import apply_theorem, is_if
 from logic.conv import Conv, rewr_conv, arg_conv, arg1_conv, binop_conv, top_conv, ConvException, try_conv
-from util import nat
+from domains.nat import util_nat as nat
 from kernel.thm import Thm
 from syntax.settings import settings
 from math import gcd
