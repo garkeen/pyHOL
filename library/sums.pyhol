@@ -3024,3 +3024,11 @@ theorem sum_combine_l
   qed
 
 def polynomial_function :: (real ⇒ real) ⇒ bool = polynomial_function p ⟷ (∃m. ∃c. ∀x. p x = sum ({0..m}) (λi. c i * x ^ i))
+
+
+header "Triangle inequality for sums"
+
+axiom sub_abs
+  fixes s :: 'a set, f :: 'a ⇒ real
+  prop finite s ⟶ abs (sum s f) ≤ sum s (λx. abs (f x))
+  [hint_backward]

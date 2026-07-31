@@ -2126,3 +2126,51 @@ theorem iterate_reflect
     2.11: introduction x,y
     2.11.5: z3 @2.11.2,2.11.3,2.11.4
   qed
+
+
+header "Missing monoidal/neutral definitions and numseg clauses"
+
+axiom monoidal_def
+  fixes op :: 'a ⇒ 'a ⇒ 'a
+  prop monoidal op ⟷ (∀x. ∀y. op x y = op y x) ∧ (∀x. ∀y. ∀z. op x (op y z) = op (op x y) z) ∧ (∀x. op (neutral op) x = x)
+  [hint_rewrite]
+
+axiom neutral_def
+  fixes op :: 'a ⇒ 'a ⇒ 'a
+  prop neutral op = (THE x. ∀y. op x y = y ∧ op y x = y)
+  [hint_rewrite]
+
+axiom finite_natseg_le
+  fixes n :: nat
+  prop finite {x. x ≤ n}
+  [hint_backward]
+
+axiom finite_natseg_lt
+  fixes n :: nat
+  prop finite {x. x < n}
+  [hint_backward]
+
+axiom member_numseg
+  fixes x :: nat, m :: nat, n :: nat
+  prop x ∈ {m..n} ⟷ m ≤ x ∧ x ≤ n
+  [hint_rewrite]
+
+axiom natseg_clauses_le_1
+  fixes k :: nat
+  prop {i. i ≤ 0} = {0}
+  [hint_rewrite]
+
+axiom natseg_clauses_le_2
+  fixes k :: nat
+  prop {i. i ≤ Suc k} = insert (Suc k) {i. i ≤ k}
+  [hint_rewrite]
+
+axiom natseg_clauses_lt_1
+  fixes k :: nat
+  prop {i. i < 0} = ∅
+  [hint_rewrite]
+
+axiom natseg_clauses_lt_2
+  fixes k :: nat
+  prop {i. i < Suc k} = insert k {i. i < k}
+  [hint_rewrite]

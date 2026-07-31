@@ -314,3 +314,74 @@ axiom infinite_nonempty
 axiom infinite_diff_finite
   fixes A :: 'a set, B :: 'a set
   prop infinite A ⟶ finite B ⟶ infinite (diff A B)
+
+
+header "Composition, from, and missing definitions"
+
+axiom comp_fun_def
+  fixes f :: 'a ⇒ 'b, g :: 'b ⇒ 'c
+  prop comp_fun f g = (λx. g (f x))
+  [hint_rewrite]
+
+axiom from_def
+  fixes n :: nat
+  prop from n = {m. n ≤ m}
+  [hint_rewrite]
+
+header "Finite set induction and recursion"
+
+axiom finite_induct_strong
+  fixes P :: 'a set ⇒ bool
+  prop P ∅ ⟶ (∀x. ∀s. P s ⟶ ¬(x ∈ s) ⟶ finite s ⟶ P (insert x s)) ⟶ (∀s. finite s ⟶ P s)
+
+axiom finite_recursion
+  fixes f :: 'b ⇒ 'a ⇒ 'a, b :: 'a
+  prop (∀x. ∀y. ∀s. ¬(x = y) ⟶ f x (f y s) = f y (f x s)) ⟶ itset f ∅ b = b ∧ (∀x. ∀s. finite s ⟶ itset f (insert x s) b = (if x ∈ s then itset f s b else f x (itset f s b)))
+
+axiom finite_restrict
+  fixes s :: 'a set, P :: 'a ⇒ bool
+  prop finite s ⟶ finite {x. x ∈ s ∧ P x}
+  [hint_backward]
+
+axiom finite_image_inj_eq
+  fixes f :: 'a ⇒ 'b, s :: 'a set
+  prop (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y) ⟶ (finite (image f s) ⟷ finite s)
+  [hint_rewrite]
+
+header "Natural numbers as sets"
+
+axiom nat_finite
+  fixes s :: nat set
+  prop finite s ⟷ (∃a. ∀x. x ∈ s ⟶ x ≤ a)
+  [hint_rewrite]
+
+axiom nat_infinite
+  fixes A :: nat set
+  prop infinite (univ::nat set)
+
+axiom nat_infinite_eq
+  fixes s :: nat set
+  prop infinite s ⟷ (∀a. ∃x. x ∈ s ∧ a < x)
+  [hint_rewrite]
+
+header "Set comprehension quantifiers"
+
+axiom exists_in_gspec1
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
+  prop (∃x. x ∈ {y. P y} ∧ Q x) ⟷ (∃x. P x ∧ Q x)
+  [hint_rewrite]
+
+axiom forall_in_gspec1
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
+  prop (∀x. x ∈ {y. P y} ⟶ Q x) ⟷ (∀x. P x ⟶ Q x)
+  [hint_rewrite]
+
+header "Cardinality and surjectivity"
+
+axiom card_image_inj
+  fixes f :: 'a ⇒ 'b, s :: 'a set
+  prop finite s ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y) ⟶ card (image f s) = card s
+
+axiom surjective_iff_injective
+  fixes s :: 'a set, f :: 'a ⇒ 'a
+  prop finite s ⟶ image f s ⊆ s ⟶ ((∀y. y ∈ s ⟶ (∃x. x ∈ s ∧ f x = y)) ⟷ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y))
