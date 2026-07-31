@@ -223,10 +223,18 @@ axiom union_comm
   prop A ∪ B = B ∪ A
   [hint_rewrite]
 
-axiom union_empty
+theorem union_empty
   fixes A :: 'a set
   prop A ∪ ∅ = A
   [hint_rewrite]
+  proof
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal member_union_iff sym=false
+    0: rewrite_goal member_empty_simp sym=false
+    0: rewrite_goal disj_false_right sym=false
+    0: introduction x
+    0.1: reflexive
+  qed
 
 header "Finite sets"
 
