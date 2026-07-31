@@ -15,7 +15,6 @@ from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
 from kernel.proofterm import ProofTerm, TacticException
-from domains.nat import util_nat as nat
 from domains.real import conv as real
 from util import set as hol_set
 from logic import auto

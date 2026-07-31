@@ -128,6 +128,3 @@ users/*
 smt/veriT/tests/smtlib_path.txt
 library/*.json
 
-# WorkBuddy working memory (not project code)
-.workbuddy/
-

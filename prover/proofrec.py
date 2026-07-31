@@ -18,7 +18,8 @@ from kernel.theory import check_proof, register_macro
 from kernel import theory
 from kernel.report import ProofReport
 from logic import basic, context, matcher
-from logic.logic import apply_theorem, imp_disj_iff, disj_norm, imp_conj_macro, resolution
+from logic.logic import apply_theorem, imp_disj_iff, disj_norm, resolution
+from logic.macros.core import imp_conj_macro
 from logic.tactic import rewrite_goal_with_prev
 from logic.conv import rewr_conv, try_conv, top_conv, top_sweep_conv, bottom_conv, arg_conv, ConvException, Conv, arg1_conv, binop_conv, replace_conv
 from logic import auto

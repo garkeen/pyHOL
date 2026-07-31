@@ -8,7 +8,10 @@ from kernel.term import SVar, Var, Const, Comb, Abs, Bound, Term, And, Or, Impli
 from kernel.thm import Thm
 from logic import basic
 from logic import logic
-from domains.nat import util_nat as nat
+from domains.nat import conv as nat
+from kernel.term import less, less_eq
+nat.less = less(NatType)
+nat.less_eq = less_eq(NatType)
 from domains.real import conv as real
 from util import list
 from util import set

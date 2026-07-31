@@ -10,7 +10,7 @@ from kernel.theory import TheoryException
 from kernel import theory
 from logic import basic
 from logic import logic
-from domains.nat import util_nat as nat
+from domains.nat import conv as nat
 from util import set
 
 

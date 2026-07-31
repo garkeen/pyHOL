@@ -8,9 +8,10 @@ from kernel.thm import Thm
 from kernel import theory
 from kernel.theory import register_macro
 from kernel.macro import Macro
-from kernel.proofterm import ProofTerm
+from kernel.proofterm import ProofTerm, refl
 from logic import auto
 from logic.logic import apply_theorem
+from logic.conv import arg_conv, binop_conv, rewr_conv
 from domains.nat.conv import (
     Suc, plus, minus, times, zero, one,
     is_bit0, is_bit1,
