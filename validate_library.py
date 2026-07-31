@@ -7,6 +7,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 
 def main():
+    # --force: ignore .json proof-status cache, re-validate every theory
+    # from its .pyhol source.  Use this after editing definitions or axioms
+    # that other theories depend on, so downstream theories are re-validated
+    # instead of returning stale cached results.
+    force = '--force' in sys.argv
+
     from logic import basic
     from server.monitor import validate_theory
 
@@ -28,7 +34,7 @@ def main():
         print("\n=== %s ===" % filename)
         sys.stdout.flush()
 
-        statuses = validate_theory(filename)
+        statuses = validate_theory(filename, force=force)
         for name, status in statuses.items():
             if status == 'VALID':
                 total_ok += 1
