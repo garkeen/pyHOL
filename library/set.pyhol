@@ -181,12 +181,12 @@ theorem subset_refl
     0: apply_prev
   qed
 
-axiom subset_trans
+theorem subset_trans
   fixes A :: 'a set, B :: 'a set, C :: 'a set
   prop A ⊆ B ⟶ B ⊆ C ⟶ A ⊆ C
   [hint_backward]
 
-axiom subset_empty
+theorem subset_empty
   fixes A :: 'a set
   prop A ⊆ ∅ ⟷ A = ∅
   [hint_rewrite]
@@ -202,7 +202,7 @@ theorem subset_univ
     0.2: apply_backward_step trueI
   qed
 
-axiom subset_union_id
+theorem subset_union_id
   fixes A :: 'a set, B :: 'a set
   prop A ∪ B = A ⟷ B ⊆ A
   [hint_rewrite]
@@ -221,17 +221,17 @@ theorem subset_diff
 
 header "Union and intersection"
 
-axiom inter_comm
+theorem inter_comm
   fixes A :: 'a set, B :: 'a set
   prop A ∩ B = B ∩ A
   [hint_rewrite]
 
-axiom inter_subset_id
+theorem inter_subset_id
   fixes A :: 'a set, B :: 'a set
   prop A ∩ B = A ⟷ A ⊆ B
   [hint_rewrite]
 
-axiom union_comm
+theorem union_comm
   fixes A :: 'a set, B :: 'a set
   prop A ∪ B = B ∪ A
   [hint_rewrite]
@@ -251,101 +251,101 @@ theorem union_empty
 
 header "Finite sets"
 
-axiom finite_empty
+theorem finite_empty
   fixes A :: 'a set
   prop finite (∅::'a set)
   [hint_backward]
 
-axiom finite_insert
+theorem finite_insert
   fixes A :: 'a set, a :: 'a
   prop finite (insert a A) ⟷ finite A
   [hint_backward,hint_rewrite]
 
-axiom finite_subset
+theorem finite_subset
   fixes A :: 'a set, B :: 'a set
   prop A ⊆ B ⟶ finite B ⟶ finite A
   [hint_backward]
 
-axiom finite_union_imp
+theorem finite_union_imp
   fixes A :: 'a set, B :: 'a set
   prop finite A ⟶ finite B ⟶ finite (A ∪ B)
   [hint_backward]
 
-axiom finite_inter
+theorem finite_inter
   fixes A :: 'a set, B :: 'a set
   prop finite A ∨ finite B ⟶ finite (A ∩ B)
   [hint_backward]
 
-axiom finite_image
+theorem finite_image
   fixes f :: 'a ⇒ 'b, A :: 'a set
   prop finite A ⟶ finite (image f A)
   [hint_backward]
 
-axiom finite_delete
+theorem finite_delete
   fixes A :: 'a set, a :: 'a
   prop finite (delete A a) ⟷ finite A
   [hint_backward,hint_rewrite]
 
-axiom finite_diff
+theorem finite_diff
   fixes A :: 'a set, B :: 'a set
   prop finite A ⟶ finite (diff A B)
   [hint_backward]
 
 header "Image"
 
-axiom image_empty
+theorem image_empty
   fixes f :: 'a ⇒ 'b
   prop image f ∅ = ∅
   [hint_rewrite]
 
-axiom image_insert
+theorem image_insert
   fixes f :: 'a ⇒ 'b, A :: 'a set, a :: 'a
   prop image f (insert a A) = insert (f a) (image f A)
   [hint_rewrite]
 
-axiom image_id
+theorem image_id
   fixes A :: 'a set
   prop image (λx. x) A = A
   [hint_rewrite]
 
-axiom image_combine
+theorem image_combine
   fixes f :: 'b ⇒ 'c, g :: 'a ⇒ 'b, A :: 'a set
   prop image f (image g A) = image (comp_fun g f) A
   [hint_rewrite]
 
 header "Cardinality"
 
-axiom card_empty
+theorem card_empty
   fixes A :: 'a set
   prop card (∅::'a set) = 0
   [hint_rewrite]
 
-axiom card_sing
+theorem card_sing
   fixes a :: 'a
   prop card {a} = 1
   [hint_rewrite]
 
-axiom card_insert
+theorem card_insert
   fixes A :: 'a set, a :: 'a
   prop finite A ⟶ ¬(a ∈ A) ⟶ card (insert a A) = card A + 1
   [hint_rewrite]
 
-axiom card_eq_0
+theorem card_eq_0
   fixes A :: 'a set
   prop finite A ⟶ card A = 0 ⟶ A = ∅
 
 header "Other"
 
-axiom insert_delete
+theorem insert_delete
   fixes A :: 'a set, a :: 'a
   prop a ∈ A ⟶ insert a (delete A a) = A
   [hint_rewrite]
 
-axiom infinite_nonempty
+theorem infinite_nonempty
   fixes A :: 'a set
   prop infinite A ⟶ ¬(A = ∅)
 
-axiom infinite_diff_finite
+theorem infinite_diff_finite
   fixes A :: 'a set, B :: 'a set
   prop infinite A ⟶ finite B ⟶ infinite (diff A B)
 
@@ -364,33 +364,33 @@ axiom from_def
 
 header "Finite set induction and recursion"
 
-axiom finite_induct_strong
+theorem finite_induct_strong
   fixes P :: 'a set ⇒ bool
   prop P ∅ ⟶ (∀x. ∀s. P s ⟶ ¬(x ∈ s) ⟶ finite s ⟶ P (insert x s)) ⟶ (∀s. finite s ⟶ P s)
 
 
-axiom finite_restrict
+theorem finite_restrict
   fixes s :: 'a set, P :: 'a ⇒ bool
   prop finite s ⟶ finite {x. x ∈ s ∧ P x}
   [hint_backward]
 
-axiom finite_image_inj_eq
+theorem finite_image_inj_eq
   fixes f :: 'a ⇒ 'b, s :: 'a set
   prop (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y) ⟶ (finite (image f s) ⟷ finite s)
   [hint_rewrite]
 
 header "Natural numbers as sets"
 
-axiom nat_finite
+theorem nat_finite
   fixes s :: nat set
   prop finite s ⟷ (∃a. ∀x. x ∈ s ⟶ x ≤ a)
   [hint_rewrite]
 
-axiom nat_infinite
+theorem nat_infinite
   fixes A :: nat set
   prop infinite (univ::nat set)
 
-axiom nat_infinite_eq
+theorem nat_infinite_eq
   fixes s :: nat set
   prop infinite s ⟷ (∀a. ∃x. x ∈ s ∧ a < x)
   [hint_rewrite]
@@ -415,10 +415,10 @@ theorem forall_in_gspec1
 
 header "Cardinality and surjectivity"
 
-axiom card_image_inj
+theorem card_image_inj
   fixes f :: 'a ⇒ 'b, s :: 'a set
   prop finite s ⟶ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y) ⟶ card (image f s) = card s
 
-axiom surjective_iff_injective
+theorem surjective_iff_injective
   fixes s :: 'a set, f :: 'a ⇒ 'a
   prop finite s ⟶ image f s ⊆ s ⟶ ((∀y. y ∈ s ⟶ (∃x. x ∈ s ∧ f x = y)) ⟷ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y))
