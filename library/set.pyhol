@@ -225,6 +225,24 @@ theorem inter_comm
   fixes A :: 'a set, B :: 'a set
   prop A ∩ B = B ∩ A
   [hint_rewrite]
+  proof
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal member_inter_iff sym=false
+    0: introduction x
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step conjI
+    0.1.1: apply_forward_step conjD2 @0.1.0
+    0.1.1: apply_prev
+    0.1.2: apply_forward_step conjD1 @0.1.0
+    0.1.2: apply_prev
+    0.2: introduction
+    0.2.1: apply_backward_step conjI
+    0.2.1: apply_forward_step conjD2 @0.2.0
+    0.2.1: apply_prev
+    0.2.2: apply_forward_step conjD1 @0.2.0
+    0.2.2: apply_prev
+  qed
 
 theorem inter_subset_id
   fixes A :: 'a set, B :: 'a set
@@ -235,6 +253,28 @@ theorem union_comm
   fixes A :: 'a set, B :: 'a set
   prop A ∪ B = B ∪ A
   [hint_rewrite]
+  proof
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal member_union_iff sym=false
+    0: introduction x
+    0.1: apply_backward_step iffI
+    0.1: introduction
+    0.1.1: apply_backward_step disjE @0.1.0
+    0.1.1: introduction
+    0.1.1.1: apply_backward_step disjI2
+    0.1.1.1: apply_prev
+    0.1.2: introduction
+    0.1.2.1: apply_backward_step disjI1
+    0.1.2.1: apply_prev
+    0.2: introduction
+    0.2.1: apply_backward_step disjE @0.2.0
+    0.2.1: introduction
+    0.2.1.1: apply_backward_step disjI2
+    0.2.1.1: apply_prev
+    0.2.2: introduction
+    0.2.2.1: apply_backward_step disjI1
+    0.2.2.1: apply_prev
+  qed
 
 theorem union_empty
   fixes A :: 'a set
