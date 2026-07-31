@@ -66,15 +66,23 @@ axiom subset_def
   prop A ⊆ B ⟷ (∀x. x ∈ A ⟶ x ∈ B)
   [hint_rewrite]
 
-axiom member_empty
+theorem member_empty
   fixes x :: 'a
   prop x ∈ ∅ ⟷ false
   [hint_rewrite]
+  proof
+    0: rewrite_goal member_empty_simp sym=false
+  qed
 
-axiom member_singleton
+theorem member_singleton
   fixes x :: 'a, a :: 'a
   prop x ∈ {a} ⟷ x = a
   [hint_rewrite]
+  proof
+    0: rewrite_goal member_insert sym=false
+    0: rewrite_goal member_empty_simp sym=false
+    0: rewrite_goal disj_false_right sym=false
+  qed
 
 axiom member_univ
   fixes x :: 'a
@@ -163,10 +171,15 @@ axiom member_ext
 
 header "Subset"
 
-axiom subset_refl
+theorem subset_refl
   fixes A :: 'a set
   prop A ⊆ A
   [hint_rewrite]
+  proof
+    0: rewrite_goal subset_def sym=false
+    0: introduction x
+    0: apply_prev
+  qed
 
 axiom subset_trans
   fixes A :: 'a set, B :: 'a set, C :: 'a set
