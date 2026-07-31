@@ -397,15 +397,21 @@ axiom nat_infinite_eq
 
 header "Set comprehension quantifiers"
 
-axiom exists_in_gspec1
+theorem exists_in_gspec1
   fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
   prop (∃x. x ∈ {y. P y} ∧ Q x) ⟷ (∃x. P x ∧ Q x)
   [hint_rewrite]
+  proof
+    0: rewrite_goal member_collect sym=false
+  qed
 
-axiom forall_in_gspec1
+theorem forall_in_gspec1
   fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
   prop (∀x. x ∈ {y. P y} ⟶ Q x) ⟷ (∀x. P x ⟶ Q x)
   [hint_rewrite]
+  proof
+    0: rewrite_goal member_collect sym=false
+  qed
 
 header "Cardinality and surjectivity"
 
