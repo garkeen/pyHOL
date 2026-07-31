@@ -75,7 +75,7 @@ def eval_Sem(c, st):
         pt1 = eval_Sem(c1, st)
         pt2 = eval_Sem(c2, pt1.prop.arg)
         pt = apply_theorem("Sem_seq", pt1, pt2)
-        return pt.on_arg(function.fun_upd_norm_one_conv())
+        return pt.on_arg(function_conv.fun_upd_norm_one_conv())
     elif c.is_comb("Cond", 3):
         b, c1, c2 = c.args
         b_st = beta_norm(b(st))
@@ -98,7 +98,7 @@ def eval_Sem(c, st):
             pt2 = eval_Sem(c, pt1.prop.arg)
             pt = apply_theorem("Sem_while_loop", b_res, pt1, pt2,
                                concl=Sem(T)(c, st, pt2.prop.arg), inst=Inst(s3=pt1.prop.arg))
-            return pt.on_arg(function.fun_upd_norm_one_conv())
+            return pt.on_arg(function_conv.fun_upd_norm_one_conv())
         else:
             b_res = b_eval.on_prop(rewr_conv("eq_false", sym=True))
             return apply_theorem("Sem_while_skip", b_res, concl=Sem(T)(c, st, st))

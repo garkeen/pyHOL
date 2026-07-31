@@ -7,7 +7,7 @@ from kernel.macro import Macro
 from kernel.theory import register_macro
 from logic.logic import apply_theorem
 from domains.nat import util_nat as nat
-from util import function
+from domains.function.conv import fun_upd_eval_conv
 from util.expr import N, V, Plus, Times, avalI
 from kernel.proofterm import ProofTerm
 
@@ -32,7 +32,7 @@ class prove_avalI_macro(Macro):
             elif t.head == V:
                 x, = t.args
                 pt = apply_theorem("avalI_var", concl=avalI(s, V(x), s(x)))
-                return pt.on_arg(function.fun_upd_eval_conv())
+                return pt.on_arg(fun_upd_eval_conv())
             elif t.head == Plus:
                 a1, a2 = t.args
                 pt = apply_theorem("avalI_plus", helper(a1), helper(a2))
@@ -53,7 +53,7 @@ class prove_avalI_macro(Macro):
                 return t.args[0].dest_number()
             elif t.head == V:
                 x, = t.args
-                res = function.fun_upd_eval_conv().eval(s(x)).prop.rhs
+                res = fun_upd_eval_conv().eval(s(x)).prop.rhs
                 assert res.is_number(), "get_avalI"
                 return res.dest_number()
             elif t.head == Plus:

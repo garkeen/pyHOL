@@ -9,6 +9,11 @@ from kernel import theory
 from kernel.proofterm import ProofTerm
 from logic.logic import apply_theorem
 from util import poly
+from domains.nat.conv import (
+    zero, one, plus, minus, times, Suc,
+    equals, less_eq, less, greater_eq, greater, even, odd,
+    nat_conv,
+)
 
 
 def convert_to_poly(t):

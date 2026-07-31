@@ -19,6 +19,13 @@ plus = term.plus(NatType)
 minus = term.minus(NatType)
 times = term.times(NatType)
 Suc = Const("Suc", TFun(NatType, NatType))
+equals = term.equals(NatType)
+less_eq = term.less_eq(NatType)
+less = term.less(NatType)
+greater_eq = term.greater_eq(NatType)
+greater = term.greater(NatType)
+even = Const("even", TFun(NatType, BoolType))
+odd = Const("odd", TFun(NatType, BoolType))
 
 
 def is_bit0(t):
