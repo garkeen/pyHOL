@@ -57,3 +57,260 @@ axiom member_insert
   fixes x :: 'a, y :: 'a, A :: 'a set
   prop x ∈ insert y A ⟷ x = y ∨ x ∈ A
   [hint_rewrite]
+
+
+header "Membership and definitions"
+
+axiom subset_def
+  fixes A :: 'a set, B :: 'a set
+  prop A ⊆ B ⟷ (∀x. x ∈ A ⟶ x ∈ B)
+  [hint_rewrite]
+
+axiom member_empty
+  fixes x :: 'a
+  prop x ∈ ∅ ⟷ false
+  [hint_rewrite]
+
+axiom member_singleton
+  fixes x :: 'a, a :: 'a
+  prop x ∈ {a} ⟷ x = a
+  [hint_rewrite]
+
+axiom member_univ
+  fixes x :: 'a
+  prop x ∈ univ ⟷ true
+  [hint_rewrite]
+
+axiom member_inter_iff
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop x ∈ A ∩ B ⟷ x ∈ A ∧ x ∈ B
+  [hint_rewrite]
+
+axiom inter_def
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop x ∈ A ∩ B ⟷ x ∈ A ∧ x ∈ B
+  [hint_rewrite]
+
+axiom member_union_iff
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop x ∈ A ∪ B ⟷ x ∈ A ∨ x ∈ B
+  [hint_rewrite]
+
+axiom member_diff
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop x ∈ diff A B ⟷ x ∈ A ∧ ¬(x ∈ B)
+  [hint_rewrite]
+
+axiom diff_def
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop x ∈ diff A B ⟷ x ∈ A ∧ ¬(x ∈ B)
+  [hint_rewrite]
+
+axiom member_delete
+  fixes x :: 'a, A :: 'a set, a :: 'a
+  prop x ∈ delete A a ⟷ x ∈ A ∧ ¬(x = a)
+  [hint_rewrite]
+
+axiom delete_def
+  fixes x :: 'a, A :: 'a set, a :: 'a
+  prop x ∈ delete A a ⟷ x ∈ A ∧ ¬(x = a)
+  [hint_rewrite]
+
+axiom member_collect
+  fixes x :: 'a, P :: 'a ⇒ bool
+  prop x ∈ collect P ⟷ P x
+  [hint_rewrite]
+
+axiom member_Union
+  fixes x :: 'a, A :: 'a set set
+  prop x ∈ Union A ⟷ (∃S. S ∈ A ∧ x ∈ S)
+  [hint_rewrite]
+
+axiom in_image
+  fixes y :: 'b, f :: 'a ⇒ 'b, A :: 'a set
+  prop y ∈ image f A ⟷ (∃x. x ∈ A ∧ y = f x)
+  [hint_rewrite]
+
+axiom image_def
+  fixes y :: 'b, f :: 'a ⇒ 'b, A :: 'a set
+  prop y ∈ image f A ⟷ (∃x. x ∈ A ∧ y = f x)
+  [hint_rewrite]
+
+axiom disjoint_def
+  fixes A :: 'a set, B :: 'a set
+  prop disjoint A B ⟷ A ∩ B = ∅
+  [hint_rewrite]
+
+axiom infinite_def
+  fixes A :: 'a set
+  prop infinite A ⟷ ¬finite A
+  [hint_rewrite]
+
+axiom has_size_def
+  fixes A :: 'a set, n :: nat
+  prop has_size A n ⟷ finite A ∧ card A = n
+  [hint_rewrite]
+
+axiom set_equal_iff
+  fixes A :: 'a set, B :: 'a set
+  prop A = B ⟷ (∀x. x ∈ A ⟷ x ∈ B)
+  [hint_rewrite]
+
+axiom member_ext
+  fixes A :: 'a set, B :: 'a set
+  prop A = B ⟷ (∀x. x ∈ A ⟷ x ∈ B)
+  [hint_rewrite]
+
+header "Subset"
+
+axiom subset_refl
+  fixes A :: 'a set
+  prop A ⊆ A
+  [hint_rewrite]
+
+axiom subset_trans
+  fixes A :: 'a set, B :: 'a set, C :: 'a set
+  prop A ⊆ B ⟶ B ⊆ C ⟶ A ⊆ C
+  [hint_backward]
+
+axiom subset_empty
+  fixes A :: 'a set
+  prop A ⊆ ∅ ⟷ A = ∅
+  [hint_rewrite]
+
+axiom subset_univ
+  fixes A :: 'a set
+  prop A ⊆ univ
+  [hint_rewrite]
+
+axiom subset_union_id
+  fixes A :: 'a set, B :: 'a set
+  prop A ∪ B = A ⟷ B ⊆ A
+  [hint_rewrite]
+
+axiom subset_diff
+  fixes A :: 'a set, B :: 'a set
+  prop diff A B ⊆ A
+  [hint_rewrite]
+
+header "Union and intersection"
+
+axiom inter_comm
+  fixes A :: 'a set, B :: 'a set
+  prop A ∩ B = B ∩ A
+  [hint_rewrite]
+
+axiom inter_subset_id
+  fixes A :: 'a set, B :: 'a set
+  prop A ∩ B = A ⟷ A ⊆ B
+  [hint_rewrite]
+
+axiom union_comm
+  fixes A :: 'a set, B :: 'a set
+  prop A ∪ B = B ∪ A
+  [hint_rewrite]
+
+axiom union_empty
+  fixes A :: 'a set
+  prop A ∪ ∅ = A
+  [hint_rewrite]
+
+header "Finite sets"
+
+axiom finite_empty
+  fixes A :: 'a set
+  prop finite (∅::'a set)
+  [hint_backward]
+
+axiom finite_insert
+  fixes A :: 'a set, a :: 'a
+  prop finite (insert a A) ⟷ finite A
+  [hint_backward,hint_rewrite]
+
+axiom finite_subset
+  fixes A :: 'a set, B :: 'a set
+  prop A ⊆ B ⟶ finite B ⟶ finite A
+  [hint_backward]
+
+axiom finite_union_imp
+  fixes A :: 'a set, B :: 'a set
+  prop finite A ⟶ finite B ⟶ finite (A ∪ B)
+  [hint_backward]
+
+axiom finite_inter
+  fixes A :: 'a set, B :: 'a set
+  prop finite A ∨ finite B ⟶ finite (A ∩ B)
+  [hint_backward]
+
+axiom finite_image
+  fixes f :: 'a ⇒ 'b, A :: 'a set
+  prop finite A ⟶ finite (image f A)
+  [hint_backward]
+
+axiom finite_delete
+  fixes A :: 'a set, a :: 'a
+  prop finite (delete A a) ⟷ finite A
+  [hint_backward,hint_rewrite]
+
+axiom finite_diff
+  fixes A :: 'a set, B :: 'a set
+  prop finite A ⟶ finite (diff A B)
+  [hint_backward]
+
+header "Image"
+
+axiom image_empty
+  fixes f :: 'a ⇒ 'b
+  prop image f ∅ = ∅
+  [hint_rewrite]
+
+axiom image_insert
+  fixes f :: 'a ⇒ 'b, A :: 'a set, a :: 'a
+  prop image f (insert a A) = insert (f a) (image f A)
+  [hint_rewrite]
+
+axiom image_id
+  fixes A :: 'a set
+  prop image (λx. x) A = A
+  [hint_rewrite]
+
+axiom image_combine
+  fixes f :: 'b ⇒ 'c, g :: 'a ⇒ 'b, A :: 'a set
+  prop image f (image g A) = image (comp_fun g f) A
+  [hint_rewrite]
+
+header "Cardinality"
+
+axiom card_empty
+  fixes A :: 'a set
+  prop card (∅::'a set) = 0
+  [hint_rewrite]
+
+axiom card_sing
+  fixes a :: 'a
+  prop card {a} = 1
+  [hint_rewrite]
+
+axiom card_insert
+  fixes A :: 'a set, a :: 'a
+  prop finite A ⟶ ¬(a ∈ A) ⟶ card (insert a A) = card A + 1
+  [hint_rewrite]
+
+axiom card_eq_0
+  fixes A :: 'a set
+  prop finite A ⟶ card A = 0 ⟶ A = ∅
+
+header "Other"
+
+axiom insert_delete
+  fixes A :: 'a set, a :: 'a
+  prop a ∈ A ⟶ insert a (delete A a) = A
+  [hint_rewrite]
+
+axiom infinite_nonempty
+  fixes A :: 'a set
+  prop infinite A ⟶ ¬(A = ∅)
+
+axiom infinite_diff_finite
+  fixes A :: 'a set, B :: 'a set
+  prop infinite A ⟶ finite B ⟶ infinite (diff A B)
