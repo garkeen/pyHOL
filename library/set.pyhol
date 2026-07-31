@@ -334,9 +334,6 @@ axiom finite_induct_strong
   fixes P :: 'a set ⇒ bool
   prop P ∅ ⟶ (∀x. ∀s. P s ⟶ ¬(x ∈ s) ⟶ finite s ⟶ P (insert x s)) ⟶ (∀s. finite s ⟶ P s)
 
-axiom finite_recursion
-  fixes f :: 'b ⇒ 'a ⇒ 'a, b :: 'a
-  prop (∀x. ∀y. ∀s. ¬(x = y) ⟶ f x (f y s) = f y (f x s)) ⟶ itset f ∅ b = b ∧ (∀x. ∀s. finite s ⟶ itset f (insert x s) b = (if x ∈ s then itset f s b else f x (itset f s b)))
 
 axiom finite_restrict
   fixes s :: 'a set, P :: 'a ⇒ bool

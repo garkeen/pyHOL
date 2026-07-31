@@ -2130,6 +2130,10 @@ theorem iterate_reflect
 
 header "Missing monoidal/neutral definitions and numseg clauses"
 
+axiom finite_recursion
+  fixes f :: 'b ⇒ 'a ⇒ 'a, b :: 'a
+  prop (∀x. ∀y. ∀s. ¬(x = y) ⟶ f x (f y s) = f y (f x s)) ⟶ itset f (∅::'b set) b = b ∧ (∀x. ∀s. finite s ⟶ itset f (insert x s) b = (if x ∈ s then itset f s b else f x (itset f s b)))
+
 axiom monoidal_def
   fixes op :: 'a ⇒ 'a ⇒ 'a
   prop monoidal op ⟷ (∀x. ∀y. op x y = op y x) ∧ (∀x. ∀y. ∀z. op x (op y z) = op (op x y) z) ∧ (∀x. op (neutral op) x = x)
@@ -2157,7 +2161,7 @@ axiom member_numseg
 
 axiom natseg_clauses_le_1
   fixes k :: nat
-  prop {i. i ≤ 0} = {0}
+  prop {i. i ≤ (0::nat)} = insert (0::nat) (∅::nat set)
   [hint_rewrite]
 
 axiom natseg_clauses_le_2
@@ -2167,7 +2171,7 @@ axiom natseg_clauses_le_2
 
 axiom natseg_clauses_lt_1
   fixes k :: nat
-  prop {i. i < 0} = ∅
+  prop {i. i < (0::nat)} = (∅::nat set)
   [hint_rewrite]
 
 axiom natseg_clauses_lt_2
