@@ -191,20 +191,33 @@ axiom subset_empty
   prop A ⊆ ∅ ⟷ A = ∅
   [hint_rewrite]
 
-axiom subset_univ
+theorem subset_univ
   fixes A :: 'a set
   prop A ⊆ univ
   [hint_rewrite]
+  proof
+    0: rewrite_goal subset_def sym=false
+    0: rewrite_goal member_univ sym=false
+    0: introduction x
+    0.2: apply_backward_step trueI
+  qed
 
 axiom subset_union_id
   fixes A :: 'a set, B :: 'a set
   prop A ∪ B = A ⟷ B ⊆ A
   [hint_rewrite]
 
-axiom subset_diff
+theorem subset_diff
   fixes A :: 'a set, B :: 'a set
   prop diff A B ⊆ A
   [hint_rewrite]
+  proof
+    0: rewrite_goal subset_def sym=false
+    0: rewrite_goal member_diff sym=false
+    0: introduction x
+    0.2: apply_forward_step conjD1 @0.1
+    0.2: apply_prev
+  qed
 
 header "Union and intersection"
 
