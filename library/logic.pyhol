@@ -798,3 +798,33 @@ theorem disjI1_syllogism
 theorem disjI2_syllogism
   fixes P :: bool, Q :: bool, R :: bool
   prop (P ∨ Q ⟶ R) ⟶ Q ⟶ R
+
+
+
+
+header "Boolean simplification rules"
+
+theorem imp_false_iff
+  fixes P :: bool
+  prop (P ⟶ false) ⟷ ¬P
+  [hint_rewrite]
+
+theorem exists_false
+  fixes A :: 'a
+  prop (∃x::'a. false) ⟷ false
+  [hint_rewrite]
+
+theorem exists_true
+  fixes A :: 'a
+  prop (∃x::'a. true) ⟷ true
+  [hint_rewrite]
+
+theorem forall_true
+  fixes A :: 'a
+  prop (∀x::'a. true) ⟷ true
+  [hint_rewrite]
+
+theorem forall_false
+  fixes A :: 'a
+  prop (∀x::'a. false) ⟷ false
+  [hint_rewrite]

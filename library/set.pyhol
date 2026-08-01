@@ -190,6 +190,14 @@ theorem subset_empty
   fixes A :: 'a set
   prop A ⊆ ∅ ⟷ A = ∅
   [hint_rewrite]
+  proof
+    0: rewrite_goal subset_def sym=false
+    0: rewrite_goal member_empty_simp sym=false
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal member_empty_simp sym=false
+    0: rewrite_goal imp_false_iff sym=false
+    0: rewrite_goal eq_false sym=false
+  qed
 
 theorem subset_univ
   fixes A :: 'a set
@@ -337,6 +345,15 @@ theorem image_empty
   fixes f :: 'a ⇒ 'b
   prop image f ∅ = ∅
   [hint_rewrite]
+  proof
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal in_image sym=false
+    0: rewrite_goal member_empty_simp sym=false
+    0: rewrite_goal conj_false_right sym=false
+    0: rewrite_goal exists_false sym=false
+    0: introduction x
+    0.1: reflexive
+  qed
 
 theorem image_insert
   fixes f :: 'a ⇒ 'b, A :: 'a set, a :: 'a
