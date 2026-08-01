@@ -185,6 +185,15 @@ theorem subset_trans
   fixes A :: 'a set, B :: 'a set, C :: 'a set
   prop A ⊆ B ⟶ B ⊆ C ⟶ A ⊆ C
   [hint_backward]
+  proof
+    2: rewrite_goal subset_def sym=false
+    2: introduction x
+    2.2: rewrite_fact subset_def @0 sym=false
+    2.3: rewrite_fact subset_def @1 sym=false
+    2.4: apply_fact @2.2,2.1
+    2.5: apply_fact @2.3,2.4
+    2.6: call_tactic apply_prev @2.5
+  qed
 
 theorem subset_empty
   fixes A :: 'a set
