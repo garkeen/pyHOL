@@ -844,3 +844,26 @@ theorem exists_eq
   fixes P :: 'a ⇒ bool, x :: 'a
   prop (∃y. P y ∧ x = y) ⟷ P x
   [hint_rewrite]
+
+
+theorem exists_disj_distrib
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
+  prop (∃x. P x ∨ Q x) ⟷ (∃x. P x) ∨ (∃x. Q x)
+  [hint_rewrite]
+
+theorem exists_eq_left
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop (∃y. y = a ∧ P y) ⟷ P a
+  [hint_rewrite]
+
+
+theorem exists_disj_conj_distrib
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, R :: 'a ⇒ bool
+  prop (∃ y. (P y ∨ Q y) ∧ R y) ⟷ (∃ y. P y ∧ R y) ∨ (∃ y. Q y ∧ R y)
+  [hint_rewrite]
+
+
+theorem exists_flatten
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ 'b, R :: 'b ⇒ bool
+  prop (∃y. (∃z. P z ∧ y = Q z) ∧ R y) ⟷ (∃z. P z ∧ R (Q z))
+  [hint_rewrite]
