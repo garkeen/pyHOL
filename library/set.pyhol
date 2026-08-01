@@ -214,6 +214,12 @@ theorem subset_union_id
   fixes A :: 'a set, B :: 'a set
   prop A ∪ B = A ⟷ B ⊆ A
   [hint_rewrite]
+  proof
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal member_union_iff sym=false
+    0: rewrite_goal subset_def sym=false
+    0: rewrite_goal disj_iff_left sym=false
+  qed
 
 theorem subset_diff
   fixes A :: 'a set, B :: 'a set
@@ -256,6 +262,12 @@ theorem inter_subset_id
   fixes A :: 'a set, B :: 'a set
   prop A ∩ B = A ⟷ A ⊆ B
   [hint_rewrite]
+  proof
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal member_inter_iff sym=false
+    0: rewrite_goal subset_def sym=false
+    0: rewrite_goal conj_iff_left sym=false
+  qed
 
 theorem union_comm
   fixes A :: 'a set, B :: 'a set
@@ -364,6 +376,13 @@ theorem image_id
   fixes A :: 'a set
   prop image (λx. x) A = A
   [hint_rewrite]
+  proof
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal in_image sym=false
+    0: rewrite_goal exists_eq sym=false
+    0: introduction x
+    0.1: reflexive
+  qed
 
 theorem image_combine
   fixes f :: 'b ⇒ 'c, g :: 'a ⇒ 'b, A :: 'a set

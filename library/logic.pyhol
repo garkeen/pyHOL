@@ -828,3 +828,19 @@ theorem forall_false
   fixes A :: 'a
   prop (∀x::'a. false) ⟷ false
   [hint_rewrite]
+
+
+theorem conj_iff_left
+  fixes P :: bool, Q :: bool
+  prop ((P ∧ Q) ⟷ P) ⟷ (P ⟶ Q)
+  [hint_rewrite]
+
+theorem disj_iff_left
+  fixes P :: bool, Q :: bool
+  prop ((P ∨ Q) ⟷ P) ⟷ (Q ⟶ P)
+  [hint_rewrite]
+
+theorem exists_eq
+  fixes P :: 'a ⇒ bool, x :: 'a
+  prop (∃y. P y ∧ x = y) ⟷ P x
+  [hint_rewrite]
