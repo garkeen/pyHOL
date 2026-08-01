@@ -28,7 +28,7 @@ const Union :: 'a set set ⇒ 'a set
 
 const Inter :: 'a set set ⇒ 'a set
 
-const comp_fun :: ('a ⇒ 'b) ⇒ ('b ⇒ 'c) ⇒ ('a ⇒ 'c)
+def comp_fun :: ('a ⇒ 'b) ⇒ ('b ⇒ 'c) ⇒ ('a ⇒ 'c) = comp_fun f g = (λx. g (f x)) [hint_rewrite]
 
 const finite :: 'a set ⇒ bool
 
@@ -405,102 +405,19 @@ theorem image_id
     0.1: reflexive
   qed
 
-theorem image_combine  fixes f :: 'b ⇒ 'c, g :: 'a ⇒ 'b, A :: 'a set  prop image f (image g A) = image (comp_fun g f) A  [hint_rewrite]
-header "Cardinality"
-
-theorem card_empty
-  fixes A :: 'a set
-  prop card (∅::'a set) = 0
-  [hint_rewrite]
-
-theorem card_sing
-  fixes a :: 'a
-  prop card {a} = 1
-  [hint_rewrite]
-
-theorem card_insert
-  fixes A :: 'a set, a :: 'a
-  prop finite A ⟶ ¬(a ∈ A) ⟶ card (insert a A) = card A + 1
-  [hint_rewrite]
-
-theorem card_eq_0
-  fixes A :: 'a set
-  prop finite A ⟶ card A = 0 ⟶ A = ∅
-
-header "Other"
-
-theorem insert_delete
-  fixes A :: 'a set, a :: 'a
-  prop a ∈ A ⟶ insert a (delete A a) = A
-  [hint_rewrite]
-
-theorem infinite_nonempty
-  fixes A :: 'a set
-  prop infinite A ⟶ ¬(A = ∅)
-
-theorem infinite_diff_finite
-  fixes A :: 'a set, B :: 'a set
-  prop infinite A ⟶ finite B ⟶ infinite (diff A B)
-
-
-header "Composition, from, and missing definitions"
-
-axiom comp_fun_def
-  fixes f :: 'a ⇒ 'b, g :: 'b ⇒ 'c
-  prop comp_fun f g = (λx. g (f x))
-  [hint_rewrite]
-
-axiom comp_fun_def_swap
-  fixes g :: 'a ⇒ 'b, f :: 'b ⇒ 'c
-  prop comp_fun g f = (λx. f (g x))
-  [hint_rewrite]
-
-axiom from_def
-  fixes n :: nat
-  prop from n = {m. n ≤ m}
-  [hint_rewrite]
-
-header "Finite set induction and recursion"
-
-theorem finite_induct_strong
-  fixes P :: 'a set ⇒ bool
-  prop P ∅ ⟶ (∀x. ∀s. P s ⟶ ¬(x ∈ s) ⟶ finite s ⟶ P (insert x s)) ⟶ (∀s. finite s ⟶ P s)
-
-
-theorem finite_restrict
-  fixes s :: 'a set, P :: 'a ⇒ bool
-  prop finite s ⟶ finite {x. x ∈ s ∧ P x}
-  [hint_backward]
-
-theorem finite_image_inj_eq
-  fixes f :: 'a ⇒ 'b, s :: 'a set
-  prop (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y) ⟶ (finite (image f s) ⟷ finite s)
-  [hint_rewrite]
-
-header "Natural numbers as sets"
-
-theorem nat_finite
-  fixes s :: nat set
-  prop finite s ⟷ (∃a. ∀x. x ∈ s ⟶ x ≤ a)
-  [hint_rewrite]
-
-theorem nat_infinite
-  fixes A :: nat set
-  prop infinite (univ::nat set)
-
-theorem nat_infinite_eq
-  fixes s :: nat set
-  prop infinite s ⟷ (∀a. ∃x. x ∈ s ∧ a < x)
-  [hint_rewrite]
-
-header "Set comprehension quantifiers"
-
-theorem exists_in_gspec1
-  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
-  prop (∃x. x ∈ {y. P y} ∧ Q x) ⟷ (∃x. P x ∧ Q x)
+theorem image_combine
+  fixes f :: 'b ⇒ 'c, g :: 'a ⇒ 'b, A :: 'a set
+  prop image f (image g A) = image (comp_fun g f) A
   [hint_rewrite]
   proof
-    0: rewrite_goal member_collect sym=false
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal in_image sym=false
+    0: rewrite_goal in_image sym=false
+    0: rewrite_goal in_image sym=false
+    0: rewrite_goal comp_fun_def sym=false
+    0: rewrite_goal exists_flatten sym=false
+    0: introduction x
+    0.1: reflexive
   qed
 
 theorem forall_in_gspec1
