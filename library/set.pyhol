@@ -405,11 +405,7 @@ theorem image_id
     0.1: reflexive
   qed
 
-theorem image_combine
-  fixes f :: 'b ⇒ 'c, g :: 'a ⇒ 'b, A :: 'a set
-  prop image f (image g A) = image (comp_fun g f) A
-  [hint_rewrite]
-
+theorem image_combine  fixes f :: 'b ⇒ 'c, g :: 'a ⇒ 'b, A :: 'a set  prop image f (image g A) = image (comp_fun g f) A  [hint_rewrite]
 header "Cardinality"
 
 theorem card_empty
@@ -452,6 +448,11 @@ header "Composition, from, and missing definitions"
 axiom comp_fun_def
   fixes f :: 'a ⇒ 'b, g :: 'b ⇒ 'c
   prop comp_fun f g = (λx. g (f x))
+  [hint_rewrite]
+
+axiom comp_fun_def_swap
+  fixes g :: 'a ⇒ 'b, f :: 'b ⇒ 'c
+  prop comp_fun g f = (λx. f (g x))
   [hint_rewrite]
 
 axiom from_def
