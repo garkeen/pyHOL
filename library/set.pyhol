@@ -420,6 +420,44 @@ theorem image_combine
     0.1: reflexive
   qed
 
+theorem insert_delete
+  fixes A :: 'a set, a :: 'a
+  prop a ∈ A ⟶ insert a (delete A a) = A
+  [hint_rewrite]
+  proof
+    1: rewrite_goal set_equal_iff sym=false
+    1: rewrite_goal member_insert sym=false
+    1: rewrite_goal member_delete sym=false
+    1: introduction x
+    1.1: apply_backward_step iffI
+    1.1: introduction
+    1.1.1: apply_backward_step disjE @1.1.0
+    1.1.1: introduction
+    1.1.1.1: rewrite_goal_with_prev @1.1.1.0
+    1.1.1.1: call_tactic apply_prev @0
+    1.1.2: introduction
+    1.1.2.1: apply_forward_step conjD1 @1.1.2.0
+    1.1.2.2: call_tactic apply_prev @1.1.2.1
+    1.2: introduction
+    1.2.1: cases "x = a"
+    1.2.1: introduction
+    1.2.1.1: apply_backward_step disjI1
+    1.2.1.1: call_tactic apply_prev @1.2.1.0
+    1.2.2: introduction
+    1.2.2.1: apply_backward_step disjI2
+    1.2.2.1: apply_backward_step conjI
+    1.2.2.1: call_tactic apply_prev @1.2.0
+    1.2.2.2: call_tactic apply_prev @1.2.2.0
+  qed
+
+theorem exists_in_gspec1
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
+  prop (∃x. x ∈ {y. P y} ∧ Q x) ⟷ (∃x. P x ∧ Q x)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal member_collect sym=false
+  qed
+
 theorem forall_in_gspec1
   fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
   prop (∀x. x ∈ {y. P y} ⟶ Q x) ⟷ (∀x. P x ⟶ Q x)
