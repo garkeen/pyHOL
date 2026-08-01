@@ -224,6 +224,9 @@ theorem disj_conj_distribL1
 theorem disj_conj_distribL2
   fixes A :: bool, B :: bool, C :: bool
   prop A ∧ B ∨ C ⟷ (A ∨ C) ∧ (B ∨ C)
+  proof
+    0: apply_backward_step iffI
+  qed
 
 theorem de_morgan_thm1
   fixes A :: bool, B :: bool
@@ -799,9 +802,6 @@ theorem disjI2_syllogism
   fixes P :: bool, Q :: bool, R :: bool
   prop (P ∨ Q ⟶ R) ⟶ Q ⟶ R
 
-
-
-
 header "Boolean simplification rules"
 
 theorem imp_false_iff
@@ -829,22 +829,20 @@ theorem forall_false
   prop (∀x::'a. false) ⟷ false
   [hint_rewrite]
 
-
 theorem conj_iff_left
   fixes P :: bool, Q :: bool
-  prop ((P ∧ Q) ⟷ P) ⟷ (P ⟶ Q)
+  prop (P ∧ Q ⟷ P) ⟷ (P ⟶ Q)
   [hint_rewrite]
 
 theorem disj_iff_left
   fixes P :: bool, Q :: bool
-  prop ((P ∨ Q) ⟷ P) ⟷ (Q ⟶ P)
+  prop (P ∨ Q ⟷ P) ⟷ (Q ⟶ P)
   [hint_rewrite]
 
 theorem exists_eq
   fixes P :: 'a ⇒ bool, x :: 'a
   prop (∃y. P y ∧ x = y) ⟷ P x
   [hint_rewrite]
-
 
 theorem exists_disj_distrib
   fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
@@ -856,12 +854,10 @@ theorem exists_eq_left
   prop (∃y. y = a ∧ P y) ⟷ P a
   [hint_rewrite]
 
-
 theorem exists_disj_conj_distrib
   fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, R :: 'a ⇒ bool
-  prop (∃ y. (P y ∨ Q y) ∧ R y) ⟷ (∃ y. P y ∧ R y) ∨ (∃ y. Q y ∧ R y)
+  prop (∃y. (P y ∨ Q y) ∧ R y) ⟷ (∃y. P y ∧ R y) ∨ (∃y. Q y ∧ R y)
   [hint_rewrite]
-
 
 theorem exists_flatten
   fixes P :: 'a ⇒ bool, Q :: 'a ⇒ 'b, R :: 'b ⇒ bool

@@ -1,31 +1,48 @@
 <template>
   <div class="proof-area">
-    <!-- Proof lines -->
-    <div v-if="proof !== undefined" class="proof-lines">
-      <div v-for="(line, idx) in proof" :key="line.id || idx"
-           class="proof-line-row" :class="{'line-goal': goal === idx, 'line-fact': facts.includes(idx)}"
-           @click="mark_text(idx)">
-        <ProofLine :line="line" :is_last_id="is_last_id(idx)" :is_goal="goal === idx"
-                   :is_fact="facts.includes(idx)" :can_select="can_select(goal, idx)"/>
+    <!-- Header: theorem name + prop -->
+    <div class="proof-header">
+      <div class="proof-thm-name">{{ thm_name }}</div>
+      <div class="proof-thm-prop">{{ formatProp }}</div>
+      <button class="btn btn-sm btn-outline-secondary proof-close-btn" @click="emit('close-prove')" title="Close proof">✕</button>
+    </div>
+
+    <!-- Proof lines (scrollable, main area) -->
+    <div class="proof-lines-scroll">
+      <div v-if="proof !== undefined" class="proof-lines">
+        <div v-for="(line, idx) in proof" :key="line.id || idx"
+             class="proof-line-row" :class="{'line-goal': goal === idx, 'line-fact': facts.includes(idx)}"
+             @click="mark_text(idx)">
+          <ProofLine :line="line" :is_last_id="is_last_id(idx)" :is_goal="goal === idx"
+                     :is_fact="facts.includes(idx)" :can_select="can_select(goal, idx)"/>
+        </div>
+      </div>
+      <div v-else class="proof-loading">Loading proof...</div>
+    </div>
+
+    <!-- Goal box: show full proposition -->
+    <div v-if="goal !== -1 && proof && proof[goal]" class="goal-box">
+      <span class="goal-tag">Goal</span>
+      <span class="goal-id-text">{{ proof[goal].id }}:</span>
+      <span class="goal-prop">{{ formatProofLine(proof[goal]) }}</span>
+    </div>
+
+    <!-- Facts box: show selected facts content -->
+    <div v-if="facts.length > 0 && proof" class="facts-box">
+      <div v-for="fi in facts" :key="fi" class="fact-item" @click="mark_text(fi)">
+        <span class="fact-id">{{ proof[fi]?.id }}:</span>
+        <span class="fact-prop">{{ formatProofLine(proof[fi]) }}</span>
       </div>
     </div>
-    <div v-else class="proof-loading">Loading proof...</div>
 
-    <!-- Goal/Fact info -->
-    <div v-if="goal !== -1" class="goal-info">
-      <div class="goal-label">Goal:</div>
-      <div class="goal-id">{{ proof[goal]?.id }}</div>
-    </div>
-    <div v-if="facts.length > 0" class="facts-info">
-      <div class="goal-label">Facts: {{ facts.map(i => proof[i]?.id).join(', ') }}</div>
-    </div>
-
-    <!-- Method search results -->
+    <!-- Method search results with subgoal count -->
     <div v-if="search_res.length > 0" class="search-results">
-      <div class="search-title">Suggested methods (click to apply):</div>
+      <div class="search-title">Suggested methods:</div>
       <div v-for="(res, i) in search_res" :key="i" class="search-item" @click="apply_thm_tactic(i)">
-        <span v-if="res.display" class="search-display">{{ formatDisplay(res.display) }}</span>
-        <span v-else>{{ res.method_name }}</span>
+        <span class="search-name">{{ res.theorem || res.method_name }}</span>
+        <span v-if="res._goal !== undefined" class="search-subgoals">
+          {{ res._goal.length === 0 ? '✓ closes' : res._goal.length + ' subgoals' }}
+        </span>
       </div>
     </div>
 
@@ -49,7 +66,7 @@
             <option value="new_var">new_var</option>
           </optgroup>
           <optgroup label="Equality">
-            <option value="sym">sym (a=b → b=a)</option>
+            <option value="sym">sym (a=b -> b=a)</option>
             <option value="subst">subst (replace in goal)</option>
           </optgroup>
           <optgroup label="Rewriting">
@@ -66,7 +83,6 @@
             <option value="frule">frule (forward, keep fact)</option>
           </optgroup>
           <optgroup label="Automation">
-            <option value="simp">simp (generic rewrite)</option>
             <option value="norm">norm (polynomial normalization)</option>
             <option value="eval">eval (constant evaluation)</option>
             <option value="linarith">linarith (linear arithmetic)</option>
@@ -77,7 +93,6 @@
             <option value="call_macro">call_macro</option>
           </optgroup>
         </select>
-        <!-- Dynamic parameter inputs -->
         <div v-if="manual_method && method_params.length > 0" class="method-params">
           <div v-for="p in method_params" :key="p" class="param-row">
             <label class="param-label">{{ p }}:</label>
@@ -91,12 +106,11 @@
       </div>
     </div>
 
-    <!-- Status and actions -->
+    <!-- Footer: status + undo + save -->
     <div class="proof-footer">
       <span class="proof-status">{{ status_text }}</span>
       <div class="proof-actions">
-        <button class="btn btn-sm btn-outline-secondary" @click="step_backward" :disabled="index <= 0">← Back</button>
-        <button class="btn btn-sm btn-outline-secondary" @click="step_forward" :disabled="index >= history.length">Forward →</button>
+        <button class="btn btn-sm btn-outline-warning" @click="undo" :disabled="index <= 0" title="Undo last step">Undo</button>
         <button class="btn btn-sm btn-success" @click="emit_save">Save Proof</button>
       </div>
     </div>
@@ -126,7 +140,7 @@ const props = defineProps({
   editor: Object
 })
 
-const emit = defineEmits(['set-message', 'query', 'set-context', 'set-status', 'set-proof', 'save-steps'])
+const emit = defineEmits(['set-message', 'query', 'set-context', 'set-status', 'set-proof', 'save-steps', 'close-prove'])
 
 const method_sig = ref({})
 const index = ref(0)
@@ -482,9 +496,9 @@ const apply_method_ajax = async (input) => {
       if (input.step.fact_ids && input.step.fact_ids.length === 0) {
         delete input.step.fact_ids
       }
-      steps.value.splice(index.value, 0, input.step)
-      
-      // gotoStep will call /init-saved-proof which replays all steps
+      steps.value = steps.value.slice(0, index.value)
+      steps.value.push(input.step)
+      console.log('[SAVE] truncated to', steps.value.length, 'steps after apply')
       // and returns the correct state - no need to set state here
       await gotoStep(index.value + 1)
     }
@@ -593,7 +607,41 @@ const formatDisplay = (disp) => {
   return String(disp)
 }
 
+const formatProp = computed(() => {
+  if (!props.prop) return ''
+  if (typeof props.prop === 'string') return props.prop
+  if (Array.isArray(props.prop)) return props.prop.map(item => {
+    if (typeof item === 'string') return item
+    if (item && item.text) return item.text
+    return ''
+  }).join('')
+  return String(props.prop)
+})
+
+const formatProofLine = (line) => {
+  if (!line) return ''
+  if (line.th_hl) return formatDisplay(line.th_hl)
+  if (line.th) {
+    if (typeof line.th === 'string') return line.th
+    if (Array.isArray(line.th)) return line.th.map(item => {
+      if (typeof item === 'string') return item
+      if (item && item.text) return item.text
+      return ''
+    }).join('')
+    return String(line.th)
+  }
+  return ''
+}
+
+const undo = () => {
+  if (steps.value.length > 0 && index.value > 0) {
+    steps.value.splice(index.value - 1, 1)
+    gotoStep(index.value - 1)
+  }
+}
+
 const emit_save = () => {
+  console.log('[SAVE] emit_save, steps.length =', steps.value.length, 'index =', index.value)
   emit('save-steps', JSON.parse(JSON.stringify(steps.value)))
 }
 
@@ -604,6 +652,7 @@ const exposed = {
   deleteStep,
   step_backward,
   step_forward,
+  undo,
   proof,
   num_gaps,
   steps,
@@ -645,4 +694,41 @@ defineExpose(exposed)
 .param-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .param-label { font-size: 12px; font-weight: bold; color: #555; min-width: 80px; }
 .param-input { flex: 1; padding: 3px 6px; font-size: 13px; border: 1px solid #ced4da; border-radius: 3px; font-family: Consolas, monospace; }
+
+.proof-area { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.proof-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f0f4ff; border-bottom: 1px solid #d0d7de; flex-shrink: 0; }
+.proof-thm-name { font-weight: 700; font-size: 14px; color: #333; flex-shrink: 0; }
+.proof-thm-prop { font-family: Consolas, monospace; font-size: 13px; color: #555; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proof-close-btn { flex-shrink: 0; }
+.proof-lines-scroll { flex: 1; overflow-y: auto; padding: 4px 8px; min-height: 0; }
+.proof-lines { font-family: Consolas, monospace; }
+.proof-line-row { cursor: pointer; padding: 1px 4px; border-radius: 3px; }
+.proof-line-row:hover { background: #f0f0f0; }
+.line-goal { background: #ffe0e0 !important; }
+.line-fact { background: #fff3cd !important; }
+.goal-box { display: flex; align-items: baseline; gap: 6px; padding: 6px 12px; background: #fff5f5; border-top: 1px solid #ffcaca; flex-shrink: 0; }
+.goal-tag { font-size: 11px; font-weight: 700; color: #c0392b; text-transform: uppercase; }
+.goal-id-text { font-family: Consolas, monospace; font-size: 12px; color: #999; }
+.goal-prop { font-family: Consolas, monospace; font-size: 13px; color: #333; }
+.facts-box { padding: 4px 12px; background: #fffbf0; border-top: 1px solid #ffeaa7; flex-shrink: 0; }
+.fact-item { display: flex; align-items: baseline; gap: 6px; padding: 2px 0; cursor: pointer; }
+.fact-id { font-family: Consolas, monospace; font-size: 12px; color: #999; }
+.fact-prop { font-family: Consolas, monospace; font-size: 13px; color: #555; }
+.search-results { padding: 6px 12px; flex-shrink: 0; }
+.search-title { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px; }
+.search-item { display: flex; align-items: center; gap: 8px; padding: 3px 8px; cursor: pointer; border-radius: 3px; }
+.search-item:hover { background: #e8f0fe; }
+.search-name { font-family: Consolas, monospace; font-size: 13px; color: #1a73e8; }
+.search-subgoals { font-size: 11px; color: #888; }
+.method-selector { padding: 6px 12px; flex-shrink: 0; }
+.method-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.method-select { font-size: 13px; padding: 2px 6px; }
+.method-params { display: flex; flex-wrap: wrap; gap: 6px; }
+.param-row { display: flex; align-items: center; gap: 3px; }
+.param-label { font-size: 12px; color: #666; }
+.param-input { font-size: 12px; padding: 2px 6px; width: 120px; border: 1px solid #ccc; border-radius: 3px; }
+.proof-footer { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; border-top: 1px solid #dee2e6; background: #f8f9fa; flex-shrink: 0; }
+.proof-status { font-size: 12px; color: #666; }
+.proof-actions { display: flex; gap: 4px; }
+.proof-loading { padding: 20px; color: #999; }
 </style>

@@ -5,14 +5,13 @@
       <div class="container-fluid">
         <span class="navbar-brand">HOLPy</span>
         <div class="navbar-nav">
-          <div class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">File</a>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#" @click.prevent="create_file">New</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="load_files">Refresh file list</a></li>
-            </ul>
+          <div class="nav-item d-flex align-items-center me-2">
+            <select class="form-select form-select-sm file-select" :value="filename" @change="open_file($event.target.value)">
+              <option value="">-- file --</option>
+              <option v-for="f in filelist" :key="f" :value="f">{{ f }}</option>
+            </select>
           </div>
+          <button class="btn btn-sm btn-outline-light ms-1" @click="create_file">New</button>
           <div class="nav-item dropdown" v-if="theory">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Items</a>
             <ul class="dropdown-menu">
@@ -37,21 +36,9 @@
     </nav>
 
     <!-- Main content -->
-    <div class="main-content">
-      <!-- Left: file list -->
-      <div class="left-panel">
-        <h6 class="panel-title">Files</h6>
-        <div class="file-list">
-          <div v-for="f in filelist" :key="f"
-               class="file-item" :class="{active: filename === f}"
-               @click="open_file(f)">
-            {{ f }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Center: theory content -->
-      <div class="center-panel">
+    <div class="main-content" :class="{'proving-mode': proving >= 0}">
+      <!-- Theory list (full width when not proving, 30% when proving) -->
+      <div class="theory-panel">
         <div v-if="loading" class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
         <div v-else-if="!filename" class="empty-state"><h4>Select a file</h4></div>
         <div v-else-if="theory">
@@ -62,113 +49,128 @@
               <button class="btn btn-sm btn-primary" @click="validate_all(false)">Validate All</button>
               <button class="btn btn-sm btn-warning" @click="validate_all(true)" title="Ignore cache, re-validate everything">Force Validate</button>
             </div>
-            <!-- Metadata -->
             <div class="metadata-section">
-              <div class="meta-row">
-                <label class="meta-label">theory</label>
-                <span class="meta-value">{{ theory.name }}</span>
-              </div>
-              <div class="meta-row">
-                <label class="meta-label">imports</label>
-                <input class="meta-input" v-model="meta_imports" placeholder="one per line"/>
-              </div>
-              <div class="meta-row">
-                <label class="meta-label">domains</label>
-                <input class="meta-input" v-model="meta_domains" placeholder="comma-separated (e.g. nat, real)"/>
-              </div>
-              <div class="meta-row">
-                <label class="meta-label">description</label>
-                <input class="meta-input" v-model="meta_description"/>
-              </div>
+              <div class="meta-row"><label class="meta-label">theory</label><span class="meta-value">{{ theory.name }}</span></div>
+              <div class="meta-row"><label class="meta-label">imports</label><input class="meta-input" v-model="meta_imports" placeholder="one per line"/></div>
+              <div class="meta-row"><label class="meta-label">domains</label><input class="meta-input" v-model="meta_domains" placeholder="comma-separated"/></div>
+              <div class="meta-row"><label class="meta-label">description</label><input class="meta-input" v-model="meta_description"/></div>
               <button class="btn btn-sm btn-outline-primary mt-1" @click="save_metadata">Save Metadata</button>
             </div>
           </div>
 
-          <!-- Items -->
-          <div v-for="(item, index) in theory.content" :key="index" class="item-wrapper">
-            <!-- Item header -->
-            <div class="item-row" :class="{'item-selected': selected === index, 'item-error': item._error}"
-                 @click="selected = index">
-              <span class="item-idx">{{ index }}</span>
-              <span class="item-type">{{ typeLabel(item.ty) }}</span>
-              <span class="item-name">{{ item.name || '' }}</span>
-              <span v-if="thm_status[item.name]" class="item-status" :class="'status-' + thm_status[item.name].toLowerCase()">
-                {{ statusIcon(thm_status[item.name]) }}
-              </span>
-              <div class="item-actions">
-                <button class="btn btn-sm btn-outline-secondary" @click.stop="toggle_edit(index)" title="Edit">
-                  {{ editing === index ? 'Close' : 'Edit' }}
-                </button>
-                <button v-if="item.ty === 'thm'" class="btn btn-sm btn-outline-success" @click.stop="toggle_prove(index)" title="Prove">
-                  {{ proving === index ? 'Close' : 'Prove' }}
-                </button>
-                <button class="btn btn-sm btn-outline-warning" @click.stop="move_item(index, -1)" :disabled="index === 0" title="Move up">↑</button>
-                <button class="btn btn-sm btn-outline-warning" @click.stop="move_item(index, 1)" :disabled="index === theory.content.length - 1" title="Move down">↓</button>
-                <button class="btn btn-sm btn-outline-danger" @click.stop="remove_item(index)" title="Delete">✕</button>
+          <!-- Items list -->
+          <div class="items-list">
+            <div v-for="(item, index) in theory.content" :key="index" class="item-wrapper">
+              <!-- Header: special section title styling -->
+              <div v-if="item.ty === 'header'" class="item-row item-header-row"
+                   :class="{'item-selected': selected === index}"
+                   @click="selected = index">
+                <span class="item-header-text">{{ item.name || '(header)' }}</span>
+                <div class="item-actions">
+                  <button class="btn btn-sm btn-outline-secondary" @click.stop="toggle_edit(index)">Edit</button>
+                  <button class="btn btn-sm btn-outline-warning" @click.stop="move_item(index, -1)" :disabled="index === 0">↑</button>
+                  <button class="btn btn-sm btn-outline-warning" @click.stop="move_item(index, 1)" :disabled="index === theory.content.length - 1">↓</button>
+                  <button class="btn btn-sm btn-outline-danger" @click.stop="remove_item(index)">✕</button>
+                </div>
               </div>
-            </div>
-
-            <!-- Edit form -->
-            <div v-if="editing === index" class="edit-section">
-              <HeaderEdit v-if="item.ty === 'header'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
-              <ConstantEdit v-else-if="item.ty === 'def.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
-              <DefinitionEdit v-else-if="item.ty === 'def'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
-              <DatatypeEdit v-else-if="item.ty === 'type.ind'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
-              <InductiveEdit v-else-if="item.ty === 'def.ind' || item.ty === 'def.pred'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
-              <TheoremEdit v-else-if="item.ty === 'thm' || item.ty === 'thm.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
-              <AxTypeEdit v-else-if="item.ty === 'type.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
-              <div class="edit-actions">
-                <button class="btn btn-sm btn-primary" @click="check_item(index)">Check</button>
-                <button class="btn btn-sm btn-success" @click="save_item(index)">Save</button>
-                <button class="btn btn-sm btn-secondary" @click="editing = -1">Cancel</button>
+              <!-- Regular item: name on line 1, content on line 2 -->
+              <div v-else class="item-block" :class="{'item-selected': selected === index, 'item-error': item._error}"
+                   @click="selected = index">
+                <div class="item-row">
+                  <span class="item-idx">{{ index }}</span>
+                  <span class="item-type">{{ typeLabel(item.ty) }}</span>
+                  <span class="item-name">{{ item.name || '' }}</span>
+                  <span v-if="thm_status[item.name]" class="item-status" :class="'status-' + thm_status[item.name].toLowerCase()">
+                    {{ statusIcon(thm_status[item.name]) }}
+                  </span>
+                  <div class="item-actions">
+                    <button class="btn btn-sm btn-outline-secondary" @click.stop="toggle_edit(index)" title="Edit">
+                      {{ editing === index ? 'Close' : 'Edit' }}
+                    </button>
+                    <button v-if="item.ty === 'thm'" class="btn btn-sm btn-outline-success" @click.stop="toggle_prove(index)" title="Prove">
+                      {{ proving === index ? 'Close' : 'Prove' }}
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" @click.stop="move_item(index, -1)" :disabled="index === 0" title="Move up">↑</button>
+                    <button class="btn btn-sm btn-outline-warning" @click.stop="move_item(index, 1)" :disabled="index === theory.content.length - 1" title="Move down">↓</button>
+                    <button class="btn btn-sm btn-outline-danger" @click.stop="remove_item(index)" title="Delete">✕</button>
+                  </div>
+                </div>
+                <!-- Content preview: fixes on one line, prop on next -->
+                <div v-if="item.display" class="item-content">
+                  <template v-if="item.ty === 'thm' || item.ty === 'thm.ax'">
+                    <div v-if="formatDisplay(item.display.vars)" class="item-fixes">fixes {{ formatDisplay(item.display.vars) }}</div>
+                    <div class="item-prop-text">{{ formatDisplay(item.display.prop) }}</div>
+                  </template>
+                  <template v-else-if="item.ty === 'def.ax'">
+                    <div class="item-type-sig">:: {{ formatDisplay(item.display.type) }}</div>
+                  </template>
+                  <template v-else-if="item.ty === 'def'">
+                    <div class="item-type-sig">:: {{ formatDisplay(item.display.type) }}</div>
+                    <div class="item-prop-text">= {{ formatDisplay(item.display.prop) }}</div>
+                  </template>
+                  <template v-else-if="item.ty === 'def.ind' || item.ty === 'def.pred'">
+                    <div class="item-type-sig">:: {{ formatDisplay(item.display.type) }}</div>
+                  </template>
+                </div>
               </div>
-            </div>
-
-            <!-- Proof area -->
-            <div v-if="proving === index && item.ty === 'thm'" class="proof-section">
-              <ProofArea
-                :key="'proof-' + theory.name + '-' + item.name + '-' + index"
-                :theory_name="theory.name"
-                :thm_name="item.name"
-                :vars="item.vars"
-                :prop="item.prop"
-                :old_steps="item.steps"
-                :ref="el => { if (el) proof_area_ref = el }"
-                @save-steps="(steps) => save_proof(index, steps)"
-                @set-message="msg => toast(msg)"
-                @set-context="data => { proof_ctxt = data.ctxt || {}; proof_history = data.history || []; proof_history_idx = data.history_idx || -1 }"/>
+              <!-- Edit form (inline) -->
+              <div v-if="editing === index" class="edit-section">
+                <HeaderEdit v-if="item.ty === 'header'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+                <ConstantEdit v-else-if="item.ty === 'def.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+                <DefinitionEdit v-else-if="item.ty === 'def'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+                <DatatypeEdit v-else-if="item.ty === 'type.ind'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+                <InductiveEdit v-else-if="item.ty === 'def.ind' || item.ty === 'def.pred'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+                <TheoremEdit v-else-if="item.ty === 'thm' || item.ty === 'thm.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+                <AxTypeEdit v-else-if="item.ty === 'type.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+                <div class="edit-actions">
+                  <button class="btn btn-sm btn-primary" @click="check_item(index)">Check</button>
+                  <button class="btn btn-sm btn-success" @click="save_item(index)">Save</button>
+                  <button class="btn btn-sm btn-secondary" @click="editing = -1">Cancel</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Right panel: proof context (shown when proving) -->
-      <div v-if="proving >= 0" class="right-panel">
-        <div class="panel-section">
-          <h6 class="panel-title">Variables</h6>
-          <div v-if="proof_ctxt && Object.keys(proof_ctxt).length > 0">
-            <div v-for="(T, nm) in proof_ctxt" :key="nm" class="ctxt-var">
-              <span class="ctxt-name">{{ nm }}</span> :: <span class="ctxt-type">{{ formatType(T) }}</span>
-            </div>
+      <!-- Proof panel (50% when proving) -->
+      <div v-if="proving >= 0 && proving_item" class="proof-panel">
+        <ProofArea
+          :key="'proof-' + theory.name + '-' + proving_item.name + '-' + proving"
+          :theory_name="theory.name"
+          :thm_name="proving_item.name"
+          :vars="proving_item.vars"
+          :prop="proving_item.prop"
+          :old_steps="proving_item.steps"
+          :ref="el => { if (el) proof_area_ref = el }"
+          @save-steps="(steps) => save_proof(proving, steps)"
+          @set-message="msg => toast(msg)"
+          @set-context="data => { proof_history = data.history || []; proof_history_idx = data.history_idx || -1 }"
+          @close-prove="toggle_prove(proving)"/>
+      </div>
+
+      <!-- History panel (20% when proving) -->
+      <div v-if="proving >= 0" class="history-panel">
+        <div class="history-panel-header">
+          <span class="panel-title-sm">History</span>
+          <div class="history-nav">
+            <button class="btn btn-sm btn-outline-secondary" @click="proof_goto_step(proof_history_idx - 1)" :disabled="proof_history_idx <= 0">←</button>
+            <span class="history-idx-display">{{ proof_history_idx }}/{{ proof_history.length }}</span>
+            <button class="btn btn-sm btn-outline-secondary" @click="proof_goto_step(proof_history_idx + 1)" :disabled="proof_history_idx >= proof_history.length">→</button>
           </div>
-          <div v-else class="ctxt-empty">No context</div>
         </div>
-        <div class="panel-section">
-          <h6 class="panel-title">Proof History</h6>
-          <div v-if="proof_history.length > 0">
-            <div class="history-item" :class="{'history-selected': proof_history_idx === 0}"
-                 @click="proof_goto_step(0)">
-              <span class="history-idx">0</span>
-              <span class="history-text">Initial</span>
-            </div>
-            <div v-for="(h, i) in proof_history" :key="i" class="history-item"
-                 :class="{'history-selected': proof_history_idx === i + 1}"
-                 @click="proof_goto_step(i + 1)">
-              <span class="history-idx">{{ i + 1 }}</span>
-              <span v-if="h.step_output" class="history-text">{{ formatHistory(h.step_output) }}</span>
-            </div>
+        <div class="history-list">
+          <div class="history-item" :class="{'history-selected': proof_history_idx === 0}"
+               @click="proof_goto_step(0)">
+            <span class="history-idx">0</span>
+            <span class="history-text">Initial</span>
           </div>
-          <div v-else class="ctxt-empty">No steps yet</div>
+          <div v-for="(h, i) in proof_history" :key="i" class="history-item"
+               :class="{'history-selected': proof_history_idx === i + 1}"
+               @click="proof_goto_step(i + 1)">
+            <span class="history-idx">{{ i + 1 }}</span>
+            <span v-if="h.step_output" class="history-text">{{ formatHistory(h.step_output) }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -206,6 +208,7 @@ const message = ref(null)
 const selected = ref(-1)
 const editing = ref(-1)
 const proving = ref(-1)
+const proving_item = ref(null)
 const thm_status = ref({})
 const validating = ref(false)
 
@@ -506,8 +509,10 @@ const save_item = async (index) => {
 const toggle_prove = (index) => {
   if (proving.value === index) {
     proving.value = -1
+    proving_item.value = null
   } else {
     proving.value = index
+    proving_item.value = theory.value.content[index]
     editing.value = -1
     selected.value = index
   }
@@ -515,14 +520,14 @@ const toggle_prove = (index) => {
 
 const save_proof = async (index, steps) => {
   theory.value.content[index].steps = steps
+  console.log('[SAVE] save_proof called, index =', index, 'steps.length =', steps.length, 'content exists =', !!theory.value.content[index])
   const ok = await persist()
+  console.log('[SAVE] persist returned', ok)
   if (ok) {
     await reload_file()
     toast({ type: 'OK', data: 'Proof saved' })
   }
 }
-
-// ==================== Validate All ====================
 const validate_all = async (force = false) => {
   if (!filename.value) return
   validating.value = true
@@ -590,6 +595,14 @@ const formatType = (T) => {
   return String(T)
 }
 
+const formatDisplay = (d) => {
+  if (!d) return ''
+  if (typeof d === 'string') return d
+  if (Array.isArray(d)) return d.map(formatDisplay).join('')
+  if (d.text) return d.text
+  return ''
+}
+
 // Reference to ProofArea for navigating history
 let proof_area_ref = null
 
@@ -606,10 +619,17 @@ onMounted(() => { load_files() })
 <style scoped>
 .editor-container { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 .main-content { flex: 1; display: flex; overflow: hidden; }
-.left-panel { width: 220px; min-width: 220px; border-right: 1px solid #dee2e6; overflow-y: auto; background: #f8f9fa; padding: 10px; }
-.center-panel { flex: 1; overflow-y: auto; padding: 15px; }
-.panel-title { font-weight: bold; color: #495057; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 2px solid #007bff; }
-.file-list { overflow-y: auto; }
+.theory-panel { flex: 1; overflow-y: auto; padding: 12px; min-width: 0; }
+.proving-mode .theory-panel { flex: 0 0 30%; border-right: 1px solid #dee2e6; }
+.proof-panel { flex: 0 0 50%; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.history-panel { flex: 0 0 20%; border-left: 1px solid #dee2e6; display: flex; flex-direction: column; overflow: hidden; background: #f8f9fa; min-width: 180px; }
+.history-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #dee2e6; }
+.panel-title-sm { font-weight: 700; font-size: 13px; color: #495057; }
+.history-nav { display: flex; align-items: center; gap: 4px; }
+.history-idx-display { font-size: 12px; color: #666; min-width: 30px; text-align: center; }
+.history-list { flex: 1; overflow-y: auto; padding: 4px; }
+.file-select { width: auto; min-width: 120px; cursor: pointer; }
+.center-panel { flex: 1; overflow-y: auto; padding: 12px; }-list { overflow-y: auto; }
 .file-item { padding: 6px 10px; cursor: pointer; border-radius: 4px; margin-bottom: 2px; font-size: 14px; }
 .file-item:hover { background: #e9ecef; }
 .file-item.active { background: #007bff; color: white; }
@@ -627,17 +647,24 @@ onMounted(() => { load_files() })
 .meta-value { font-family: Consolas, monospace; }
 
 /* Items */
-.item-wrapper { border-bottom: 1px solid #eee; }
-.item-row { display: flex; align-items: center; padding: 4px 8px; cursor: pointer; gap: 8px; }
-.item-row:hover { background: #f5f5f5; }
+.item-wrapper { border-bottom: 1px solid #e8e8e8; }
+.item-block { padding: 0; }
+.item-row { display: flex; align-items: center; padding: 5px 10px; gap: 8px; cursor: pointer; }
+.item-row:hover { background: #f8f9fa; }
 .item-selected { background: #e8f0fe !important; }
-.item-error { background: #ffe0e0 !important; }
-.item-idx { color: #999; font-size: 12px; width: 24px; text-align: right; }
-.item-type { font-weight: bold; color: #006000; min-width: 70px; font-size: 13px; }
-.item-name { font-family: Consolas, monospace; font-size: 14px; flex: 1; }
-.item-status { font-size: 16px; }
-.item-actions { display: flex; gap: 4px; }
-.item-actions .btn { padding: 1px 6px; font-size: 12px; }
+.item-error { background: #fff0f0 !important; }
+.item-idx { color: #aaa; font-size: 11px; width: 20px; text-align: right; flex-shrink: 0; }
+.item-type { font-size: 11px; color: #006000; min-width: 65px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.3px; }
+.item-name { font-family: Consolas, monospace; font-size: 13px; font-weight: 600; color: #1a1a1a; flex-shrink: 0; }
+.item-status { font-size: 14px; flex-shrink: 0; }
+.item-actions { display: flex; gap: 3px; margin-left: auto; flex-shrink: 0; }
+.item-actions .btn { padding: 1px 7px; font-size: 11px; }
+.item-content { margin-left: 36px; padding: 0 10px 6px 0; font-family: Consolas, monospace; font-size: 13px; line-height: 1.5; }
+.item-content .item-fixes { color: #888; font-size: 12px; }
+.item-content .item-prop-text { color: #333; }
+.item-content .item-type-sig { color: #555; }
+.item-header-row { background: #f5f0ff; border-left: 3px solid #6610f2; padding: 8px 10px !important; }
+.item-header-text { font-weight: 700; font-size: 14px; color: #333; flex: 1; }
 
 .status-valid { color: #28a745; }
 .status-step_failed { color: #dc3545; }
@@ -667,7 +694,7 @@ onMounted(() => { load_files() })
 @keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
 
 /* Right panel */
-.right-panel { width: 280px; min-width: 280px; border-left: 1px solid #dee2e6; overflow-y: auto; background: #f8f9fa; padding: 10px; }
+
 .panel-section { margin-bottom: 15px; }
 .ctxt-var { padding: 2px 0; font-size: 13px; }
 .ctxt-name { font-family: Consolas, monospace; font-weight: bold; }
