@@ -75,7 +75,24 @@
             <span v-if="!res._fact && !res._goal" class="suggest-nopreview">(no preview)</span>
           </div>
         </div>
-        <div v-if="derive_suggestions.length === 0 && rewrite_suggestions.length === 0 && backward_suggestions.length === 0" class="suggest-empty">
+        <div v-if="fuzzy_suggestions.length > 0" class="suggest-group">
+          <details>
+            <summary class="suggest-group-title">? Fuzzy ({{ fuzzy_suggestions.length }})</summary>
+            <div v-for="(grp, gi) in fuzzy_suggestions" :key="'f'+gi" class="fuzzy-item">
+              <div class="fuzzy-head">
+                <span class="suggest-dir">?</span>
+                <span class="suggest-method">{{ grp.theorem }}</span>
+                <span v-if="grp._thm" class="suggest-thm">{{ grp._thm }}</span>
+              </div>
+              <div v-for="(m, mi) in grp.matches" :key="'m'+mi" class="fuzzy-match" @click="apply_suggestion(m)">
+                <span class="fuzzy-facts">[{{ (m._facts || []).join(', ') }}]</span>
+                <span v-if="m._goal" class="suggest-result">⇒ {{ m._goal.length === 0 ? 'closes' : m._goal.length + ' subgoals' }}</span>
+                <span v-else-if="m._fact" class="suggest-result">⇒ {{ m._fact.join(' ') }}</span>
+              </div>
+            </div>
+          </details>
+        </div>
+        <div v-if="derive_suggestions.length === 0 && rewrite_suggestions.length === 0 && backward_suggestions.length === 0 && fuzzy_suggestions.length === 0" class="suggest-empty">
           Select a goal or fact to see suggestions
         </div>
       </div>
@@ -190,6 +207,7 @@ const facts = ref([])
 const proof = ref(undefined)
 const num_gaps = ref(0)
 const search_res = ref([])
+const fuzzy_res = ref([])
 const active_tab = ref('suggest')
 const manual_method = ref('')
 const manual_params = ref({})
@@ -197,6 +215,7 @@ const theorem_results = ref([])
 
 const FORWARD_METHODS = new Set(['apply_forward_step', 'apply_fact', 'rewrite_fact', 'forall_elim', 'exists_elim', 'drule', 'frule'])
 const REWRITE_FACT_METHODS = new Set(['rewrite_fact', 'rewrite_fact_with_prev'])
+const REWRITE_GOAL_METHODS = new Set(['rewrite_goal', 'rewrite_goal_with_prev'])
 // Methods whose params are instantiations (sent with param_ prefix for Inst).
 // All other methods expect plain keys (cut/cases/induction/new_var/...).
 const INST_PARAM_METHODS = new Set(['apply_backward_step', 'apply_forward_step', 'apply_prev'])
@@ -235,17 +254,35 @@ const param_hint = (p) => ({
 
 const derive_suggestions = computed(() => {
   if (goal.value !== -1) return []  // backward mode: no derive
-  return search_res.value.filter(r => !REWRITE_FACT_METHODS.has(r.method_name))
+  return search_res.value.filter(r => !r.fuzzy && !REWRITE_FACT_METHODS.has(r.method_name))
 })
 
 const rewrite_suggestions = computed(() => {
-  if (goal.value !== -1) return []  // backward mode: no rewrite
-  return search_res.value.filter(r => REWRITE_FACT_METHODS.has(r.method_name))
+  if (goal.value !== -1) {
+    // Backward mode: only goal-rewrites go here
+    return search_res.value.filter(r => !r.fuzzy && REWRITE_GOAL_METHODS.has(r.method_name))
+  }
+  return search_res.value.filter(r => !r.fuzzy && REWRITE_FACT_METHODS.has(r.method_name))
 })
 
 const backward_suggestions = computed(() => {
   if (goal.value === -1) return []  // forward mode: no backward
-  return search_res.value
+  return search_res.value.filter(r => !r.fuzzy && !REWRITE_GOAL_METHODS.has(r.method_name))
+})
+
+// Fuzzy suggestions: group by (method, theorem), each group lists all
+// successful (fact subset, permutation) matches with their results.
+const fuzzy_suggestions = computed(() => {
+  const groups = new Map()
+  for (const r of fuzzy_res.value) {
+    if (!r.fuzzy) continue
+    const key = r.method_name + '::' + (r.theorem || '')
+    if (!groups.has(key)) {
+      groups.set(key, { method_name: r.method_name, theorem: r.theorem || r.method_name, _thm: r._thm, matches: [] })
+    }
+    groups.get(key).matches.push(r)
+  }
+  return Array.from(groups.values())
 })
 
 const formatProp = computed(() => {
@@ -391,6 +428,7 @@ const match_thm = async () => {
   const input = current_state()
   if (input === undefined) {
     search_res.value = []
+    fuzzy_res.value = []
     const og = proof.value ? proof.value.filter(l => l.rule === 'sorry').map(l => l.id) : []
     emit('set-context', { ctxt: {}, history: history.value, history_idx: -1, open_goals: og })
     return
@@ -407,10 +445,12 @@ const match_thm = async () => {
       resultsKey = 'results'
     } else {
       search_res.value = []
+      fuzzy_res.value = []
       return
     }
     const response = await api.post(endpoint, input)
     search_res.value = response.data[resultsKey] || []
+    fuzzy_res.value = response.data.fuzzy || []
     const og2 = proof.value ? proof.value.filter(l => l.rule === 'sorry').map(l => l.id) : []
     emit('set-context', {
       ctxt: response.data.ctxt || {},
@@ -420,23 +460,35 @@ const match_thm = async () => {
     })
   } catch (err) {
     search_res.value = []
+    fuzzy_res.value = []
   }
 }
 
 const apply_suggestion = (res) => {
-  // Only pass method-specific args, NOT goal_id/fact_ids from search results
-  // current_state() provides the live goal and facts
+  // Pass method-specific args; fact_ids (the successful permutation order
+  // found during search) is used instead of the live click order, so that
+  // applying a suggestion always matches.
   const args = {}
   if (res.theorem) args.theorem = res.theorem
   if (res.sym) args.sym = res.sym
   if (res.var) args.var = res.var
+  if (res.fact_ids) args.fact_ids = res.fact_ids
+  // Context shown in the parameter query dialog
+  const desc = { thm: res._thm || '', result: '' }
+  if (res._goal) desc.result = '⇒ ' + (res._goal.length === 0 ? 'closes' : res._goal.length + ' subgoals')
+  else if (res._fact) desc.result = '⇒ ' + (Array.isArray(res._fact) ? res._fact.join(' ') : res._fact)
+  if (res._needs_params) desc.needs = res._needs_params.map(p => p.replace('param_', ''))
+  if (desc.thm || desc.result || desc.needs) args._desc = desc
   apply_method(res.method_name, args)
 }
 
 const apply_method = async (method_name, args) => {
   const sigs = method_sig.value[method_name] || []
   const input = current_state()
-  if (!input) return
+  if (!input) {
+    emit('set-message', { type: 'error', data: 'No goal or fact selected: click a line first' })
+    return
+  }
   input.step.method_name = method_name
   if (args !== undefined) {
     // Only use search result's goal_id if user explicitly selected a goal
@@ -454,7 +506,7 @@ const apply_method = async (method_name, args) => {
   }
   if (sigList.length > 0) {
     const query_result = await new Promise((resolve, reject) => {
-      emit('query', { title: 'Method ' + method_name, fields: sigList, resolve, reject })
+      emit('query', { title: 'Parameters for ' + method_name, fields: sigList, resolve, reject })
     })
     if (query_result !== undefined) {
       for (const k in query_result) {
@@ -462,9 +514,9 @@ const apply_method = async (method_name, args) => {
         else if (INST_PARAM_METHODS.has(method_name)) { input.step['param_' + k] = query_result[k] }
         else { input.step[k] = query_result[k] }
       }
-      await apply_method_ajax(input)
+      await apply_method_ajax(input, args._desc)
     }
-  } else { await apply_method_ajax(input) }
+  } else { await apply_method_ajax(input, args._desc) }
 }
 
 const apply_manual_method = async () => {
@@ -481,13 +533,15 @@ const apply_auto = (method_name) => {
   apply_method(method_name, {})
 }
 
-const apply_method_ajax = async (input) => {
+const apply_method_ajax = async (input, desc = null) => {
   emit('set-status', { status: 'Running' })
   try {
     const result = await api.post('/apply-method', input)
     if ('query' in result.data) {
+      let qTitle = 'Parameters for ' + input.step.method_name
+      if (input.step.theorem) qTitle += ': ' + input.step.theorem
       const query_result = await new Promise((resolve, reject) => {
-        emit('query', { title: 'Query for parameters', fields: result.data.query.map(s => s === 'names' ? s : s.slice(6)), resolve, reject })
+        emit('query', { title: qTitle, desc: desc, fields: result.data.query.map(s => s === 'names' ? s : s.slice(6)), resolve, reject })
       })
       if (query_result !== undefined) {
         for (const k in query_result) {
@@ -495,7 +549,7 @@ const apply_method_ajax = async (input) => {
           else if (INST_PARAM_METHODS.has(input.step.method_name)) { input.step['param_' + k] = query_result[k] }
           else { input.step[k] = query_result[k] }
         }
-        await apply_method_ajax(input)
+        await apply_method_ajax(input, desc)
       }
     } else if ('error' in result.data) {
       emit('set-message', { type: 'error', data: result.data.error.err_type + ': ' + result.data.error.err_str })
@@ -637,6 +691,12 @@ defineExpose({ apply_method, gotoStep, step_backward, step_forward, proof, num_g
 .suggest-needs { color: #e67e22; font-size: 11px; }
 .suggest-nopreview { color: #aaa; font-style: italic; }
 .suggest-empty { color: #999; font-size: 12px; padding: 8px; }
+.suggest-group summary { cursor: pointer; }
+.fuzzy-item { margin: 4px 0 6px 6px; border-left: 2px solid #e0e0e0; padding-left: 6px; }
+.fuzzy-head { display: flex; align-items: baseline; gap: 6px; font-size: 12px; }
+.fuzzy-match { display: flex; align-items: baseline; gap: 6px; padding: 2px 6px; cursor: pointer; border-radius: 3px; font-size: 11px; }
+.fuzzy-match:hover { background: #fdf3e0; }
+.fuzzy-facts { font-family: Consolas, monospace; color: #856404; }
 .manual-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .manual-row label { font-size: 12px; color: #666; min-width: 50px; }
 .method-select { font-size: 12px; padding: 2px 4px; flex: 1; }

@@ -62,7 +62,7 @@ axiom negI
 axiom negE
   fixes A :: bool
   prop ¬A ⟶ A ⟶ false
-  [hint_backward]
+  [hint_backward,hint_forward]
 
 axiom falseE
   fixes A :: bool
@@ -167,7 +167,7 @@ theorem classical_cases
 theorem negE_gen
   fixes A :: bool, C :: bool
   prop ¬A ⟶ A ⟶ C
-  [hint_backward1]
+  [hint_backward1,hint_forward]
   proof
     2: apply_backward_step falseE
     2: apply_backward_step negE @0,1
@@ -457,6 +457,7 @@ theorem cond_elim_thm
 theorem resolution_left
   fixes A :: bool, B :: bool
   prop A ∨ B ⟶ ¬A ⟶ B
+  [hint_backward1,hint_forward]
   proof
     2: apply_backward_step disjE @0
     2: introduction
@@ -466,6 +467,7 @@ theorem resolution_left
 theorem resolution_right
   fixes A :: bool, B :: bool
   prop A ⟶ ¬A ∨ B ⟶ B
+  [hint_forward,hint_backward1]
   proof
     2: apply_backward_step disjE @1
     2: introduction
@@ -500,5 +502,13 @@ theorem allE
   prop (∀x1. P x1) ⟶ (P x ⟶ R) ⟶ R
   proof
     2: apply_prev @1
+    2: apply_prev @0
+  qed
+
+theorem weakening
+  fixes A :: bool, B :: bool
+  prop A ⟶ B ⟶ A
+  [hint_forward]
+  proof
     2: apply_prev @0
   qed

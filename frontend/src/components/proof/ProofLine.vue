@@ -34,7 +34,7 @@
       <span v-if="line.rule === 'sorry'" class="sorry-clickable" 
             :class="{'sorry-goal': is_goal}"
             @click.stop="$emit('select-goal')">sorry</span>
-      <span v-else class="item-text">{{line.rule}} </span>
+      <span v-else-if="!APPLY_THEOREM_RULES.includes(line.rule)" class="item-text">{{line.rule}} </span>
       <span v-if="line.args_hl && line.args_hl.length > 0">
         <Expression :line="line.args_hl"/>
       </span>
@@ -79,6 +79,7 @@ const hover = ref(false)
 
 const FORWARD_RULES = new Set(['apply_theorem', 'apply_theorem_for', 'rewrite_fact', 'rewrite_fact_sym', 'forall_elim_gen', 'apply_fact'])
 const BACKWARD_RULES = new Set(['sorry', 'subproof', 'trivial'])
+const APPLY_THEOREM_RULES = ['apply_theorem', 'apply_theorem_for']
 
 const dirMark = computed(() => {
   if (!props.line) return ''

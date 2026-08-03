@@ -487,33 +487,50 @@ def forward_search():
                                   'forall_elim', 'exists_elim', 'drule', 'frule']
 
         results = []
+        fuzzy = []
         import itertools
+
+        def collect(method_name, perm_prevs, exact):
+            method_obj = method.get_method(method_name)
+            try:
+                res = method_obj.search(state, None, perm_prevs)
+            except Exception:
+                return
+            for r in res:
+                r['method_name'] = method_name
+                r['fact_ids'] = [str(p) for p in perm_prevs]
+                r['_facts'] = [printer.print_term(state.get_proof_item(p).th.prop) for p in perm_prevs]
+                # Print _fact and _thm for display
+                if '_fact' in r:
+                    r['_fact'] = [printer.print_term(t) if not isinstance(t, str) else t for t in r['_fact']]
+                if '_thm' in r:
+                    if not isinstance(r['_thm'], str):
+                        r['_thm'] = printer.print_term(r['_thm'])
+                if exact:
+                    r['fuzzy'] = False
+                    results.append(r)
+                else:
+                    r['fuzzy'] = True
+                    fuzzy.append(r)
+
         for method_name in FORWARD_SEARCH_METHODS:
             if not method.has_method(method_name):
                 continue
             method_obj = method.get_method(method_name)
-            # Try permutations of facts
-            test_prevs = [prevs]
-            if not hasattr(method_obj, 'no_order'):
-                test_prevs = itertools.permutations(prevs)
-            for perm_prevs in test_prevs:
-                perm_prevs = list(perm_prevs)
-                try:
-                    res = method_obj.search(state, None, perm_prevs)
-                    for r in res:
-                        r['method_name'] = method_name
-                        r['fact_ids'] = [str(p) for p in perm_prevs]
-                        # Print _fact and _thm for display
-                        if '_fact' in r:
-                            r['_fact'] = [printer.print_term(t) if not isinstance(t, str) else t for t in r['_fact']]
-                        if '_thm' in r:
-                            if not isinstance(r['_thm'], str):
-                                r['_thm'] = printer.print_term(r['_thm'])
-                        results.append(r)
-                except Exception:
-                    pass
+            # Exact: original order, all facts
+            collect(method_name, prevs, exact=True)
+            if hasattr(method_obj, 'no_order'):
+                continue
+            # Fuzzy: other permutations of all facts, then subsets, largest first
+            n = len(prevs)
+            for k in range(n, 0, -1):
+                for comb in itertools.combinations(prevs, k):
+                    for perm in itertools.permutations(comb):
+                        if k == n and list(perm) == prevs:
+                            continue  # already in exact
+                        collect(method_name, list(perm), exact=False)
 
-    return jsonify({'results': results, 'ctxt': {}})
+    return jsonify({'results': results, 'fuzzy': fuzzy, 'ctxt': {}})
 
 
 @app.route('/api/backward-search', methods=['POST'])
@@ -547,38 +564,56 @@ def backward_search():
                                    'introduction', 'inst_exists_goal', 'simp', 'induction']
 
         results = []
+        fuzzy = []
         import itertools
+
+        def collect(method_name, perm_prevs, exact):
+            method_obj = method.get_method(method_name)
+            try:
+                res = method_obj.search(state, goal_id, perm_prevs)
+            except Exception:
+                return
+            for r in res:
+                r['method_name'] = method_name
+                r['goal_id'] = str(goal_id)
+                if prevs:
+                    r['fact_ids'] = [str(p) for p in perm_prevs]
+                    r['_facts'] = [printer.print_term(state.get_proof_item(p).th.prop) for p in perm_prevs]
+                if '_goal' in r:
+                    r['_goal'] = [printer.print_term(t) if not isinstance(t, str) else t for t in r['_goal']]
+                if '_thm' in r:
+                    if not isinstance(r['_thm'], str):
+                        if not isinstance(r['_thm'], str):
+                            r['_thm'] = printer.print_term(r['_thm'])
+                if exact:
+                    r['fuzzy'] = False
+                    results.append(r)
+                else:
+                    r['fuzzy'] = True
+                    fuzzy.append(r)
+
         for method_name in BACKWARD_SEARCH_METHODS:
             if not method.has_method(method_name):
                 continue
             method_obj = method.get_method(method_name)
-            test_prevs = [prevs]
-            if not hasattr(method_obj, 'no_order'):
-                test_prevs = itertools.permutations(prevs)
-            for perm_prevs in test_prevs:
-                perm_prevs = list(perm_prevs)
-                try:
-                    res = method_obj.search(state, goal_id, perm_prevs)
-                    for r in res:
-                        r['method_name'] = method_name
-                        r['goal_id'] = str(goal_id)
-                        if prevs:
-                            r['fact_ids'] = [str(p) for p in perm_prevs]
-                        if '_goal' in r:
-                            r['_goal'] = [printer.print_term(t) if not isinstance(t, str) else t for t in r['_goal']]
-                        if '_thm' in r:
-                            if not isinstance(r['_thm'], str):
-                                if not isinstance(r['_thm'], str):
-                                    r['_thm'] = printer.print_term(r['_thm'])
-                        results.append(r)
-                except Exception:
-                    pass
+            # Exact: original order, all facts
+            collect(method_name, prevs, exact=True)
+            if hasattr(method_obj, 'no_order'):
+                continue
+            # Fuzzy: other permutations of all facts, then subsets, largest first
+            n = len(prevs)
+            for k in range(n, 0, -1):
+                for comb in itertools.combinations(prevs, k):
+                    for perm in itertools.permutations(comb):
+                        if k == n and list(perm) == prevs:
+                            continue  # already in exact
+                        collect(method_name, list(perm), exact=False)
 
         # Goal-centric filtering: if any result closes goal, keep closing + structural
         if any('_goal' in r and len(r['_goal']) == 0 for r in results):
             results = [r for r in results if '_goal' not in r or len(r['_goal']) == 0]
 
-    return jsonify({'results': results, 'ctxt': {}})
+    return jsonify({'results': results, 'fuzzy': fuzzy, 'ctxt': {}})
 
 
 @app.route('/api/theorem-search', methods=['POST'])

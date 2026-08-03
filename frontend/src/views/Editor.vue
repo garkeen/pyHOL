@@ -146,6 +146,7 @@
           @save-steps="(steps) => save_proof(proving, steps)"
           @set-message="msg => toast(msg)"
           @set-context="handle_set_context"
+          @query="handle_query"
           @close-prove="toggle_prove(proving)"/>
       </div>
 
@@ -179,6 +180,21 @@
       </div>
     </div>
 
+    <!-- Query dialog -->
+    <div v-if="query" class="modal-overlay" @click.self="handle_query_cancel">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ query.title }}</h5>
+          <button type="button" class="btn-close" @click="handle_query_cancel"></button>
+        </div>
+        <div class="modal-body">
+          <ProofQuery :query="query"
+                      @query-ok="handle_query_ok"
+                      @query-cancel="handle_query_cancel"/>
+        </div>
+      </div>
+    </div>
+
     <!-- Toast -->
     <Transition name="toast">
       <div v-if="message" class="toast" :class="message.type === 'error' ? 'toast-error' : 'toast-ok'">
@@ -201,6 +217,7 @@ import InductiveEdit from '../components/items/InductiveEdit.vue'
 import HeaderEdit from '../components/items/HeaderEdit.vue'
 import AxTypeEdit from '../components/items/AxTypeEdit.vue'
 import ProofArea from '../components/proof/ProofArea.vue'
+import ProofQuery from '../components/proof/ProofQuery.vue'
 
 // ==================== State ====================
 const filelist = ref([])
@@ -209,6 +226,7 @@ const theory = ref(null)
 const loading = ref(false)
 const saving = ref(false)
 const message = ref(null)
+const query = ref(undefined)
 const selected = ref(-1)
 const editing = ref(-1)
 const proving = ref(-1)
@@ -219,6 +237,24 @@ const handle_set_context = (data) => {
   proof_history.value = data.history || []
   proof_history_idx.value = (data.history_idx !== undefined && data.history_idx !== null) ? data.history_idx : -1
   open_goals.value = data.open_goals || []
+}
+
+const handle_query = (q) => {
+  query.value = q
+}
+
+const handle_query_ok = (vals) => {
+  if (query.value && query.value.resolve) {
+    query.value.resolve(vals)
+  }
+  query.value = undefined
+}
+
+const handle_query_cancel = () => {
+  if (query.value && query.value.resolve) {
+    query.value.resolve(undefined)
+  }
+  query.value = undefined
 }
 const thm_status = ref({})
 const validating = ref(false)
@@ -538,6 +574,13 @@ const save_proof = async (index, steps) => {
   console.log('[SAVE] persist returned', ok)
   if (ok) {
     await reload_file()
+    // Re-validate so the theorem list status refreshes immediately
+    try {
+      const resp = await api.post('/validate-theory', { filename: filename.value, force: false })
+      thm_status.value = resp.data.statuses
+    } catch (e) {
+      console.log('[SAVE] re-validate failed', e)
+    }
     toast({ type: 'OK', data: 'Proof saved' })
   }
 }
@@ -721,4 +764,10 @@ onMounted(() => { load_files() })
 .history-selected { background: #cce5ff !important; }
 .history-idx { color: #999; min-width: 20px; text-align: right; }
 .history-text { font-family: Consolas, monospace; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal-content { background: #fff; border-radius: 8px; padding: 16px; min-width: 360px; max-width: 560px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.modal-title { margin: 0; font-size: 15px; }
+.modal-body { font-size: 14px; }
+.btn-close { background: none; border: none; font-size: 16px; cursor: pointer; }
 </style>
