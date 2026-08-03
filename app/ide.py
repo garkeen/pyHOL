@@ -11,6 +11,7 @@ from kernel import theory
 from kernel.theory import TheoryException
 from syntax import parser, printer, settings, pprint
 from server import server, methods as method
+from kernel.proof import ItemID
 from logic import basic
 from logic import context
 from server import monitor
@@ -236,18 +237,29 @@ def search_method():
 
         print("Load: %f" % (time.perf_counter() - start_time))
 
-        goal_id = data['step']['goal_id']
-        fact_ids = data['step']['fact_ids']
+        goal_id = data['step'].get('goal_id')
+        if not goal_id:
+            # No goal selected: find first sorry line
+            for item in state.prf.items:
+                if item.rule == 'sorry':
+                    goal_id = str(item.id)
+                    break
+            if not goal_id:
+                return jsonify({'search_res': [], 'ctxt': {}})
+        fact_ids = data['step'].get('fact_ids', [])
 
         search_res = state.search_method(goal_id, fact_ids)
         with settings.global_setting(unicode=True):
             for res in search_res:
                 if '_goal' in res:
-                    res['_goal'] = [printer.print_term(t) for t in res['_goal']]
+                    res['_goal'] = [printer.print_term(t) if not isinstance(t, str) else t for t in res['_goal']]
                 if '_fact' in res:
-                    res['_fact'] = [printer.print_term(t) for t in res['_fact']]
+                    res['_fact'] = [printer.print_term(t) if not isinstance(t, str) else t for t in res['_fact']]
+                if '_thm' in res:
+                    if not isinstance(res['_thm'], str):
+                        res['_thm'] = printer.print_term(res['_thm'])
 
-        vars = state.get_vars(goal_id)
+        vars = state.get_vars(ItemID(goal_id))
         with settings.global_setting(unicode=True, highlight=True):
             print_vars = dict((k, printer.print_type(v)) for k, v in vars.items())
         print("Response:", time.perf_counter() - start_time)
@@ -334,6 +346,46 @@ def apply_method():
             print("Load failed: %s" % str(e))
             return jsonify({'error': str(e)}), 500
 
+        # If no goal_id, find insertion point in the same context as facts
+        if not data['step'].get('goal_id'):
+            fact_ids = data['step'].get('fact_ids', [])
+            if fact_ids:
+                from kernel.proof import ItemID
+                fact_id_objs = [ItemID(fid) for fid in fact_ids]
+                last_fact = max(fact_id_objs, key=lambda x: x.id)
+                prefix = last_fact.id[:-1]
+                # Try next items at the same level
+                for n in range(last_fact.id[-1] + 1, last_fact.id[-1] + 200):
+                    candidate_id = ItemID(prefix + (n,))
+                    try:
+                        state.get_proof_item(candidate_id)
+                        if all(candidate_id.can_depend_on(fid) for fid in fact_id_objs):
+                            data['step']['goal_id'] = str(candidate_id)
+                            break
+                    except Exception:
+                        break
+                # Fallback: find first sorry that can depend on all facts
+                if not data['step'].get('goal_id'):
+                    def find_sorry_recursive(prf):
+                        for item in prf.items.values():
+                            if item.rule == 'sorry':
+                                sid = ItemID(str(item.id))
+                                if all(sid.can_depend_on(fid) for fid in fact_id_objs):
+                                    return str(item.id)
+                            if hasattr(item, 'subproof') and item.subproof:
+                                result = find_sorry_recursive(item.subproof)
+                                if result:
+                                    return result
+                        return None
+                    result = find_sorry_recursive(state.prf)
+                    if result:
+                        data['step']['goal_id'] = result
+            else:
+                for item in state.prf.items.values():
+                    if item.rule == 'sorry':
+                        data['step']['goal_id'] = str(item.id)
+                        break
+        
         try:
             method.apply_method(state, data['step'])
         except Exception as e:
@@ -364,7 +416,8 @@ def apply_method():
 
         res = {
             'state': state.json_data(),
-            'history': history
+            'history': history,
+            'step': data['step']
         }
         return jsonify(res)
 
@@ -483,6 +536,168 @@ def validate_theory():
         'total': len(statuses)
     })
 
+
+@app.route('/api/forward-search', methods=['POST'])
+def forward_search():
+    """Forward-only search: given facts, find derivable facts.
+    
+    No goal_id needed. Searches hint_forward and hint_rewrite (for facts).
+    """
+    data = json.loads(request.get_data().decode("utf-8"))
+    start_time = time.perf_counter()
+
+    with theory.fresh_theory():
+        try:
+            _load_theory_for_proof(data['theory_name'], data['thm_name'], data['vars'])
+            state, history = _create_proof_state(data['prop'], data.get('steps', [])[:data['index']])
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+        fact_ids = data['step'].get('fact_ids', [])
+        if not fact_ids:
+            return jsonify({'results': [], 'ctxt': {}})
+
+        from kernel.proof import ItemID
+        prevs = [ItemID(fid) for fid in fact_ids]
+
+        # Forward methods to search
+        FORWARD_SEARCH_METHODS = ['apply_forward_step', 'apply_fact', 'rewrite_fact',
+                                  'forall_elim', 'exists_elim', 'drule', 'frule']
+
+        results = []
+        import itertools
+        for method_name in FORWARD_SEARCH_METHODS:
+            if not method.has_method(method_name):
+                continue
+            method_obj = method.get_method(method_name)
+            # Try permutations of facts
+            test_prevs = [prevs]
+            if not hasattr(method_obj, 'no_order'):
+                test_prevs = itertools.permutations(prevs)
+            for perm_prevs in test_prevs:
+                perm_prevs = list(perm_prevs)
+                try:
+                    res = method_obj.search(state, None, perm_prevs)
+                    for r in res:
+                        r['method_name'] = method_name
+                        r['fact_ids'] = [str(p) for p in perm_prevs]
+                        # Print _fact and _thm for display
+                        if '_fact' in r:
+                            r['_fact'] = [printer.print_term(t) if not isinstance(t, str) else t for t in r['_fact']]
+                        if '_thm' in r:
+                            if not isinstance(r['_thm'], str):
+                                r['_thm'] = printer.print_term(r['_thm'])
+                        results.append(r)
+                except Exception:
+                    pass
+
+    return jsonify({'results': results, 'ctxt': {}})
+
+
+@app.route('/api/backward-search', methods=['POST'])
+def backward_search():
+    """Backward-only search: given goal (and optional facts), find ways to modify goal.
+    
+    Every result must modify the goal (decompose, close, or transform).
+    """
+    data = json.loads(request.get_data().decode("utf-8"))
+    start_time = time.perf_counter()
+
+    with theory.fresh_theory():
+        try:
+            _load_theory_for_proof(data['theory_name'], data['thm_name'], data['vars'])
+            state, history = _create_proof_state(data['prop'], data.get('steps', [])[:data['index']])
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+        goal_id = data['step'].get('goal_id')
+        if not goal_id:
+            return jsonify({'results': [], 'ctxt': {}})
+
+        from kernel.proof import ItemID
+        goal_id = ItemID(goal_id)
+        fact_ids = data['step'].get('fact_ids', [])
+        prevs = [ItemID(fid) for fid in fact_ids] if fact_ids else []
+
+        # Backward methods to search
+        BACKWARD_SEARCH_METHODS = ['apply_backward_step', 'apply_prev', 'rewrite_goal',
+                                   'apply_resolve_step', 'reflexive', 'sym',
+                                   'introduction', 'inst_exists_goal', 'simp']
+
+        results = []
+        import itertools
+        for method_name in BACKWARD_SEARCH_METHODS:
+            if not method.has_method(method_name):
+                continue
+            method_obj = method.get_method(method_name)
+            test_prevs = [prevs]
+            if not hasattr(method_obj, 'no_order'):
+                test_prevs = itertools.permutations(prevs)
+            for perm_prevs in test_prevs:
+                perm_prevs = list(perm_prevs)
+                try:
+                    res = method_obj.search(state, goal_id, perm_prevs)
+                    for r in res:
+                        r['method_name'] = method_name
+                        r['goal_id'] = str(goal_id)
+                        if prevs:
+                            r['fact_ids'] = [str(p) for p in perm_prevs]
+                        if '_goal' in r:
+                            r['_goal'] = [printer.print_term(t) if not isinstance(t, str) else t for t in r['_goal']]
+                        if '_thm' in r:
+                            if not isinstance(r['_thm'], str):
+                                if not isinstance(r['_thm'], str):
+                                    r['_thm'] = printer.print_term(r['_thm'])
+                        results.append(r)
+                except Exception:
+                    pass
+
+        # Goal-centric filtering: if any result closes goal, keep closing + structural
+        if any('_goal' in r and len(r['_goal']) == 0 for r in results):
+            results = [r for r in results if '_goal' not in r or len(r['_goal']) == 0]
+
+    return jsonify({'results': results, 'ctxt': {}})
+
+
+@app.route('/api/theorem-search', methods=['POST'])
+def theorem_search():
+    """Search theorems by name pattern within current theory context.
+    
+    Input:
+    * theory_name: name of the theory.
+    * thm_name: name of the theorem being proved (for context limit).
+    * pattern: search pattern (case-insensitive substring).
+    
+    Returns:
+    * results: list of {name, prop, attrs} for matching theorems.
+    """
+    data = json.loads(request.get_data().decode("utf-8"))
+    pattern = data.get('pattern', '').lower()
+    theory_name = data.get('theory_name', '')
+    thm_name = data.get('thm_name', '')
+    
+    results = []
+    with theory.fresh_theory():
+        try:
+            _load_theory_for_proof(theory_name, thm_name, {})
+        except Exception:
+            return jsonify({'results': []})
+        
+        for name in theory.thy.get_data("theorems"):
+            if pattern and pattern not in name.lower():
+                continue
+            try:
+                th = theory.get_theorem(name)
+                attrs = theory.thy.get_attributes(name)
+                results.append({
+                    'name': name,
+                    'prop': str(th.prop),
+                    'attrs': list(attrs) if attrs else []
+                })
+            except Exception:
+                pass
+    
+    return jsonify({'results': results[:30]})
 
 @app.route('/api/theory-status', methods=['GET'])
 def theory_status():

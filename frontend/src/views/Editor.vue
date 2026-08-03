@@ -145,7 +145,7 @@
           :ref="el => { if (el) proof_area_ref = el }"
           @save-steps="(steps) => save_proof(proving, steps)"
           @set-message="msg => toast(msg)"
-          @set-context="data => { proof_history = data.history || []; proof_history_idx = data.history_idx || -1 }"
+          @set-context="handle_set_context"
           @close-prove="toggle_prove(proving)"/>
       </div>
 
@@ -158,6 +158,10 @@
             <span class="history-idx-display">{{ proof_history_idx }}/{{ proof_history.length }}</span>
             <button class="btn btn-sm btn-outline-secondary" @click="proof_goto_step(proof_history_idx + 1)" :disabled="proof_history_idx >= proof_history.length">→</button>
           </div>
+        </div>
+        <div v-if="open_goals.length > 0" class="open-goals-section">
+          <div class="open-goals-title">Open goals</div>
+          <div v-for="gid in open_goals" :key="gid" class="open-goal-item">{{ gid }}</div>
         </div>
         <div class="history-list">
           <div class="history-item" :class="{'history-selected': proof_history_idx === 0}"
@@ -209,6 +213,13 @@ const selected = ref(-1)
 const editing = ref(-1)
 const proving = ref(-1)
 const proving_item = ref(null)
+const open_goals = ref([])
+
+const handle_set_context = (data) => {
+  proof_history.value = data.history || []
+  proof_history_idx.value = (data.history_idx !== undefined && data.history_idx !== null) ? data.history_idx : -1
+  open_goals.value = data.open_goals || []
+}
 const thm_status = ref({})
 const validating = ref(false)
 
@@ -510,6 +521,8 @@ const toggle_prove = (index) => {
   if (proving.value === index) {
     proving.value = -1
     proving_item.value = null
+    proof_area_ref = null
+    open_goals.value = []
   } else {
     proving.value = index
     proving_item.value = theory.value.content[index]
@@ -628,6 +641,9 @@ onMounted(() => { load_files() })
 .history-nav { display: flex; align-items: center; gap: 4px; }
 .history-idx-display { font-size: 12px; color: #666; min-width: 30px; text-align: center; }
 .history-list { flex: 1; overflow-y: auto; padding: 4px; }
+.open-goals-section { padding: 6px 8px; border-bottom: 1px solid #e0e0e0; }
+.open-goals-title { font-size: 11px; font-weight: 700; color: #c0392b; text-transform: uppercase; margin-bottom: 3px; }
+.open-goal-item { font-family: Consolas, monospace; font-size: 12px; color: #333; padding: 1px 0; }
 .file-select { width: auto; min-width: 120px; cursor: pointer; }
 .center-panel { flex: 1; overflow-y: auto; padding: 12px; }-list { overflow-y: auto; }
 .file-item { padding: 6px 10px; cursor: pointer; border-radius: 4px; margin-bottom: 2px; font-size: 14px; }

@@ -477,7 +477,8 @@ class rewrite_goal(Method):
             try:
                 sym_b = True if sym == 'true' else False
                 pt = tactic.rewrite_goal(sym=sym_b).get_proof_term(cur_item.th, args=th_name, prevs=prevs)
-                results.append({"theorem": th_name, "sym": sym, "_goal": [gap.prop for gap in pt.gaps]})
+                th = theory.get_theorem(th_name, svar=False)
+                results.append({"theorem": th_name, "sym": sym, "_goal": [gap.prop for gap in pt.gaps], "_thm": th.prop})
             except (AssertionError, matcher.MatchException) as e:
                 pass
 
@@ -532,7 +533,8 @@ class rewrite_fact(Method):
             try:
                 sym_b = True if sym == 'true' else False
                 pt = rewrite_fact_macro(sym=sym_b).get_proof_term(th_name, prevs)
-                results.append({"theorem": th_name, "sym": sym, "_fact": [pt.prop]})
+                th = theory.get_theorem(th_name, svar=False)
+                results.append({"theorem": th_name, "sym": sym, "_fact": [pt.prop], "_thm": th.prop})
             except (AssertionError, matcher.MatchException, InvalidDerivationException) as e:
                 # print(e)
                 pass
@@ -625,9 +627,10 @@ class apply_forward_step(Method):
             try:
                 macro = apply_theorem_macro()
                 res_th = macro.eval(th_name, prev_ths)
-                results.append({"theorem": th_name, "_fact": [res_th.prop]})
-            except theory.ParameterQueryException:
-                results.append({"theorem": th_name})
+                th = theory.get_theorem(th_name, svar=False)
+                results.append({"theorem": th_name, "_fact": [res_th.prop], "_thm": th.prop})
+            except theory.ParameterQueryException as e:
+                results.append({"theorem": th_name, "_needs_params": list(e.params)})
             except (AssertionError, matcher.MatchException):
                 pass
 
@@ -691,7 +694,8 @@ class apply_backward_step(Method):
         def search_thm(th_name):
             try:
                 pt = tactic.rule().get_proof_term(cur_item.th, args=th_name, prevs=prevs)
-                results.append({"theorem": th_name, "_goal": [gap.prop for gap in pt.gaps]})
+                th = theory.get_theorem(th_name, svar=False)
+                results.append({"theorem": th_name, "_goal": [gap.prop for gap in pt.gaps], "_thm": th.prop})
             except theory.ParameterQueryException:
                 # In this case, still suggest the result
                 results.append({"theorem": th_name})

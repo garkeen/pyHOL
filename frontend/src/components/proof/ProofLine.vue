@@ -2,14 +2,16 @@
   <div v-if="line !== undefined && line.rule !== 'intros'" 
        style="font-size:14px;white-space:nowrap"
        :style="styleObject" 
-       @click="$emit('select')"
        @mouseenter="hover = can_select"
        @mouseleave="hover = false">
     <span style="display:inline-block;width:40px">{{line.id}}</span>
+    <span class="dir-mark" :class="dirClass">{{dirMark}}</span>
     <span class="item-text" v-html="indent"/>
     <span v-if="line.rule === 'assume'">
       <span class="item-text keyword2">assume </span>
-      <Expression v-if="line.args_hl" :line="line.args_hl"/>
+      <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
+        <Expression v-if="line.args_hl" :line="line.args_hl"/>
+      </span>
     </span>
     <span v-else-if="line.rule === 'variable'">
       <span class="item-text keyword2">fix </span>
@@ -17,15 +19,21 @@
     </span>
     <span v-else-if="line.rule === 'subproof'">
       <span class="item-text keyword1">have </span>
-      <Expression v-if="line.th_hl" :line="line.th_hl"/>
+      <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
+        <Expression v-if="line.th_hl" :line="line.th_hl"/>
+      </span>
       <span class="item-text keyword1"> with</span>
     </span>
     <span v-else>
       <span v-if="is_last_id" class="item-text keyword2">show </span>
       <span v-else class="item-text keyword1">have </span>
-      <Expression v-if="line.th_hl" :line="line.th_hl"/>
+      <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
+        <Expression v-if="line.th_hl" :line="line.th_hl"/>
+      </span>
       <span class="item-text keyword3"> by </span>
-      <span v-if="line.rule === 'sorry' && is_goal" class="item-text" style="background-color:red">sorry</span>
+      <span v-if="line.rule === 'sorry'" class="sorry-clickable" 
+            :class="{'sorry-goal': is_goal}"
+            @click.stop="$emit('select-goal')">sorry</span>
       <span v-else class="item-text">{{line.rule}} </span>
       <span v-if="line.args_hl && line.args_hl.length > 0">
         <Expression :line="line.args_hl"/>
@@ -65,9 +73,26 @@ const props = defineProps({
   }
 })
 
-defineEmits(['select'])
+defineEmits(['select-fact', 'select-goal'])
 
 const hover = ref(false)
+
+const FORWARD_RULES = new Set(['apply_theorem', 'apply_theorem_for', 'rewrite_fact', 'rewrite_fact_sym', 'forall_elim_gen', 'apply_fact'])
+const BACKWARD_RULES = new Set(['sorry', 'subproof', 'trivial'])
+
+const dirMark = computed(() => {
+  if (!props.line) return ''
+  if (FORWARD_RULES.has(props.line.rule)) return '→'
+  if (BACKWARD_RULES.has(props.line.rule)) return '←'
+  return ''
+})
+
+const dirClass = computed(() => {
+  if (!props.line) return ''
+  if (FORWARD_RULES.has(props.line.rule)) return 'dir-forward'
+  if (BACKWARD_RULES.has(props.line.rule)) return 'dir-backward'
+  return 'dir-none'
+})
 
 const indent = computed(() => {
   let result = ''
@@ -82,10 +107,8 @@ const indent = computed(() => {
 })
 
 const styleObject = computed(() => {
-  if (props.is_fact) {
-    return {backgroundColor: 'yellow'}
-  } else if (hover.value) {
-    return {backgroundColor: 'lightYellow'}
+  if (hover.value && props.can_select) {
+    return {backgroundColor: '#f8f9fa'}
   } else {
     return {}
   }
@@ -93,6 +116,16 @@ const styleObject = computed(() => {
 </script>
 
 <style scoped>
+.dir-mark { display: inline-block; width: 24px; font-weight: bold; text-align: center; }
+.dir-forward { color: #28a745; }
+.dir-backward { color: #dc3545; }
+.dir-none { color: transparent; }
+.fact-clickable { cursor: pointer; border-radius: 2px; padding: 0 2px; }
+.fact-clickable:hover { background: #e8f0fe; }
+.fact-selected { background: #ffd54f; font-weight: 600; }
+.sorry-clickable { cursor: pointer; padding: 0 4px; border-radius: 2px; font-weight: bold; color: #c0392b; }
+.sorry-clickable:hover { background: #ffe0e0; }
+.sorry-goal { background: #ff6b6b; color: white; }
 .keyword1 {
   color: darkblue;
   font-weight: bold;
