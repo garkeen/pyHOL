@@ -197,6 +197,9 @@ const theorem_results = ref([])
 
 const FORWARD_METHODS = new Set(['apply_forward_step', 'apply_fact', 'rewrite_fact', 'forall_elim', 'exists_elim', 'drule', 'frule'])
 const REWRITE_FACT_METHODS = new Set(['rewrite_fact', 'rewrite_fact_with_prev'])
+// Methods whose params are instantiations (sent with param_ prefix for Inst).
+// All other methods expect plain keys (cut/cases/induction/new_var/...).
+const INST_PARAM_METHODS = new Set(['apply_backward_step', 'apply_forward_step', 'apply_prev'])
 
 const method_sig_map = {
   'introduction': [], 'apply_backward_step': ['theorem'], 'apply_forward_step': ['theorem'],
@@ -426,6 +429,7 @@ const apply_suggestion = (res) => {
   const args = {}
   if (res.theorem) args.theorem = res.theorem
   if (res.sym) args.sym = res.sym
+  if (res.var) args.var = res.var
   apply_method(res.method_name, args)
 }
 
@@ -455,7 +459,8 @@ const apply_method = async (method_name, args) => {
     if (query_result !== undefined) {
       for (const k in query_result) {
         if (k === 'names') { input.step[k] = query_result[k] }
-        else { input.step['param_' + k] = query_result[k] }
+        else if (INST_PARAM_METHODS.has(method_name)) { input.step['param_' + k] = query_result[k] }
+        else { input.step[k] = query_result[k] }
       }
       await apply_method_ajax(input)
     }
@@ -487,7 +492,8 @@ const apply_method_ajax = async (input) => {
       if (query_result !== undefined) {
         for (const k in query_result) {
           if (k === 'names') { input.step[k] = query_result[k] }
-          else { input.step['param_' + k] = query_result[k] }
+          else if (INST_PARAM_METHODS.has(input.step.method_name)) { input.step['param_' + k] = query_result[k] }
+          else { input.step[k] = query_result[k] }
         }
         await apply_method_ajax(input)
       }

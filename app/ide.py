@@ -198,84 +198,6 @@ def save_file():
     return jsonify({})
 
 
-@app.route('/api/search-method', methods=['POST'])
-def search_method():
-    """Search for applicable methods.
-    
-    Input:
-    * theory_name: name of the theory.
-    * thm_name: name of the theorem.
-    * vars: variable declarations.
-    * prop: proposition.
-    * steps: list of proof steps.
-    * index: current step index.
-    * step: current step (goal_id, fact_ids).
-
-    Returns:
-    * search_res: list of search results.
-    * ctxt: context variables.
-
-    """
-    data = json.loads(request.get_data().decode("utf-8"))
-
-    profile = data.get('profile', False)
-    if profile:
-        pr = cProfile.Profile()
-        pr.enable()
-    else:
-        pr = None
-
-    start_time = time.perf_counter()
-
-    with theory.fresh_theory():
-        try:
-            _load_theory_for_proof(data['theory_name'], data['thm_name'], data['vars'])
-            state, _ = _create_proof_state(data['prop'], data.get('steps', [])[:data['index']])
-        except Exception as e:
-            print("Load failed: %s" % str(e))
-            return jsonify({'search_res': [], 'ctxt': {}})
-
-        print("Load: %f" % (time.perf_counter() - start_time))
-
-        goal_id = data['step'].get('goal_id')
-        if not goal_id:
-            # No goal selected: find first sorry line
-            for item in state.prf.items:
-                if item.rule == 'sorry':
-                    goal_id = str(item.id)
-                    break
-            if not goal_id:
-                return jsonify({'search_res': [], 'ctxt': {}})
-        fact_ids = data['step'].get('fact_ids', [])
-
-        search_res = state.search_method(goal_id, fact_ids)
-        with settings.global_setting(unicode=True):
-            for res in search_res:
-                if '_goal' in res:
-                    res['_goal'] = [printer.print_term(t) if not isinstance(t, str) else t for t in res['_goal']]
-                if '_fact' in res:
-                    res['_fact'] = [printer.print_term(t) if not isinstance(t, str) else t for t in res['_fact']]
-                if '_thm' in res:
-                    if not isinstance(res['_thm'], str):
-                        res['_thm'] = printer.print_term(res['_thm'])
-
-        vars = state.get_vars(ItemID(goal_id))
-        with settings.global_setting(unicode=True, highlight=True):
-            print_vars = dict((k, printer.print_type(v)) for k, v in vars.items())
-        print("Response:", time.perf_counter() - start_time)
-
-    if pr:
-        p = Stats(pr)
-        p.strip_dirs()
-        p.sort_stats('cumtime')
-        p.print_stats()
-
-    return jsonify({
-        'search_res': search_res,
-        'ctxt': print_vars
-    })
-
-
 @app.route('/api/check-modify', methods=['POST'])
 def check_modify():
     """Check a modified item for validity.
@@ -622,7 +544,7 @@ def backward_search():
         # Backward methods to search
         BACKWARD_SEARCH_METHODS = ['apply_backward_step', 'apply_prev', 'rewrite_goal',
                                    'apply_resolve_step', 'reflexive', 'sym',
-                                   'introduction', 'inst_exists_goal', 'simp']
+                                   'introduction', 'inst_exists_goal', 'simp', 'induction']
 
         results = []
         import itertools

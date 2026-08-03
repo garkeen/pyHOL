@@ -271,7 +271,7 @@ theorem de_morgan_thm2
   prop ¬(A ∨ B) ⟷ ¬A ∧ ¬B
   [hint_rewrite]
   proof
-    0: z3
+    0: apply_backward_step iffI
   qed
 
 theorem not_imp

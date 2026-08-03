@@ -18,55 +18,26 @@ from syntax import parser
 
 
 def testSteps(self, thy_name, thm_name, *, no_gaps=True, print_proof=False, \
-              print_stat=False, print_search=False, print_steps=False):
+              print_steps=False):
     """Test list of steps for the given theorem."""
     def test_val(val):
         context.set_context(None, vars=val['vars'])
         state = server.parse_init_state(val['prop'])
         goal = state.prf.items[-1].th
-        num_found = 0
-        if print_stat and 'steps' not in val:
+        if 'steps' not in val:
             print("%20s %s" % (val['name'], "No steps found"))
             return
 
         for i, step in enumerate(val['steps']):
-            if print_search or print_stat:
+            if print_steps:
                 if 'fact_ids' not in step:
                     step['fact_ids'] = []
-                if print_steps:
-                    print(method.output_step(state, step))
-                if print_search:
-                    select_ids = "goal " + step['goal_id']
-                    if step['fact_ids']:
-                        select_ids += ", fact " + ", ".join(step['fact_ids'])
-                    print('Step ' + str(i) + " (" + select_ids + ")")
-                search_res = state.search_method(step['goal_id'], step['fact_ids'])
-                found = 0
-                for res in search_res:
-                    m = method.global_methods[res['method_name']]
-                    if res['method_name'] == step['method_name'] and \
-                       all(sig not in res or sig not in step or res[sig] == step[sig] for sig in m.sig):
-                        if print_search:
-                            print('* ' + m.display_step(state, res))
-                        found += 1
-                    else:
-                        if print_search:
-                            print('  ' + m.display_step(state, res))
-                assert found <= 1, "test_val: multiple found"
-                if found == 0:
-                    if print_search:
-                        m = method.global_methods[step['method_name']]
-                        print('- ' + m.display_step(state, step))
-                else:
-                    num_found += 1
+                print(method.output_step(state, step))
             method.apply_method(state, step)
         self.assertEqual(state.check_proof(no_gaps=no_gaps), goal)
         if print_proof:
             print("Final state:")
             print(state.prf)
-        if print_stat:
-            total = len(val['steps'])
-            print("%20s %5d %5d %5d" % (val['name'], total, num_found, total - num_found))
         
     basic.load_theory(thy_name, limit=('thm', thm_name))
     from syntax import pyhol

@@ -2,7 +2,6 @@
 
 from typing import Dict
 import copy
-import itertools
 import traceback
 
 from kernel.type import TyInst
@@ -158,35 +157,6 @@ class ProofState():
         prevs = [ItemID(prev) for prev in prevs] if prevs else []
         return method.search(self, id, prevs)
     
-    def search_method(self, id, prevs):
-        """Perform search for each method."""
-        id = ItemID(id)
-        prevs = [ItemID(prev) for prev in prevs] if prevs else []
-        results = []
-        all_methods = get_all_methods()
-        for name in all_methods:
-            cur_method = all_methods[name]
-            if hasattr(cur_method, 'no_order'):
-                test_prevs = [prevs]
-            else:
-                test_prevs = itertools.permutations(prevs)
-            for perm_prevs in test_prevs:
-                res = cur_method.search(self, id, perm_prevs)
-                for r in res:
-                    r['method_name'] = name
-                    r['goal_id'] = str(id)
-                    if prevs:
-                        r['fact_ids'] = list(str(id) for id in perm_prevs)
-                    with global_setting(unicode=True, highlight=True):
-                        r['display'] = output_hint(self, r)
-                results.extend(res)
-
-        # If there is an element in results that solves the goal,
-        # output only results that solves.
-        if any('_goal' in r and len(r['_goal']) == 0 for r in results):
-            results = list(filter(lambda r: '_goal' in r and len(r['_goal']) == 0, results))
-        return results
-
     def apply_tactic(self, id, tactic: Tactic, args=None, prevs=None):
         id = ItemID(id)
         prevs = [ItemID(prev) for prev in prevs] if prevs else []
@@ -987,10 +957,8 @@ class induction(Method):
 
             var_T = th.concl.arg.T
             vars = [v for v in cur_th.prop.get_vars() if v.T == var_T]
-            if len(vars) == 1:
-                results.append({'theorem': name, 'var': vars[0].name})
-            elif len(vars) > 1:
-                results.append({'theorem': name})
+            for v in vars:
+                results.append({'theorem': name, 'var': v.name})
         return results
 
     def display_step(self, state: ProofState, data):
@@ -1002,10 +970,12 @@ class induction(Method):
     def apply(self, state: ProofState, id, data, prevs):
         # Find variable
         with context.fresh_context(vars=state.get_vars(id)):
-            assert data['var'] in context.ctxt.vars, "induction: cannot find variable."
-            var = Var(data['var'], context.ctxt.vars[data['var']])
+            var_name = data.get('var') or data.get('param_var')
+            assert var_name in context.ctxt.vars, "induction: cannot find variable."
+            var = Var(var_name, context.ctxt.vars[var_name])
 
-        state.apply_tactic(id, tactic.var_induct(), args=(data['theorem'], var))
+        thm_name = data.get('theorem') or data.get('param_theorem')
+        state.apply_tactic(id, tactic.var_induct(), args=(thm_name, var))
 
 
 @register_method('new_var')

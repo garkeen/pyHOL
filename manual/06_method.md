@@ -174,15 +174,13 @@ goal_id: method_name [positional_args] [@fact_ids] [param_key=value]
 1.2: rewrite_goal_with_prev @1.1
 ```
 
-## 7. search_method 自动搜索
+## 7. 自动搜索（前端 forward/backward-search）
 
-`state.search_method(id, prevs)` 遍历所有方法，对每个方法调 `search`：
+搜索逻辑在前端触发、后端 `app/ide.py` 执行：
 
-- 按 `no_order` 属性决定是否对 `prevs` 做排列。
-- 对每个方法的结果附加 `method_name`、`goal_id`、`fact_ids`、`display`。
+- `apply_backward_step.search`：遍历所有带 `hint_backward`/`hint_backward1` 属性的定理，尝试 `rule().get_proof_term`，成功则记录子目标。
+- 每个方法按 `no_order` 属性决定是否对 `prevs` 做排列。
 - 若有结果能"solves"（`_goal` 为空），只保留 solves 的结果。
-
-`apply_backward_step.search`：遍历所有带 `hint_backward`/`hint_backward1` 属性的定理，尝试 `rule().get_proof_term`，成功则记录子目标。
 
 ## 8. loc 位置特定重写
 

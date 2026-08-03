@@ -129,7 +129,7 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 ### 6.1 Flask 后端（app/）
 
 - `app/app.py`：Flask 应用工厂。
-- `app/ide.py`：理论编辑与证明接口（`/api/init-saved-proof`、`/api/search-method`、`/api/apply-method`、`/api/load-json-file`、`/api/save-file`、`/api/validate-theory` 等）。
+- `app/ide.py`：理论编辑与证明接口（`/api/init-saved-proof`、`/api/forward-search`、`/api/backward-search`、`/api/apply-method`、`/api/load-json-file`、`/api/save-file`、`/api/validate-theory` 等）。
 - `app/imperative.py`：Hoare 逻辑程序验证接口（独立子模块）。
 - `app/integral.py`：符号积分验证接口（独立子模块）。
 
