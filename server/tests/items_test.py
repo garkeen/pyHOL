@@ -133,7 +133,9 @@ class ItemsTest(unittest.TestCase):
             "Attribute even_zero [hint_backward]",
             "Theorem even_Suc: even n --> even (Suc (Suc n))",
             "Attribute even_Suc [hint_backward]",
-            "Theorem even_cases: even _a1 --> (_a1 = 0 --> P) --> (!n. _a1 = Suc (Suc n) --> even n --> P) --> P"
+            "Theorem even_cases: even _a1 --> (_a1 = 0 --> P) --> (!n. _a1 = Suc (Suc n) --> even n --> P) --> P",
+            "Theorem even_induct: P 0 --> (!n. even n --> P n --> P (Suc (Suc n))) --> (!_a1. even _a1 --> P _a1)",
+            "Attribute even_induct [var_induct]"
         ]
 
         with global_setting(unicode=False):

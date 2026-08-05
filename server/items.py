@@ -10,6 +10,7 @@ from kernel.thm import Thm
 from kernel import theory
 from kernel import extension
 from logic import context
+from util.name import get_variant_names
 from syntax import parser
 from syntax import printer
 from syntax import pprint
@@ -575,6 +576,38 @@ class Inductive(Item):
         prop = Implies(*([assum0] + assums + [P]))
         res.append(extension.Theorem(self.cname + "_cases", Thm(prop)))
 
+        # Rule-induction rule (in the style of HOL Light's new_inductive).
+        # For each introduction rule, the inductive premises are kept as
+        # facts and the induction hypotheses are added.
+        P = Var("P", TFun(*(Targs + [BoolType])))
+        ind_assums = []
+        for rule in self.rules:
+            prop = rule['prop']
+            As, C = prop.strip_implies()
+            rargs = C.args
+            prems = []
+            for A in As:
+                f, aargs = A.strip_comb()
+                if f == Const(self.name, self.type):
+                    prems.append(A)
+                    prems.append(P(*aargs))
+                else:
+                    prems.append(A)
+            ind_assum = Implies(*(prems + [P(*rargs)]))
+            for var in reversed(prop.get_vars()):
+                ind_assum = Forall(var, ind_assum)
+            ind_assums.append(ind_assum)
+        ind_vars = [Var("_a" + str(i + 1), Targ) for i, Targ in enumerate(Targs)]
+        ind_concl = Implies(pred(*ind_vars), P(*ind_vars))
+        for var in reversed(ind_vars):
+            ind_concl = Forall(var, ind_concl)
+        # The conclusion is forall-quantified (as in HOL Light's
+        # new_inductive), so the rule tactic can match the quantified
+        # argument variables against the goal via first-order matching,
+        # instantiating P with the goal's predicate directly.
+        res.append(extension.Theorem(self.cname + "_induct", Thm(Implies(*(ind_assums + [ind_concl])))))
+        res.append(extension.Attribute(self.cname + "_induct", "var_induct"))
+
         return res
 
     def get_display(self):
@@ -722,7 +755,12 @@ class Datatype(Item):
             argT1, _ = constr1['type'].strip_type()
             argT2, _ = constr2['type'].strip_type()
             lhs_vars = [Var(nm, T) for nm, T in zip(constr1['args'], argT1)]
-            rhs_vars = [Var(nm, T) for nm, T in zip(constr2['args'], argT2)]
+            # Give the two sides disjoint variable names.  Otherwise the
+            # same-named variables would be identified by alpha-conversion
+            # (e.g. Cond ?b ?c1 ?c2 = While ?b ?I ?c), weakening the theorem.
+            lhs_names = [v.name for v in lhs_vars]
+            rhs_names = get_variant_names(constr2['args'], lhs_names)
+            rhs_vars = [Var(nm, T) for nm, T in zip(rhs_names, argT2)]
             A = Const(constr1['name'], constr1['type'])
             B = Const(constr2['name'], constr2['type'])
             lhs = A(*lhs_vars)
