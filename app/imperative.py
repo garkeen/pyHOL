@@ -18,12 +18,6 @@ def _programs_dir():
     return os.path.join(base_dir, 'imperative', 'programs')
 
 
-def _library_dir():
-    """Directory containing .pyhol files."""
-    import os
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base_dir, 'library')
-
 
 @app.route('/api/imp-list', methods=['POST'])
 def imp_list():
@@ -72,7 +66,7 @@ def imp_compile():
         pyhol, num_vcs, vcs = imp_compiler.compile_file(path)
 
         # Write the compiled theorem.
-        pyhol_path = os.path.join(_library_dir(), name + '.pyhol')
+        pyhol_path = os.path.join(_programs_dir(), name + '.pyhol')
         with open(pyhol_path, 'w', encoding='utf-8') as f:
             f.write(pyhol)
 

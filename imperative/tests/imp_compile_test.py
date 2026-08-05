@@ -10,16 +10,16 @@ from server import monitor
 from imperative.imp_compile import parse_imp, compile_program, compile_file, CompileError
 
 
-LIB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
-    os.path.abspath(__file__)))), 'library')
+PROGRAMS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__)))), 'imperative', 'programs')
 
 
-def compile_to_library(name):
-    """Compile programs/<name>.imp and write the result to library/<name>.pyhol."""
+def compile_to_programs(name):
+    """Compile programs/<name>.imp and write the result to programs/<name>.pyhol."""
     path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                         'programs', name + '.imp')
     pyhol, num_vcs, vcs = compile_file(path)
-    with open(os.path.join(LIB_DIR, name + '.pyhol'), 'w', encoding='utf-8') as f:
+    with open(os.path.join(PROGRAMS_DIR, name + '.pyhol'), 'w', encoding='utf-8') as f:
         f.write(pyhol)
     return pyhol, num_vcs, vcs
 
@@ -58,7 +58,7 @@ program p
             parse_imp("theory t\nprogram p\nprogram q\nvars: a: nat\npre: true\npost: true\nbody:\nskip")
 
     def test_compile_mult_add_loop(self):
-        pyhol, num_vcs, vcs = compile_to_library('mult_add_loop')
+        pyhol, num_vcs, vcs = compile_to_programs('mult_add_loop')
         self.assertEqual(num_vcs, 3)
         self.assertEqual(len(vcs), 3)
         self.assertIn("theorem mult_add_loop", pyhol)
@@ -66,7 +66,7 @@ program p
         self.assertEqual(pyhol.count(": z3"), 3)
 
     def test_compile_if_demo(self):
-        pyhol, num_vcs, vcs = compile_to_library('if_demo')
+        pyhol, num_vcs, vcs = compile_to_programs('if_demo')
         self.assertEqual(num_vcs, 1)
         self.assertIn("Cond", pyhol)
         self.assertIn("Skip", pyhol)

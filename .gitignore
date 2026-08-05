@@ -128,3 +128,5 @@ users/*
 smt/veriT/tests/smtlib_path.txt
 library/*.json
 
+
+imperative/programs/*.json

@@ -37,17 +37,33 @@ item_index = dict()
 
 dirname = os.path.dirname(__file__)
 
+def _lib_dirs():
+    """All directories that may contain .pyhol theory files (search order)."""
+    return [
+        os.path.join(dirname, '../library/'),
+        os.path.join(dirname, '../imperative/programs/'),
+    ]
+
 def user_dir():
-    """Returns directory for the user."""
+    """Returns the primary library directory (backward compat)."""
     return os.path.join(dirname, '../library/')
 
 def user_file(filename):
-    """Return pyhol file for the user and given filename."""
+    """Return pyhol file path for the given theory name.
+
+    Searches library/ first, then imperative/programs/.  If the file
+    does not exist yet, defaults to library/ (for new file creation).
+    """
+    for d in _lib_dirs():
+        path = os.path.join(d, filename + '.pyhol')
+        if os.path.exists(path):
+            return path
     return os.path.join(dirname, '../library/' + filename + '.pyhol')
 
 def status_cache_file(filename):
-    """Return status cache file path for the given theory name."""
-    return os.path.join(dirname, '../library/' + filename + '.json')
+    """Return .json cache path, next to the .pyhol source."""
+    pyhol = user_file(filename)
+    return pyhol[:-6] + '.json'
 
 def load_status(filename):
     """Load proof status from .json cache into thy.thm_status."""
@@ -83,19 +99,22 @@ def load_pyhol_data(filename):
     return pyhol.parse_pyhol(text)
 
 def load_metadata():
-    """Load metadata for all theory files."""
+    """Load metadata for all theory files across all library directories."""
     theory_cache.clear()
     item_index.clear()
-    for f in os.listdir(user_dir()):
-        if f.endswith('.pyhol'):
-            filename = f[:-6]
-            data = load_pyhol_data(filename)
-            timestamp = os.path.getmtime(user_file(filename))
-            theory_cache[filename] = {
-                'imports': data['imports'],
-                'domains': data.get('domains', []),
-                'description': data['description']
-            }
+    for d in _lib_dirs():
+        if not os.path.isdir(d):
+            continue
+        for f in os.listdir(d):
+            if f.endswith('.pyhol'):
+                filename = f[:-6]
+                data = load_pyhol_data(filename)
+                timestamp = os.path.getmtime(user_file(filename))
+                theory_cache[filename] = {
+                    'imports': data['imports'],
+                    'domains': data.get('domains', []),
+                    'description': data['description']
+                }
 
     # Immediately check for topological order.
     check_topological_sort()
