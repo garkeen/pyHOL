@@ -105,17 +105,18 @@ program p2
             for thm_name, status in res.items():
                 self.assertEqual(status, 'VALID', "%s/%s" % (name, thm_name))
 
-    def test_int_not_supported(self):
+    def test_int_supported(self):
         text = """theory t
+imports hoare
 program p
   vars: a: int
-  pre: true
-  post: a == 0
+  pre: a == 3
+  post: a == 2
   body:
-    a := 0
+    a := a - 1
 """
-        with self.assertRaises(CompileError):
-            compile_programs(parse_imp(text))
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
+        self.assertTrue(all(vc['proved'] for vc in vcs), "int subtraction should work")
 
     def test_undeclared_variable(self):
         text = """theory t

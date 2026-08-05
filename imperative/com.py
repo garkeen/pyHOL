@@ -83,6 +83,14 @@ class Assert(Com):
         assert isinstance(cond, expr.Expr), "Assert"
         self.cond = cond
 
+class ArrayAssign(Com):
+    """Array element assignment: a[i] := e (desugared by Translator)."""
+    def __init__(self, name, idx, e):
+        assert isinstance(name, str), "ArrayAssign"
+        self.name = name
+        self.idx = idx
+        self.e = e
+
 class Call(Com):
     """Function call (desugared by Translator using callee spec)."""
     def __init__(self, result, fname, args):

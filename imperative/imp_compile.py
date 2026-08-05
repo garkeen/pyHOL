@@ -26,7 +26,7 @@ import os
 import re
 import textwrap
 
-from kernel.type import NatType, TFun
+from kernel.type import NatType, IntType, TFun
 from kernel import term
 from kernel.term import Term, Var, Lambda, Number, Eq, Not, true, false
 from kernel import theory
@@ -38,6 +38,7 @@ from imperative import parser2
 from imperative import imp
 from syntax import printer, settings, pyhol
 from prover import z3wrapper
+from domains.nat import util_nat as nat
 
 
 class CompileError(Exception):
@@ -165,6 +166,8 @@ def get_assigned_vars(com):
         res.add(com.result)
     elif isinstance(com, com_mod.Assert):
         pass
+    elif isinstance(com, com_mod.ArrayAssign):
+        res.add(com.name)
     elif isinstance(com, com_mod.For):
         res |= get_assigned_vars(com.init)
         res |= get_assigned_vars(com.step)
@@ -193,21 +196,41 @@ class Translator:
     def __init__(self, prog, prog_table=None):
         self.prog = prog
         self.prog_table = prog_table or {}
-        self.T = TFun(NatType, NatType)
+        # Determine value type: int if any variable is int, else nat.
+        has_int = any(ty == "int" for _, ty in prog.vars)
+        self.value_T = IntType if has_int else NatType
+        self.T = TFun(NatType, self.value_T)
         self.s = Var("s", self.T)
 
-        # Check types: nat only for now.
+        # Check types: nat, int, nat[N], int[N] supported.
         for nm, ty in prog.vars:
-            if ty != "nat":
-                raise CompileError("Variable '%s': only type nat is supported." % nm)
+            if not re.match(r'^(nat|int)(\[\d+\])?$', ty):
+                raise CompileError("Variable '%s': unsupported type %s." % (nm, ty))
+
+        # Parse array declarations: "nat[4]" -> (type, size)
+        self.array_info = {}  # name -> (base_index, size)
+        parsed_vars = []
+        for nm, ty in prog.vars:
+            m = re.match(r'^(\w+)\[(\d+)\]$', ty)
+            if m:
+                parsed_vars.append((nm, m.group(1), int(m.group(2))))
+            else:
+                parsed_vars.append((nm, ty, None))
 
         # State variables: those assigned in the body, in declaration order.
         com = parser2.com_parser.parse(prog.body)
         assigned = get_assigned_vars(com)
-        self.state_idx = {}   # name -> index
-        for nm, ty in prog.vars:
-            if nm in assigned:
-                self.state_idx[nm] = len(self.state_idx)
+        self.state_idx = {}   # name -> index (for scalars) or base index (for arrays)
+        next_idx = 0
+        for nm, ty, sz in parsed_vars:
+            if sz is not None:
+                # Arrays always go in state, reserving sz consecutive indices.
+                self.array_info[nm] = (next_idx, sz)
+                self.state_idx[nm] = next_idx
+                next_idx += sz
+            elif nm in assigned:
+                self.state_idx[nm] = next_idx
+                next_idx += 1
         self.params = [nm for nm, ty in prog.vars if nm not in self.state_idx]
         self.next_flag = 0   # counter for compiler-generated flag variables
 
@@ -237,14 +260,18 @@ class Translator:
             if e.name in self.state_idx:
                 return self.s(Number(NatType, self.state_idx[e.name]))
             elif e.name in self.params:
-                return Var(e.name, NatType)
+                return Var(e.name, self.value_T)
             else:
                 raise CompileError("Variable '%s' not declared in vars." % e.name)
+        elif isinstance(e, expr_mod.ArrayElt):
+            if e.ident.name not in self.array_info:
+                raise CompileError("Array access to non-array '%s'." % e.ident.name)
+            return self.s(self._array_index(e.ident.name, e.idx))
         elif isinstance(e, expr_mod.Const):
             if isinstance(e.val, bool):
                 return true if e.val else false
             else:
-                return Number(NatType, e.val)
+                return Number(self.value_T, e.val)
         elif isinstance(e, expr_mod.Op):
             if len(e.args) == 1:
                 arg = self.translate_expr(e.args[0])
@@ -315,7 +342,7 @@ class Translator:
                 raise CompileError("Assigning to undeclared or non-state variable '%s'." % com.v.name)
             idx = Number(NatType, self.state_idx[com.v.name])
             b = Lambda(self.s, self.translate_expr(com.e))
-            return imp.Assign(NatType, NatType)(idx, b)
+            return imp.Assign(NatType, self.value_T)(idx, b)
         elif isinstance(com, com_mod.Seq):
             return self.translate_seq(com.c1, com.c2, flag)
         elif isinstance(com, com_mod.Cond):
@@ -330,6 +357,8 @@ class Translator:
             return self.translate_while(com, flag)
         elif isinstance(com, com_mod.For):
             return self.translate_for(com, flag)
+        elif isinstance(com, com_mod.ArrayAssign):
+            return self.translate_array_assign(com)
         elif isinstance(com, com_mod.Break):
             if not self.loop_stack:
                 raise CompileError("break outside of a loop.")
@@ -338,7 +367,7 @@ class Translator:
                 raise CompileError("break: internal error (no flag).")
             pc = term.And(*self.pc_stack) if self.pc_stack else true
             ctx['breaks'].append(pc)
-            return imp.Assign(NatType, NatType)(Number(NatType, self.state_idx[ctx['flag']]),
+            return imp.Assign(NatType, self.value_T)(Number(NatType, self.state_idx[ctx['flag']]),
                                                 Lambda(self.s, Number(NatType, 1)))
         elif isinstance(com, com_mod.Assert):
             return self.translate_assert(com)
@@ -418,7 +447,7 @@ class Translator:
                                         Eq(self.s(Number(NatType, self.state_idx[f])), Number(NatType, 0))))
             inv = self.loop_invariant(inv_term, ctx)
             wh = imp.While(self.T)(b, inv, body)
-            init = imp.Assign(NatType, NatType)(Number(NatType, self.state_idx[f]),
+            init = imp.Assign(NatType, self.value_T)(Number(NatType, self.state_idx[f]),
                                                 Lambda(self.s, Number(NatType, 0)))
             res = imp.Seq(self.T)(init, wh)
         else:
@@ -433,6 +462,39 @@ class Translator:
             flag_zero = Eq(self.s(Number(NatType, self.state_idx[flag])), Number(NatType, 0))
             res = imp.Cond(self.T)(Lambda(self.s, flag_zero), res, imp.Skip(self.T))
         return res
+
+    def _array_index(self, name, idx_expr):
+        """Compute state index for array access: base + idx.
+        If idx is a constant, fold to a single Number."""
+        base, size = self.array_info[name]
+        idx_term = self.translate_expr(idx_expr)
+        if isinstance(idx_term, Term) and idx_term.is_number():
+            return Number(NatType, base + idx_term.dest_number())
+        return nat.plus(Number(NatType, base), idx_term)
+
+    def translate_array_assign(self, com):
+        """a[i] := v -> Cond(0 <= i < size, Assign(base+i, v), stuck).
+
+        Generates bounds check VC + array element update.
+        """
+        if com.name not in self.array_info:
+            raise CompileError("Array assignment to non-array '%s'." % com.name)
+        base, size = self.array_info[com.name]
+        idx_term = self.translate_expr(com.idx)
+        state_idx = self._array_index(com.name, com.idx)
+        val_term = self.translate_expr(com.e)
+
+        # Bounds check: 0 <= i AND i < size
+        bounds = term.And(
+            nat.less_eq(Number(NatType, 0), idx_term),
+            nat.less(idx_term, Number(NatType, size))
+        )
+
+        assign = imp.Assign(NatType, self.value_T)(state_idx, Lambda(self.s, val_term))
+        skip = imp.Skip(self.T)
+        b_true = Lambda(self.s, term.true)
+        stuck = imp.While(self.T)(b_true, Lambda(self.s, false), skip)
+        return imp.Cond(self.T)(Lambda(self.s, bounds), assign, stuck)
 
     def translate_assert(self, com):
         """assert P -> Cond(P, Skip, While(true,true,Skip)).
@@ -484,7 +546,7 @@ class Translator:
 
         # Assign result = value
         result_idx = Number(NatType, self.state_idx[com.result])
-        assign = imp.Assign(NatType, NatType)(result_idx, Lambda(self.s, value_term))
+        assign = imp.Assign(NatType, self.value_T)(result_idx, Lambda(self.s, value_term))
 
         skip = imp.Skip(self.T)
         b_true = Lambda(self.s, term.true)
@@ -508,7 +570,7 @@ class Translator:
             inv = self.loop_invariant(inv_term, ctx)
             body = imp.Seq(self.T)(body, step)
             wh = imp.While(self.T)(b, inv, body)
-            init = imp.Assign(NatType, NatType)(Number(NatType, self.state_idx[f]),
+            init = imp.Assign(NatType, self.value_T)(Number(NatType, self.state_idx[f]),
                                                 Lambda(self.s, Number(NatType, 0)))
             res = imp.Seq(self.T)(init, imp.Seq(self.T)(self.translate_com(com.init, flag=f), wh))
         else:
@@ -578,7 +640,7 @@ def compile_programs(imp_file, existing_pyhol_text=None, validate_steps=True):
             post = tr.translate_pred(prog.post)
             goal = imp.Valid(tr.T)(pre, tr.com_term, post)
             pt = imp.vcg_norm(tr.T, goal)
-            vars_dict = {nm: 'nat' for nm in tr.params}
+            vars_dict = {nm: ('int' if tr.value_T == IntType else 'nat') for nm in tr.params}
 
             prog_vcs = []
             with settings.global_setting(unicode=True):

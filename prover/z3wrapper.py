@@ -151,6 +151,17 @@ def convert(t, var_names, assms, to_real, ctx):
         elif t.is_comb('member', 2):
             a, S = rec(t.arg1), rec(t.arg)
             return S(a)
+        elif t.is_comb('fun_upd', 4):
+            # (f)(a := b)(x) = if x = a then b else f(x)
+            # Recursively expand nested fun_upd chains.
+            func, a, b, x = t.args
+            rx = rec(x)
+            def expand(f, x_val):
+                if f.is_comb('fun_upd', 3):
+                    f2, a2, b2 = f.args
+                    return z3.If(x_val == rec(a2), rec(b2), expand(f2, x_val), ctx)
+                return rec(f)(x_val)
+            return z3.If(rx == rec(a), rec(b), expand(func, rx), ctx)
         elif t.is_comb():
             return rec(t.fun)(rec(t.arg))
         elif t.is_const():

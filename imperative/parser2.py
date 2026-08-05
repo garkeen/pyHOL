@@ -28,6 +28,8 @@ grammar = r"""
         | expr "!=" expr -> ineq_cond
         | expr "<=" expr -> less_eq_cond
         | expr "<" expr -> less_cond
+        | expr ">=" expr -> greater_eq_cond
+        | expr ">" expr -> greater_cond
         | "true" -> true_cond
         | "if" cond "then" cond "else" cond -> if_cond
         | "forall" CNAME "." cond -> forall_cond
@@ -45,6 +47,7 @@ grammar = r"""
 
     ?cmd: "skip" -> skip_cmd
         | CNAME ":=" expr -> assign_cmd
+        | CNAME "[" expr "]" ":=" expr -> array_assign_cmd
         | CNAME "++" -> inc_cmd
         | CNAME "--" -> dec_cmd
         | "break" -> break_cmd
@@ -60,7 +63,7 @@ grammar = r"""
 
     ?for_stmt: "skip" -> skip_cmd
         | CNAME ":=" expr -> assign_cmd
-        | CNAME "++" -> inc_cmd
+                | CNAME "++" -> inc_cmd
         | CNAME "--" -> dec_cmd
 
     %import common.CNAME
@@ -136,6 +139,12 @@ class HoareTransformer(Transformer):
     def less_cond(self, e1, e2):
         return expr.Op("<", e1, e2)
 
+    def greater_eq_cond(self, e1, e2):
+        return expr.Op(">=", e1, e2)
+
+    def greater_cond(self, e1, e2):
+        return expr.Op(">", e1, e2)
+
     def forall_cond(self, var_name, body):
         return expr.Forall(expr.Var(var_name), body)
 
@@ -144,6 +153,9 @@ class HoareTransformer(Transformer):
 
     def assign_cmd(self, v, e):
         return com.Assign(expr.Var(str(v)), e)
+
+    def array_assign_cmd(self, name, idx, e):
+        return com.ArrayAssign(str(name), idx, e)
 
     def inc_cmd(self, v):
         v = expr.Var(str(v))

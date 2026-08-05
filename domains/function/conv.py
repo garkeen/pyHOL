@@ -24,9 +24,15 @@ class fun_upd_eval_conv(Conv):
             if a == c:
                 return rewr_conv("fun_upd_same").get_proof_term(t)
             else:
-                neq = nat.nat_const_ineq(c, a)
-                eq = rewr_conv("fun_upd_other", conds=[neq]).get_proof_term(t)
-                return eq.on_arg(self)
+                # Only evaluate when both indices are constants.
+                # Non-constant indices (e.g. array access base+i) are
+                # left for z3 to handle.
+                try:
+                    neq = nat.nat_const_ineq(c, a)
+                    eq = rewr_conv("fun_upd_other", conds=[neq]).get_proof_term(t)
+                    return eq.on_arg(self)
+                except Exception:
+                    return refl(t)
         elif f.is_abs():
             return ProofTerm.beta_conv(t)
         else:
