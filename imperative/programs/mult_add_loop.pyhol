@@ -22,3 +22,13 @@ theorem mult_add_loop_vc_2
   proof
     0: z3
   qed
+
+theorem mult_add_loop
+  fixes A :: nat, B :: nat
+  prop Valid (λs. s (0::nat) = 0 ∧ s 1 = 0) (While (λs. ¬(s 0 = A)) (λs. s 1 = s 0 * B) (Seq (Assign 1 (λs. s 1 + B)) (Assign 0 (λs. s 0 + 1)))) (λs. s 1 = A * B)
+  proof
+    0: vcg
+    0: apply_backward_step mult_add_loop_vc_0
+    1: apply_backward_step mult_add_loop_vc_1
+    2: apply_backward_step mult_add_loop_vc_2
+  qed

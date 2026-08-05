@@ -8,3 +8,11 @@ theorem max_demo_vc_0
   proof
     0: z3
   qed
+
+theorem max_demo
+  fixes m :: nat, n :: nat
+  prop Valid (λs. true) (Cond (λs. m ≤ n) (Assign (0::nat) (λs. n)) (Assign 0 (λs. m))) (λs. s 0 = m ∨ s 0 = n)
+  proof
+    0: vcg
+    0: apply_backward_step max_demo_vc_0
+  qed

@@ -539,6 +539,25 @@ def compile_programs(imp_file, existing_pyhol_text=None, validate_steps=True):
                     'steps': steps,
                 })
 
+            # Main theorem: Valid P c Q, proven from VCs via vcg.
+            # Other programs can reference this as the program's spec.
+            with settings.global_setting(unicode=True, line_length=None):
+                goal_text = ' '.join(printer.print_term(goal).split())
+            main_steps = [{'method_name': 'vcg', 'goal_id': '0'}]
+            for i, vc in enumerate(prog_vcs):
+                main_steps.append({
+                    'method_name': 'apply_backward_step',
+                    'goal_id': str(i),
+                    'theorem': vc['name'],
+                })
+            content.append({
+                'ty': 'thm',
+                'name': prog.name,
+                'vars': vars_dict,
+                'prop': goal_text,
+                'steps': main_steps,
+            })
+
         theory_data = {
             'name': imp_file.theory or imp_file.programs[0].name,
             'imports': imp_file.imports or ['hoare'],
