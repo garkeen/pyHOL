@@ -29,14 +29,14 @@
         <div class="vc-panel">
           <div class="vc-title">
             Verification Conditions ({{ vcs.length }})
-            <span class="vc-hint">green = z3 proved (unsat), red = needs proof / invalid</span>
+            <span class="vc-hint">green = proved, red = needs proof</span>
           </div>
           <div v-if="vcs.length === 0" class="vc-empty">No VCs yet — click Compile.</div>
-          <div v-for="vc in vcs" :key="vc.index" class="vc-row" :class="vc.smt ? 'vc-ok' : 'vc-bad'">
-            <span class="vc-badge">{{ vc.smt ? '✓' : '✗' }}</span>
+          <div v-for="vc in vcs" :key="vc.index" class="vc-row" :class="vc.proved ? 'vc-ok' : 'vc-bad'">
+            <span class="vc-badge">{{ vc.proved ? '✓' : '✗' }}</span>
             <span class="vc-index">#{{ vc.index }}</span>
             <span class="vc-prop">{{ vc.prop }}</span>
-            <button v-if="!vc.smt" class="btn btn-sm btn-outline-danger vc-prove"
+            <button v-if="!vc.proved" class="btn btn-sm btn-outline-danger vc-prove"
                     @click="prove_vc(vc)">Prove</button>
           </div>
         </div>
@@ -45,13 +45,13 @@
       <!-- Proof panel -->
       <div v-if="proving" class="proof-pane">
         <div class="proof-pane-header">
-          <span>Prove VC in <b>{{ current }}</b></span>
+          <span>Prove <b>{{ proving_vc_name }}</b> in <b>{{ current }}</b></span>
           <button class="btn btn-sm btn-outline-secondary" @click="proving = false">✕</button>
         </div>
         <ProofArea
           :key="'imp-proof-' + current + '-' + proving_vc_index"
           :theory_name="current"
-          :thm_name="current"
+          :thm_name="theorem_item ? theorem_item.name : current"
           :vars="theorem_item ? theorem_item.vars : {}"
           :prop="theorem_item ? theorem_item.prop : ''"
           :old_steps="theorem_item ? (theorem_item.steps || []) : []"
@@ -103,6 +103,7 @@ const compile_error = ref('')
 const vcs = ref([])
 const proving = ref(false)
 const proving_vc_index = ref(-1)
+const proving_vc_name = ref('')
 const theorem_item = ref(null)
 const message = ref(null)
 const query = ref(undefined)
@@ -194,12 +195,15 @@ const prove_vc = async (vc) => {
   try {
     const res = await api.post('/load-json-file', { filename: current.value, line_length: 80 })
     const content = res.data.content || []
-    if (content.length === 0) {
-      toast({ type: 'error', data: 'No theorem in compiled output — compile first' })
+    const vcName = 'vc_' + vc.index
+    const item = content.find(it => it.name === vcName)
+    if (!item) {
+      toast({ type: 'error', data: vcName + ' not found - compile first' })
       return
     }
-    theorem_item.value = content[0]
+    theorem_item.value = item
     proving_vc_index.value = vc.index
+    proving_vc_name.value = vcName
     proving.value = true
   } catch (e) {
     toast({ type: 'error', data: 'Failed to load compiled theory: ' + (e.message || e) })
@@ -208,6 +212,7 @@ const prove_vc = async (vc) => {
 
 const save_proof = async (steps) => {
   if (!current.value || !theorem_item.value) return
+  const vcName = theorem_item.value.name
   try {
     const res = await api.post('/load-json-file', { filename: current.value, line_length: 80 })
     const content = (res.data.content || []).map(item => {
@@ -215,8 +220,9 @@ const save_proof = async (steps) => {
       for (const k of ['_error', '_from_disk', 'display', 'edit', 'ext', 'error']) delete copy[k]
       return copy
     })
-    if (content.length === 0) throw new Error('no theorem in theory')
-    content[0].steps = steps
+    const target = content.find(it => it.name === vcName)
+    if (!target) throw new Error(vcName + ' not found')
+    target.steps = steps
     await api.post('/save-file', {
       filename: current.value,
       content: {
@@ -227,9 +233,14 @@ const save_proof = async (steps) => {
         content
       }
     })
+    // Re-validate to update VC status
     const resp = await api.post('/validate-theory', { filename: current.value, force: false })
-    const status = resp.data.statuses ? resp.data.statuses[current.value] : 'PENDING'
-    toast({ type: status === 'VALID' ? 'OK' : 'error', data: 'Proof saved: ' + status })
+    const statuses = resp.data.statuses || {}
+    const status = statuses[vcName] || 'PENDING'
+    // Update the VC in the list
+    const vc = vcs.value.find(v => v.index === proving_vc_index.value)
+    if (vc) vc.proved = (status === 'VALID')
+    toast({ type: status === 'VALID' ? 'OK' : 'error', data: vcName + ': ' + status })
   } catch (e) {
     toast({ type: 'error', data: 'Failed to save proof: ' + (e.message || e) })
   }
