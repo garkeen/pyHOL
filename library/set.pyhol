@@ -134,6 +134,11 @@ axiom member_Union
   prop x ∈ Union A ⟷ (∃S. S ∈ A ∧ x ∈ S)
   [hint_rewrite]
 
+axiom member_Inter
+  fixes x :: 'a, A :: 'a set set
+  prop x ∈ Inter A ⟷ (∀S. S ∈ A ⟶ x ∈ S)
+  [hint_rewrite]
+
 axiom in_image
   fixes y :: 'b, f :: 'a ⇒ 'b, A :: 'a set
   prop y ∈ image f A ⟷ (∃x. x ∈ A ∧ y = f x)
@@ -475,3 +480,124 @@ theorem card_image_inj
 theorem surjective_iff_injective
   fixes s :: 'a set, f :: 'a ⇒ 'a
   prop finite s ⟶ image f s ⊆ s ⟶ ((∀y. y ∈ s ⟶ (∃x. x ∈ s ∧ f x = y)) ⟷ (∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ f x = f y ⟶ x = y))
+
+header "Monotone operators and least fixed point"
+
+def bnd_mono :: ('a set ⇒ 'a set) ⇒ bool = bnd_mono h = (∀W. ∀X. W ⊆ X ⟶ h W ⊆ h X) [hint_rewrite]
+
+def lfp :: ('a set ⇒ 'a set) ⇒ 'a set = lfp h = Inter (collect (λX. h X ⊆ X)) [hint_rewrite]
+
+theorem Union_union
+  fixes A :: 'a set set, B :: 'a set set
+  prop Union (A ∪ B) = (Union A) ∪ (Union B)
+  [hint_rewrite]
+  proof
+    0: rewrite_goal set_equal_iff sym=false
+    0: rewrite_goal member_union_iff sym=false
+    0: rewrite_goal member_Union sym=false
+    0: rewrite_goal member_union_iff sym=false
+    0: rewrite_goal exists_disj_conj_distrib sym=false
+    0: introduction x
+    0.1: reflexive
+  qed
+
+theorem cantor
+  fixes f :: 'a ⇒ 'a set
+  prop ∃S. ∀x. ¬(f x = S)
+  proof
+    0: inst_exists_goal "{x. ¬(x ∈ f x)}"
+    0: introduction x
+    0.1: apply_backward_step negI
+    0.1: introduction
+    0.1.1: cases "x ∈ f x"
+    0.1.1: introduction
+    0.1.1.1: rewrite_fact_with_prev @0.1.0,0.1.1.0
+    0.1.1.2: rewrite_fact member_collect @0.1.1.1 sym=false
+    0.1.1.3: apply_backward_step negE @0.1.1.2,0.1.1.0
+    0.1.2: introduction
+    0.1.2.1: rewrite_fact_with_prev @0.1.0,0.1.2.0
+    0.1.2.2: rewrite_fact member_collect @0.1.2.1 sym=false
+    0.1.2.3: apply_backward_step negE @0.1.2.2,0.1.2.0
+  qed
+
+theorem subsetE
+  fixes A :: 'a set, B :: 'a set, x :: 'a
+  prop A ⊆ B ⟶ x ∈ A ⟶ x ∈ B
+  proof
+    2: rewrite_fact subset_def @0 sym=false
+    3: apply_fact @2,1
+    4: call_tactic apply_prev @3
+  qed
+
+theorem subset_antisym
+  fixes A :: 'a set, B :: 'a set
+  prop A ⊆ B ⟶ B ⊆ A ⟶ A = B
+  proof
+    2: rewrite_goal set_equal_iff sym=false
+    2: introduction x
+    2.1: apply_backward_step iffI
+    2.1: introduction
+    2.1.1: apply_forward_step subsetE @0,2.1.0
+    2.2: introduction
+    2.2.1: apply_forward_step subsetE @1,2.2.0
+  qed
+
+theorem lfp_lowerbound
+  fixes h :: 'a set ⇒ 'a set, A :: 'a set
+  prop h A ⊆ A ⟶ lfp h ⊆ A
+  proof
+    1: rewrite_goal lfp_def sym=false
+    1: rewrite_goal subset_def sym=false
+    1: rewrite_goal member_Inter sym=false
+    1: rewrite_goal member_collect sym=false
+    1: introduction x
+    1.2: call_tactic apply_prev @1.1,0
+  qed
+
+theorem lfp_greatest
+  fixes h :: 'a set ⇒ 'a set, A :: 'a set
+  prop (∀X. h X ⊆ X ⟶ A ⊆ X) ⟶ A ⊆ lfp h
+  proof
+    1: rewrite_goal lfp_def sym=false
+    1: rewrite_goal subset_def sym=false
+    1: rewrite_goal member_Inter sym=false
+    1: rewrite_goal member_collect sym=false
+    1: introduction x
+    1.2: introduction S
+    1.2.2: cut "A ⊆ S"
+    1.2.2: call_tactic apply_prev @0,1.2.1
+    1.2.3: apply_forward_step subsetE @1.2.2,1.1
+  qed
+
+theorem lfp_fix_upper
+  fixes h :: 'a set ⇒ 'a set
+  prop bnd_mono h ⟶ h (lfp h) ⊆ lfp h
+  proof
+    1: rewrite_fact bnd_mono_def @0 sym=false
+    2: apply_backward_step lfp_greatest
+    2: introduction X
+    2.2: apply_forward_step lfp_lowerbound @2.1
+    2.3: cut "h (lfp h) ⊆ h X"
+    2.3: call_tactic apply_prev @1,2.2
+    2.4: apply_backward_step subset_trans @2.3,2.1
+  qed
+
+theorem lfp_fix_lower
+  fixes h :: 'a set ⇒ 'a set
+  prop bnd_mono h ⟶ lfp h ⊆ h (lfp h)
+  proof
+    1: rewrite_fact bnd_mono_def @0 sym=false
+    2: cut "h (h (lfp h)) ⊆ h (lfp h)"
+    2: apply_forward_step lfp_fix_upper @0
+    3: call_tactic apply_prev @1,2
+    4: apply_backward_step lfp_lowerbound @3
+  qed
+
+theorem lfp_unfold
+  fixes h :: 'a set ⇒ 'a set
+  prop bnd_mono h ⟶ h (lfp h) = lfp h
+  proof
+    1: apply_backward_step subset_antisym
+    1: apply_backward_step lfp_fix_upper @0
+    2: apply_backward_step lfp_fix_lower @0
+  qed
