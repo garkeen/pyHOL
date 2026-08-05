@@ -36,6 +36,62 @@ def imp_list():
     return jsonify({'files': files})
 
 
+@app.route('/api/imp-load', methods=['POST'])
+def imp_load():
+    """Load an .imp file as structured data.
+
+    Returns:
+    * theory, imports, programs: [{name, vars, pre, post, body}]
+
+    """
+    data = json.loads(request.get_data().decode("utf-8"))
+    name = data['name']
+    path = os.path.join(_programs_dir(), name + '.imp')
+    if not os.path.exists(path):
+        return jsonify({'ok': False, 'error': 'File not found: %s.imp' % name})
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            text = f.read()
+        imp_file = imp_compiler.parse_imp(text)
+        programs = []
+        for prog in imp_file.programs:
+            programs.append({
+                'name': prog.name,
+                'vars': [[nm, ty] for nm, ty in prog.vars],
+                'pre': prog.pre or '',
+                'post': prog.post or '',
+                'body': prog.body or '',
+            })
+        return jsonify({
+            'ok': True,
+            'theory': imp_file.theory or name,
+            'imports': imp_file.imports,
+            'programs': programs,
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'error': '%s: %s' % (e.__class__.__name__, str(e))})
+
+
+def _imp_to_text(theory, imports, programs):
+    """Reconstruct .imp text from structured data."""
+    lines = ['theory %s' % theory]
+    if imports:
+        lines.append('imports %s' % ', '.join(imports))
+    lines.append('')
+    for prog in programs:
+        lines.append('program %s' % prog['name'])
+        if prog.get('vars'):
+            lines.append('  vars: %s' % ', '.join('%s: %s' % (v[0], v[1]) for v in prog['vars']))
+        lines.append('  pre: %s' % prog.get('pre', 'true'))
+        lines.append('  post: %s' % prog.get('post', 'true'))
+        lines.append('  body:')
+        for body_line in prog.get('body', '').split('\n'):
+            if body_line.strip():
+                lines.append('    ' + body_line.strip())
+        lines.append('')
+    return '\n'.join(lines)
+
+
 @app.route('/api/imp-compile', methods=['POST'])
 def imp_compile():
     """Save (optionally) and compile an .imp program.
@@ -55,7 +111,12 @@ def imp_compile():
     """
     data = json.loads(request.get_data().decode("utf-8"))
     name = data['name']
-    text = data.get('text')
+
+    # Accept either raw text or structured programs.
+    if 'programs' in data:
+        text = _imp_to_text(data.get('theory', name), data.get('imports', ['hoare']), data['programs'])
+    else:
+        text = data.get('text')
 
     path = os.path.join(_programs_dir(), name + '.imp')
     try:

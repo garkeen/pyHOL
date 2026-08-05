@@ -1,8 +1,8 @@
 theory max_demo
 imports hoare
-description "translated from max_demo.imp"
+description "translated from .imp"
 
-theorem vc_0
+theorem max_demo_vc_0
   fixes m :: nat, n :: nat
   prop ∀s::nat ⇒ nat. true ⟶ (if m ≤ n then n = m ∨ n = n else m = m ∨ m = n)
   proof

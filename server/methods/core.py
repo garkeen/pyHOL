@@ -783,7 +783,14 @@ class introduction(Method):
         assert prop.is_implies() or prop.is_forall(), "introduction"
 
         if prop.is_forall() and 'names' not in data:
-            raise theory.ParameterQueryException(['names'])
+            # Count nested foralls so frontend can pre-fill the right
+            # number of name fields.
+            count = 0
+            p = prop
+            while p.is_forall():
+                count += 1
+                p = p.arg.body
+            raise theory.ParameterQueryException(['names'], hints={'names': {'count': count}})
 
         intros_tac = tactic.intros()
         if 'names' in data and data['names'] != '':

@@ -12,7 +12,7 @@
       <div v-if="isList(key)" class="pq-list-field">
         <div class="pq-list-header">
           <label class="pq-label">{{ key }}:</label>
-          <button class="pq-add-btn" @click="add_item(key)">+ add</button>
+          <button class="pq-add-btn" @click="add_item(key)" :disabled="listCount(key) && list_vals[key].length >= listCount(key)">+ add</button>
         </div>
         <div v-for="(v, i) in list_vals[key]" :key="i" class="pq-row pq-list-row">
           <span class="pq-idx">{{ i + 1 }}</span>
@@ -54,6 +54,11 @@ const isList = (key) => {
   return Array.isArray(lf) && lf.includes(key)
 }
 
+const listCount = (key) => {
+  const h = props.query && props.query.hints
+  return h && h[key] && h[key].count
+}
+
 const add_item = (key) => {
   list_vals.value[key].push('')
 }
@@ -73,7 +78,8 @@ watch(() => props.query, (new_query) => {
     for (let i = 0; i < new_query.fields.length; i++) {
       const f = new_query.fields[i]
       if (isList(f)) {
-        list_vals.value[f] = ['']
+        const cnt = listCount(f)
+        list_vals.value[f] = cnt ? Array(cnt).fill('') : ['']
       } else {
         vals.value[f] = ''
       }
@@ -112,6 +118,7 @@ const handle_cancel = () => {
 .pq-idx { font-size: 12px; color: #888; min-width: 16px; text-align: right; }
 .pq-add-btn { background: #e8f5e9; border: 1px solid #81c784; border-radius: 3px; padding: 2px 10px; font-size: 12px; cursor: pointer; color: #2e7d32; }
 .pq-add-btn:hover { background: #c8e6c9; }
+.pq-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .pq-rm-btn { background: #fbe9e7; border: 1px solid #e57373; border-radius: 3px; padding: 2px 10px; font-size: 14px; cursor: pointer; color: #c62828; line-height: 1; }
 .pq-rm-btn:hover { background: #ffcdd2; }
 .pq-rm-btn:disabled { opacity: 0.4; cursor: not-allowed; }

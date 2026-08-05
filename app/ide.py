@@ -313,7 +313,8 @@ def apply_method():
         except Exception as e:
             if isinstance(e, theory.ParameterQueryException):
                 return jsonify({
-                    "query": e.params
+                    "query": e.params,
+                    "query_hints": e.hints
                 })
             else:
                 return jsonify({

@@ -45,11 +45,9 @@ class CompileError(Exception):
 
 
 class ImpProgram:
-    """Intermediate representation of an .imp file."""
+    """Intermediate representation of a single program in an .imp file."""
 
     def __init__(self):
-        self.theory = None
-        self.imports = []
         self.name = None
         self.vars = []      # list of (name, ty)
         self.pre = None
@@ -57,11 +55,28 @@ class ImpProgram:
         self.body = None
 
 
+class ImpFile:
+    """Parsed .imp file: theory header + list of programs."""
+
+    def __init__(self):
+        self.theory = None
+        self.imports = []
+        self.programs = []
+
+
 def parse_imp(text):
-    """Parse .imp text into an ImpProgram."""
-    prog = ImpProgram()
+    """Parse .imp text into an ImpFile (theory + multiple programs)."""
+    imp_file = ImpFile()
     lines = text.split('\n')
     i = 0
+    cur_prog = None
+
+    def finish_prog(prog):
+        if prog is not None:
+            if prog.name is None or prog.pre is None or prog.post is None or not prog.body:
+                raise CompileError("Program missing one of: name, pre, post, body.")
+            imp_file.programs.append(prog)
+
     while i < len(lines):
         raw = lines[i].strip()
         if not raw or raw.startswith('//') or raw.startswith('#'):
@@ -69,22 +84,22 @@ def parse_imp(text):
             continue
         m = re.match(r'^theory\s+(\S+)\s*$', raw)
         if m:
-            prog.theory = m.group(1)
+            imp_file.theory = m.group(1)
             i += 1
             continue
         m = re.match(r'^imports\s+(.+)$', raw)
         if m:
-            prog.imports = [s.strip() for s in m.group(1).split(',') if s.strip()]
+            imp_file.imports = [s.strip() for s in m.group(1).split(',') if s.strip()]
             i += 1
             continue
         m = re.match(r'^program\s+(\S+)\s*$', raw)
         if m:
-            if prog.name is not None:
-                raise CompileError("Multiple programs not supported yet.")
-            prog.name = m.group(1)
+            finish_prog(cur_prog)
+            cur_prog = ImpProgram()
+            cur_prog.name = m.group(1)
             i += 1
             continue
-        if prog.name is None:
+        if cur_prog is None:
             raise CompileError("Line %d: expected 'theory' or 'program' section." % (i + 1))
         m = re.match(r'^vars:\s*(.+)$', raw)
         if m:
@@ -96,39 +111,40 @@ def parse_imp(text):
                 nm, ty = nm.strip(), ty.strip()
                 if not nm or not ty:
                     raise CompileError("Line %d: bad variable declaration '%s'." % (i + 1, decl))
-                prog.vars.append((nm, ty))
+                cur_prog.vars.append((nm, ty))
             i += 1
             continue
         m = re.match(r'^pre:\s*(.+)$', raw)
         if m:
-            prog.pre = m.group(1).strip()
+            cur_prog.pre = m.group(1).strip()
             i += 1
             continue
         m = re.match(r'^post:\s*(.+)$', raw)
         if m:
-            prog.post = m.group(1).strip()
+            cur_prog.post = m.group(1).strip()
             i += 1
             continue
         m = re.match(r'^body:', raw)
         if m:
-                body_lines = []
-                i += 1
-                while i < len(lines):
-                    line = lines[i].strip()
-                    if not line or line.startswith('//') or line.startswith('#'):
-                        i += 1
-                        continue
-                    body_lines.append(line)
+            body_lines = []
+            i += 1
+            while i < len(lines):
+                line = lines[i].strip()
+                # Stop body at next program/keyword
+                if re.match(r'^program\s+', line):
+                    break
+                if not line or line.startswith('//') or line.startswith('#'):
                     i += 1
-                # Lines are joined by a single space; each complete statement
-                # must be terminated by ';' except the last one before '}'
-                # (C-like convention). Whitespace/newlines are not separators.
-                prog.body = ' '.join(body_lines)
-                continue
+                    continue
+                body_lines.append(line)
+                i += 1
+            cur_prog.body = ' '.join(body_lines)
+            continue
         raise CompileError("Line %d: unrecognized section '%s'." % (i + 1, raw[:40]))
-    if prog.name is None or prog.pre is None or prog.post is None or not prog.body:
-        raise CompileError("Missing one of: program name, pre, post, body.")
-    return prog
+    finish_prog(cur_prog)
+    if not imp_file.programs:
+        raise CompileError("No program found in .imp file.")
+    return imp_file
 
 
 def get_assigned_vars(com):
@@ -469,69 +485,73 @@ def _parse_existing_proofs(pyhol_text):
         return {}
 
 
-def compile_program(prog, existing_pyhol_text=None, validate_steps=True):
-    """Translate an ImpProgram into a .pyhol text.
+def compile_programs(imp_file, existing_pyhol_text=None, validate_steps=True):
+    """Translate an ImpFile (theory + multiple programs) into .pyhol text.
 
-    Each VC becomes a separate theorem.  z3-provable VCs get a z3 proof;
-    unprovable VCs get sorry.  If existing_pyhol_text is provided, VCs
-    whose proposition matches an existing theorem keep their proof steps.
+    Each program's VCs become separate theorems named <prog>_vc_<N>.
+    z3-provable VCs get z3; unprovable get sorry.  Existing proofs are
+    preserved when the VC proposition is unchanged.
 
-    Returns (pyhol_text, num_vcs, vcs) where vcs is a list of
-    {index, prop, smt, proved} dicts.
+    Returns (pyhol_text, total_vcs, vcs) where vcs is a list of
+    {program, index, name, prop, smt, proved} dicts.
     """
     existing = _parse_existing_proofs(existing_pyhol_text)
-    vcs = []
+    all_vcs = []
+    content = []
     with theory.fresh_theory():
         basic.load_theory('hoare')
-        tr = Translator(prog)
+        for prog in imp_file.programs:
+            tr = Translator(prog)
+            pre = tr.translate_pred(prog.pre)
+            post = tr.translate_pred(prog.post)
+            goal = imp.Valid(tr.T)(pre, tr.com_term, post)
+            pt = imp.vcg_norm(tr.T, goal)
+            vars_dict = {nm: 'nat' for nm in tr.params}
 
-        pre = tr.translate_pred(prog.pre)
-        post = tr.translate_pred(prog.post)
-        goal = imp.Valid(tr.T)(pre, tr.com_term, post)
+            prog_vcs = []
+            with settings.global_setting(unicode=True):
+                for A in pt.assums:
+                    prop = ' '.join(printer.print_term(A).split())
+                    smt_ok = z3wrapper.solve(A)
+                    vc = {
+                        'program': prog.name,
+                        'index': len(prog_vcs),
+                        'name': '%s_vc_%d' % (prog.name, len(prog_vcs)),
+                        'prop': prop,
+                        'smt': smt_ok,
+                        'proved': smt_ok or (prop in existing),
+                    }
+                    prog_vcs.append(vc)
+                    all_vcs.append(vc)
 
-        pt = imp.vcg_norm(tr.T, goal)
-        num_vcs = len(pt.assums)
-
-        vars_dict = {nm: 'nat' for nm in tr.params}
-
-        with settings.global_setting(unicode=True):
-            for A in pt.assums:
-                prop = ' '.join(printer.print_term(A).split())
-                smt_ok = z3wrapper.solve(A)
-                vcs.append({'index': len(vcs),
-                            'prop': prop,
-                            'smt': smt_ok,
-                            'proved': smt_ok or (prop in existing)})
-
-        content = []
-        for i, vc in enumerate(vcs):
-            if vc['prop'] in existing and existing[vc['prop']]:
-                steps = existing[vc['prop']]
-            elif vc['smt']:
-                steps = [{'method_name': 'z3', 'goal_id': '0'}]
-            else:
-                steps = [{'method_name': 'sorry', 'goal_id': '0'}]
-            content.append({
-                'ty': 'thm',
-                'name': 'vc_%d' % i,
-                'vars': vars_dict,
-                'prop': vc['prop'],
-                'steps': steps,
-            })
+            for vc in prog_vcs:
+                if vc['prop'] in existing and existing[vc['prop']]:
+                    steps = existing[vc['prop']]
+                elif vc['smt']:
+                    steps = [{'method_name': 'z3', 'goal_id': '0'}]
+                else:
+                    steps = [{'method_name': 'sorry', 'goal_id': '0'}]
+                content.append({
+                    'ty': 'thm',
+                    'name': vc['name'],
+                    'vars': vars_dict,
+                    'prop': vc['prop'],
+                    'steps': steps,
+                })
 
         theory_data = {
-            'name': prog.theory or prog.name,
-            'imports': prog.imports or ['hoare'],
-            'description': 'translated from %s.imp' % prog.name,
+            'name': imp_file.theory or imp_file.programs[0].name,
+            'imports': imp_file.imports or ['hoare'],
+            'description': 'translated from .imp',
             'content': content,
         }
         pyhol_text = pyhol.export_pyhol(theory_data)
-    return pyhol_text, num_vcs, vcs
+    return pyhol_text, len(all_vcs), all_vcs
 
 
 def compile_file(path, existing_pyhol_text=None):
     """Translate an .imp file on disk.  Returns (pyhol_text, num_vcs, vcs)."""
     with open(path, 'r', encoding='utf-8') as f:
         text = f.read()
-    prog = parse_imp(text)
-    return compile_program(prog, existing_pyhol_text)
+    imp_file = parse_imp(text)
+    return compile_programs(imp_file, existing_pyhol_text)

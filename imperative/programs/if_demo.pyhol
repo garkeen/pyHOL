@@ -1,8 +1,8 @@
 theory if_demo
 imports hoare
-description "translated from if_demo.imp"
+description "translated from .imp"
 
-theorem vc_0
+theorem if_demo_vc_0
   fixes n :: nat
   prop ∀s. true ⟶ (if ¬(s (0::nat) = n) then n = n else s 0 = n)
   proof

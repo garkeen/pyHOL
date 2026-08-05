@@ -545,7 +545,7 @@ const apply_method_ajax = async (input, desc = null) => {
       let qTitle = 'Parameters for ' + input.step.method_name
       if (input.step.theorem) qTitle += ': ' + input.step.theorem
       const query_result = await new Promise((resolve, reject) => {
-        emit('query', { title: qTitle, desc: desc, fields: result.data.query.map(s => s === 'names' ? s : s.slice(6)), list_fields: [...listFieldsFor(input.step.method_name)], resolve, reject })
+        emit('query', { title: qTitle, desc: desc, fields: result.data.query.map(s => s === 'names' ? s : s.slice(6)), list_fields: [...listFieldsFor(input.step.method_name)], hints: result.data.query_hints || {}, resolve, reject })
       })
       if (query_result !== undefined) {
         for (const k in query_result) {

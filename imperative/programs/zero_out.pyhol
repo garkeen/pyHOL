@@ -1,8 +1,8 @@
 theory zero_out
 imports hoare
-description "translated from zero_out.imp"
+description "translated from .imp"
 
-theorem vc_0
+theorem zero_out_vc_0
   prop ∀s. true ⟶ (if ¬(s (0::nat) = (0::nat)) then (0::nat) = 0 else s 0 = 0)
   proof
     0: z3

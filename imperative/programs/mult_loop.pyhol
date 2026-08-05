@@ -1,22 +1,22 @@
 theory mult_loop
 imports hoare
-description "translated from mult_loop.imp"
+description "translated from .imp"
 
-theorem vc_0
+theorem mult_loop_vc_0
   fixes A :: nat, B :: nat
   prop ∀s. s (0::nat) = 0 ∧ s 1 = 0 ⟶ s 1 = s 0 * B
   proof
     0: z3
   qed
 
-theorem vc_1
+theorem mult_loop_vc_1
   fixes A :: nat, B :: nat
   prop ∀s. s (1::nat) = s 0 * B ∧ ¬¬(s 0 = A) ⟶ s 1 = A * B
   proof
     0: z3
   qed
 
-theorem vc_2
+theorem mult_loop_vc_2
   fixes A :: nat, B :: nat
   prop ∀s. s (1::nat) = s 0 * B ∧ ¬(s 0 = A) ⟶ s 1 + B = (s 0 + 1) * B
   proof

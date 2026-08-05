@@ -7,7 +7,7 @@ import os
 
 from logic import basic
 from server import monitor
-from imperative.imp_compile import parse_imp, compile_program, compile_file, CompileError
+from imperative.imp_compile import parse_imp, compile_programs, compile_file, CompileError
 
 
 PROGRAMS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
@@ -40,14 +40,39 @@ program p
       a := a + 1
     }
 """
-        prog = parse_imp(text)
-        self.assertEqual(prog.theory, "t")
-        self.assertEqual(prog.imports, ["hoare"])
+        imp_file = parse_imp(text)
+        self.assertEqual(imp_file.theory, "t")
+        self.assertEqual(imp_file.imports, ["hoare"])
+        self.assertEqual(len(imp_file.programs), 1)
+        prog = imp_file.programs[0]
         self.assertEqual(prog.name, "p")
         self.assertEqual(prog.vars, [("a", "nat"), ("b", "nat"), ("A", "nat")])
         self.assertEqual(prog.pre, "a == 0")
         self.assertEqual(prog.post, "b == A")
         self.assertIn("while", prog.body)
+
+    def test_parse_multi_program(self):
+        text = """theory t
+imports hoare
+
+program p1
+  vars: a: nat
+  pre: true
+  post: a == 0
+  body:
+    a := 0
+
+program p2
+  vars: b: nat
+  pre: true
+  post: b == 1
+  body:
+    b := 1
+"""
+        imp_file = parse_imp(text)
+        self.assertEqual(len(imp_file.programs), 2)
+        self.assertEqual(imp_file.programs[0].name, "p1")
+        self.assertEqual(imp_file.programs[1].name, "p2")
 
     def test_parse_errors(self):
         # Missing body.
@@ -61,15 +86,15 @@ program p
         pyhol, num_vcs, vcs = compile_to_programs('mult_add_loop')
         self.assertEqual(num_vcs, 3)
         self.assertEqual(len(vcs), 3)
-        self.assertIn("theorem vc_0", pyhol)
-        self.assertIn("theorem vc_1", pyhol)
-        self.assertIn("theorem vc_2", pyhol)
+        self.assertIn("theorem mult_add_loop_vc_0", pyhol)
+        self.assertIn("theorem mult_add_loop_vc_1", pyhol)
+        self.assertIn("theorem mult_add_loop_vc_2", pyhol)
         self.assertEqual(pyhol.count(": z3"), 3)
 
     def test_compile_if_demo(self):
         pyhol, num_vcs, vcs = compile_to_programs('if_demo')
         self.assertEqual(num_vcs, 1)
-        self.assertIn("theorem vc_0", pyhol)
+        self.assertIn("theorem if_demo_vc_0", pyhol)
         self.assertIn("z3", pyhol)
 
     def test_validate_compiled(self):
@@ -90,7 +115,7 @@ program p
     a := 0
 """
         with self.assertRaises(CompileError):
-            compile_program(parse_imp(text))
+            compile_programs(parse_imp(text))
 
     def test_undeclared_variable(self):
         text = """theory t
@@ -102,7 +127,7 @@ program p
     a := b
 """
         with self.assertRaises(CompileError):
-            compile_program(parse_imp(text))
+            compile_programs(parse_imp(text))
 
     def test_compile_for_loop(self):
         text = """theory sum_demo
@@ -114,7 +139,7 @@ program sum_demo
   body:
     for (i := 0; i < n; i++) { [x == i & i <= n] x := x + 1 }
 """
-        pyhol, num_vcs, vcs = compile_program(parse_imp(text))
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
         self.assertEqual(num_vcs, 3)
         self.assertTrue(all(vc['smt'] for vc in vcs), "all VCs of the for loop should be green")
 
@@ -131,7 +156,7 @@ program cont_demo
       if (i == 1) then continue else x := x + 1
     }
 """
-        pyhol, num_vcs, vcs = compile_program(parse_imp(text))
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
         self.assertEqual(num_vcs, 3)
         self.assertTrue(all(vc['smt'] for vc in vcs), "break/continue loop VCs should be green")
 
@@ -145,7 +170,7 @@ program break_demo
   body:
     while (true) { [x <= 2] if (x == 2) then break else x := x + 1 }
 """
-        pyhol, num_vcs, vcs = compile_program(parse_imp(text))
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
         self.assertEqual(num_vcs, 3)
         self.assertTrue(all(vc['smt'] for vc in vcs), "break loop VCs should be green")
 
@@ -160,7 +185,7 @@ program bad_demo
     a := a + 1;
     b := b + 1
 """
-        pyhol, num_vcs, vcs = compile_program(parse_imp(text))
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
         self.assertEqual(num_vcs, 1)
         self.assertFalse(vcs[0]['smt'], "a wrong postcondition should produce a red VC")
         self.assertIn("sorry", pyhol, "unprovable VC should get sorry")
@@ -175,7 +200,7 @@ program p
     break
 """
         with self.assertRaises(CompileError):
-            compile_program(parse_imp(text))
+            compile_programs(parse_imp(text))
 
 
 if __name__ == '__main__':
