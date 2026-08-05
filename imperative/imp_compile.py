@@ -464,12 +464,9 @@ class Translator:
         return res
 
     def _array_index(self, name, idx_expr):
-        """Compute state index for array access: base + idx.
-        If idx is a constant, fold to a single Number."""
+        """Compute state index for array access: base + idx."""
         base, size = self.array_info[name]
         idx_term = self.translate_expr(idx_expr)
-        if isinstance(idx_term, Term) and idx_term.is_number():
-            return Number(NatType, base + idx_term.dest_number())
         return nat.plus(Number(NatType, base), idx_term)
 
     def translate_array_assign(self, com):
