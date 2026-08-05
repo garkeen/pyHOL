@@ -38,6 +38,7 @@
                 <span class="prog-vars">{{ formatVars(prog.vars) }}</span>
                 <div class="prog-actions">
                   <button class="btn btn-sm btn-outline-secondary" @click.stop="toggle_edit(idx)">{{ editing_prog === idx ? 'Close' : 'Edit' }}</button>
+                  <button class="btn btn-sm btn-outline-primary" @click.stop="verify_program(idx)" title="Verify this program">Verify</button>
                   <button class="btn btn-sm btn-outline-warning" @click.stop="move_prog(idx, -1)" :disabled="idx === 0">↑</button>
                   <button class="btn btn-sm btn-outline-warning" @click.stop="move_prog(idx, 1)" :disabled="idx === programs.length - 1">↓</button>
                   <button class="btn btn-sm btn-outline-danger" @click.stop="remove_prog(idx)">✕</button>
@@ -280,6 +281,12 @@ const verify_all = async () => {
   } finally {
     verifying.value = false
   }
+}
+
+const verify_program = async (idx) => {
+  // Compile all programs (VCG is fast), then highlight this program's VCs.
+  await verify_all()
+  selected.value = idx
 }
 
 const prove_vc = async (vc, progName) => {
