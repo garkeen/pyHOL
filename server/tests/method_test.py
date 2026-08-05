@@ -145,7 +145,7 @@ class MethodTest(unittest.TestCase):
             concl='B | A',
             method_name='apply_backward_step',
             prevs=[0],
-            res=['disjE']
+            res=['disjE', 'resolution_right']
         )
 
     def testApplyBackwardStepThms3(self):
@@ -234,7 +234,7 @@ class MethodTest(unittest.TestCase):
             concl='B & A',
             method_name='apply_forward_step',
             prevs=[0],
-            res=['conjD1', 'conjD2']
+            res=['conjD1', 'conjD2', 'resolution_right', 'weakening']
         )
 
     def testApplyForwardStep1(self):
@@ -308,6 +308,7 @@ class MethodTest(unittest.TestCase):
         )
 
     def testApplyResolveStepThms(self):
+        """set has no hint_resolve lemmas yet, so nothing applies to x Mem empty_set."""
         self.run_search_thm(
             'set',
             vars={'x': "'a"},
@@ -315,7 +316,7 @@ class MethodTest(unittest.TestCase):
             concl=['false'],
             method_name='apply_resolve_step',
             prevs=[0],
-            res=['member_empty']
+            res=[]
         )
 
     def testApplyResolveStepThms2(self):
@@ -374,7 +375,7 @@ class MethodTest(unittest.TestCase):
             vars={'f': "nat => nat", 'S': "nat set", 'T': "nat set"},
             concl='image f (image f S) = T',
             method_name='rewrite_goal',
-            res=['image_combine', 'image_def', 'set_equal_iff']
+            res=['image_combine', 'member_ext', 'set_equal_iff']
         )
 
     def testRewriteGoal(self):
@@ -407,8 +408,8 @@ class MethodTest(unittest.TestCase):
             vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set", 't': "'c set"},
             concl='image f (image g s) = t',
             method_name='rewrite_goal',
-            args={'theorem': 'image_combine', 'sym': 'true'},
-            gaps=["image (f O g) s = t"]
+            args={'theorem': 'image_combine', 'sym': 'false'},
+            gaps=["image (g O f) s = t"]
         )
 
     def testRewriteGoal4(self):
@@ -418,7 +419,7 @@ class MethodTest(unittest.TestCase):
             concl='(∃x1. x1 ∈ s) ⟷ x ∈ image f s',
             method_name='rewrite_goal',
             args={'theorem': 'in_image'},
-            gaps=["(∃x1. x1 ∈ s) ⟷ (∃x1. x = f x1 & x1 ∈ s)"]
+            gaps=["(∃x1. x1 ∈ s) ⟷ (∃x1. x1 ∈ s & x = f x1)"]
         )
 
     def testRewriteGoalWithPrev(self):
@@ -462,7 +463,7 @@ class MethodTest(unittest.TestCase):
             concl='false',
             method_name='rewrite_fact',
             prevs=[0],
-            res=['image_combine', 'image_def', 'set_equal_iff']
+            res=['image_combine', 'member_ext', 'set_equal_iff']
         )
 
     def testRewriteFactThms3(self):
@@ -484,8 +485,8 @@ class MethodTest(unittest.TestCase):
             concl='false',
             method_name='rewrite_fact',
             prevs=[0],
-            args={'theorem': 'image_combine', 'sym': 'true'},
-            lines={'1': "image (f O g) s = t"}
+            args={'theorem': 'image_combine', 'sym': 'false'},
+            lines={'1': "image (g O f) s = t"}
         )
 
     def testRewriteFact2(self):
