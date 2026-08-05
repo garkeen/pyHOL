@@ -191,7 +191,8 @@
             { "id": "2", "th": "...", "rule": "intros", "args": "", "prevs": ["0","1"] }
         ],
         "num_gaps": 1,
-        "method_sig": { "cut": ["goal"], "apply_backward_step": ["theorem"], ... }
+        "method_sig": { "cut": ["goal"], "apply_backward_step": ["theorem"], ... },
+        "method_list_params": { "introduction": ["names"], "exists_elim": ["names"] }
     },
     "history": [
         { "step_output": [...], "goal_id": "0", "fact_ids": ["1"] }
@@ -318,7 +319,7 @@
 **返回格式（成功）**：
 ```json
 {
-    "state": { "vars": {...}, "proof": [...], "num_gaps": 0, "method_sig": {...} },
+    "state": { "vars": {...}, "proof": [...], "num_gaps": 0, "method_sig": {...}, "method_list_params": {...} },
     "history": [ { "step_output": [...], "goal_id": "5", "fact_ids": [...] } ],
     "step": { "method_name": "...", "goal_id": "5", ... }
 }

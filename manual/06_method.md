@@ -204,7 +204,13 @@ class my_method(Method):
         self.sig = ['param1', 'param2']
         self.limit = None        # 可用性闸门（None 或定理名）
         self.no_order = False    # search 时是否对 prevs 排列
+        list_params = set()       # 类属性：哪些参数是逗号分隔的变长列表（前端渲染 +/- 动态字段）
 ```
+
+`list_params` 是类属性（非实例属性），声明哪些参数接受逗号分隔的多个值。
+当前仅 `introduction`（`{'names'}`）与 `exists_elim`（`{'names'}`）使用。
+前端 ProofQuery 对 `list_params` 中的字段渲染动态增减输入框，提交时用逗号 join。
+后端通过 `get_method_list_params()` 汇总，序列化到 proof state 的 `method_list_params` 字段。
 
 - `register_method(name)` 装饰器，存入 `global_methods` 字典（幂等）。
 - `has_method(name)` 检查方法存在且 `limit` 满足。

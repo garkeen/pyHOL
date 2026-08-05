@@ -199,6 +199,7 @@ const props = defineProps({
 const emit = defineEmits(['set-message', 'query', 'set-context', 'set-status', 'set-proof', 'save-steps', 'close-prove'])
 
 const method_sig = ref({})
+const method_list_params = ref({})
 const index = ref(0)
 const history = ref([])
 const steps = ref([])
@@ -212,6 +213,9 @@ const active_tab = ref('suggest')
 const manual_method = ref('')
 const manual_params = ref({})
 const theorem_results = ref([])
+
+// Fields that are comma-separated lists (rendered as +/- dynamic inputs)
+const listFieldsFor = (mn) => new Set(method_list_params.value[mn] || [])
 
 const FORWARD_METHODS = new Set(['apply_forward_step', 'apply_fact', 'rewrite_fact', 'forall_elim', 'exists_elim', 'drule', 'frule'])
 const REWRITE_FACT_METHODS = new Set(['rewrite_fact', 'rewrite_fact_with_prev'])
@@ -506,7 +510,7 @@ const apply_method = async (method_name, args) => {
   }
   if (sigList.length > 0) {
     const query_result = await new Promise((resolve, reject) => {
-      emit('query', { title: 'Parameters for ' + method_name, fields: sigList, resolve, reject })
+      emit('query', { title: 'Parameters for ' + method_name, fields: sigList, list_fields: [...listFieldsFor(method_name)], resolve, reject })
     })
     if (query_result !== undefined) {
       for (const k in query_result) {
@@ -541,7 +545,7 @@ const apply_method_ajax = async (input, desc = null) => {
       let qTitle = 'Parameters for ' + input.step.method_name
       if (input.step.theorem) qTitle += ': ' + input.step.theorem
       const query_result = await new Promise((resolve, reject) => {
-        emit('query', { title: qTitle, desc: desc, fields: result.data.query.map(s => s === 'names' ? s : s.slice(6)), resolve, reject })
+        emit('query', { title: qTitle, desc: desc, fields: result.data.query.map(s => s === 'names' ? s : s.slice(6)), list_fields: [...listFieldsFor(input.step.method_name)], resolve, reject })
       })
       if (query_result !== undefined) {
         for (const k in query_result) {
@@ -594,6 +598,7 @@ const gotoStep = async (new_index, set_selected, update_history = false) => {
     if (update_history) { history.value = new_history }
     num_gaps.value = state.num_gaps
     method_sig.value = state.method_sig || {}
+    method_list_params.value = state.method_list_params || {}
     proof.value = state.proof
     // Emit open_goals immediately (don't wait for match_thm)
     const og = state.proof ? state.proof.filter(l => l.rule === 'sorry').map(l => l.id) : []

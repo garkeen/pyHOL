@@ -77,6 +77,7 @@ class ProofState():
                 "proof": self.export_proof(),
                 "num_gaps": len(self.rpt.gaps),
                 "method_sig": get_method_sig(),
+                "method_list_params": get_method_list_params(),
             }
         return res
 
@@ -262,6 +263,21 @@ def get_method_sig():
             sig[name] = global_methods[name].sig
     return sig
 
+def get_method_list_params():
+    """Return per-method list of params that are comma-separated lists.
+
+    These are rendered as +/- dynamic fields in the frontend query dialog.
+    Any Method subclass can declare ``list_params = {'names'}`` to opt in.
+    """
+    res = dict()
+    for name in global_methods:
+        if has_method(name):
+            m = global_methods[name]
+            lp = list(getattr(m, 'list_params', set()))
+            if lp:
+                res[name] = lp
+    return res
+
 def register_method(name):
     def decorator(method_cls):
         # Idempotent: skip if already registered (supports reloading theories).
@@ -296,6 +312,7 @@ def _loc_to_conv(loc, base_cv):
 
 class Method:
     """Methods represent potential actions on the state."""
+    list_params = set()  # param names that are comma-separated lists (rendered as +/- fields)
     def search(self, state: ProofState, id, prevs):
         """Search for parameters on which the method can be applied
         given the current proof state.
@@ -730,6 +747,7 @@ class apply_resolve_step(Method):
 @register_method('introduction')
 class introduction(Method):
     """Introducing variables and assumptions."""
+    list_params = {'names'}
     def __init__(self):
         self.sig = []
         self.limit = None
@@ -816,6 +834,7 @@ class revert_intro(Method):
 @register_method('exists_elim')
 class exists_elim(Method):
     """Make use of an exists fact."""
+    list_params = {'names'}
     def __init__(self):
         self.sig = ['names']
         self.limit = None
