@@ -1,0 +1,11 @@
+theory max_demo
+imports hoare
+description "compiled from max_demo.imp"
+
+theorem max_demo
+  fixes m :: nat, n :: nat
+  prop Valid (λs. true) (Cond (λs. m ≤ n) (Assign (0::nat) (λs. n)) (Assign 0 (λs. m))) (λs. s 0 = m ∨ s 0 = n)
+  proof
+    0: vcg
+    0: z3
+  qed

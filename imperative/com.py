@@ -227,3 +227,30 @@ class While(Com):
         self.b = b
         self.inv = inv
         self.c = c
+
+class For(Com):
+    """For program: for (init; cond; step) { [inv] body }.
+
+    Desugared by the compiler into a flag variable plus a While:
+        flag := 0; init; while (cond & flag == 0) { [inv] body; step }
+
+    """
+    def __init__(self, init, cond, step, inv, c):
+        assert isinstance(init, Com) and isinstance(cond, expr.Expr)
+        assert isinstance(step, Com) and isinstance(inv, expr.Expr) and isinstance(c, Com), "For"
+        super().__init__()
+        self.init = init
+        self.cond = cond
+        self.step = step
+        self.inv = inv
+        self.c = c
+
+class Break(Com):
+    """Break program: exit the innermost loop."""
+    def __init__(self):
+        super().__init__()
+
+class Continue(Com):
+    """Continue program: jump to the next loop iteration."""
+    def __init__(self):
+        super().__init__()

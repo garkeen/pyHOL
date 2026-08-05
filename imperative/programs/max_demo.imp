@@ -1,0 +1,9 @@
+theory max_demo
+imports hoare
+
+program max_demo
+  vars: c: nat, m: nat, n: nat
+  pre: true
+  post: c == m | c == n
+  body:
+    if (m <= n) then c := n else c := m

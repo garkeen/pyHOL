@@ -1,0 +1,10 @@
+theory zero_out
+imports hoare
+description "compiled from zero_out.imp"
+
+theorem zero_out
+  prop Valid (λs. true) (Cond (λs. ¬(s (0::nat) = (0::nat))) (Assign 0 (λs. 0)) Skip) (λs. s 0 = 0)
+  proof
+    0: vcg
+    0: z3
+  qed

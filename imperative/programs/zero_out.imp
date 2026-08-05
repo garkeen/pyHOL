@@ -1,0 +1,9 @@
+theory zero_out
+imports hoare
+
+program zero_out
+  vars: a: nat
+  pre: true
+  post: a == 0
+  body:
+    if (a != 0) then a := 0 else skip

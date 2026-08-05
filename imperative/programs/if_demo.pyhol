@@ -1,0 +1,11 @@
+theory if_demo
+imports hoare
+description "compiled from if_demo.imp"
+
+theorem if_demo
+  fixes n :: nat
+  prop Valid (λs. true) (Cond (λs. ¬(s (0::nat) = n)) (Assign 0 (λs. n)) Skip) (λs. s 0 = n)
+  proof
+    0: vcg
+    0: z3
+  qed

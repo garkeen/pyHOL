@@ -2,89 +2,84 @@
 
 """API for program verification."""
 
-import json
+import json, os
 from flask import request
 from flask.json import jsonify
 
 from logic import basic
-from imperative import parser2
-from imperative import imp  # for the imp methods
-from syntax import printer
-from prover import z3wrapper
+from imperative import imp_compile as imp_compiler
 from app.app import app
 
 
-@app.route('/api/get-program-file', methods = ['POST'])
-def get_program_file():
-    """Load a json file for program verification.
-    
-    Input:
-    * file_name: name of the file (under imperative/examples).
+def _programs_dir():
+    """Directory containing .imp files."""
+    import os
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_dir, 'imperative', 'programs')
+
+
+def _library_dir():
+    """Directory containing .pyhol files."""
+    import os
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_dir, 'library')
+
+
+@app.route('/api/imp-list', methods=['POST'])
+def imp_list():
+    """List all .imp program files.
 
     Returns:
-    * file_data: content of the file.
+    * files: list of {name, text}.
+
+    """
+    programs_dir = _programs_dir()
+    files = []
+    for fn in sorted(os.listdir(programs_dir)):
+        if fn.endswith('.imp'):
+            with open(os.path.join(programs_dir, fn), 'r', encoding='utf-8') as f:
+                files.append({'name': fn[:-4], 'text': f.read()})
+    return jsonify({'files': files})
+
+
+@app.route('/api/imp-compile', methods=['POST'])
+def imp_compile():
+    """Save (optionally) and compile an .imp program.
+
+    Input:
+    * name: name of the program.
+    * text: (optional) updated .imp text to save.
+
+    Compiles to library/<name>.pyhol, returns the verification
+    conditions (from the kernel vcg) together with their z3 verdict.
+
+    Returns:
+    * ok: whether the compilation succeeded.
+    * error: error message (if not ok).
+    * name, num_vcs, vcs: list of {index, prop, smt} on success.
 
     """
     data = json.loads(request.get_data().decode("utf-8"))
-    file_name = data['file_name']
-    basic.load_theory('hoare')
-    import os
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(base_dir, 'imperative', 'examples', file_name + '.json')
-    with open(path, 'r', encoding='utf-8') as f:
-        file_data = json.load(f)
+    name = data['name']
+    text = data.get('text')
 
-    for i, item in enumerate(file_data['content']):
-        if item['ty'] == 'vcg':
-            program = parser2.com_parser.parse(item['com']).print_com(item['vars'])
-            item['com'] = '\n'.join(program)
+    path = os.path.join(_programs_dir(), name + '.imp')
+    try:
+        if text is not None:
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(text)
 
-    return jsonify({'file_data': file_data['content']})
+        pyhol, num_vcs, vcs = imp_compiler.compile_file(path)
 
-@app.route('/api/program-verify', methods=['POST'])
-def verify():
-    """Verify a program by generating verification conditions,
-    and attempt to solve the conditions using SMT.
+        # Write the compiled theorem.
+        pyhol_path = os.path.join(_library_dir(), name + '.pyhol')
+        with open(pyhol_path, 'w', encoding='utf-8') as f:
+            f.write(pyhol)
 
-    """
-    data = json.loads(request.get_data().decode("utf-8"))
-    basic.load_theory('hoare')
-    pre = parser2.cond_parser.parse(data['pre'])
-    post = parser2.cond_parser.parse(data['post'])
-    com = parser2.com_parser.parse(data['com'])
-    com.pre = [pre]
-    com.compute_wp(post)
-    lines = com.get_lines(data['vars'])
+        # Refresh metadata so that newly written files are visible to
+        # load-json-file / validate-theory immediately.
+        basic.load_metadata()
+    except Exception as e:
+        return jsonify({'ok': False, 'error': '%s: %s' % (e.__class__.__name__, str(e))})
 
-    for line in lines:
-        if line['ty'] == 'vc':
-            vc_hol = line['prop']
-            line['prop'] = printer.print_term(line['prop'])
-            line['smt'] = z3wrapper.solve(vc_hol)
-
-    return jsonify({
-        'lines': lines,
-    })
-
-@app.route('/api/save-program-proof', methods=['POST'])
-def save_program_proof():
-    """Save a proof for program verification.
-    
-    """
-    data = json.loads(request.get_data().decode("utf-8"))
-
-    file_name = data['file_name']
-    import os
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(base_dir, 'imperative', 'examples', file_name + '.json')
-    with open(path, 'r', encoding='utf-8') as f:
-        file_data = json.load(f)
-
-    cur_index = data['index']
-    proof = data['proof']
-    file_data['content'][cur_index]['proof'] = proof
-
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(file_data, f, indent=4, ensure_ascii=False, sort_keys=True)
-
-    return jsonify({})
+    return jsonify({'ok': True, 'name': name, 'num_vcs': num_vcs, 'vcs': vcs})

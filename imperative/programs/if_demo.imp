@@ -1,0 +1,9 @@
+theory if_demo
+imports hoare
+
+program if_demo
+  vars: a: nat, n: nat
+  pre: true
+  post: a == n
+  body:
+    if (a != n) then a := n else skip

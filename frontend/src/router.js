@@ -19,7 +19,7 @@ const routes = [
   {
     path: '/program',
     name: 'program',
-    component: () => import('./views/ProVerify.vue')
+    component: () => import('./views/ProgramIDE.vue')
   }
 ]
 

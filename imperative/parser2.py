@@ -23,6 +23,7 @@ grammar = r"""
         | expr "-" expr -> minus_expr
         | expr "*" expr -> times_expr
         | CNAME "(" expr ("," expr)* ")" -> fun_expr
+        | "if" cond "then" expr "else" expr -> if_expr
         | "(" expr ")"
 
     ?atom_cond: expr "==" expr -> eq_cond
@@ -46,10 +47,21 @@ grammar = r"""
 
     ?cmd: "skip" -> skip_cmd
         | CNAME ":=" expr -> assign_cmd
+        | CNAME "++" -> inc_cmd
+        | CNAME "--" -> dec_cmd
+        | "break" -> break_cmd
+        | "continue" -> continue_cmd
         | "if" "(" cond ")" "then" cmd "else" cmd -> if_cmd
         | "while" "(" cond ")" "{" cmd "}" -> while_cmd
         | "while" "(" cond ")" "{" "[" cond "]" cmd "}" -> while_cmd_inv
+        | "for" "(" for_stmt ";" cond ";" for_stmt ")" "{" cmd "}" -> for_cmd
+        | "for" "(" for_stmt ";" cond ";" for_stmt ")" "{" "[" cond "]" cmd "}" -> for_cmd_inv
         | cmd ";" cmd -> seq_cmd
+
+    ?for_stmt: "skip" -> skip_cmd
+        | CNAME ":=" expr -> assign_cmd
+        | CNAME "++" -> inc_cmd
+        | CNAME "--" -> dec_cmd
 
     %import common.CNAME
     %import common.WS
@@ -86,6 +98,9 @@ class HoareTransformer(Transformer):
 
     def times_expr(self, e1, e2):
         return expr.Op("*", e1, e2)
+
+    def if_expr(self, cond, e1, e2):
+        return expr.ITE(cond, e1, e2)
 
     def fun_expr(self, fname, *args):
         assert fname in expr.global_fnames, "Function %s not found" % fname
@@ -130,14 +145,34 @@ class HoareTransformer(Transformer):
     def assign_cmd(self, v, e):
         return com.Assign(expr.Var(str(v)), e)
 
+    def inc_cmd(self, v):
+        v = expr.Var(str(v))
+        return com.Assign(v, expr.Op("+", v, expr.Const(1)))
+
+    def dec_cmd(self, v):
+        v = expr.Var(str(v))
+        return com.Assign(v, expr.Op("-", v, expr.Const(1)))
+
+    def break_cmd(self):
+        return com.Break()
+
+    def continue_cmd(self):
+        return com.Continue()
+
     def if_cmd(self, b, c1, c2):
         return com.Cond(b, c1, c2)
 
     def while_cmd(self, b, c):
-        return com.While(b, true, c)
+        return com.While(b, expr.Const(True), c)
 
     def while_cmd_inv(self, b, inv, c):
         return com.While(b, inv, c)
+
+    def for_cmd(self, init, cond, step, c):
+        return com.For(init, cond, step, expr.Const(True), c)
+
+    def for_cmd_inv(self, init, cond, step, inv, c):
+        return com.For(init, cond, step, inv, c)
 
     def seq_cmd(self, c1, c2):
         return com.Seq(c1, c2)

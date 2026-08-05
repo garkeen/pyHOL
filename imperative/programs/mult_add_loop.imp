@@ -1,0 +1,12 @@
+theory mult_add_loop
+imports hoare
+
+program mult_add_loop
+  vars: a: nat, b: nat, A: nat, B: nat
+  pre: a == 0 & b == 0
+  post: b == A * B
+  body:
+    while (a != A) {
+      [b == a * B] b := b + B;
+      a := a + 1
+    }
