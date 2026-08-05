@@ -49,6 +49,8 @@ grammar = r"""
         | CNAME "--" -> dec_cmd
         | "break" -> break_cmd
         | "continue" -> continue_cmd
+        | "assert" cond -> assert_cmd
+        | CNAME ":=" "call" CNAME "(" expr ("," expr)* ")" -> call_cmd
         | "if" "(" cond ")" "then" cmd "else" cmd -> if_cmd
         | "while" "(" cond ")" "{" cmd "}" -> while_cmd
         | "while" "(" cond ")" "{" "[" cond "]" cmd "}" -> while_cmd_inv
@@ -174,6 +176,12 @@ class HoareTransformer(Transformer):
 
     def seq_cmd(self, c1, c2):
         return com.Seq(c1, c2)
+
+    def assert_cmd(self, cond):
+        return com.Assert(cond)
+
+    def call_cmd(self, result, fname, *args):
+        return com.Call(str(result), str(fname), list(args))
 
 cond_parser = Lark(grammar, start="cond", parser="lalr", transformer=HoareTransformer())
 com_parser = Lark(grammar, start="cmd", parser="lalr", transformer=HoareTransformer())

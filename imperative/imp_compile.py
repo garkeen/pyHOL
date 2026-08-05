@@ -161,6 +161,10 @@ def get_assigned_vars(com):
         res |= get_assigned_vars(com.c2)
     elif isinstance(com, com_mod.While):
         res |= get_assigned_vars(com.c)
+    elif isinstance(com, com_mod.Call):
+        res.add(com.result)
+    elif isinstance(com, com_mod.Assert):
+        pass
     elif isinstance(com, com_mod.For):
         res |= get_assigned_vars(com.init)
         res |= get_assigned_vars(com.step)
@@ -186,8 +190,9 @@ def stmt_may_break(com):
 class Translator:
     """Translate an ImpProgram into HOL terms."""
 
-    def __init__(self, prog):
+    def __init__(self, prog, prog_table=None):
         self.prog = prog
+        self.prog_table = prog_table or {}
         self.T = TFun(NatType, NatType)
         self.s = Var("s", self.T)
 
@@ -335,6 +340,10 @@ class Translator:
             ctx['breaks'].append(pc)
             return imp.Assign(NatType, NatType)(Number(NatType, self.state_idx[ctx['flag']]),
                                                 Lambda(self.s, Number(NatType, 1)))
+        elif isinstance(com, com_mod.Assert):
+            return self.translate_assert(com)
+        elif isinstance(com, com_mod.Call):
+            return self.translate_call(com)
         elif isinstance(com, com_mod.Continue):
             if not self.loop_stack:
                 raise CompileError("continue outside of a loop.")
@@ -425,6 +434,64 @@ class Translator:
             res = imp.Cond(self.T)(Lambda(self.s, flag_zero), res, imp.Skip(self.T))
         return res
 
+    def translate_assert(self, com):
+        """assert P -> Cond(P, Skip, While(true,true,Skip)).
+
+        VCG generates: P ⟶ WP(rest, Q)  and  true (trivially).
+        If P fails, program loops forever (partial correctness).
+        """
+        P = self.translate_expr(com.cond)
+        skip = imp.Skip(self.T)
+        b_true = Lambda(self.s, term.true)
+        # While(true, false, Skip): invariant=false means WP=false.
+        # Cond(P, Skip, While(true,false,Skip)) gives WP = P ∧ Q:
+        #   true branch: P ⟶ Q
+        #   false branch: ¬P ⟶ false = P  (P MUST hold)
+        stuck = imp.While(self.T)(b_true, Lambda(self.s, false), skip)
+        return imp.Cond(self.T)(Lambda(self.s, P), skip, stuck)
+
+    def translate_call(self, com):
+        """y := call f(args) -> Cond(pre_f, Assign(y, post_value), stuck).
+
+        Extracts the result value from f's post (must be r == expr form).
+        """
+        if com.fname not in self.prog_table:
+            raise CompileError("Call to unknown program: %s" % com.fname)
+        spec = self.prog_table[com.fname]
+        callee_vars = spec['vars']
+        out_var = callee_vars[-1][0]
+
+        # Map callee input vars to caller Expr objects
+        from imperative.parser2 import cond_parser
+        var_map = {}
+        for i, arg in enumerate(com.args):
+            if i < len(callee_vars) - 1:
+                var_map[callee_vars[i][0]] = arg  # Expr object
+
+        # Parse callee pre and substitute
+        pre_expr = cond_parser.parse(spec['pre'])
+        pre_term = self.translate_expr(pre_expr.subst(var_map))
+
+        # Parse callee post: must be "out_var == <expr>"
+        post_expr = cond_parser.parse(spec['post'])
+        if not (isinstance(post_expr, expr_mod.Op) and post_expr.op == '=='
+                and isinstance(post_expr.args[0], expr_mod.Var)
+                and post_expr.args[0].name == out_var):
+            raise CompileError("Call: callee post must be '%s == <expr>', got: %s" % (out_var, spec['post']))
+        # Extract the value expression and substitute input vars
+        value_expr = post_expr.args[1].subst(var_map)
+        value_term = self.translate_expr(value_expr)
+
+        # Assign result = value
+        result_idx = Number(NatType, self.state_idx[com.result])
+        assign = imp.Assign(NatType, NatType)(result_idx, Lambda(self.s, value_term))
+
+        skip = imp.Skip(self.T)
+        b_true = Lambda(self.s, term.true)
+        stuck = imp.While(self.T)(b_true, Lambda(self.s, false), skip)
+        return imp.Cond(self.T)(Lambda(self.s, pre_term), assign, stuck)
+
+
     def translate_for(self, com, flag, guard=False):
         """Translate a For by desugaring into a while (with a break flag
         only when the body may break)."""
@@ -500,8 +567,13 @@ def compile_programs(imp_file, existing_pyhol_text=None, validate_steps=True):
     content = []
     with theory.fresh_theory():
         basic.load_theory('hoare')
+        # Build program table for cross-program calls
+        prog_table = {}
+        for p in imp_file.programs:
+            prog_table[p.name] = {'vars': p.vars, 'pre': p.pre, 'post': p.post}
+
         for prog in imp_file.programs:
-            tr = Translator(prog)
+            tr = Translator(prog, prog_table=prog_table)
             pre = tr.translate_pred(prog.pre)
             post = tr.translate_pred(prog.post)
             goal = imp.Valid(tr.T)(pre, tr.com_term, post)

@@ -76,3 +76,16 @@ class Break(Com):
 class Continue(Com):
     """Continue program: jump to the next loop iteration."""
     pass
+
+class Assert(Com):
+    """Assertion checkpoint (desugared by Translator)."""
+    def __init__(self, cond):
+        assert isinstance(cond, expr.Expr), "Assert"
+        self.cond = cond
+
+class Call(Com):
+    """Function call (desugared by Translator using callee spec)."""
+    def __init__(self, result, fname, args):
+        self.result = result
+        self.fname = fname
+        self.args = list(args)
