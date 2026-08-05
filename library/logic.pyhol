@@ -700,10 +700,16 @@ theorem imply_neg
   prop (P ⟶ Q) ⟷ (¬Q ⟶ ¬P)
   proof
     0: apply_backward_step iffI
-    0: cut "(P ⟶ Q) ⟷ (¬P ∨ Q)"
-    0: rewrite_goal disj_conv_imp sym=True
-    1: cut "(P ⟶ Q) ⟶ (¬P ∨ Q)" @0
-    3: cut "¬P ∨ Q ⟷ Q ∨ ¬P"
+    0: introduction
+    0.2: cases P
+    0.2: introduction
+    0.2.1: apply_fact @0.0,0.2.0
+    0.2.2: apply_backward_step negE_gen @0.1,0.2.1
+    1: introduction
+    1.2: cases Q
+    1.3: introduction
+    1.3.1: apply_fact @1.0,1.3.0
+    1.3.2: apply_backward_step negE_gen @1.3.1,1.1
   qed
 
 theorem not_or_elim1
