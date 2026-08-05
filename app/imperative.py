@@ -63,10 +63,16 @@ def imp_compile():
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(text)
 
-        pyhol, num_vcs, vcs = imp_compiler.compile_file(path)
-
-        # Write the compiled theorem.
+        # Read existing .pyhol to preserve manual proofs.
         pyhol_path = os.path.join(_programs_dir(), name + '.pyhol')
+        existing_pyhol = None
+        if os.path.exists(pyhol_path):
+            with open(pyhol_path, 'r', encoding='utf-8') as f:
+                existing_pyhol = f.read()
+
+        pyhol, num_vcs, vcs = imp_compiler.compile_file(path, existing_pyhol_text=existing_pyhol)
+
+        # Write the translated theorem file.
         with open(pyhol_path, 'w', encoding='utf-8') as f:
             f.write(pyhol)
 

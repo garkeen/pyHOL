@@ -1,13 +1,24 @@
 theory mult_loop
 imports hoare
-description "compiled from mult_loop.imp"
+description "translated from mult_loop.imp"
 
-theorem mult_loop
+theorem vc_0
   fixes A :: nat, B :: nat
-  prop Valid (λs. s (0::nat) = 0 ∧ s 1 = 0) (While (λs. ¬(s 0 = A)) (λs. s 1 = s 0 * B) (Seq (Assign 1 (λs. s 1 + B)) (Assign 0 (λs. s 0 + 1)))) (λs. s 1 = A * B)
+  prop ∀s. s (0::nat) = 0 ∧ s 1 = 0 ⟶ s 1 = s 0 * B
   proof
-    0: vcg
     0: z3
-    1: z3
-    2: z3
+  qed
+
+theorem vc_1
+  fixes A :: nat, B :: nat
+  prop ∀s. s (1::nat) = s 0 * B ∧ ¬¬(s 0 = A) ⟶ s 1 = A * B
+  proof
+    0: z3
+  qed
+
+theorem vc_2
+  fixes A :: nat, B :: nat
+  prop ∀s. s (1::nat) = s 0 * B ∧ ¬(s 0 = A) ⟶ s 1 + B = (s 0 + 1) * B
+  proof
+    0: z3
   qed

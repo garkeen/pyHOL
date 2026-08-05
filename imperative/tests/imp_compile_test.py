@@ -61,21 +61,24 @@ program p
         pyhol, num_vcs, vcs = compile_to_programs('mult_add_loop')
         self.assertEqual(num_vcs, 3)
         self.assertEqual(len(vcs), 3)
-        self.assertIn("theorem mult_add_loop", pyhol)
-        self.assertIn("0: vcg", pyhol)
+        self.assertIn("theorem vc_0", pyhol)
+        self.assertIn("theorem vc_1", pyhol)
+        self.assertIn("theorem vc_2", pyhol)
         self.assertEqual(pyhol.count(": z3"), 3)
 
     def test_compile_if_demo(self):
         pyhol, num_vcs, vcs = compile_to_programs('if_demo')
         self.assertEqual(num_vcs, 1)
-        self.assertIn("Cond", pyhol)
-        self.assertIn("Skip", pyhol)
+        self.assertIn("theorem vc_0", pyhol)
+        self.assertIn("z3", pyhol)
 
     def test_validate_compiled(self):
         basic.load_metadata()
         for name in ['mult_add_loop', 'if_demo']:
             res = monitor.validate_theory(name, force=True)
-            self.assertEqual(res.get(name), 'VALID', name)
+            # All VC theorems should be VALID.
+            for thm_name, status in res.items():
+                self.assertEqual(status, 'VALID', "%s/%s" % (name, thm_name))
 
     def test_int_not_supported(self):
         text = """theory t
@@ -160,6 +163,7 @@ program bad_demo
         pyhol, num_vcs, vcs = compile_program(parse_imp(text))
         self.assertEqual(num_vcs, 1)
         self.assertFalse(vcs[0]['smt'], "a wrong postcondition should produce a red VC")
+        self.assertIn("sorry", pyhol, "unprovable VC should get sorry")
 
     def test_break_outside_loop_error(self):
         text = """theory t

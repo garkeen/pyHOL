@@ -1,15 +1,18 @@
 # Author: AI assistant
 
-"""Compile .imp program files into .pyhol theorem files.
+"""Translate .imp program files into .pyhol theorem files.
 
-Single source of truth: .imp (human-edited program) --compile--> .pyhol
-(theorem containing the Valid Hoare triple, proven by vcg + z3 steps).
+.imp is syntactic sugar for writing Hoare triples.  The translator
+desugars it into .pyhol: one theorem per verification condition (VC).
+Each VC is an independent proof obligation.
 
-The compiler only translates; it never decides the truth of any
-verification condition.  Decisions are made by the kernel (vcg macro
-unfolding) and by the z3 steps in the generated .pyhol proof.
+  z3-provable VC  ->  proof with 0: z3
+  unprovable VC   ->  proof with 0: sorry  (user proves interactively)
 
-Current limitations (v0):
+Re-translation preserves existing proofs: VCs whose proposition is
+unchanged keep their proof steps; only changed/new VCs are reset.
+
+Limitations:
 * nat types only (no int, no arrays).
 * Program variables that are assigned are mapped to numeric state
   indices (s 0, s 1, ...) in declaration order.
@@ -33,7 +36,7 @@ from imperative import expr as expr_mod
 from imperative import com as com_mod
 from imperative import parser2
 from imperative import imp
-from syntax import printer, settings
+from syntax import printer, settings, pyhol
 from prover import z3wrapper
 
 
@@ -438,14 +441,45 @@ class Translator:
         return res
 
 
-def compile_program(prog, validate_steps=True):
-    """Compile an ImpProgram into a .pyhol text.
+def _parse_existing_proofs(pyhol_text):
+    """Parse an existing .pyhol text, return dict: prop_text -> steps.
 
-    Runs inside a fresh theory with hoare loaded.  Returns
-    (pyhol_text, num_vcs, vcs), where vcs is a list of verification
-    condition terms (as printed).
-
+    Used to preserve proofs across re-translation.  Prop keys are
+    normalized: surrounding quotes stripped, whitespace collapsed.
     """
+    if not pyhol_text:
+        return {}
+    try:
+        from syntax import pyhol as pyhol_mod
+        data = pyhol_mod.parse_pyhol(pyhol_text)
+        result = {}
+        for item in data.get('content', []):
+            if item.get('ty') == 'thm' and 'steps' in item:
+                prop = item.get('prop', '')
+                if isinstance(prop, str):
+                    # Strip surrounding quotes if present
+                    prop = prop.strip()
+                    if len(prop) >= 2 and prop[0] == '"' and prop[-1] == '"':
+                        prop = prop[1:-1]
+                    # Normalize whitespace for matching
+                    prop = ' '.join(prop.split())
+                    result[prop] = item['steps']
+        return result
+    except Exception:
+        return {}
+
+
+def compile_program(prog, existing_pyhol_text=None, validate_steps=True):
+    """Translate an ImpProgram into a .pyhol text.
+
+    Each VC becomes a separate theorem.  z3-provable VCs get a z3 proof;
+    unprovable VCs get sorry.  If existing_pyhol_text is provided, VCs
+    whose proposition matches an existing theorem keep their proof steps.
+
+    Returns (pyhol_text, num_vcs, vcs) where vcs is a list of
+    {index, prop, smt, proved} dicts.
+    """
+    existing = _parse_existing_proofs(existing_pyhol_text)
     vcs = []
     with theory.fresh_theory():
         basic.load_theory('hoare')
@@ -455,39 +489,49 @@ def compile_program(prog, validate_steps=True):
         post = tr.translate_pred(prog.post)
         goal = imp.Valid(tr.T)(pre, tr.com_term, post)
 
-        # Number of verification conditions: count assumptions after vcg_norm.
         pt = imp.vcg_norm(tr.T, goal)
         num_vcs = len(pt.assums)
 
+        vars_dict = {nm: 'nat' for nm in tr.params}
+
         with settings.global_setting(unicode=True):
             for A in pt.assums:
+                prop = ' '.join(printer.print_term(A).split())
+                smt_ok = z3wrapper.solve(A)
                 vcs.append({'index': len(vcs),
-                            'prop': ' '.join(printer.print_term(A).split()),
-                            'smt': z3wrapper.solve(A)})
+                            'prop': prop,
+                            'smt': smt_ok,
+                            'proved': smt_ok or (prop in existing)})
 
-        lines = []
-        lines.append("theory %s" % (prog.theory or prog.name))
-        lines.append("imports %s" % (', '.join(prog.imports or ['hoare'])))
-        lines.append('description "compiled from %s.imp"' % prog.name)
-        lines.append("")
-        lines.append("theorem %s" % prog.name)
-        if tr.params:
-            lines.append("  fixes %s" % (', '.join("%s :: nat" % nm for nm in tr.params)))
-        with settings.global_setting(unicode=True, line_length=None):
-            prop_text = ' '.join(printer.print_term(goal).split())
-        lines.append("  prop %s" % prop_text)
-        lines.append("  proof")
-        lines.append("    0: vcg")
-        for i in range(num_vcs):
-            lines.append("    %d: z3" % i)
-        lines.append("  qed")
-        lines.append("")
-    return '\n'.join(lines), num_vcs, vcs
+        content = []
+        for i, vc in enumerate(vcs):
+            if vc['prop'] in existing and existing[vc['prop']]:
+                steps = existing[vc['prop']]
+            elif vc['smt']:
+                steps = [{'method_name': 'z3', 'goal_id': '0'}]
+            else:
+                steps = [{'method_name': 'sorry', 'goal_id': '0'}]
+            content.append({
+                'ty': 'thm',
+                'name': 'vc_%d' % i,
+                'vars': vars_dict,
+                'prop': vc['prop'],
+                'steps': steps,
+            })
+
+        theory_data = {
+            'name': prog.theory or prog.name,
+            'imports': prog.imports or ['hoare'],
+            'description': 'translated from %s.imp' % prog.name,
+            'content': content,
+        }
+        pyhol_text = pyhol.export_pyhol(theory_data)
+    return pyhol_text, num_vcs, vcs
 
 
-def compile_file(path):
-    """Compile an .imp file on disk.  Returns (pyhol_text, num_vcs, vcs)."""
+def compile_file(path, existing_pyhol_text=None):
+    """Translate an .imp file on disk.  Returns (pyhol_text, num_vcs, vcs)."""
     with open(path, 'r', encoding='utf-8') as f:
         text = f.read()
     prog = parse_imp(text)
-    return compile_program(prog)
+    return compile_program(prog, existing_pyhol_text)
