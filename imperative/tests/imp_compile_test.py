@@ -202,6 +202,146 @@ program p
         with self.assertRaises(CompileError):
             compile_programs(parse_imp(text))
 
+    # === assert tests ===
+
+    def test_assert_passing(self):
+        text = """theory t
+imports hoare
+program p
+  vars: x: nat
+  pre: x == 0
+  post: x == 1
+  body:
+    x := 1;
+    assert x == 1
+"""
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
+        self.assertTrue(all(vc['proved'] for vc in vcs), "passing assert should be all green")
+
+    def test_assert_failing(self):
+        text = """theory t
+imports hoare
+program p
+  vars: x: nat
+  pre: x == 0
+  post: x == 1
+  body:
+    x := 1;
+    assert x == 0
+"""
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
+        self.assertFalse(all(vc['proved'] for vc in vcs), "failing assert should produce red VC")
+        # The red VC should mention the assert condition
+        red = [vc for vc in vcs if not vc['proved']]
+        self.assertEqual(len(red), 1)
+
+    def test_assert_in_branch(self):
+        text = """theory t
+imports hoare
+program p
+  vars: x: nat
+  pre: x == 0
+  post: x == 1
+  body:
+    if (x == 0) then x := 1 else skip;
+    assert x == 1
+"""
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
+        self.assertTrue(all(vc['proved'] for vc in vcs), "assert after if should pass")
+
+    # === call tests ===
+
+    def test_call_passing(self):
+        text = """theory t
+imports hoare
+program double
+  vars: x: nat, r: nat
+  pre: true
+  post: r == x * 2
+  body:
+    r := x + x
+program main
+  vars: a: nat, y: nat
+  pre: a == 3
+  post: y == 6
+  body:
+    y := call double(a)
+"""
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
+        self.assertTrue(all(vc['proved'] for vc in vcs), "passing call should be all green")
+
+    def test_call_failing_postcondition(self):
+        text = """theory t
+imports hoare
+program double
+  vars: x: nat, r: nat
+  pre: true
+  post: r == x * 2
+  body:
+    r := x + x
+program main
+  vars: a: nat, y: nat
+  pre: a == 1
+  post: y == 6
+  body:
+    y := call double(a)
+"""
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
+        self.assertFalse(all(vc['proved'] for vc in vcs), "wrong result should produce red VC")
+
+    def test_call_failing_precondition(self):
+        text = """theory t
+imports hoare
+program safe_div
+  vars: x: nat, r: nat
+  pre: 0 < x
+  post: r == x
+  body:
+    r := x
+program main
+  vars: a: nat, y: nat
+  pre: a == 0
+  post: y == 0
+  body:
+    y := call safe_div(a)
+"""
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
+        self.assertFalse(all(vc['proved'] for vc in vcs), "precondition violation should produce red VC")
+
+    def test_call_unknown_program(self):
+        text = """theory t
+imports hoare
+program main
+  vars: a: nat, y: nat
+  pre: true
+  post: y == 0
+  body:
+    y := call nonexistent(a)
+"""
+        with self.assertRaises(CompileError):
+            compile_programs(parse_imp(text))
+
+    def test_call_chain(self):
+        """Two calls in sequence: y := call double(a); z := call double(y)."""
+        text = """theory t
+imports hoare
+program double
+  vars: x: nat, r: nat
+  pre: true
+  post: r == x * 2
+  body:
+    r := x + x
+program main
+  vars: a: nat, y: nat, z: nat
+  pre: a == 2
+  post: z == 8
+  body:
+    y := call double(a);
+    z := call double(y)
+"""
+        pyhol, num_vcs, vcs = compile_programs(parse_imp(text))
+        self.assertTrue(all(vc['proved'] for vc in vcs), "chained calls should be all green")
+
 
 if __name__ == '__main__':
     unittest.main()

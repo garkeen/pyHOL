@@ -1,0 +1,25 @@
+theory call_demo
+imports hoare
+
+program double
+  vars: x: nat, r: nat
+  pre: true
+  post: r == x * 2
+  body:
+    r := x + x
+
+program inc
+  vars: x: nat, r: nat
+  pre: true
+  post: r == x + 1
+  body:
+    r := x + 1
+
+program main
+  vars: a: nat, b: nat, c: nat
+  pre: a == 3
+  post: c == 7
+  body:
+    b := call double(a);
+    assert b == 6;
+    c := call inc(b)
