@@ -349,6 +349,7 @@ function resetCalculation() {
 .type-theorem { background: #d4edda; color: #155724; }
 .type-definition { background: #cce5ff; color: #004085; }
 .type-table { background: #e2e3e5; color: #383d41; }
+.type-calculation { background: #f3e5f5; color: #4a148c; }
 .lib-add-btn { font-size: 0.75rem; }
 .saint-main { flex: 1; overflow-y: auto; padding: 16px; }
 .input-bar { display: flex; gap: 8px; margin-bottom: 8px; }

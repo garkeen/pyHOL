@@ -1,51 +1,51 @@
 theory  Base theory
 
 header  "Common integrals"  level = 1
-axiom  "(INT x. c) = c * x + SKOLEM_CONST(C)"
-axiom  "(INT x. x) = x ^ 2 / 2 + SKOLEM_CONST(C)"
-axiom  "(INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C)"
-axiom  "(INT x. x ^ n) = x ^ (n + 1) / (n + 1) + SKOLEM_CONST(C)"  conds = [n != -1]
-axiom  "(INT x. 1 / x ^ n) = 1 / (-((n - 1) * (x ^ (n - 1)))) + SKOLEM_CONST(C)"  conds = [n = 1]
-axiom  "(INT x. sqrt(x)) = 2/3 * x ^ (3/2) + SKOLEM_CONST(C)"
-axiom  "(INT x. 1 / sqrt(x)) = 2 * sqrt(x) + SKOLEM_CONST(C)"
-axiom  "(INT x. exp(x)) = exp(x) + SKOLEM_CONST(C)"
-axiom  "(INT x. exp(-x)) = -exp(-x) + SKOLEM_CONST(C)"
-axiom  "(INT x. sin(x)) = -cos(x) + SKOLEM_CONST(C)"
-axiom  "(INT x. cos(x)) = sin(x) + SKOLEM_CONST(C)"
-axiom  "(INT x. 1 / (x^2 + 1)) = atan(x) + SKOLEM_CONST(C)"
-axiom  "(INT x. sec(x)^2) = tan(x) + SKOLEM_CONST(C)"
-axiom  "(INT x. csc(x)^2) = -cot(x) + SKOLEM_CONST(C)"
+theorem  "(INT x. c) = c * x + SKOLEM_CONST(C)"
+theorem  "(INT x. x) = x ^ 2 / 2 + SKOLEM_CONST(C)"
+theorem  "(INT x. 1 / x) = log(abs(x)) + SKOLEM_CONST(C)"
+theorem  "(INT x. x ^ n) = x ^ (n + 1) / (n + 1) + SKOLEM_CONST(C)"  conds = [n != -1]
+theorem  "(INT x. 1 / x ^ n) = 1 / (-((n - 1) * (x ^ (n - 1)))) + SKOLEM_CONST(C)"  conds = [n = 1]
+theorem  "(INT x. sqrt(x)) = 2/3 * x ^ (3/2) + SKOLEM_CONST(C)"
+theorem  "(INT x. 1 / sqrt(x)) = 2 * sqrt(x) + SKOLEM_CONST(C)"
+theorem  "(INT x. exp(x)) = exp(x) + SKOLEM_CONST(C)"
+theorem  "(INT x. exp(-x)) = -exp(-x) + SKOLEM_CONST(C)"
+theorem  "(INT x. sin(x)) = -cos(x) + SKOLEM_CONST(C)"
+theorem  "(INT x. cos(x)) = sin(x) + SKOLEM_CONST(C)"
+theorem  "(INT x. 1 / (x^2 + 1)) = atan(x) + SKOLEM_CONST(C)"
+theorem  "(INT x. sec(x)^2) = tan(x) + SKOLEM_CONST(C)"
+theorem  "(INT x. csc(x)^2) = -cot(x) + SKOLEM_CONST(C)"
 header  "Common series expansion"  level = 1
-axiom  "exp(x) = SUM(n, 0, oo, x ^ n / factorial(n))"
-axiom  "sin(x) = SUM(n, 0, oo, (-1)^n * x^(2*n+1) / factorial(2*n+1))"
-axiom  "cos(x) = SUM(n, 0, oo, (-1)^n * x^(2*n) / factorial(2*n))"
-axiom  "atan(x) = SUM(n, 0, oo, (-1)^n * x^(2*n+1) / (2*n+1))"  conds = [abs(x) <= 1]
-axiom  "(1 + x) ^ -1 = SUM(n, 0, oo, (-1)^n * x ^ n)"  conds = [abs(x) < 1]
-axiom  "log(1 + x) = SUM(n, 0, oo, (-1)^n * x ^ (n+1) / (n + 1))"  conds = [x > -1; x <= 1]
-axiom  "log(1 - x) = SUM(n, 0, oo, (-1)^n * (-x)^(n+1) / (n + 1))"  conds = [x >= -1; x < 1]
+theorem  "exp(x) = SUM(n, 0, oo, x ^ n / factorial(n))"
+theorem  "sin(x) = SUM(n, 0, oo, (-1)^n * x^(2*n+1) / factorial(2*n+1))"
+theorem  "cos(x) = SUM(n, 0, oo, (-1)^n * x^(2*n) / factorial(2*n))"
+theorem  "atan(x) = SUM(n, 0, oo, (-1)^n * x^(2*n+1) / (2*n+1))"  conds = [abs(x) <= 1]
+theorem  "(1 + x) ^ -1 = SUM(n, 0, oo, (-1)^n * x ^ n)"  conds = [abs(x) < 1]
+theorem  "log(1 + x) = SUM(n, 0, oo, (-1)^n * x ^ (n+1) / (n + 1))"  conds = [x > -1; x <= 1]
+theorem  "log(1 - x) = SUM(n, 0, oo, (-1)^n * (-x)^(n+1) / (n + 1))"  conds = [x >= -1; x < 1]
 header  "Common series evaluations"  level = 1
-axiom  "SUM(n, 0, oo, 1 / (n+1)^2) = (pi^2) / 6"
-axiom  "SUM(n, 0, oo, (-1)^n / (n+1)^2) = (pi^2) / 12"
+theorem  "SUM(n, 0, oo, 1 / (n+1)^2) = (pi^2) / 6"
+theorem  "SUM(n, 0, oo, (-1)^n / (n+1)^2) = (pi^2) / 12"
 header  "Common identities"  level = 1
 header  "Absolute value"  level = 2
-axiom  "abs(x) = x"  conds = [x >= 0]  attributes = [simplify]
-axiom  "abs(x) = -x"  conds = [x <= 0]  attributes = [simplify]
+theorem  "abs(x) = x"  conds = [x >= 0]  attributes = [simplify]
+theorem  "abs(x) = -x"  conds = [x <= 0]  attributes = [simplify]
 header  "Hyperbolic functions"  level = 2
 definition  "cosh(x) = (exp(x) + exp(-x)) / 2"
 definition  "sinh(x) = (exp(x) - exp(-x)) / 2"
 header  "Power identities"  level = 2
-axiom  "(a * b) ^ k = a ^ k * b ^ k"  attributes = [bidirectional]  category = power
-axiom  "a ^ x ^ y = a ^ (x*y)"  attributes = [bidirectional]  category = power
-axiom  "x^a * x^b = x^(a+b)"  attributes = [bidirectional]  category = power
-axiom  "(a / b) ^ k = a ^ k / b ^ k"  attributes = [bidirectional]  category = power
+theorem  "(a * b) ^ k = a ^ k * b ^ k"  attributes = [bidirectional]  category = power
+theorem  "a ^ x ^ y = a ^ (x*y)"  attributes = [bidirectional]  category = power
+theorem  "x^a * x^b = x^(a+b)"  attributes = [bidirectional]  category = power
+theorem  "(a / b) ^ k = a ^ k / b ^ k"  attributes = [bidirectional]  category = power
 header  "Exp-log identities"  level = 2
-axiom  "exp(a + b) = exp(a) * exp(b)"  category = exp-log
-axiom  "exp(a - b) = exp(a) * exp(-b)"  category = exp-log
-axiom  "log(a * b) = log(a) + log(b)"  category = exp-log
-axiom  "exp(a) ^ b = exp(a*b)"  attributes = [bidirectional; simplify]  category = exp-log
-axiom  "log(exp(x)) = x"  attributes = [simplify]  category = exp-log
-axiom  "log(a / b) = log(a) - log(b)"  attributes = [bidirectional]  category = exp-log
-axiom  "log(x ^ a) = a * log(x)"  category = exp-log
+theorem  "exp(a + b) = exp(a) * exp(b)"  category = exp-log
+theorem  "exp(a - b) = exp(a) * exp(-b)"  category = exp-log
+theorem  "log(a * b) = log(a) + log(b)"  category = exp-log
+theorem  "exp(a) ^ b = exp(a*b)"  attributes = [bidirectional; simplify]  category = exp-log
+theorem  "log(exp(x)) = x"  attributes = [simplify]  category = exp-log
+theorem  "log(a / b) = log(a) - log(b)"  attributes = [bidirectional]  category = exp-log
+theorem  "log(x ^ a) = a * log(x)"  category = exp-log
 header  "Table of trigonometric values"  level = 2
 table  sin
   "-(pi / 2)" = "-1"
@@ -171,79 +171,79 @@ table  asec
   "-1" = "pi"
 endtable
 header  "Trigonometric identities"  level = 2
-axiom  "sin(-u) = -sin(u)"  attributes = [simplify]  category = trigonometric
-axiom  "tan(x) = sin(x) / cos(x)"  category = trigonometric  rule = TR2
-axiom  "cos(-u) = cos(u)"  attributes = [simplify]  category = trigonometric
-axiom  "sin(pi / 2 - u) = cos(u)"  attributes = [simplify]  category = trigonometric
-axiom  "cos(pi / 2 - u) = sin(u)"  attributes = [simplify]  category = trigonometric
-axiom  "sec(x)^2 = tan(x)^2 + 1"  attributes = [bidirection]  category = trigonometric
-axiom  "tan(a - b) = (tan(a) - tan(b)) / (1 + tan(a) * tan(b))"  category = trigonometric
-axiom  "cos(pi - u) = -cos(u)"  attributes = [simplify]  category = trigonometric
-axiom  "cos(2 * atan(z)) = (1 - z^2) / (1 + z^2)"  conds = [z>0; z<1]  attributes = [simplify]  category = trigonometric
-axiom  "sin(2 * atan(z)) = (2 * z) / (1 + z^2)"  conds = [z>0; z<1]  attributes = [simplify]  category = trigonometric
-axiom  "sin(pi - u) = sin(u)"  attributes = [simplify]  category = trigonometric
-axiom  "cot(x) = cos(x) / sin(x)"  category = trigonometric  rule = TR2
-axiom  "1 / sin(x) ^ n = csc(x) ^ n"  conds = [n != 0]  category = trigonometric  rule = TR111
-axiom  "sin(x) ^ n = csc(x) ^ (-n)"  conds = [n != 0]  category = trigonometric  rule = TR111
-axiom  "sin(x)^2 = 1 - cos(x)^2"  attributes = [bidirectional]  category = trigonometric  rule = TR5
-axiom  "cos(x)^2 = 1 - sin(x)^2"  attributes = [bidirectional]  category = trigonometric  rule = TR6
-axiom  "cos(x)^2 = (1 + cos(2*x)) / 2"  category = trigonometric  rule = TR7
-axiom  "sin(x)^2 = (1 - cos(2*x)) / 2"  category = trigonometric  rule = TR7
-axiom  "cos(2*x) = 2 * cos(x)^2 - 1"  category = trigonometric
-axiom  "cos(2*x) = 1 - 2 * sin(x) ^ 2"  category = trigonometric
-axiom  "sin(2*x) = 2 * sin(x) * cos(x)"  category = trigonometric  rule = TR11
-axiom  "sin(a + b) = sin(a) * cos(b) + cos(a) * sin(b)"  category = trigonometric  rule = TR10
-axiom  "sin(a - b) = sin(a) * cos(b) - cos(a) * sin(b)"  category = trigonometric  rule = TR10
-axiom  "cos(a + b) = cos(a) * cos(b) - sin(a) * sin(b)"  category = trigonometric  rule = TR10
-axiom  "cos(a - b) = cos(a) * cos(b) + sin(a) * sin(b)"  category = trigonometric  rule = TR10
-axiom  "sin(a) + sin(b) = 2 * sin((a + b) / 2) * cos((a - b) / 2)"  category = trigonometric  rule = TR9
-axiom  "sin(a) - sin(b) = 2 * cos((a + b) / 2) * sin((a - b) / 2)"  category = trigonometric  rule = TR9
-axiom  "cos(a) + cos(b) = 2 * cos((a + b) / 2) * cos((a - b) / 2)"  category = trigonometric  rule = TR9
-axiom  "cos(a) - cos(b) = -2 * sin((a + b) / 2) * sin((a - b) / 2)"  category = trigonometric  rule = TR9
-axiom  "cos(a) * sin(b) = (1 / 2) * (sin(a + b) - sin(a - b))"  category = trigonometric  rule = TR8
-axiom  "sin(a) * cos(b) = (1 / 2) * (sin(a + b) + sin(a - b))"  category = trigonometric  rule = TR8
-axiom  "cos(a) * cos(b) = (1 / 2) * (cos(a - b) + cos(a + b))"  category = trigonometric  rule = TR8
-axiom  "sin(a) * sin(b) = -(1 / 2) * (cos(a - b) - cos(a + b))"  category = trigonometric  rule = TR8
-axiom  "sin(x)^2 = 1/2 - cos(2*x)/2"  category = trigonometric  rule = TR8
-axiom  "cos(x)^2 = 1/2 + cos(2*x)/2"  category = trigonometric  rule = TR8
-axiom  "atan(x ^ -1) = pi/2 - atan(x)"  category = trigonometric
-axiom  "sin(acos(x)) = sqrt(1-x^2)"  category = trigonometric
+theorem  "sin(-u) = -sin(u)"  attributes = [simplify]  category = trigonometric
+theorem  "tan(x) = sin(x) / cos(x)"  category = trigonometric  rule = TR2
+theorem  "cos(-u) = cos(u)"  attributes = [simplify]  category = trigonometric
+theorem  "sin(pi / 2 - u) = cos(u)"  attributes = [simplify]  category = trigonometric
+theorem  "cos(pi / 2 - u) = sin(u)"  attributes = [simplify]  category = trigonometric
+theorem  "sec(x)^2 = tan(x)^2 + 1"  attributes = [bidirection]  category = trigonometric
+theorem  "tan(a - b) = (tan(a) - tan(b)) / (1 + tan(a) * tan(b))"  category = trigonometric
+theorem  "cos(pi - u) = -cos(u)"  attributes = [simplify]  category = trigonometric
+theorem  "cos(2 * atan(z)) = (1 - z^2) / (1 + z^2)"  conds = [z>0; z<1]  attributes = [simplify]  category = trigonometric
+theorem  "sin(2 * atan(z)) = (2 * z) / (1 + z^2)"  conds = [z>0; z<1]  attributes = [simplify]  category = trigonometric
+theorem  "sin(pi - u) = sin(u)"  attributes = [simplify]  category = trigonometric
+theorem  "cot(x) = cos(x) / sin(x)"  category = trigonometric  rule = TR2
+theorem  "1 / sin(x) ^ n = csc(x) ^ n"  conds = [n != 0]  category = trigonometric  rule = TR111
+theorem  "sin(x) ^ n = csc(x) ^ (-n)"  conds = [n != 0]  category = trigonometric  rule = TR111
+theorem  "sin(x)^2 = 1 - cos(x)^2"  attributes = [bidirectional]  category = trigonometric  rule = TR5
+theorem  "cos(x)^2 = 1 - sin(x)^2"  attributes = [bidirectional]  category = trigonometric  rule = TR6
+theorem  "cos(x)^2 = (1 + cos(2*x)) / 2"  category = trigonometric  rule = TR7
+theorem  "sin(x)^2 = (1 - cos(2*x)) / 2"  category = trigonometric  rule = TR7
+theorem  "cos(2*x) = 2 * cos(x)^2 - 1"  category = trigonometric
+theorem  "cos(2*x) = 1 - 2 * sin(x) ^ 2"  category = trigonometric
+theorem  "sin(2*x) = 2 * sin(x) * cos(x)"  category = trigonometric  rule = TR11
+theorem  "sin(a + b) = sin(a) * cos(b) + cos(a) * sin(b)"  category = trigonometric  rule = TR10
+theorem  "sin(a - b) = sin(a) * cos(b) - cos(a) * sin(b)"  category = trigonometric  rule = TR10
+theorem  "cos(a + b) = cos(a) * cos(b) - sin(a) * sin(b)"  category = trigonometric  rule = TR10
+theorem  "cos(a - b) = cos(a) * cos(b) + sin(a) * sin(b)"  category = trigonometric  rule = TR10
+theorem  "sin(a) + sin(b) = 2 * sin((a + b) / 2) * cos((a - b) / 2)"  category = trigonometric  rule = TR9
+theorem  "sin(a) - sin(b) = 2 * cos((a + b) / 2) * sin((a - b) / 2)"  category = trigonometric  rule = TR9
+theorem  "cos(a) + cos(b) = 2 * cos((a + b) / 2) * cos((a - b) / 2)"  category = trigonometric  rule = TR9
+theorem  "cos(a) - cos(b) = -2 * sin((a + b) / 2) * sin((a - b) / 2)"  category = trigonometric  rule = TR9
+theorem  "cos(a) * sin(b) = (1 / 2) * (sin(a + b) - sin(a - b))"  category = trigonometric  rule = TR8
+theorem  "sin(a) * cos(b) = (1 / 2) * (sin(a + b) + sin(a - b))"  category = trigonometric  rule = TR8
+theorem  "cos(a) * cos(b) = (1 / 2) * (cos(a - b) + cos(a + b))"  category = trigonometric  rule = TR8
+theorem  "sin(a) * sin(b) = -(1 / 2) * (cos(a - b) - cos(a + b))"  category = trigonometric  rule = TR8
+theorem  "sin(x)^2 = 1/2 - cos(2*x)/2"  category = trigonometric  rule = TR8
+theorem  "cos(x)^2 = 1/2 + cos(2*x)/2"  category = trigonometric  rule = TR8
+theorem  "atan(x ^ -1) = pi/2 - atan(x)"  category = trigonometric
+theorem  "sin(acos(x)) = sqrt(1-x^2)"  category = trigonometric
 header  "Factorial and binomial coefficient"  level = 2
-axiom  "(m + 1) * factorial(m) = factorial(m + 1)"  category = factorial
-axiom  "m * factorial(m - 1) = factorial(m)"  attributes = [bidirectional]  category = factorial
-axiom  "binom(2*k+2, k+1) = 2 * binom(2*k, k) * ((2*k+1) / (k+1))"  category = binomial
+theorem  "(m + 1) * factorial(m) = factorial(m + 1)"  category = factorial
+theorem  "m * factorial(m - 1) = factorial(m)"  attributes = [bidirectional]  category = factorial
+theorem  "binom(2*k+2, k+1) = 2 * binom(2*k, k) * ((2*k+1) / (k+1))"  category = binomial
 header  "Derived integrals"  level = 1
-problem  "(INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C)"
-problem  "(INT x. 1 / (a * x + b)) = log(abs(a * x + b)) / a + SKOLEM_CONST(C)"  conds = [a != 0]
-problem  "(INT x. x / (a * x ^ 2 + b)) = log(a * x ^ 2 + b) / (2 * a) + SKOLEM_CONST(C)"  conds = [a != 0]
-problem  "(INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C)"  conds = [a != 0]
-problem  "(INT x. sin(a * x)) = - (cos(a * x) / a) + SKOLEM_CONST(C)"  conds = [a != 0]
-problem  "(INT x. cos(a * x)) = sin(a * x) / a + SKOLEM_CONST(C)"  conds = [a != 0]
-problem  "(INT x. 1 / (a ^ 2 + x ^ 2)) = (1 / a) * atan(x / a) + SKOLEM_CONST(C)"  conds = [a != 0]
-problem  "(INT x. x ^ k * log(x)) = x ^ (k + 1) * log(x) / (k + 1) - x ^ (k + 1) / (k + 1) ^ 2 + SKOLEM_CONST(C)"  conds = [x > 0]
-problem  "(INT x:[0,1]. x ^ m * log(x) ^ n) = (-1)^n * factorial(n) / (m+1) ^ (n+1)"  conds = [m >= 0; n >= 0]
-problem  "(INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2)"  conds = [y > 0]
-problem  "(INT x. a ^ x) = a ^ x / log(a) + SKOLEM_CONST(C)"
-problem  "(INT x. cos(x) ^ 2) = 1/4 * sin(2 * x) + 1/2 * x + SKOLEM_CONST(C)"
+calculation  "(INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C)"
+calculation  "(INT x. 1 / (a * x + b)) = log(abs(a * x + b)) / a + SKOLEM_CONST(C)"  conds = [a != 0]
+calculation  "(INT x. x / (a * x ^ 2 + b)) = log(a * x ^ 2 + b) / (2 * a) + SKOLEM_CONST(C)"  conds = [a != 0]
+calculation  "(INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C)"  conds = [a != 0]
+calculation  "(INT x. sin(a * x)) = - (cos(a * x) / a) + SKOLEM_CONST(C)"  conds = [a != 0]
+calculation  "(INT x. cos(a * x)) = sin(a * x) / a + SKOLEM_CONST(C)"  conds = [a != 0]
+calculation  "(INT x. 1 / (a ^ 2 + x ^ 2)) = (1 / a) * atan(x / a) + SKOLEM_CONST(C)"  conds = [a != 0]
+calculation  "(INT x. x ^ k * log(x)) = x ^ (k + 1) * log(x) / (k + 1) - x ^ (k + 1) / (k + 1) ^ 2 + SKOLEM_CONST(C)"  conds = [x > 0]
+calculation  "(INT x:[0,1]. x ^ m * log(x) ^ n) = (-1)^n * factorial(n) / (m+1) ^ (n+1)"  conds = [m >= 0; n >= 0]
+calculation  "(INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2)"  conds = [y > 0]
+calculation  "(INT x. a ^ x) = a ^ x / log(a) + SKOLEM_CONST(C)"
+calculation  "(INT x. cos(x) ^ 2) = 1/4 * sin(2 * x) + 1/2 * x + SKOLEM_CONST(C)"
 header  "Results from contour integration"  level = 1
-axiom  "(INT x:[0, oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2))) = (pi * (1 - exp(-a * m))) / (2 * a ^ 2)"  conds = [a > 0; m > 0]
-axiom  "(INT x:[0, oo]. cos(a * x) / (x ^ 2 + b ^ 2)) = (pi / (2 * b)) * exp(-a * b)"  conds = [a > 0; b > 0]
-axiom  "(INT x:[0, oo]. x ^ (m - 1) / (x + 1)) = pi / sin(m * pi)"
+theorem  "(INT x:[0, oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2))) = (pi * (1 - exp(-a * m))) / (2 * a ^ 2)"  conds = [a > 0; m > 0]
+theorem  "(INT x:[0, oo]. cos(a * x) / (x ^ 2 + b ^ 2)) = (pi / (2 * b)) * exp(-a * b)"  conds = [a > 0; b > 0]
+theorem  "(INT x:[0, oo]. x ^ (m - 1) / (x + 1)) = pi / sin(m * pi)"
 header  "Gamma and Beta function"  level = 1
-axiom  "B(m,n) = Gamma(m) * Gamma(n) / Gamma(m+n)"  category = gamma-beta
-axiom  "sec(x) = 1 / cos(x)"  category = trigonometric  rule = TR1
-axiom  "csc(x) = 1 / sin(x)"  category = trigonometric  rule = TR1
-axiom  "sec(x) ^ n = cos(x) ^ (-n)"  conds = [n != 0]  category = trigonometric  rule = TR1
-axiom  "csc(x) ^ n = sin(x) ^ (-n)"  conds = [n != 0]  category = trigonometric  rule = TR1
-axiom  "tan(x) ^ n = sin(x) ^ n / cos(x) ^ n"  conds = [n != 0]  category = trigonometric  rule = TR2
-axiom  "cot(x) ^ n = cos(x) ^ n / sin(x) ^ n"  conds = [n != 0]  category = trigonometric  rule = TR2
-axiom  "n = n * (sin(x)^2 + cos(x)^2)"  attributes = [one_shot]  category = trigonometric  rule = TR0  const_vars = [n]
-axiom  "sin(x) + cos(x) = sqrt(2) * sin(x + pi / 4)"  category = trigonometric  rule = TR10i
-axiom  "sin(x) - cos(x) = -sqrt(2) * cos(x + pi / 4)"  category = trigonometric  rule = TR10i
-axiom  "cos(2*x) = cos(x)^2 - sin(x)^2"  category = trigonometric  rule = TR11
-axiom  "1 / cos(x) ^ n = sec(x) ^ n"  conds = [n != 0]  category = trigonometric  rule = TR111
-axiom  "cos(x) ^ n = sec(x) ^ (-n)"  conds = [n != 0]  category = trigonometric  rule = TR111
-axiom  "1 + tan(x)^2 = sec(x)^2"  category = trigonometric  rule = TR22
-axiom  "1 + cot(x)^2 = csc(x)^2"  category = trigonometric  rule = TR22
-axiom  "tan(x)^2 = sec(x)^2 - 1"  category = trigonometric  rule = TR22
-axiom  "cot(x)^2 = csc(x)^2 - 1"  category = trigonometric  rule = TR22
+theorem  "B(m,n) = Gamma(m) * Gamma(n) / Gamma(m+n)"  category = gamma-beta
+theorem  "sec(x) = 1 / cos(x)"  category = trigonometric  rule = TR1
+theorem  "csc(x) = 1 / sin(x)"  category = trigonometric  rule = TR1
+theorem  "sec(x) ^ n = cos(x) ^ (-n)"  conds = [n != 0]  category = trigonometric  rule = TR1
+theorem  "csc(x) ^ n = sin(x) ^ (-n)"  conds = [n != 0]  category = trigonometric  rule = TR1
+theorem  "tan(x) ^ n = sin(x) ^ n / cos(x) ^ n"  conds = [n != 0]  category = trigonometric  rule = TR2
+theorem  "cot(x) ^ n = cos(x) ^ n / sin(x) ^ n"  conds = [n != 0]  category = trigonometric  rule = TR2
+theorem  "n = n * (sin(x)^2 + cos(x)^2)"  attributes = [one_shot]  category = trigonometric  rule = TR0  const_vars = [n]
+theorem  "sin(x) + cos(x) = sqrt(2) * sin(x + pi / 4)"  category = trigonometric  rule = TR10i
+theorem  "sin(x) - cos(x) = -sqrt(2) * cos(x + pi / 4)"  category = trigonometric  rule = TR10i
+theorem  "cos(2*x) = cos(x)^2 - sin(x)^2"  category = trigonometric  rule = TR11
+theorem  "1 / cos(x) ^ n = sec(x) ^ n"  conds = [n != 0]  category = trigonometric  rule = TR111
+theorem  "cos(x) ^ n = sec(x) ^ (-n)"  conds = [n != 0]  category = trigonometric  rule = TR111
+theorem  "1 + tan(x)^2 = sec(x)^2"  category = trigonometric  rule = TR22
+theorem  "1 + cot(x)^2 = csc(x)^2"  category = trigonometric  rule = TR22
+theorem  "tan(x)^2 = sec(x)^2 - 1"  category = trigonometric  rule = TR22
+theorem  "cot(x)^2 = csc(x)^2 - 1"  category = trigonometric  rule = TR22

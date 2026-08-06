@@ -22,7 +22,7 @@ def saint_library():
         if item['type'] == 'header':
             cur_section = {'name': item.get('name', ''), 'level': item.get('level', 1), 'items': []}
             sections.append(cur_section)
-        elif item['type'] in ('axiom', 'theorem', 'definition'):
+        elif item['type'] in ('axiom', 'theorem', 'definition', 'calculation'):
             if cur_section is None:
                 cur_section = {'name': '', 'level': 1, 'items': []}
                 sections.append(cur_section)

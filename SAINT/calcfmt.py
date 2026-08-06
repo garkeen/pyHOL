@@ -244,8 +244,8 @@ def parse_calc(text: str) -> CalcFile:
             if desc.startswith('"') and desc.endswith('"'):
                 desc = desc[1:-1]
             result.description = desc
-        elif line.startswith("problem "):
-            name = line[8:].strip().strip('"')
+        elif line.startswith("problem ") or line.startswith("calculation "):
+            name = line[12:].strip().strip('"') if line.startswith("calculation ") else line[8:].strip().strip('"')
             cur_item = CalcItem(name=name, problem="")
             result.content.append(cur_item)
         elif line.startswith("  goal ") and cur_item is not None:
@@ -381,18 +381,13 @@ def parse_theory(text: str) -> dict:
             if lm:
                 item["level"] = int(lm.group(1))
             result["content"].append(item)
-        elif line.startswith("definition "):
-            expr = line[11:].strip()
-            if expr.startswith('"') and expr.endswith('"'):
-                expr = expr[1:-1]
-            result["content"].append({"type": "definition", "expr": expr})
         elif line.startswith("table "):
             cur_table = {}
             result["content"].append({"type": "table", "name": line[6:].strip(), "table": cur_table})
         else:
             parts = stripped.split("  ")
             t = parts[0].strip()
-            if t not in ("axiom", "problem", "theorem"):
+            if t not in ("axiom", "problem", "theorem", "calculation", "definition"):
                 raise ValueError("Unknown theory line: %r" % stripped)
             body = " ".join(p.strip() for p in parts[1:] if p.strip())
             m = re.match(r'"([^"]*)"', body)
