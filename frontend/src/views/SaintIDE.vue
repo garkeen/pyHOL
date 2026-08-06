@@ -3,6 +3,7 @@
     <nav class="navbar navbar-dark bg-dark">
       <span class="navbar-brand">SAINT</span>
       <span class="text-light small">{{ currentFile || 'Interactive Integral CAS' }}</span>
+      <button v-if="dirty" class="btn btn-warning btn-sm ms-auto" @click="saveFile">Save File</button>
     </nav>
     <div class="saint-body">
       <!-- Left: file list -->
@@ -15,7 +16,7 @@
 
       <!-- Right: items or calculation -->
       <div class="saint-main">
-        <!-- Calculation workspace (when active) -->
+        <!-- Calculation workspace -->
         <div v-if="computing" class="calc-workspace">
           <div class="calc-header">
             <button class="btn btn-sm btn-outline-secondary" @click="computing = false">← Back</button>
@@ -25,7 +26,7 @@
             <span class="target-label">Expected:</span>
             <MathEquation :data="'\\(' + targetLatex + '\\)'" />
             <button v-if="steps.length" class="btn btn-outline-primary btn-sm ms-2" @click="verifyResult">Verify</button>
-            <span v-if="verifyStatus" class="verify-result" :class="{'text-success': verifyStatus.includes('Match'), 'text-danger': verifyStatus.includes('No')}">{{ verifyStatus }}</span>
+            <span v-if="verifyStatus" :class="{'text-success': verifyStatus.includes('Match'), 'text-danger': verifyStatus.includes('No')}">{{ verifyStatus }}</span>
           </div>
           <div class="calc-display" v-if="startLatex">
             <div class="calc-line calc-start"><MathEquation :data="'\\(' + startLatex + '\\)'" /></div>
@@ -54,35 +55,57 @@
           <div v-if="applyError" class="alert alert-danger mt-2 py-1 small">{{ applyError }}</div>
         </div>
 
-        <!-- Items list (when not computing) -->
+        <!-- Items list -->
         <div v-else class="items-list">
-          <!-- Manual expression input -->
           <div class="input-bar">
             <input v-model="exprInput" class="form-control expr-input" placeholder="INT x. x^2" @keyup.enter="startManualCalc" />
             <button class="btn btn-primary btn-sm" @click="startManualCalc">Compute</button>
+            <button v-if="currentFile" class="btn btn-outline-success btn-sm" @click="addItem">+ Item</button>
           </div>
           <div v-if="parseError" class="alert alert-danger py-1 small">{{ parseError }}</div>
 
-          <div v-for="(item, i) in fileItems" :key="i" class="item-row" :class="'item-' + item.type">
+          <div v-for="(item, i) in fileItems" :key="i" class="item-row">
+            <!-- Header -->
             <template v-if="item.type === 'header'">
               <div class="item-header" :style="{marginLeft: (item.level-1)*16+'px'}">{{ item.name }}</div>
             </template>
+            <!-- Table -->
             <template v-else-if="item.type === 'table'">
-              <div class="item-table">{{ item.name }} table ({{ Object.keys(item.table).length }} values)</div>
+              <div class="item-table">{{ item.name }} table ({{ Object.keys(item.table || {}).length }} values)</div>
             </template>
+            <!-- Calculation with goal (computation task) -->
             <template v-else-if="item.type === 'calculation' && item.goal">
               <div class="item-calc">
                 <span class="type-badge type-calculation">calc</span>
                 <span class="item-name">{{ item.name }}</span>
-                <MathEquation :data="'\\(' + (item.target ? item.goal : item.goal) + '\\)'" />
+                <MathEquation :data="'\\(' + item.goal + '\\)'" />
                 <button class="btn btn-outline-primary btn-sm ms-auto" @click="startCompute(item)">Compute</button>
               </div>
             </template>
+            <!-- Editable items (theorem, definition, single-line calculation) -->
             <template v-else>
-              <div class="item-lib">
-                <span class="type-badge" :class="'type-' + item.type">{{ item.type }}</span>
-                <MathEquation v-if="item.latex" :data="'\\(' + item.latex + '\\)'" />
-                <span v-else class="text-muted small">{{ item.expr }}</span>
+              <div class="item-lib" @mouseenter="hoverIdx = i" @mouseleave="hoverIdx = -1">
+                <!-- Edit mode -->
+                <template v-if="editIdx === i">
+                  <select v-model="item.type" class="form-select form-select-sm type-select">
+                    <option value="theorem">theorem</option>
+                    <option value="definition">definition</option>
+                    <option value="calculation">calculation</option>
+                  </select>
+                  <input v-model="item.expr" class="form-control form-control-sm lib-edit-input" @keyup.enter="finishEdit" @keyup.esc="cancelEdit" />
+                  <button class="btn btn-success btn-sm" @click="finishEdit">OK</button>
+                  <button class="btn btn-outline-secondary btn-sm" @click="cancelEdit">Cancel</button>
+                </template>
+                <!-- Display mode -->
+                <template v-else>
+                  <span class="type-badge" :class="'type-' + item.type">{{ item.type }}</span>
+                  <MathEquation v-if="item.latex" :data="'\\(' + item.latex + '\\)'" />
+                  <span v-else class="text-muted small">{{ item.expr }}</span>
+                  <span v-if="hoverIdx === i" class="item-actions">
+                    <button class="btn btn-link btn-sm py-0 px-1" @click.stop="startEdit(i)">✎</button>
+                    <button class="btn btn-link btn-sm py-0 px-1 text-danger" @click.stop="deleteItem(i)">✕</button>
+                  </span>
+                </template>
               </div>
             </template>
           </div>
@@ -136,9 +159,13 @@ const RULES = [
 const files = ref([])
 const currentFile = ref('')
 const fileItems = ref([])
+const dirty = ref(false)
+const hoverIdx = ref(-1)
+const editIdx = ref(-1)
+const savedExpr = ref('')
+
 const computing = ref(false)
 const computingName = ref('')
-
 const exprInput = ref('')
 const parseError = ref('')
 const startLatex = ref('')
@@ -166,10 +193,61 @@ onMounted(async () => {
 async function openFile(name) {
   currentFile.value = name
   computing.value = false
+  dirty.value = false
+  editIdx.value = -1
   const res = await api.post('/saint/load', { filename: name })
   fileItems.value = res.data.items
 }
 
+// Item editing
+function startEdit(i) {
+  editIdx.value = i
+  savedExpr.value = fileItems.value[i].expr || ''
+}
+function finishEdit() {
+  editIdx.value = -1
+  dirty.value = true
+  refreshItemLatex(editIdx.value)
+}
+function cancelEdit() {
+  if (editIdx.value >= 0 && savedExpr.value) {
+    fileItems.value[editIdx.value].expr = savedExpr.value
+  }
+  editIdx.value = -1
+}
+function deleteItem(i) {
+  fileItems.value.splice(i, 1)
+  dirty.value = true
+}
+function addItem() {
+  fileItems.value.push({
+    type: 'theorem', expr: 'f(x) = x', latex: '', category: '', conds: [],
+  })
+  dirty.value = true
+  startEdit(fileItems.value.length - 1)
+}
+async function refreshItemLatex(i) {
+  if (i < 0 || i >= fileItems.value.length) return
+  const item = fileItems.value[i]
+  if (!item.expr) return
+  try {
+    const res = await api.post('/saint/parse', { expr: item.expr })
+    if (res.data.status === 'ok') item.latex = res.data.latex
+  } catch {}
+}
+async function saveFile() {
+  try {
+    await api.post('/saint/save', {
+      filename: currentFile.value,
+      name: currentFile.value,
+      imports: [],
+      items: fileItems.value,
+    })
+    dirty.value = false
+  } catch (e) { console.error('Save:', e) }
+}
+
+// Computation
 async function startCompute(item) {
   computing.value = true
   computingName.value = item.name
@@ -194,7 +272,6 @@ async function startCompute(item) {
     })
   }
 }
-
 async function startManualCalc() {
   parseError.value = ''
   if (!exprInput.value.trim()) return
@@ -214,14 +291,12 @@ async function startManualCalc() {
     } else { parseError.value = res.data.msg }
   } catch (e) { parseError.value = e.message }
 }
-
 function selectRule(r) {
   selectedRule.value = r.name
   paramValues.value = {}
   if (r.name === 'integrate_by_equation' && startExpr.value) paramValues.value.lhs = startExpr.value
   applyError.value = ''
 }
-
 async function applyRule() {
   applyError.value = ''
   if (!selectedRule.value || !startExpr.value) return
@@ -237,7 +312,6 @@ async function applyRule() {
     } else { applyError.value = res.data.msg }
   } catch (e) { applyError.value = e.message } finally { applying.value = false }
 }
-
 async function verifyResult() {
   if (!steps.value.length || !targetExpr.value) return
   const cur = displaySteps.value[displaySteps.value.length - 1].res
@@ -246,7 +320,6 @@ async function verifyResult() {
     if (res.data.status === 'ok') verifyStatus.value = res.data.match ? '✓ Match' : '✗ No match'
   } catch (e) { verifyStatus.value = 'Error' }
 }
-
 function undoStep() {
   if (!steps.value.length) return
   steps.value.pop()
@@ -254,7 +327,6 @@ function undoStep() {
   applyError.value = ''
   verifyStatus.value = ''
 }
-
 function resetCalculation() {
   steps.value = []
   displaySteps.value = []
@@ -279,14 +351,18 @@ function resetCalculation() {
 .items-list { max-width: 800px; }
 .item-row { padding: 2px 0; }
 .item-header { font-size: 0.9rem; font-weight: 600; color: #343a40; padding: 8px 0 4px; border-bottom: 1px solid #eee; margin-bottom: 4px; }
-.item-lib, .item-calc { display: flex; align-items: baseline; gap: 6px; padding: 3px 0; }
-.item-calc { background: #f8f0fc; border-radius: 4px; padding: 4px 8px; margin: 2px 0; }
+.item-lib { display: flex; align-items: baseline; gap: 6px; padding: 3px 8px; border-radius: 4px; }
+.item-lib:hover { background: #f0f7ff; }
+.item-calc { display: flex; align-items: baseline; gap: 6px; padding: 4px 8px; background: #f8f0fc; border-radius: 4px; margin: 2px 0; }
 .item-name { font-size: 0.85rem; font-weight: 600; color: #4a148c; min-width: 80px; }
 .item-table { font-size: 0.85rem; color: #6c757d; padding: 3px 0; }
+.item-actions { margin-left: auto; white-space: nowrap; }
 .type-badge { font-size: 0.65rem; padding: 0 4px; border-radius: 2px; text-transform: uppercase; white-space: nowrap; min-width: 28px; text-align: center; }
 .type-theorem { background: #d4edda; color: #155724; }
 .type-definition { background: #cce5ff; color: #004085; }
 .type-calculation { background: #f3e5f5; color: #4a148c; }
+.type-select { width: auto; font-size: 0.75rem; }
+.lib-edit-input { flex: 1; font-family: monospace; font-size: 0.8rem; }
 .ms-auto { margin-left: auto; }
 .ms-2 { margin-left: 8px; }
 .calc-workspace { max-width: 800px; }
@@ -304,5 +380,4 @@ function resetCalculation() {
 .param-row { display: flex; align-items: center; gap: 4px; }
 .param-label { font-size: 0.85rem; color: #495057; white-space: nowrap; }
 .param-input { width: 100px; font-family: monospace; }
-.verify-result { font-size: 0.85rem; font-weight: 600; }
 </style>

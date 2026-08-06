@@ -232,3 +232,20 @@ def saint_verify():
         return jsonify({"status": "ok", "match": match})
     except Exception as e:
         return jsonify({"status": "error", "msg": str(e)})
+
+@app.route("/api/saint/save", methods=['POST'])
+def saint_save():
+    """Save items back to a .calc file."""
+    data = json.loads(request.get_data().decode('utf-8'))
+    path = os.path.join(EXAMPLES_DIR, data['filename'] + '.calc')
+    from SAINT.calcfmt import export_calc
+    file_data = {
+        'name': data.get('name', ''),
+        'imports': data.get('imports', []),
+        'description': data.get('description', ''),
+        'content': data.get('items', []),
+    }
+    text = export_calc(file_data)
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(text)
+    return jsonify({"status": "ok"})
