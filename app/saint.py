@@ -186,3 +186,19 @@ def saint_apply():
         import traceback
         traceback.print_exc()
         return jsonify({"status": "error", "msg": str(e)})
+
+
+@app.route("/api/saint/verify", methods=['POST'])
+def saint_verify():
+    """Check if two expressions are equal by normalization."""
+    data = json.loads(request.get_data().decode('utf-8'))
+    try:
+        ctx = context.Context()
+        ctx.load_book('base')
+        e1 = parser.parse_expr(data['expr1'])
+        e2 = parser.parse_expr(data['expr2'])
+        from SAINT.poly import normalize
+        match = normalize(e1, ctx.get_conds()) == normalize(e2, ctx.get_conds())
+        return jsonify({"status": "ok", "match": match})
+    except Exception as e:
+        return jsonify({"status": "error", "msg": str(e)})
