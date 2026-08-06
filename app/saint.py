@@ -72,6 +72,16 @@ def make_rule(rule_name, params):
         return rules.ApplyEquation(parser.parse_expr(p['eq']))
     if rule_name == 'SolveEquation' or rule_name == 'solve_equation':
         return rules.SolveEquation(parser.parse_expr(p['solve_for']))
+    if rule_name == 'SeriesExpansionIdentity' or rule_name == 'series_expansion':
+        index_var = p.get('index_var', 'n')
+        old_expr = parser.parse_expr(p['old_expr']) if 'old_expr' in p else None
+        return rules.SeriesExpansionIdentity(old_expr=old_expr, index_var=index_var)
+    if rule_name == 'SeriesEvaluationIdentity' or rule_name == 'series_evaluation':
+        return rules.SeriesEvaluationIdentity()
+    if rule_name == 'MergeSummation' or rule_name == 'merge_summation':
+        return rules.MergeSummation()
+    if rule_name == 'SummationSimplify' or rule_name == 'summation_simplify':
+        return rules.SummationSimplify()
     raise ValueError("Unknown rule: %s" % rule_name)
 
 
