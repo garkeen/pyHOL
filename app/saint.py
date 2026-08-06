@@ -249,3 +249,185 @@ def saint_save():
     with open(path, 'w', encoding='utf-8') as f:
         f.write(text)
     return jsonify({"status": "ok"})
+
+
+@app.route("/api/saint/suggest", methods=['POST'])
+def saint_suggest():
+    """Suggest applicable rules for the current expression.
+
+    Tries each rule and returns those that produce a change.
+    Works for both definite and indefinite integrals.
+    Also detects substitution and integration-by-parts candidates.
+    """
+    data = json.loads(request.get_data().decode('utf-8'))
+    try:
+        ctx = context.Context()
+        ctx.load_book('base')
+        e = parser.parse_expr(data['expr'])
+        suggestions = []
+
+        # 1. Parameter-free rules: try each, keep if it changes the expression
+        param_free = [
+            ('simplify', 'Simplify'),
+            ('definite_integral_identity', 'Definite Integral ID'),
+            ('indefinite_integral_identity', 'Indefinite Integral ID'),
+            ('expand_polynomial', 'Expand Polynomial'),
+            ('unfold_power', 'Unfold Power'),
+            ('elim_inf_interval', 'Elim Infinity'),
+            ('int_sum_exchange', 'Exchange Integral/Sum'),
+            ('linearity', 'Linearity'),
+            ('common_integral', 'Common Integral'),
+            ('function_table', 'Function Table'),
+        ]
+        for rule_name, label in param_free:
+            try:
+                rule = make_rule(rule_name, {})
+                new_e = rule.eval(e, ctx)
+                if str(new_e) != str(e):
+                    suggestions.append({
+                        'rule': rule_name, 'params': {}, 'label': label,
+                        'result': str(new_e), 'latex': latex.convert_expr(new_e),
+                    })
+            except:
+                pass
+
+        # 2. Elim abs (might need param c, try without first)
+        try:
+            rule = make_rule('elim_abs', {})
+            new_e = rule.eval(e, ctx)
+            if str(new_e) != str(e):
+                suggestions.append({
+                    'rule': 'elim_abs', 'params': {}, 'label': 'Elim Abs',
+                    'result': str(new_e), 'latex': latex.convert_expr(new_e),
+                })
+        except:
+            pass
+
+        # 3. Detect substitution candidates
+        # Find integrals in the expression
+        from SAINT.expr import Var, Const, Op, Fun, Integral, IndefiniteIntegral, Symbol, collect_spec_expr, OP, FUN, CONST
+        integrals = e.separate_integral() if hasattr(e, 'separate_integral') else []
+        for integral_expr, loc in integrals:
+            if hasattr(integral_expr, 'body') and hasattr(integral_expr, 'var'):
+                body = integral_expr.body
+                var_name = integral_expr.var
+
+                # Look for linear patterns a*x+b inside functions
+                x_sym = Symbol('f', [FUN])
+                linear_patterns = [
+                    (Symbol('a', [CONST]) * Var(var_name) + Symbol('b', [CONST]), 'a*x+b'),
+                    (Symbol('a', [CONST]) * Var(var_name), 'a*x'),
+                    (Var(var_name) + Symbol('b', [CONST]), 'x+b'),
+                    (Var(var_name) - Symbol('b', [CONST]), 'x-b'),
+                ]
+                seen_substs = set()
+                for pat, desc in linear_patterns:
+                    matches = collect_spec_expr(body, pat)
+                    for m in matches:
+                        subst_str = str(m)
+                        if subst_str not in seen_substs:
+                            seen_substs.add(subst_str)
+                            # Try the substitution
+                            try:
+                                rule = make_rule('substitute', {'var_name': 'u', 'g': subst_str})
+                                new_e = rule.eval(e, ctx)
+                                if str(new_e) != str(e):
+                                    suggestions.append({
+                                        'rule': 'substitute',
+                                        'params': {'var_name': 'u', 'g': subst_str},
+                                        'label': 'Substitute u = %s' % subst_str,
+                                        'result': str(new_e), 'latex': latex.convert_expr(new_e),
+                                    })
+                            except:
+                                pass
+
+                # Look for power patterns x^n
+                power_pat = Var(var_name) ** Symbol('n', [CONST])
+                matches = collect_spec_expr(body, power_pat)
+                for m in matches:
+                    subst_str = str(m)
+                    if subst_str not in seen_substs and subst_str != var_name:
+                        seen_substs.add(subst_str)
+                        try:
+                            rule = make_rule('substitute', {'var_name': 'u', 'g': subst_str})
+                            new_e = rule.eval(e, ctx)
+                            if str(new_e) != str(e):
+                                suggestions.append({
+                                    'rule': 'substitute',
+                                    'params': {'var_name': 'u', 'g': subst_str},
+                                    'label': 'Substitute u = %s' % subst_str,
+                                    'result': str(new_e), 'latex': latex.convert_expr(new_e),
+                                })
+                        except:
+                            pass
+
+                # Look for exp(a*x) patterns
+                exp_pat = Fun('exp', Symbol('a', [CONST]) * Var(var_name))
+                matches = collect_spec_expr(body, exp_pat)
+                for m in matches:
+                    subst_str = str(m)
+                    if subst_str not in seen_substs:
+                        seen_substs.add(subst_str)
+                        try:
+                            rule = make_rule('substitute', {'var_name': 'u', 'g': subst_str})
+                            new_e = rule.eval(e, ctx)
+                            if str(new_e) != str(e):
+                                suggestions.append({
+                                    'rule': 'substitute',
+                                    'params': {'var_name': 'u', 'g': subst_str},
+                                    'label': 'Substitute u = %s' % subst_str,
+                                    'result': str(new_e), 'latex': latex.convert_expr(new_e),
+                                })
+                        except:
+                            pass
+
+                # 4. Integration by parts: if integrand is a product
+                if body.ty == OP and body.op == '*':
+                    factors = []
+                    def collect_factors(e):
+                        if e.ty == OP and e.op == '*':
+                            collect_factors(e.args[0])
+                            collect_factors(e.args[1])
+                        else:
+                            factors.append(e)
+                    collect_factors(body)
+                    # Try each factor as u, rest as v'
+                    for i, f in enumerate(factors):
+                        u = f
+                        v_prime = Const(1)
+                        for j, g in enumerate(factors):
+                            if j != i:
+                                v_prime = v_prime * g
+                        try:
+                            rule = make_rule('integrate_by_parts', {
+                                'parts_u': str(u), 'parts_v': str(v_prime)
+                            })
+                            new_e = rule.eval(e, ctx)
+                            if str(new_e) != str(e):
+                                suggestions.append({
+                                    'rule': 'integrate_by_parts',
+                                    'params': {'parts_u': str(u), 'parts_v': str(v_prime)},
+                                    'label': 'By Parts: u=%s, v\'=%s' % (str(u), str(v_prime)),
+                                    'result': str(new_e), 'latex': latex.convert_expr(new_e),
+                                })
+                        except:
+                            pass
+
+        # 5. Series expansion (for expressions with known series)
+        try:
+            rule = make_rule('series_expansion', {'index_var': 'n'})
+            new_e = rule.eval(e, ctx)
+            if str(new_e) != str(e):
+                suggestions.append({
+                    'rule': 'series_expansion', 'params': {'index_var': 'n'},
+                    'label': 'Series Expansion',
+                    'result': str(new_e), 'latex': latex.convert_expr(new_e),
+                })
+        except:
+            pass
+
+        return jsonify({"status": "ok", "suggestions": suggestions})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "msg": str(e)})

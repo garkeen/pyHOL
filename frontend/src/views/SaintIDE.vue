@@ -37,8 +37,26 @@
             </div>
           </div>
           <div class="rule-palette" v-if="startLatex">
-            <div class="rule-buttons">
+                      <div class="rule-palette" v-if="startLatex">
+            <!-- Suggestions -->
+            <div v-if="suggestions.length" class="suggestions">
+              <div class="suggestions-title">Suggestions</div>
+              <div class="suggestion-list">
+                <button v-for="(s, i) in suggestions" :key="i" class="btn btn-sm btn-outline-success suggestion-btn"
+                  @click="applySuggestion(s)">
+                  {{ s.label }}
+                </button>
+              </div>
+            </div>
+            <div v-if="suggestLoading" class="small text-muted py-1">Finding suggestions...</div>
+
+            <div class="rule-buttons mt-2">
               <button v-for="r in RULES" :key="r.name" class="btn btn-sm" :class="selectedRule === r.name ? 'btn-dark' : 'btn-outline-secondary'" @click="selectRule(r)">{{ r.label }}</button>
+              <button class="btn btn-sm btn-outline-info" @click="loadSuggestions" :disabled="suggestLoading">💡 Suggest</button>
+              <button class="btn btn-sm btn-outline-info" @click="loadSuggestions" :disabled="suggestLoading">💡 Suggest</button>
+            </div>
+              <button v-for="r in RULES" :key="r.name" class="btn btn-sm" :class="selectedRule === r.name ? 'btn-dark' : 'btn-outline-secondary'" @click="selectRule(r)">{{ r.label }}</button>
+              <button class="btn btn-sm btn-outline-info" @click="loadSuggestions" :disabled="suggestLoading">💡 Suggest</button>
             </div>
             <div v-if="selectedRule && currentRuleParams.length" class="rule-params">
               <div v-for="p in currentRuleParams" :key="p.key" class="param-row">
@@ -176,6 +194,8 @@ const steps = ref([])
 const displaySteps = ref([])
 const selectedRule = ref('')
 const paramValues = ref({})
+const suggestions = ref([])
+const suggestLoading = ref(false)
 const applying = ref(false)
 const applyError = ref('')
 const verifyStatus = ref('')
@@ -291,6 +311,36 @@ async function startManualCalc() {
     } else { parseError.value = res.data.msg }
   } catch (e) { parseError.value = e.message }
 }
+async function loadSuggestions() {
+  if (!startExpr.value) return
+  suggestions.value = []
+  suggestLoading.value = true
+  try {
+    const cur = displaySteps.value.length ? displaySteps.value[displaySteps.value.length - 1].res : startExpr.value
+    const res = await api.post('/saint/suggest', { expr: cur })
+    if (res.data.status === 'ok') {
+      suggestions.value = res.data.suggestions
+    }
+  } catch (e) { console.error('Suggest:', e) } finally { suggestLoading.value = false }
+}
+async function applySuggestion(s) {
+  selectedRule.value = ''
+  applyError.value = ''
+  verifyStatus.value = ''
+  applying.value = true
+  try {
+    const res = await api.post('/saint/apply', {
+      start: startExpr.value, steps: steps.value,
+      rule: s.rule, params: s.params,
+    })
+    if (res.data.status === 'ok') {
+      displaySteps.value = res.data.calculation.steps
+      steps.value.push({ rule: s.rule, params: s.params })
+      suggestions.value = []
+    } else { applyError.value = res.data.msg }
+  } catch (e) { applyError.value = e.message } finally { applying.value = false }
+}
+
 function selectRule(r) {
   selectedRule.value = r.name
   paramValues.value = {}
@@ -375,6 +425,10 @@ function resetCalculation() {
 .eq-sign { color: #6c757d; font-weight: bold; min-width: 16px; }
 .rule-tag { font-size: 0.75rem; color: #0d6efd; background: #e7f1ff; padding: 1px 6px; border-radius: 3px; margin-left: 8px; }
 .rule-palette { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; }
+.suggestions { margin-bottom: 8px; }
+.suggestions-title { font-size: 0.8rem; color: #198754; font-weight: 600; margin-bottom: 4px; }
+.suggestion-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.suggestion-btn { font-size: 0.8rem; }
 .rule-buttons { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
 .rule-params { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
 .param-row { display: flex; align-items: center; gap: 4px; }
