@@ -6,34 +6,49 @@
     </nav>
 
     <div class="saint-body">
-      <!-- Left: file browser -->
-      <div class="saint-sidebar">
-        <div class="sidebar-section">
-          <h6>Files</h6>
-          <ul class="file-list">
-            <li v-for="f in files" :key="f" @click="loadFile(f)" :class="{active: currentFile === f}">
-              {{ f }}
-            </li>
-          </ul>
+      <!-- Left: Library -->
+      <div class="saint-library">
+        <div class="library-header">
+          <h6>Library</h6>
+          <input v-model="libSearch" class="form-control form-control-sm lib-search"
+            placeholder="Search..." />
         </div>
-        <div v-if="problems.length" class="sidebar-section">
-          <h6>Problems</h6>
-          <ul class="file-list">
-            <li v-for="(p, i) in problems" :key="i" @click="loadProblem(p)">
-              {{ p.name }}
-            </li>
-          </ul>
+        <div class="library-content">
+          <div v-for="(section, si) in filteredSections" :key="si" class="lib-section">
+            <div class="lib-section-title" :style="{paddingLeft: (section.level-1)*12+'px'}"
+              @click="toggleSection(si)">
+              <span class="toggle">{{ expanded[si] ? '▼' : '▶' }}</span>
+              {{ section.name }}
+              <span class="lib-count">{{ section.items.length }}</span>
+            </div>
+            <div v-if="expanded[si]" class="lib-items">
+              <div v-for="(item, ii) in section.items" :key="ii" class="lib-item">
+                <span class="type-badge" :class="'type-' + item.type">{{ item.type }}</span>
+                <MathEquation v-if="item.latex" :data="'\\(' + item.latex + '\\)'" />
+                <span v-else class="text-muted small">{{ item.expr }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Center: calculation -->
+      <!-- Right: Calculation workspace -->
       <div class="saint-main">
-        <!-- Expression input -->
+        <!-- Problem selector + expression input -->
         <div class="input-bar">
+          <select v-model="selectedFile" class="form-select form-select-sm problem-select"
+            @change="loadFile">
+            <option value="">-- Problem set --</option>
+            <option v-for="f in problemFiles" :key="f" :value="f">{{ f }}</option>
+          </select>
           <input v-model="exprInput" class="form-control expr-input"
             placeholder="INT x. x^2" @keyup.enter="parseExpr" />
           <button class="btn btn-primary btn-sm" @click="parseExpr">Parse</button>
-          <button class="btn btn-success btn-sm" @click="startCalculation">Start</button>
+        </div>
+
+        <div v-if="problems.length" class="problem-list-bar">
+          <span v-for="(p, i) in problems" :key="i" class="problem-chip"
+            @click="loadProblem(p)">{{ p.name }}</span>
         </div>
         <div v-if="parseError" class="alert alert-danger py-1 small">{{ parseError }}</div>
 
@@ -55,11 +70,8 @@
             <button v-for="r in RULES" :key="r.name"
               class="btn btn-sm"
               :class="selectedRule === r.name ? 'btn-dark' : 'btn-outline-secondary'"
-              @click="selectRule(r)">
-              {{ r.label }}
-            </button>
+              @click="selectRule(r)">{{ r.label }}</button>
           </div>
-
           <div v-if="selectedRule && currentRuleParams.length" class="rule-params">
             <div v-for="p in currentRuleParams" :key="p.key" class="param-row">
               <label class="param-label">{{ p.label }}</label>
@@ -67,20 +79,14 @@
                 :placeholder="p.placeholder" />
             </div>
           </div>
-
           <div class="mt-2">
             <button v-if="selectedRule" class="btn btn-success btn-sm" @click="applyRule" :disabled="applying">
               {{ applying ? '...' : 'Apply' }}
             </button>
-            <button class="btn btn-outline-danger btn-sm ms-2" @click="undoStep" :disabled="!steps.length">
-              Undo
-            </button>
-            <button class="btn btn-outline-secondary btn-sm ms-2" @click="resetCalculation" :disabled="!steps.length">
-              Reset
-            </button>
+            <button class="btn btn-outline-danger btn-sm ms-2" @click="undoStep" :disabled="!steps.length">Undo</button>
+            <button class="btn btn-outline-secondary btn-sm ms-2" @click="resetCalculation" :disabled="!steps.length">Reset</button>
           </div>
         </div>
-
         <div v-if="applyError" class="alert alert-danger mt-2 py-1 small">{{ applyError }}</div>
       </div>
     </div>
@@ -88,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import api from '../api'
 import MathEquation from '../components/util/MathEquation.vue'
 
@@ -114,6 +120,11 @@ const RULES = [
   { name: 'rewrite_trig', label: 'Rewrite Trig', params: [
     { key: 'rule', label: 'Rule:', placeholder: 'TR0' },
   ]},
+  { name: 'series_expansion', label: 'Series Expand', params: [
+    { key: 'index_var', label: 'Index:', placeholder: 'n' },
+  ]},
+  { name: 'series_evaluation', label: 'Series Eval', params: [] },
+  { name: 'int_sum_exchange', label: 'Exch ∫Σ', params: [] },
   { name: 'expand_polynomial', label: 'Expand', params: [] },
   { name: 'unfold_power', label: 'Unfold Power', params: [] },
   { name: 'elim_abs', label: 'Elim Abs', params: [] },
@@ -123,20 +134,20 @@ const RULES = [
   ]},
 ]
 
-const files = ref([])
+const librarySections = ref([])
+const libSearch = ref('')
+const expanded = reactive({})
+
+const problemFiles = ref([])
+const selectedFile = ref('')
 const problems = ref([])
-const currentFile = ref('')
 
 const exprInput = ref('')
 const parseError = ref('')
 const startLatex = ref('')
 const startExpr = ref('')
-
-// steps: [{rule: 'simplify', params: {}}]  -- for replay
 const steps = ref([])
-// displaySteps: from backend export, with latex
 const displaySteps = ref([])
-
 const selectedRule = ref('')
 const paramValues = ref({})
 const applying = ref(false)
@@ -147,23 +158,44 @@ const currentRuleParams = computed(() => {
   return r ? r.params : []
 })
 
+const filteredSections = computed(() => {
+  if (!libSearch.value.trim()) return librarySections.value
+  const q = libSearch.value.toLowerCase()
+  return librarySections.value.map(s => ({
+    ...s,
+    items: s.items.filter(item =>
+      (item.expr || '').toLowerCase().includes(q) ||
+      (item.latex || '').toLowerCase().includes(q)
+    )
+  })).filter(s => s.items.length > 0)
+})
+
 onMounted(async () => {
   try {
-    const res = await api.post('/saint/files')
-    files.value = res.data.files
+    const [libRes, fileRes] = await Promise.all([
+      api.post('/saint/library'),
+      api.post('/saint/files')
+    ])
+    librarySections.value = libRes.data.sections
+    librarySections.value.forEach((_, i) => { expanded[i] = false })
+    problemFiles.value = fileRes.data.files.filter(f => f !== 'base')
   } catch (e) {
-    console.error('Failed to load files:', e)
+    console.error('Init failed:', e)
   }
 })
 
-async function loadFile(name) {
-  currentFile.value = name
+function toggleSection(i) {
+  expanded[i] = !expanded[i]
+}
+
+async function loadFile() {
   problems.value = []
+  if (!selectedFile.value) return
   try {
-    const res = await api.post('/saint/load', { filename: name })
+    const res = await api.post('/saint/load', { filename: selectedFile.value })
     problems.value = res.data.problems
   } catch (e) {
-    console.error('Failed to load file:', e)
+    console.error('Load file:', e)
   }
 }
 
@@ -191,10 +223,6 @@ async function parseExpr() {
   }
 }
 
-function startCalculation() {
-  parseExpr()
-}
-
 function selectRule(r) {
   selectedRule.value = r.name
   paramValues.value = {}
@@ -207,27 +235,19 @@ function selectRule(r) {
 async function applyRule() {
   applyError.value = ''
   if (!selectedRule.value || !startExpr.value) return
-
   const params = {}
   for (const p of currentRuleParams.value) {
-    if (paramValues.value[p.key]) {
-      params[p.key] = paramValues.value[p.key]
-    }
+    if (paramValues.value[p.key]) params[p.key] = paramValues.value[p.key]
   }
-
   applying.value = true
   try {
     const res = await api.post('/saint/apply', {
-      start: startExpr.value,
-      steps: steps.value,
-      rule: selectedRule.value,
-      params: params,
+      start: startExpr.value, steps: steps.value,
+      rule: selectedRule.value, params
     })
     if (res.data.status === 'ok') {
-      const calc = res.data.calculation
-      displaySteps.value = calc.steps
-      // Record the step for replay
-      steps.value.push({ rule: selectedRule.value, params: params })
+      displaySteps.value = res.data.calculation.steps
+      steps.value.push({ rule: selectedRule.value, params })
     } else {
       applyError.value = res.data.msg
     }
@@ -239,7 +259,7 @@ async function applyRule() {
 }
 
 function undoStep() {
-  if (steps.value.length === 0) return
+  if (!steps.value.length) return
   steps.value.pop()
   displaySteps.value.pop()
   applyError.value = ''
@@ -254,102 +274,64 @@ function resetCalculation() {
 </script>
 
 <style scoped>
-.saint-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-.saint-body {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-.saint-sidebar {
-  width: 240px;
-  border-right: 1px solid #dee2e6;
-  overflow-y: auto;
-  padding: 10px;
+.saint-container { display: flex; flex-direction: column; height: 100vh; }
+.saint-body { display: flex; flex: 1; overflow: hidden; }
+
+.saint-library {
+  width: 320px; border-right: 1px solid #dee2e6; display: flex; flex-direction: column;
   background: #f8f9fa;
 }
-.sidebar-section { margin-bottom: 15px; }
-.sidebar-section h6 {
-  font-size: 0.85rem;
-  color: #6c757d;
-  text-transform: uppercase;
-  margin-bottom: 5px;
+.library-header { padding: 8px 10px; border-bottom: 1px solid #dee2e6; }
+.library-header h6 { font-size: 0.85rem; text-transform: uppercase; color: #6c757d; margin: 0 0 5px; }
+.lib-search { font-size: 0.85rem; }
+.library-content { flex: 1; overflow-y: auto; padding: 4px 0; }
+.lib-section { margin-bottom: 2px; }
+.lib-section-title {
+  padding: 4px 10px; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+  color: #343a40; display: flex; align-items: center; gap: 4px;
 }
-.file-list { list-style: none; padding: 0; margin: 0; }
-.file-list li {
-  padding: 4px 8px;
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-.file-list li:hover { background: #e9ecef; }
-.file-list li.active { background: #0d6efd; color: white; }
-.saint-main {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-}
-.input-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.expr-input { flex: 1; font-family: monospace; }
-.calc-display {
-  background: white;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 15px;
-  min-height: 60px;
-}
-.calc-line {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 4px 0;
-}
-.calc-start {
-  font-size: 1.1em;
+.lib-section-title:hover { background: #e9ecef; }
+.toggle { font-size: 0.7rem; width: 10px; }
+.lib-count { margin-left: auto; font-size: 0.75rem; color: #999; }
+.lib-items { padding: 2px 0; }
+.lib-item {
+  padding: 3px 10px 3px 28px; font-size: 0.85rem; display: flex; align-items: baseline; gap: 6px;
   border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 8px;
-  margin-bottom: 4px;
 }
-.eq-sign {
-  color: #6c757d;
-  font-weight: bold;
-  min-width: 20px;
+.type-badge {
+  font-size: 0.65rem; padding: 0 4px; border-radius: 2px; text-transform: uppercase;
+  white-space: nowrap; min-width: 28px; text-align: center;
 }
+.type-axiom { background: #fff3cd; color: #856404; }
+.type-theorem { background: #d4edda; color: #155724; }
+.type-definition { background: #cce5ff; color: #004085; }
+.type-table { background: #e2e3e5; color: #383d41; }
+
+.saint-main { flex: 1; overflow-y: auto; padding: 16px; }
+.input-bar { display: flex; gap: 8px; margin-bottom: 8px; }
+.problem-select { width: auto; font-size: 0.85rem; }
+.expr-input { flex: 1; font-family: monospace; }
+.problem-list-bar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.problem-chip {
+  font-size: 0.8rem; padding: 2px 8px; background: #e9ecef; border-radius: 10px;
+  cursor: pointer;
+}
+.problem-chip:hover { background: #dee2e6; }
+.calc-display {
+  background: white; border: 1px solid #dee2e6; border-radius: 8px;
+  padding: 14px; margin-bottom: 12px; min-height: 50px;
+}
+.calc-line { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; }
+.calc-start { font-size: 1.1em; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; margin-bottom: 4px; }
+.eq-sign { color: #6c757d; font-weight: bold; min-width: 16px; }
 .rule-tag {
-  font-size: 0.8rem;
-  color: #0d6efd;
-  background: #e7f1ff;
-  padding: 1px 6px;
-  border-radius: 3px;
-  margin-left: 8px;
+  font-size: 0.75rem; color: #0d6efd; background: #e7f1ff;
+  padding: 1px 6px; border-radius: 3px; margin-left: 8px;
 }
-.rule-palette {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 12px;
-}
-.rule-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.rule-params {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 8px;
-}
+.rule-palette { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; }
+.rule-buttons { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.rule-params { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
 .param-row { display: flex; align-items: center; gap: 4px; }
 .param-label { font-size: 0.85rem; color: #495057; white-space: nowrap; }
-.param-input { width: 120px; font-family: monospace; }
+.param-input { width: 100px; font-family: monospace; }
 </style>

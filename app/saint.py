@@ -99,7 +99,10 @@ def saint_files():
 
 @app.route("/api/saint/load", methods=['POST'])
 def saint_load():
-    """Load a .calc file and return its problems."""
+    """Load a .calc file and return problems.
+
+    If a goal is an equation A = B, split into goal=A + target=B.
+    """
     data = json.loads(request.get_data().decode('utf-8'))
     path = os.path.join(EXAMPLES_DIR, data['filename'] + '.calc')
     if not os.path.exists(path):
@@ -109,10 +112,21 @@ def saint_load():
     d = calc_file.as_dict()
     problems = []
     for item in d.get('content', []):
+        goal_str = item.get('problem', '')
+        target_str = item.get('target')
+        # If goal is an equation A = B, split into goal=A + target=B
+        if not target_str and goal_str:
+            try:
+                e = parser.parse_expr(goal_str)
+                if hasattr(e, 'is_equals') and e.is_equals():
+                    goal_str = str(e.args[0])
+                    target_str = str(e.args[1])
+            except:
+                pass
         problems.append({
             'name': item.get('name', ''),
-            'goal': item.get('problem', ''),
-            'target': item.get('target'),
+            'goal': goal_str,
+            'target': target_str,
         })
     return jsonify({"problems": problems})
 
