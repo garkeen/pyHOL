@@ -12,9 +12,9 @@ const routes = [
     component: () => import('./views/Editor.vue')
   },
   {
-    path: '/integral',
-    name: 'integral',
-    component: () => import('./views/Integral.vue')
+    path: '/saint',
+    name: 'saint',
+    component: () => import('./views/SaintIDE.vue')
   },
   {
     path: '/program',
