@@ -7,8 +7,8 @@ from flask import request
 from flask.json import jsonify
 import os
 
-import integral
-from integral import compstate
+import SAINT
+from SAINT import compstate
 from app.app import app
 
 dirname = os.path.dirname(__file__)
@@ -16,7 +16,7 @@ dirname = os.path.dirname(__file__)
 @app.route("/api/integral-load-book-list", methods=['POST'])
 def integral_load_book_list():
     # Load book list from index.json
-    file_name = os.path.join(dirname, "../integral/examples/index.json")
+    file_name = os.path.join(dirname, "../SAINT/examples/index.json")
 
     with open(file_name, 'r', encoding='utf-8') as f:
         f_data = json.load(f)
@@ -26,7 +26,7 @@ def integral_load_book_list():
 @app.route("/api/integral-load-book-content", methods=['POST'])
 def integral_load_book_content():
     data = json.loads(request.get_data().decode('utf-8'))
-    file_name = os.path.join(dirname, "../integral/examples/" + data['bookname'] + '.json')
+    file_name = os.path.join(dirname, "../SAINT/examples/" + data['bookname'] + '.json')
 
     # Load raw data
     with open(file_name, 'r', encoding='utf-8') as f:
@@ -36,27 +36,27 @@ def integral_load_book_content():
     for item in f_data['content']:
         # Expressions in item
         if 'expr' in item:
-            e = integral.parser.parse_expr(item['expr'])
-            latex_str = integral.latex.convert_expr(e)
+            e = SAINT.parser.parse_expr(item['expr'])
+            latex_str = SAINT.latex.convert_expr(e)
             item['latex_str'] = latex_str
         # Conditions in item
         if 'conds' in item:
             latex_conds = []
             for cond_str in item['conds']:
-                cond = integral.parser.parse_expr(cond_str)
-                latex_conds.append(integral.latex.convert_expr(cond))
+                cond = SAINT.parser.parse_expr(cond_str)
+                latex_conds.append(SAINT.latex.convert_expr(cond))
             item['latex_conds'] = latex_conds
         # Table elements
         if item['type'] == 'table':
             new_table = list()
-            funcexpr = integral.expr.Fun(item['name'], integral.expr.Var('x'))
-            item['funcexpr'] = integral.latex.convert_expr(funcexpr)
+            funcexpr = SAINT.expr.Fun(item['name'], SAINT.expr.Var('x'))
+            item['funcexpr'] = SAINT.latex.convert_expr(funcexpr)
             for x, y in item['table'].items():
-                x = integral.parser.parse_expr(x)
-                y = integral.parser.parse_expr(y)
+                x = SAINT.parser.parse_expr(x)
+                y = SAINT.parser.parse_expr(y)
                 new_table.append({
-                    'x': integral.latex.convert_expr(x),
-                    'y': integral.latex.convert_expr(y)
+                    'x': SAINT.latex.convert_expr(x),
+                    'y': SAINT.latex.convert_expr(y)
                 })
             item['latex_table'] = new_table
 
@@ -65,21 +65,21 @@ def integral_load_book_content():
 @app.route("/api/integral-open-file", methods=['POST'])
 def integral_open_file():
     data = json.loads(request.get_data().decode('utf-8'))
-    file_name = os.path.join(dirname, "../integral/examples/" + data['filename'] + '.json')
+    file_name = os.path.join(dirname, "../SAINT/examples/" + data['filename'] + '.json')
     with open(file_name, 'r', encoding='utf-8') as f:
         f_data = json.load(f)
 
     for item in f_data['content']:
         if 'problem' in item:
-            problem = integral.parser.parse_expr(item['problem'])
-            item['_problem_latex'] = integral.latex.convert_expr(problem)
+            problem = SAINT.parser.parse_expr(item['problem'])
+            item['_problem_latex'] = SAINT.latex.convert_expr(problem)
         
     return jsonify(f_data)
 
 @app.route("/api/integral-save-file", methods=['POST'])
 def integral_save_file():
     data = json.loads(request.get_data().decode('utf-8'))
-    file_name = os.path.join(dirname, "../integral/examples/" + data['filename'])
+    file_name = os.path.join(dirname, "../SAINT/examples/" + data['filename'])
     with open(file_name, 'w', encoding='utf-8') as f:
         json.dump({"content": data['content']}, f, indent=4, ensure_ascii=False, sort_keys=True)
 
@@ -140,8 +140,8 @@ def query_integral():
             "expr": str(e),
             "var_name": e.var,
             "body": str(e.body),
-            "latex_expr": integral.latex.convert_expr(e),
-            "latex_body": integral.latex.convert_expr(e.body),
+            "latex_expr": SAINT.latex.convert_expr(e),
+            "latex_body": SAINT.latex.convert_expr(e.body),
             "loc": str(loc)
         })
     return jsonify({
@@ -154,8 +154,8 @@ def query_latex_expr():
     """Find latex form of an expression."""
     data = json.loads(request.get_data().decode('UTF-8'))
     try:
-        e = integral.parser.parse_expr(data['expr'])
-        selected = integral.parser.parse_expr(data['selected_expr'])
+        e = SAINT.parser.parse_expr(data['expr'])
+        selected = SAINT.parser.parse_expr(data['selected_expr'])
         locs = e.find_subexpr(selected)
         assert len(locs) > 0
         if len(locs) > 1:
@@ -163,7 +163,7 @@ def query_latex_expr():
         loc = locs[0]
         return jsonify({
             "status": "ok",
-            "latex_expr": integral.latex.convert_expr(selected),
+            "latex_expr": SAINT.latex.convert_expr(selected),
             "loc": str(loc)
         })
     except Exception as e:
@@ -186,17 +186,17 @@ def query_identities():
     st: compstate.StateItem = file.content[cur_id]
     subitem = st.get_by_label(label)
     try:
-        e = integral.parser.parse_expr(data['expr'])
-        results = integral.rules.ApplyIdentity.search(e, subitem.ctx)
+        e = SAINT.parser.parse_expr(data['expr'])
+        results = SAINT.rules.ApplyIdentity.search(e, subitem.ctx)
         json_results = []
         for res in results:
             json_results.append({
                 "res": str(res),
-                "latex_res": integral.latex.convert_expr(res)
+                "latex_res": SAINT.latex.convert_expr(res)
             })
         return jsonify({
             "status": "ok",
-            "latex_expr": integral.latex.convert_expr(e),
+            "latex_expr": SAINT.latex.convert_expr(e),
             "results": json_results
         })
     except Exception as e:
@@ -213,8 +213,8 @@ def add_function_definition():
     file = compstate.CompFile(book_name, filename)
     for item in data['content']:
         file.add_item(compstate.parse_item(file, item))
-    eq = integral.parser.parse_expr(data['eq'])
-    conds = list(integral.parser.parse_expr(cond) for cond in data['conds'])
+    eq = SAINT.parser.parse_expr(data['eq'])
+    conds = list(SAINT.parser.parse_expr(cond) for cond in data['conds'])
     file.add_definition(eq, conds=conds)
     return jsonify({
         "status": "ok",
@@ -230,8 +230,8 @@ def add_goal():
     file = compstate.CompFile(book_name, filename)
     for item in data['content']:
         file.add_item(compstate.parse_item(file, item))
-    goal = integral.parser.parse_expr(data['goal'])
-    conds = list(integral.parser.parse_expr(cond) for cond in data['conds'])
+    goal = SAINT.parser.parse_expr(data['goal'])
+    conds = list(SAINT.parser.parse_expr(cond) for cond in data['conds'])
     file.add_goal(goal, conds=conds)
     return jsonify({
         "status": "ok",
@@ -277,7 +277,7 @@ def proof_by_induction():
     st: compstate.StateItem = file.content[cur_id]
     subitem = st.get_by_label(label)
     induct_var = data['induct_var']
-    start = integral.parser.parse_expr(data['start'])
+    start = SAINT.parser.parse_expr(data['start'])
     if isinstance(subitem, compstate.Goal):
         proof = subitem.proof_by_induction(induct_var, start=start)
         proof.base_case.proof_by_calculation()
@@ -305,7 +305,7 @@ def proof_by_rewrite_goal():
     label = compstate.Label(data['selected_item'])
     st: compstate.StateItem = file.content[cur_id]
     subitem = st.get_by_label(label)
-    begin = integral.parser.parse_expr(data['begin'])
+    begin = SAINT.parser.parse_expr(data['begin'])
     if isinstance(subitem, compstate.Goal):
         # Find the goal corresponding to begin
         begin_goal = None
@@ -338,17 +338,17 @@ def expand_definition():
             e = subitem.start
         else:
             e = subitem.res
-        results = integral.rules.ExpandDefinition.search(e, subitem.ctx)
+        results = SAINT.rules.ExpandDefinition.search(e, subitem.ctx)
         if len(results) == 1:
             sube, loc = results[0]
             if sube.is_fun():
-                rule = integral.rules.ExpandDefinition(sube.func_name)
+                rule = SAINT.rules.ExpandDefinition(sube.func_name)
             elif sube.is_var():
-                rule = integral.rules.ExpandDefinition(sube.name)
+                rule = SAINT.rules.ExpandDefinition(sube.name)
             else:
                 raise TypeError
             if loc.data:
-                rule = integral.rules.OnLocation(rule, loc)
+                rule = SAINT.rules.OnLocation(rule, loc)
             subitem.perform_rule(rule)
             return jsonify({
                 "status": "ok",
@@ -360,7 +360,7 @@ def expand_definition():
             for sube, loc in results:
                 choices.append({
                     'subexpr': str(sube),
-                    'latex_subexpr': integral.latex.convert_expr(sube),
+                    'latex_subexpr': SAINT.latex.convert_expr(sube),
                     'func_name': sube.func_name,
                     'loc': str(loc)
                 })
@@ -391,12 +391,12 @@ def fold_definition():
             e = subitem.start
         else:
             e = subitem.res
-        results = integral.rules.FoldDefinition.search(e, subitem.ctx)
+        results = SAINT.rules.FoldDefinition.search(e, subitem.ctx)
         if len(results) == 1:
             _, loc, func_name = results[0]
-            rule = integral.rules.FoldDefinition(func_name)
+            rule = SAINT.rules.FoldDefinition(func_name)
             if loc.data:
-                rule = integral.rules.OnLocation(rule, loc)
+                rule = SAINT.rules.OnLocation(rule, loc)
             subitem.perform_rule(rule)
             return jsonify({
                 "status": "ok",
@@ -433,9 +433,9 @@ def integral_solve_equation():
             "status": "error",
             "msg": "Exactly one fact must be selected"
         })
-    lhs: integral.expr.Expr
+    lhs: SAINT.expr.Expr
     for fact_label in facts:
-        fact = st.get_by_label(integral.compstate.Label(fact_label))
+        fact = st.get_by_label(SAINT.compstate.Label(fact_label))
         if isinstance(fact, compstate.CalculationStep):
             lhs = fact.res
         elif isinstance(fact, compstate.Calculation):
@@ -447,7 +447,7 @@ def integral_solve_equation():
             })
     
     if isinstance(subitem, (compstate.CalculationStep, compstate.Calculation)):
-        rule = integral.rules.IntegrateByEquation(lhs)
+        rule = SAINT.rules.IntegrateByEquation(lhs)
         subitem.perform_rule(rule)
         return jsonify({
             "status": "ok",
@@ -472,9 +472,9 @@ def integral_perform_step():
     label = compstate.Label(data['selected_item'])
     st: compstate.StateItem = file.content[cur_id]
     rule = compstate.parse_rule(data['rule'])
-    if isinstance(rule, (integral.rules.ApplyInductHyp, integral.rules.DerivIntExchange,
-                         integral.rules.IntSumExchange, integral.rules.SeriesEvaluationIdentity)):
-        rule = integral.rules.OnSubterm(rule)
+    if isinstance(rule, (SAINT.rules.ApplyInductHyp, SAINT.rules.DerivIntExchange,
+                         SAINT.rules.IntSumExchange, SAINT.rules.SeriesEvaluationIdentity)):
+        rule = SAINT.rules.OnSubterm(rule)
     subitem = st.get_by_label(label)
     if isinstance(subitem, (compstate.CalculationStep, compstate.Calculation)):
         subitem.perform_rule(rule)
@@ -505,7 +505,7 @@ def integral_query_theorems():
         for eq in prev_item.get_facts():
             eqs.append({
                 'eq': str(eq),
-                'latex_eq': integral.latex.convert_expr(eq)
+                'latex_eq': SAINT.latex.convert_expr(eq)
             })
     return jsonify({
         "status": "ok",
@@ -545,10 +545,10 @@ def integral_query_vars():
 def integral_query_expr():
     data = json.loads(request.get_data().decode('UTF-8'))
     try:
-        e = integral.parser.parse_expr(data['expr'])
+        e = SAINT.parser.parse_expr(data['expr'])
         return jsonify({
             "status": "ok",
-            "latex_expr": integral.latex.convert_expr(e)
+            "latex_expr": SAINT.latex.convert_expr(e)
         })
     except Exception as e:
         return jsonify({
@@ -579,6 +579,6 @@ def integral_query_last_expr():
         })
     return jsonify({
         "last_expr": str(res),
-        "latex_expr": integral.latex.convert_expr(res),
+        "latex_expr": SAINT.latex.convert_expr(res),
         "status": "ok",
     })

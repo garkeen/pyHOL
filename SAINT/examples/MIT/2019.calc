@@ -1,0 +1,16 @@
+
+problem  "Exercise 1"
+  goal  INT x:[0, pi/100].(sin(20*x) + sin(19*x))/(cos(20*x) + cos(19*x))
+  calc
+    rewrite_trigonometric  rule = TR9, at 0
+    substitute  f = (2 * sin(u)) / (39 * cos(u)), g = (39 * x) / 2, var_name = u
+    substitute  f = -2 / (39 * v), g = cos(u), var_name = v
+    simplify
+  qed
+
+problem  "Exercise 2"
+  goal  INT x:[0, 1]. (exp(x) + cos(x))/(exp(x) + sin(x))
+  calc
+    substitute  f = 1 / u, g = exp(x) + sin(x), var_name = u
+    simplify
+  qed

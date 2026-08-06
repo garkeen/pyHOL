@@ -19,7 +19,6 @@ from domains.real import conv as real
 from util import set as hol_set
 from logic import auto
 from logic import logic
-import integral
 
 
 class SymPyException(Exception):

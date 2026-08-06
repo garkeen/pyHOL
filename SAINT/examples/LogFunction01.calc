@@ -1,0 +1,14 @@
+theory  LogFunction01
+-- migrated from the legacy goal/proof format; parameters and targets are placeholders
+
+problem  "Goal 1"
+  goal  (INT x:[0,1]. log(1 + x) / x) = pi ^ 2 / 12
+  calc
+    SeriesExpansionIdentity  -- TODO: unknown rule  -- TODO: supply parameters
+    Equation  -- TODO: unknown rule  -- TODO: supply parameters
+    IntSumExchange  -- TODO: unknown rule  -- TODO: supply parameters
+    simplify  -- TODO: supply parameters
+    simplify  -- TODO: supply parameters
+    simplify  -- TODO: supply parameters
+    SeriesEvaluationIdentity  -- TODO: unknown rule  -- TODO: supply parameters
+  qed

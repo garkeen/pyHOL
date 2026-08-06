@@ -1,0 +1,44 @@
+theory  LHopital
+-- migrated from legacy start/steps format; step parameters may be incomplete
+
+problem  "Exercise 1"
+  goal  LIM {x -> 1 }. (x ^ 2 - 1) / (x ^ 2 + 3 * x - 4)
+  calc
+    simplify
+    simplify
+  qed
+
+problem  "Exercise 2"
+  goal  LIM {x -> 4 }. (x - 4) / (sqrt(x) - 2)
+  calc
+    simplify
+    simplify
+  qed
+
+problem  "Exercise 3"
+  goal  LIM {x -> 0 }. sin(x) / x
+  calc
+    simplify
+    simplify
+  qed
+
+problem  "Exercise 4"
+  goal  LIM {x -> 0 }. (3 ^ x - 2 ^ x) / (x ^ 2 - x)
+  calc
+    simplify
+    simplify
+  qed
+
+problem  "Exercise 5"
+  goal  LIM {x -> 3 }. (1 / x - 1/3) / (x ^ 2 - 9)
+  calc
+    simplify
+    simplify
+  qed
+
+problem  "Exercise 6"
+  goal  LIM {x -> 0 }. x * tan(x) / sin(3 * x)
+  calc
+    simplify
+    simplify
+  qed

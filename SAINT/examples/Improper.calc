@@ -1,0 +1,26 @@
+
+problem  "Exercise 1"
+  goal  INT x:[1, inf]. 1/x^2
+  calc
+    elim_infinity
+    simplify
+  qed
+
+problem  "Exercise 2"
+  goal  INT x:[-inf, 0]. x*exp(x)
+  calc
+    elim_infinity
+    integrate_by_parts  parts_u = x, parts_v = exp(x), at 0
+    simplify
+    simplify
+  qed
+
+problem  "Exercise 3"
+  goal  INT x:[2, 5]. 1/sqrt(x-2)
+  calc
+  qed
+
+problem  "Exercise 4"
+  goal  INT x:[0, 1]. log(x)
+  calc
+  qed
