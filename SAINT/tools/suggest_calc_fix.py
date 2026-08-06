@@ -27,7 +27,7 @@ def equiv(a, b, ctx):
 
 def run(book, name):
     filename = book + '.calc'
-    data = load_calc_file(os.path.join(EXAMPLES, filename)).as_dict()
+    data = load_calc_file(os.path.join(EXAMPLES, filename))
     target_s = test_cases[book][name]
     target = parser.parse_expr(target_s)
     for item in data["content"]:

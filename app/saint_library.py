@@ -14,7 +14,8 @@ def saint_library():
     """Return library items from base.calc, grouped by section."""
     path = os.path.join(EXAMPLES_DIR, "base.calc")
     with open(path, 'r', encoding='utf-8') as f:
-        info = parse_theory(f.read())
+        from SAINT.calcfmt import parse_calc_text
+        info = parse_calc_text(f.read())
 
     sections = []
     cur_section = None

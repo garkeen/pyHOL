@@ -108,27 +108,57 @@ def saint_load():
     if not os.path.exists(path):
         return jsonify({"status": "error", "msg": "File not found"})
     from SAINT.calcfmt import load_calc_file
-    calc_file = load_calc_file(path)
-    d = calc_file.as_dict()
-    problems = []
+    d = load_calc_file(path)
+    items = []
     for item in d.get('content', []):
-        goal_str = item.get('problem', '')
-        target_str = item.get('target')
-        # If goal is an equation A = B, split into goal=A + target=B
-        if not target_str and goal_str:
+        t = item.get('type', '')
+        if t in ('header',):
+            items.append({'type': 'header', 'name': item.get('name', ''), 'level': item.get('level', 1)})
+            continue
+        if t == 'table':
+            items.append({'type': 'table', 'name': item.get('name', ''), 'table': dict(item.get('table', {}))})
+            continue
+        if t in ('theorem', 'definition', 'axiom'):
             try:
-                e = parser.parse_expr(goal_str)
-                if hasattr(e, 'is_equals') and e.is_equals():
-                    goal_str = str(e.args[0])
-                    target_str = str(e.args[1])
+                e = parser.parse_expr(item.get('expr', ''))
+                lx = latex.convert_expr(e)
             except:
-                pass
-        problems.append({
-            'name': item.get('name', ''),
-            'goal': goal_str,
-            'target': target_str,
-        })
-    return jsonify({"problems": problems})
+                lx = item.get('expr', '')
+            items.append({
+                'type': t, 'expr': item.get('expr', ''), 'latex': lx,
+                'category': item.get('category', ''), 'conds': item.get('conds', []),
+            })
+            continue
+        if t == 'calculation':
+            if item.get('goal'):
+                # Multi-line computation task
+                goal_str = item.get('goal', '')
+                target_str = item.get('target')
+                if not target_str and goal_str:
+                    try:
+                        e = parser.parse_expr(goal_str)
+                        if hasattr(e, 'is_equals') and e.is_equals():
+                            goal_str = str(e.args[0])
+                            target_str = str(e.args[1])
+                    except:
+                        pass
+                items.append({
+                    'type': 'calculation', 'name': item.get('name', ''),
+                    'goal': goal_str, 'target': target_str,
+                })
+            else:
+                # Single-line library item
+                try:
+                    e = parser.parse_expr(item.get('expr', ''))
+                    lx = latex.convert_expr(e)
+                except:
+                    lx = item.get('expr', '')
+                items.append({
+                    'type': 'calculation', 'expr': item.get('expr', ''), 'latex': lx,
+                    'conds': item.get('conds', []),
+                })
+            continue
+    return jsonify({"items": items})
 
 
 @app.route("/api/saint/parse", methods=['POST'])

@@ -1,33 +1,17 @@
-"""Human-readable .calc format for integral calculation tasks.
+"""Human-readable .calc format — unified parser.
 
-This is the text representation of an integral proof task.  Following the
-spirit of .pyhol files, a .calc file keeps only the *process* (the sequence
-of rules and their parameters), not the *results*: the engine re-derives
-every intermediate expression from the starting problem.
+A .calc file can contain any mix of:
+  - definition / theorem  (library items, single-line with attributes)
+  - header / table         (organization)
+  - calculation            (computation task with goal/steps, or single-line library item)
 
-Grammar (informal)::
-
-    theory  <name>
-    imports  <book>[, <book> ...]
-
-    problem  "<name>"
-      goal  <expr>                 # required: the problem to prove
-      target  <expr>               # optional: expected final value
-      cond  <expr>                 # optional: repeated, preconditions
-      calc
-        <rule>  [key = value, ...] [, at <location>]
-        ...
-      qed
-
-A step line uses the same shape as .pyhol steps: ``<method> [args]``.
-The first step of every calculation (the starting expression) is implicit.
+All parsed by one parser. No distinction at the file level.
 """
 
-import os
 import re
-from typing import Dict, List, Optional
-
-from SAINT import parser
+import json
+import os
+from typing import Optional, List, Dict
 
 
 REASON_TO_METHOD = {
@@ -45,77 +29,34 @@ REASON_TO_METHOD = {
     "Solve equation": "solve_equation",
     "Initial": "initial",
 }
-
 METHOD_TO_REASON = {v: k for k, v in REASON_TO_METHOD.items()}
 
 
-class CalcItem:
-    """One problem in a .calc file, mirroring the item shape."""
-
-    def __init__(self, name: str, problem: str, target: Optional[str] = None,
-                 conds: Optional[List[str]] = None, calc: Optional[List[dict]] = None):
-        self.name = name
-        self.problem = problem
-        self.target = target
-        self.conds = conds or []
-        self.calc = calc or []
-
-    def as_dict(self) -> dict:
-        """Convert to the item dict consumed by rules.check_item."""
-        res = {
-            "name": self.name,
-            "problem": self.problem,
-        }
-        if self.target is not None:
-            res["target"] = self.target
-        if self.conds:
-            res["conds"] = list(self.conds)
-        res["calc"] = list(self.calc)
-        return res
+def _parse_list(s: str) -> List[str]:
+    s = s.strip().strip("[]")
+    if not s:
+        return []
+    return [x.strip().strip('"') for x in s.split(";")]
 
 
-class CalcFile:
-    """A .calc file: theory header + list of problems."""
-
-    def __init__(self, name: str = "", imports: Optional[List[str]] = None,
-                 description: str = "", content: Optional[List[CalcItem]] = None):
-        self.name = name
-        self.imports = imports or []
-        self.description = description
-        self.content = content or []
-
-    def as_dict(self) -> dict:
-        return {
-            "name": self.name,
-            "imports": list(self.imports),
-            "description": self.description,
-            "content": [item.as_dict() for item in self.content],
-        }
+def _split_top_level(s: str, sep: str = ",") -> List[str]:
+    res, depth, cur = [], 0, ""
+    for ch in s:
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        if ch == sep and depth == 0:
+            res.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    res.append(cur)
+    return res
 
 
-def _step_params(step: dict) -> dict:
-    """Collect the params (and location) of a step into printable key=value items."""
-    parts = []
-    for key, value in step.get("params", {}).items():
-        parts.append("%s = %s" % (key, value))
-    if "location" in step and step["location"] not in ("", "."):
-        parts.append("at %s" % step["location"])
-    return parts
-
-
-def _format_step(step: dict) -> str:
-    reason = step["reason"]
-    method = REASON_TO_METHOD.get(reason, reason)
-    args = _step_params(step)
-    if args:
-        return "    %s  %s" % (method, ", ".join(args))
-    return "    %s" % method
-
-
-def _parse_step_params(param_pairs: List[str]) -> dict:
-    """Parse 'key = value' pairs plus an optional trailing 'at loc'."""
-    params = {}
-    location = ""
+def _parse_step_params(param_pairs: List[str]):
+    params, location = {}, ""
     for item in param_pairs:
         item = item.strip()
         if not item:
@@ -131,30 +72,11 @@ def _parse_step_params(param_pairs: List[str]) -> dict:
     return params, location
 
 
-def _split_top_level(s: str, sep: str = ",") -> List[str]:
-    """Split on sep, ignoring separators inside parentheses."""
-    res = []
-    depth = 0
-    cur = ""
-    for ch in s:
-        if ch in "([{":
-            depth += 1
-        elif ch in ")]}":
-            depth -= 1
-        if ch == sep and depth == 0:
-            res.append(cur)
-            cur = ""
-        else:
-            cur += ch
-    res.append(cur)
-    return res
-
-
 def _parse_step_line(line: str) -> Optional[dict]:
     line = line.strip()
     if not line or line.startswith("--"):
         return None
-    line = line.split("--", 1)[0].rstrip()  # drop trailing in-line comment
+    line = line.split("--", 1)[0].rstrip()
     method, _, rest = line.partition(" ")
     method = method.strip()
     reason = METHOD_TO_REASON.get(method, method)
@@ -168,8 +90,183 @@ def _parse_step_line(line: str) -> Optional[dict]:
     return step
 
 
+def _format_step(step: dict) -> str:
+    reason = step["reason"]
+    method = REASON_TO_METHOD.get(reason, reason)
+    parts = []
+    for key, value in step.get("params", {}).items():
+        parts.append("%s = %s" % (key, value))
+    loc = step.get("location", "")
+    if loc and loc != ".":
+        parts.append("at %s" % loc)
+    if parts:
+        return "    %s  %s" % (method, ", ".join(parts))
+    return "    %s" % method
+
+
+# ---- Unified parser ----
+
+def parse_calc_text(text: str) -> dict:
+    """Parse any .calc file: library items + calculations, unified.
+
+    Returns {"name": ..., "imports": [...], "description": ..., "content": [items]}.
+
+    Item types in content:
+      - header:   {"type": "header", "name": ..., "level": N}
+      - theorem/definition: {"type": ..., "expr": ..., "conds": [...], "category": ..., ...}
+      - table:    {"type": "table", "name": ..., "table": {k: v}}
+      - calculation (library item, single-line): {"type": "calculation", "expr": ...}
+      - calculation (computation task): {"type": "calculation", "name": ..., "goal": ..., "target": ..., "conds": [...], "calc": [steps]}
+    """
+    result = {"name": "", "imports": [], "description": "", "content": []}
+    cur_table = None
+    cur_calc = None
+    in_calc = False
+
+    for raw in text.split("\n"):
+        line = raw.rstrip()
+        stripped = line.strip()
+        if not stripped or stripped.startswith("--"):
+            continue
+
+        # Inside calc block (steps)
+        if in_calc:
+            if stripped == "qed":
+                in_calc = False
+                cur_calc = None
+                continue
+            step = _parse_step_line(stripped)
+            if step is not None:
+                cur_calc["calc"].append(step)
+            continue
+
+        # Inside table
+        if cur_table is not None:
+            if stripped == "endtable":
+                cur_table = None
+                continue
+            if "=" in stripped:
+                k, _, v = stripped.partition("=")
+                cur_table[k.strip().strip('"')] = v.strip().strip('"')
+            continue
+
+        # File header
+        if line.startswith("theory "):
+            result["name"] = line[7:].strip()
+            continue
+        if line.startswith("imports "):
+            result["imports"] = [s.strip() for s in line[8:].strip().split(",") if s.strip()]
+            continue
+        if line.startswith("imports"):
+            result["imports"] = []
+            continue
+        if line.startswith("description "):
+            desc = line[12:].strip()
+            if desc.startswith('"') and desc.endswith('"'):
+                desc = desc[1:-1]
+            result["description"] = desc
+            continue
+
+        # Section header
+        if line.startswith("header "):
+            rest = line[7:].strip()
+            item = {"type": "header", "name": "", "level": 1}
+            m = re.match(r'"([^"]*)"', rest)
+            if m:
+                item["name"] = m.group(1)
+            lm = re.search(r"level\s*=\s*(\d+)", rest)
+            if lm:
+                item["level"] = int(lm.group(1))
+            result["content"].append(item)
+            cur_calc = None
+            continue
+
+        # Table
+        if line.startswith("table "):
+            cur_table = {}
+            result["content"].append({"type": "table", "name": line[6:].strip(), "table": cur_table})
+            cur_calc = None
+            continue
+
+        # goal / target / cond inside a calculation block
+        if cur_calc is not None:
+            if line.startswith("  goal "):
+                cur_calc["goal"] = line[7:].strip()
+                continue
+            if line.startswith("  target "):
+                cur_calc["target"] = line[9:].strip()
+                continue
+            if line.startswith("  cond "):
+                cur_calc["conds"].append(line[7:].strip())
+                continue
+            if stripped == "calc":
+                in_calc = True
+                continue
+
+        # Single-line items: theorem / definition / calculation / problem / axiom
+        parts = stripped.split("  ")
+        t = parts[0].strip()
+        if t in ("axiom", "theorem", "definition", "calculation", "problem"):
+            body = " ".join(p.strip() for p in parts[1:] if p.strip())
+            m = re.match(r'"([^"]*)"', body)
+            if not m:
+                raise ValueError("Expected quoted string in: %r" % stripped)
+            quoted = m.group(1)
+
+            # Parse attributes
+            attrs = {}
+            rest = body[m.end():]
+            for km in re.finditer(r"(\w+)\s*=\s*(\[[^\]]*\]|[^\s]+)", rest):
+                key, value = km.group(1), km.group(2)
+                if key == "conds":
+                    attrs["conds"] = _parse_list(value)
+                elif key == "attributes":
+                    attrs["attributes"] = _parse_list(value)
+                elif key == "const_vars":
+                    attrs["const_vars"] = _parse_list(value)
+                elif key in ("category", "rule"):
+                    attrs[key] = value.strip('"')
+
+            if t in ("calculation", "problem"):
+                # Could be a multi-line block (has goal) or single-line library item
+                cur_calc = {
+                    "type": "calculation",
+                    "name": quoted,
+                    "expr": quoted,  # for single-line items, expr is the expression
+                    "goal": "",
+                    "target": None,
+                    "conds": attrs.get("conds", []),
+                    "calc": [],
+                }
+                cur_calc.update(attrs)
+                result["content"].append(cur_calc)
+            else:
+                item = {"type": t, "expr": quoted}
+                item.update(attrs)
+                result["content"].append(item)
+                cur_calc = None
+            continue
+
+        raise ValueError("Unknown line: %r" % stripped)
+
+    return result
+
+
+# ---- Compatibility wrappers ----
+
+def parse_theory(text: str) -> dict:
+    """Parse .calc theory text. Delegates to unified parser."""
+    return parse_calc_text(text)
+
+
+def load_calc_file(path: str) -> dict:
+    """Load a .calc file from disk. Returns unified dict."""
+    with open(path, "r", encoding="utf-8") as f:
+        return parse_calc_text(f.read())
+
+
 def export_calc(file_data: dict) -> str:
-    """Export a book dict (item shape) to .calc text."""
+    """Export a dict to .calc text."""
     lines = []
     name = file_data.get("name", "")
     if name:
@@ -183,227 +280,55 @@ def export_calc(file_data: dict) -> str:
     lines.append("")
 
     for item in file_data.get("content", []):
-        item_name = item.get("name", "")
-        problem = item.get("problem", "")
-        lines.append('problem  "%s"' % item_name)
-        if "goal" in item and item.get("goal"):
-            lines.append("  goal  %s" % item["goal"])
-        elif problem:
-            lines.append("  goal  %s" % problem)
-        if item.get("target"):
-            lines.append("  target  %s" % item["target"])
-        for cond in item.get("conds", []):
-            lines.append("  cond  %s" % cond)
-        lines.append("  calc")
-        for step in item.get("calc", []):
-            if step.get("reason") == "Initial":
-                continue
-            lines.append(_format_step(step))
-        lines.append("  qed")
-        lines.append("")
+        t = item.get("type", "calculation")
 
-    return "\n".join(lines)
-
-
-def parse_calc(text: str) -> CalcFile:
-    """Parse .calc text into a CalcFile."""
-    lines = text.split("\n")
-    result = CalcFile()
-    cur_item: Optional[CalcItem] = None
-    in_calc = False
-
-    i = 0
-    n = len(lines)
-    while i < n:
-        line = lines[i].rstrip()
-        stripped = line.strip()
-        if not stripped or stripped.startswith("--"):
-            i += 1
-            continue
-
-        if in_calc:
-            if stripped == "qed":
-                in_calc = False
-                i += 1
-                continue
-            step = _parse_step_line(stripped)
-            if step is not None:
-                cur_item.calc.append(step)
-            i += 1
-            continue
-
-        if line.startswith("theory "):
-            result.name = line[7:].strip()
-        elif line.startswith("imports "):
-            imports_str = line[8:].strip()
-            result.imports = [s.strip() for s in imports_str.split(",") if s.strip()]
-        elif line.startswith("imports"):
-            result.imports = []
-        elif line.startswith("description "):
-            desc = line[12:].strip()
-            if desc.startswith('"') and desc.endswith('"'):
-                desc = desc[1:-1]
-            result.description = desc
-        elif line.startswith("problem ") or line.startswith("calculation "):
-            name = line[12:].strip().strip('"') if line.startswith("calculation ") else line[8:].strip().strip('"')
-            cur_item = CalcItem(name=name, problem="")
-            result.content.append(cur_item)
-        elif line.startswith("  goal ") and cur_item is not None:
-            cur_item.problem = line[7:].strip()
-        elif line.startswith("  target ") and cur_item is not None:
-            cur_item.target = line[9:].strip()
-        elif line.startswith("  cond ") and cur_item is not None:
-            cur_item.conds.append(line[7:].strip())
-        elif stripped == "calc" and cur_item is not None:
-            in_calc = True
-        i += 1
-
-    return result
-
-
-def load_calc_file(path: str) -> CalcFile:
-    """Load a .calc file from disk."""
-    with open(path, "r", encoding="utf-8") as f:
-        return parse_calc(f.read())
-
-
-# ---------------------------------------------------------------------------
-# Theory-book format (.calc for the mathematical fact library, e.g. base.calc)
-# ---------------------------------------------------------------------------
-#
-#     theory  base
-#
-#     header  "Common integrals"  level = 1
-#
-#     axiom  "(INT x. c) = c * x + SKOLEM_CONST(C)"
-#     axiom  "(INT x. x / (a * x ^ 2 + b)) = ..."  conds = [a != 0]
-#     axiom  "exp(a) ^ b = exp(a * b)"  attributes = [simplify]
-#     axiom  "n = n * (sin(x)^2 + cos(x)^2)"  attributes = [one_shot]
-#                                              category = trigonometric  rule = TR0
-#     definition  "cosh(x) = (exp(x) + exp(-x)) / 2"
-#
-#     table  sin
-#       "-(pi / 2)" = "-1"
-#       "0" = "0"
-#     endtable
-#
-# List values are written as [v1; v2].  The grammar reuses the loose
-# line-oriented style of the exercise-book format.
-
-_THEORY_KEYS = ("conds", "attributes", "category", "rule", "const_vars", "level")
-
-
-def _format_list(values: List[str]) -> str:
-    if not values:
-        return "[]"
-    return "[" + "; ".join(values) + "]"
-
-
-def _parse_list(text: str) -> List[str]:
-    text = text.strip()
-    if text.startswith("[") and text.endswith("]"):
-        text = text[1:-1]
-    return [s.strip() for s in text.split(";") if s.strip()]
-
-
-def export_theory(file_data: dict) -> str:
-    """Export a theory book dict (item shape) to .calc text."""
-    lines = []
-    name = file_data.get("name", "")
-    if name:
-        lines.append("theory  %s" % name)
-    imports = file_data.get("imports", [])
-    if imports:
-        lines.append("imports  %s" % ", ".join(imports))
-    lines.append("")
-
-    for item in file_data.get("content", []):
-        t = item.get("type")
         if t == "header":
-            lines.append('header  "%s"  level = %s' % (item["name"], item.get("level", 1)))
-        elif t in ("axiom", "problem", "theorem"):
-            parts = ['%s  "%s"' % (t, item["expr"])]
+            lines.append('header  "%s"  level = %d' % (item.get("name", ""), item.get("level", 1)))
+            continue
+        if t == "table":
+            lines.append("table  %s" % item.get("name", ""))
+            for k, v in item.get("table", {}).items():
+                lines.append('  "%s" = "%s"' % (k, v))
+            lines.append("endtable")
+            continue
+
+        if t in ("theorem", "definition", "axiom"):
+            parts = ['%s  "%s"' % (t, item.get("expr", ""))]
             if item.get("conds"):
-                parts.append("conds = %s" % _format_list(item["conds"]))
+                parts.append("conds = [%s]" % "; ".join(item["conds"]))
             if item.get("attributes"):
-                parts.append("attributes = %s" % _format_list(item["attributes"]))
+                parts.append("attributes = [%s]" % "; ".join(item["attributes"]))
             if item.get("category"):
                 parts.append("category = %s" % item["category"])
             if item.get("rule"):
                 parts.append("rule = %s" % item["rule"])
             if item.get("const_vars"):
-                parts.append("const_vars = %s" % _format_list(item["const_vars"]))
+                parts.append("const_vars = [%s]" % "; ".join(item["const_vars"]))
             lines.append("  ".join(parts))
-        elif t == "definition":
-            lines.append('definition  "%s"' % item["expr"])
-        elif t == "table":
-            lines.append("table  %s" % item["name"])
-            for k, v in item.get("table", {}).items():
-                lines.append('  "%s" = "%s"' % (k, v))
-            lines.append("endtable")
-        else:
-            raise ValueError("Unknown theory item type: %r" % t)
+            continue
+
+        if t == "calculation":
+            # Multi-line calculation block (has goal)
+            if item.get("goal"):
+                lines.append('calculation  "%s"' % item.get("name", ""))
+                lines.append("  goal  %s" % item["goal"])
+                if item.get("target"):
+                    lines.append("  target  %s" % item["target"])
+                for cond in item.get("conds", []):
+                    lines.append("  cond  %s" % cond)
+                lines.append("  calc")
+                for step in item.get("calc", []):
+                    if step.get("reason") == "Initial":
+                        continue
+                    lines.append(_format_step(step))
+                lines.append("  qed")
+            else:
+                # Single-line library item
+                parts = ['calculation  "%s"' % item.get("expr", "")]
+                if item.get("conds"):
+                    parts.append("conds = [%s]" % "; ".join(item["conds"]))
+                lines.append("  ".join(parts))
+            lines.append("")
+            continue
 
     return "\n".join(lines)
-
-
-def parse_theory(text: str) -> dict:
-    """Parse .calc theory text into a book dict (item shape).
-
-    Returns {"name": ..., "imports": [...], "content": [items...]}.
-    """
-    result = {"name": "", "imports": [], "content": []}
-    cur_table = None
-    for raw in text.split("\n"):
-        line = raw.rstrip()
-        stripped = line.strip()
-        if not stripped or stripped.startswith("--"):
-            continue
-        if cur_table is not None:
-            if stripped == "endtable":
-                cur_table = None
-                continue
-            if "=" in stripped:
-                k, _, v = stripped.partition("=")
-                cur_table[k.strip().strip('"')] = v.strip().strip('"')
-            continue
-        if line.startswith("theory "):
-            result["name"] = line[7:].strip()
-        elif line.startswith("imports "):
-            result["imports"] = [s.strip() for s in line[8:].strip().split(",") if s.strip()]
-        elif line.startswith('header '):
-            rest = line[7:].strip()
-            item = {"type": "header", "name": "", "level": 1}
-            m = re.match(r'"([^"]*)"', rest)
-            if m:
-                item["name"] = m.group(1)
-            lm = re.search(r"level\s*=\s*(\d+)", rest)
-            if lm:
-                item["level"] = int(lm.group(1))
-            result["content"].append(item)
-        elif line.startswith("table "):
-            cur_table = {}
-            result["content"].append({"type": "table", "name": line[6:].strip(), "table": cur_table})
-        else:
-            parts = stripped.split("  ")
-            t = parts[0].strip()
-            if t not in ("axiom", "problem", "theorem", "calculation", "definition"):
-                raise ValueError("Unknown theory line: %r" % stripped)
-            body = " ".join(p.strip() for p in parts[1:] if p.strip())
-            m = re.match(r'"([^"]*)"', body)
-            if not m:
-                raise ValueError("Expected quoted expr in: %r" % stripped)
-            item = {"type": t, "expr": m.group(1)}
-            rest = body[m.end():]
-            for km in re.finditer(r"(\w+)\s*=\s*(\[[^\]]*\]|[^\s]+)", rest):
-                key, value = km.group(1), km.group(2)
-                if key == "conds":
-                    item["conds"] = _parse_list(value)
-                elif key == "attributes":
-                    item["attributes"] = _parse_list(value)
-                elif key == "const_vars":
-                    item["const_vars"] = _parse_list(value)
-                elif key in ("category", "rule"):
-                    item[key] = value.strip('"')
-            result["content"].append(item)
-    return result

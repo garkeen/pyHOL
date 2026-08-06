@@ -311,6 +311,9 @@ class Context:
             self.substs[var] = expr
 
     def extend_by_item(self, item):
+        # Skip multi-line calculation blocks (computation tasks, not library items)
+        if item['type'] == 'calculation' and item.get('goal'):
+            return
         if item['type'] in ('axiom', 'problem', 'theorem', 'calculation'):
             e = parser.parse_expr(item['expr'])
             if e.is_equals() and e.lhs.is_indefinite_integral():

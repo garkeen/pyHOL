@@ -17,7 +17,7 @@ EXAMPLES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 
 ok, fail = [], []
 for filename in file_names:
-    data = load_calc_file(os.path.join(EXAMPLES, filename + ".calc")).as_dict()
+    data = load_calc_file(os.path.join(EXAMPLES, filename + ".calc"))
     for item in data["content"]:
         if item["name"] not in test_cases[filename]:
             continue

@@ -36,7 +36,7 @@ def fullsimpl(e, ctx):
 
 
 def classify(book, name):
-    data = load_calc_file(os.path.join(EXAMPLES, book + '.calc')).as_dict()
+    data = load_calc_file(os.path.join(EXAMPLES, book + '.calc'))
     item = next(it for it in data['content'] if it.get('name') == name)
     ctx = Context(); ctx.load_book('base')
     current = parser.parse_expr(item['problem'])
