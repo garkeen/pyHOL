@@ -2,6 +2,7 @@
 
 from typing import Tuple, List, Union
 import copy
+import re
 from lark import Lark, Transformer, v_args, exceptions
 
 import syntax
@@ -23,6 +24,122 @@ class ParserException(Exception):
     """Exceptions during parsing."""
     def __init__(self, str):
         self.str = str
+
+
+class ParserError(Exception):
+    """A clear, position-aware parse error describing what went wrong.
+
+    Translated from the raw Lark exceptions so that users can tell apart
+    an undeclared symbol, unmatched/unclosed brackets, and other syntax
+    problems (see archspec.txt).
+    """
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return self.msg
+
+
+# Friendly names for common Lark terminals.
+_TERMINAL_NAMES = {
+    'CNAME': 'identifier', 'INT': 'number', 'WS': 'whitespace',
+    'LPAR': "'('", 'RPAR': "')'", 'LSQB': "'['", 'RSQB': "']'",
+    'LBRACE': "'{'", 'RBRACE': "'}'", 'COMMA': "','", 'QUOTE': "'",
+    'PERCENT': "'%'", 'MINUS': "'-'", 'PLUS': "'+'", 'STAR': "'*'",
+    'SLASH': "'/'", 'IF': "'if'", 'THEN': "'then'", 'ELSE': "'else'",
+    '$END': 'end of input', '$START': 'start of input',
+}
+
+
+def _has_unescaped_meta(pat):
+    """Whether a Lark terminal pattern contains an unescaped regex
+    metacharacter (and is therefore a real regex, not a plain literal)."""
+    i = 0
+    while i < len(pat):
+        ch = pat[i]
+        if ch == '\\':
+            i += 2
+            continue
+        if ch in '([{?*+':
+            return True
+        i += 1
+    return False
+
+
+def _terminal_display(parser, name):
+    """Return a human-readable form of a Lark terminal name."""
+    if name in _TERMINAL_NAMES:
+        return _TERMINAL_NAMES[name]
+    # Anonymous literal terminals carry their regex pattern; decode it.
+    for td in parser.terminals:
+        if td.name == name:
+            p = td.pattern
+            if getattr(p, 'type', None) == 'str':
+                return "'" + getattr(p, 'value', name) + "'"
+            if getattr(p, 'type', None) == 're':
+                val = getattr(p, 'value', '')
+                if not _has_unescaped_meta(val):
+                    return "'" + re.sub(r'\\(.)', r'\1', val) + "'"
+            return name
+    return name
+
+
+def _lark_error(parser, text, e):
+    """Translate a Lark parsing exception into a clear ParserError."""
+    line = getattr(e, 'line', None)
+    col = getattr(e, 'column', None)
+    loc = ''
+    if line and col:
+        loc = ' at line %d, column %d' % (line, col)
+    ctx = ''
+    try:
+        c = e.get_context(text)
+        if c:
+            ctx = '\n' + c
+    except Exception:
+        ctx = ''
+
+    if isinstance(e, exceptions.UnexpectedCharacters):
+        ch = repr(getattr(e, 'char', ''))
+        return ParserError(
+            "Unrecognized character %s%s.\n"
+            "This symbol is not defined in the grammar; check the spelling "
+            "or remove it.%s" % (ch, loc, ctx))
+
+    if isinstance(e, exceptions.UnexpectedEOF):
+        return ParserError(
+            "Unexpected end of input%s.\n"
+            "This usually means an unclosed parenthesis/bracket or an "
+            "incomplete expression.%s" % (loc, ctx))
+
+    if isinstance(e, exceptions.UnexpectedToken):
+        tok = getattr(e, 'token', None)
+        ttype = getattr(tok, 'type', None)
+        tval = getattr(tok, 'value', '')
+        if ttype == '$END':
+            msg = ("Unexpected end of input%s.\n"
+                   "This usually means an unclosed parenthesis/bracket or an "
+                   "incomplete expression." % loc)
+        elif ttype == 'RPAR' or ttype == 'RSQB' or ttype == 'RBRACE':
+            msg = ("Unmatched closing bracket %r%s.\n"
+                   "Check for a missing opening bracket earlier in the input."
+                   % (tval, loc))
+        else:
+            msg = "Unexpected token %r%s." % (tval, loc)
+        expected = getattr(e, 'expected', None)
+        if expected:
+            shown = []
+            for n in sorted(expected):
+                d = _terminal_display(parser, n)
+                if d not in shown:
+                    shown.append(d)
+            msg += "\nExpected one of: %s" % ', '.join(shown)
+        return ParserError(msg + ctx)
+
+    if isinstance(e, exceptions.MissingToken):
+        return ParserError("Missing token%s.%s" % (loc, ctx))
+
+    return ParserError(str(e) + ctx)
 
 
 grammar = r"""
@@ -417,7 +534,10 @@ term_list_parser = get_parser_for("term_list")
 
 def parse_type(s: str, *, check_type: bool = True) -> Type:
     """Parse a type."""
-    T = type_parser.parse(s)
+    try:
+        T = type_parser.parse(s)
+    except exceptions.UnexpectedToken as e:
+        raise _lark_error(type_parser, s, e)
     if check_type:
         theory.thy.check_type(T)
     return T
@@ -430,10 +550,16 @@ def parse_term(s: Union[str, List[str]]) -> Term:
     try:
         t = term_parser.parse(s)
         return infertype.type_infer(t)
-    except (term.TermException, exceptions.UnexpectedToken, exceptions.UnexpectedCharacters,
-            infertype.TypeInferenceException) as e:
-        print("When parsing:", s)
-        raise e
+    except exceptions.UnexpectedToken as e:
+        raise _lark_error(term_parser, s, e)
+    except exceptions.UnexpectedCharacters as e:
+        raise _lark_error(term_parser, s, e)
+    except exceptions.UnexpectedEOF as e:
+        raise _lark_error(term_parser, s, e)
+    except infertype.TypeInferenceException as e:
+        raise ParserError(e.err)
+    except term.TermException as e:
+        raise ParserError(str(e))
 
 def parse_thm(s: str) -> Thm:
     """Parse a theorem (sequent)."""
@@ -441,10 +567,14 @@ def parse_thm(s: str) -> Thm:
         th = thm_parser.parse(s)
         th.hyps = tuple(infertype.type_infer(hyp) for hyp in th.hyps)
         th.prop = infertype.type_infer(th.prop)
-    except (term.TermException, exceptions.UnexpectedToken, exceptions.UnexpectedCharacters,
-            infertype.TypeInferenceException) as e:
-        print("When parsing:", s)
-        raise e
+    except exceptions.UnexpectedToken as e:
+        raise _lark_error(thm_parser, s, e)
+    except exceptions.UnexpectedCharacters as e:
+        raise _lark_error(thm_parser, s, e)
+    except exceptions.UnexpectedEOF as e:
+        raise _lark_error(thm_parser, s, e)
+    except infertype.TypeInferenceException as e:
+        raise ParserError(e.err)
     return th
 
 def parse_inst(s):

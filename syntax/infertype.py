@@ -20,6 +20,21 @@ class TypeInferenceException(Exception):
 def is_internal_type(T):
     return T.is_stvar() and T.name.startswith('_t')
 
+
+def _unspecified_names(t, tyinst, unspecified):
+    """Free variables whose type is left unspecified (an internal type
+    variable that never got constrained)."""
+    uns = set(unspecified)
+    names = set()
+    for v in t.get_vars():
+        T = v.T
+        if T is None:
+            continue
+        T2 = T.subst(tyinst)
+        if {s.name for s in T2.get_stvars()} & uns:
+            names.add(v.name)
+    return sorted(names)
+
 def type_infer(t, *, forbid_internal=True):
     """Perform type inference on the given term. The input term
     has all types marked None, except those subterms whose type is
@@ -197,7 +212,16 @@ def type_infer(t, *, forbid_internal=True):
             unspecified.append(k)
 
     if forbid_internal and len(unspecified) > 0:
-        raise TypeInferenceException("Unspecified type\n" + repr(t))
+        names = _unspecified_names(t, tyinst, unspecified)
+        hint = "Cannot determine the type of"
+        if names:
+            hint += " variable(s): %s" % ', '.join(names)
+        else:
+            hint += " some subterm"
+        hint += ".\n"
+        hint += "Check that every name is either a declared constant,\n"
+        hint += "a declared variable, or bound by a quantifier/lambda."
+        raise TypeInferenceException(hint + "\n" + repr(t))
 
     has_repl = True
     while has_repl:

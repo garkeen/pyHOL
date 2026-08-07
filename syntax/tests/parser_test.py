@@ -483,5 +483,28 @@ class ParserTest(unittest.TestCase):
         for s, res in test_data:
             self.assertEqual(parser.parse_named_thm(s), res)
 
+    def testParseErrorCategorization(self):
+        """Parser errors should be categorized and mention the location."""
+        basic.load_theory('nat')
+        cases = [
+            # (input, expected substring in the message)
+            ('a + (b', "end of input"),
+            ('a + b)', "Unmatched closing bracket"),
+            ('x + @y', "Unexpected token"),
+        ]
+        for s, expected in cases:
+            with self.assertRaises(parser.ParserError) as cm:
+                parser.parse_term(s)
+            self.assertIn(expected, str(cm.exception))
+            self.assertIn("column", str(cm.exception))
+
+    def testParseUndeclaredVariable(self):
+        """A name that is neither a constant nor a declared variable should
+        be reported, not silently treated as a typo'd free variable."""
+        basic.load_theory('nat')
+        with self.assertRaises(parser.ParserError) as cm:
+            parser.parse_term('bogusname + 1')
+        self.assertIn("bogusname", str(cm.exception))
+
 if __name__ == "__main__":
     unittest.main()

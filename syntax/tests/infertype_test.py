@@ -65,7 +65,8 @@ class InferTypeTest(unittest.TestCase):
         ]
 
         for t in test_data:
-            self.assertRaisesRegex(TypeInferenceException, "Unspecified type", type_infer, t)
+            self.assertRaisesRegex(TypeInferenceException,
+                                   "Cannot determine the type of", type_infer, t)
 
     def testInferTypeFail3(self):
         test_data = [
