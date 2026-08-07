@@ -4,14 +4,14 @@ description "translated from .imp"
 
 theorem if_demo_vc_0
   fixes n :: nat
-  prop ∀s. true ⟶ (if ¬(s (0::nat) = n) then n = n else s 0 = n)
+  prop ∀s. true ⟶ (if ¬(reg s 0 = n) then reg (Pair ((reg s)(0 := n)) (heap s)) 0 = n else reg s 0 = n)
   proof
     0: z3
   qed
 
 theorem if_demo
   fixes n :: nat
-  prop Valid (λs. true) (Cond (λs. ¬(s (0::nat) = n)) (Assign 0 (λs. n)) Skip) (λs. s 0 = n)
+  prop Valid (λst. true) (Cond (λst. ¬(reg st 0 = n)) (AssignV (λst. 0) (λst. n)) Skip) (λst. reg st 0 = n)
   proof
     0: vcg
     0: apply_backward_step if_demo_vc_0

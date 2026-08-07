@@ -14,7 +14,7 @@ check_z3 = True
 
 from kernel.type import TFun, BoolType, NatType, IntType, RealType
 from kernel import term
-from kernel.term import Term, Var, BoolType, Implies, true, false
+from kernel.term import Term, Var, Comb, Abs, Inst, BoolType, Implies, true, false
 from kernel.thm import Thm
 from kernel.proofterm import ProofTerm
 from kernel import theory
@@ -55,19 +55,143 @@ def convert_type(T, ctx):
         if isinstance(domainT, tuple):
             raise Z3Exception("convert: unsupported type " + repr(T))
         return (domainT, convert_type(BoolType, ctx))
+    elif T.is_tconst() and T.name == 'prod':
+        return prod_sort(T.args[0], T.args[1], ctx)[0]
+    elif T.is_tconst() and T.name == 'state':
+        # The program state (Pair (reg :: nat => nat) (heap :: nat => nat))
+        # is a Z3 tuple of two arrays: the variable register and the heap.
+        return prod_sort(TFun(NatType, NatType), TFun(NatType, NatType), ctx)[0]
     else:
         raise Z3Exception("convert: unsupported type " + repr(T))
 
+
+_prod_cache = {}
+
+def prod_sort(T1, T2, ctx):
+    """Z3 tuple sort for the product type T1 * T2, with its constructor
+    and projection functions.  Cached per type pair.  Function-typed
+    components (e.g. the state's reg/heap arrays) become Z3 arrays."""
+    key = (str(T1), str(T2))
+    if key not in _prod_cache:
+        def clean(s):
+            return ''.join(c for c in s if c.isalnum() or c == '_')
+        name = 'prod_%s_%s' % (clean(str(T1)), clean(str(T2)))
+        s1 = array_sort(T1, ctx)
+        s2 = array_sort(T2, ctx)
+        tup, mk, (fst_proj, snd_proj) = z3.TupleSort(name, [s1, s2])
+        _prod_cache[key] = (tup, mk, fst_proj, snd_proj)
+    return _prod_cache[key]
+
+def array_sort(T, ctx):
+    """Sort of a function-typed value, represented as a Z3 array
+    (following Boogie's encoding of maps as arrays)."""
+    if T.is_fun():
+        dom = convert_type(T.domain_type(), ctx)
+        if isinstance(dom, tuple):
+            raise Z3Exception("convert: cannot array-ify higher-order type " + repr(T))
+        return z3.ArraySort(dom, array_sort(T.range_type(), ctx))
+    else:
+        return convert_type(T, ctx)
+
+def curried_sorts(T, ctx):
+    """Flatten a curried function type into the list of sorts of a Z3
+    (uninterpreted) function declaration.  Function-typed parameters are
+    represented as array sorts."""
+    sorts = []
+    while T.is_fun():
+        dom = T.domain_type()
+        if dom.is_fun():
+            sorts.append(array_sort(dom, ctx))
+        else:
+            sorts.append(convert_type(dom, ctx))
+        T = T.range_type()
+    sorts.append(convert_type(T, ctx))
+    return sorts
+
 def convert_const(name, T, ctx):
+    if T.is_fun():
+        if name in recursive_preds:
+            return z3.RecFunction(name, *curried_sorts(T, ctx))
+        return z3.Const(name, array_sort(T, ctx))
     z3_T = convert_type(T, ctx)
     if isinstance(z3_T, tuple):
         return z3.Function(name, *z3_T)
     else:
         return z3.Const(name, z3_T)
 
+
+# Inductive predicates (e.g. the linked-list predicate ll) that should be
+# translated to Z3 as recursive functions.  Each entry maps the constant
+# name to a closed HOL term of the form !x_1 ... x_n. P x_1 ... x_n = body,
+# where P is the predicate and body is the (recursive) expansion.
+recursive_preds = {}
+
+
+def register_recursive_pred(name, eq_term):
+    """Register an inductive predicate for translation as a Z3 recursive
+    function.
+
+    eq_term is a HOL term: !x_1 ... x_n. P x_1 ... x_n = body.
+    """
+    recursive_preds[name] = eq_term
+
+
+# Recursive function declarations registered on each Z3 context.  The
+# definitions are global to the context, so registering once per context
+# is enough even if multiple solvers share it.
+_registered_rec_defs = set()
+
+
+def register_recursive_defs(ctx):
+    """Register all recursive predicates as Z3 recursive functions
+    (z3.RecFunction + z3.RecAddDefinition) on the given context.
+
+    The registered equation !x_1 ... x_n. P x_1 ... x_n = body is turned
+    into a genuine recursive definition: the recursive calls inside body
+    refer to the same function, so Z3 evaluates them by recursion (and by
+    simplification on ground arguments) instead of bounded expansion.
+    """
+    for name, eq_term in recursive_preds.items():
+        key = (name, id(ctx))
+        if key in _registered_rec_defs:
+            continue
+        body = eq_term
+        arg_vars = []
+        while body.is_forall():
+            abs_t = body.arg
+            v = Var(abs_t.var_name, abs_t.var_T)
+            arg_vars.append(v)
+            body = abs_t.subst_bound(v)
+        lhs, rhs = body.arg1, body.arg
+        # The Z3 function's parameters are ordered by the type of the
+        # predicate (P :: T_1 => ... => T_n => bool), so the formal
+        # parameters must be collected from the lhs arguments in
+        # position order.  The forall prefix order is irrelevant (e.g.
+        # ll :: nat => (nat => nat) => bool has prefix !s. !p. while its
+        # parameters are p, s).
+        z3_vars = []
+        for a in lhs.args:
+            if isinstance(a, Var):
+                z3_vars.append(convert_const(a.name, a.T, ctx))
+        z3_rhs = convert(rhs, [v.name for v in arg_vars], {}, {}, ctx)
+        z3.RecAddDefinition(convert_const(name, lhs.head.get_type(), ctx), z3_vars, z3_rhs)
+        _registered_rec_defs.add(key)
+
+
 def convert(t, var_names, assms, to_real, ctx):
     """Convert term t to Z3 input."""
+    cache = {}
+
     def rec(t):
+        """Memoized converter: repeated subterms (e.g. huge state-update
+        chains substituted into recursive expansions) are converted once."""
+        if t._id in cache:
+            return cache[t._id]
+        r = rec_inner(t)
+        cache[t._id] = r
+        return r
+
+    def rec_inner(t):
         if t.is_var():
             z3_t = convert_const(t.name, t.T, ctx)
             if t.T == NatType and t.name not in assms:
@@ -150,25 +274,64 @@ def convert(t, var_names, assms, to_real, ctx):
             return z3.If(a >= 0, a, -a, ctx)
         elif t.is_comb('member', 2):
             a, S = rec(t.arg1), rec(t.arg)
+            if z3.is_array(S):
+                return z3.Select(S, a)
             return S(a)
+        elif t.is_comb('Pair', 2):
+            a, b = t.args
+            _, mk, _, _ = prod_sort(TFun(NatType, NatType), TFun(NatType, NatType), ctx)
+            return mk(rec(a), rec(b))
+        elif t.is_comb('reg', 1):
+            _, _, fst_proj, _ = prod_sort(TFun(NatType, NatType), TFun(NatType, NatType), ctx)
+            return fst_proj(rec(t.arg))
+        elif t.is_comb('heap', 1):
+            _, _, _, snd_proj = prod_sort(TFun(NatType, NatType), TFun(NatType, NatType), ctx)
+            return snd_proj(rec(t.arg))
+        elif t.is_comb('pair', 2):
+            a, b = t.args
+            _, mk, _, _ = prod_sort(a.get_type(), b.get_type(), ctx)
+            return mk(rec(a), rec(b))
+        elif t.is_comb('fst', 1):
+            T1, T2 = t.arg.get_type().args
+            _, _, fst_proj, _ = prod_sort(T1, T2, ctx)
+            return fst_proj(rec(t.arg))
+        elif t.is_comb('snd', 1):
+            T1, T2 = t.arg.get_type().args
+            _, _, _, snd_proj = prod_sort(T1, T2, ctx)
+            return snd_proj(rec(t.arg))
+        elif t.is_comb('fun_upd', 3):
+            # fun_upd s a b as a value: store into the array.
+            func, a, b = t.args
+            rf = rec(func)
+            if z3.is_array(rf):
+                return z3.Store(rf, rec(a), rec(b))
+            return rf(rec(a), rec(b))
         elif t.is_comb('fun_upd', 4):
-            # (f)(a := b)(x) = if x = a then b else f(x)
-            # Recursively expand nested fun_upd chains.
+            # (f)(a := b)(x) = Select(f[a := b], x).  In the array
+            # model f is an array, so the update is a Store and the
+            # application a Select; Z3's array theory simplifies
+            # Select(Store(...)) directly.
             func, a, b, x = t.args
-            rx = rec(x)
-            def expand(f, x_val):
-                if f.is_comb('fun_upd', 3):
-                    f2, a2, b2 = f.args
-                    return z3.If(x_val == rec(a2), rec(b2), expand(f2, x_val), ctx)
-                return rec(f)(x_val)
-            return z3.If(rx == rec(a), rec(b), expand(func, rx), ctx)
+            rf = rec(func)
+            if z3.is_array(rf):
+                return z3.Select(z3.Store(rf, rec(a), rec(b)), rec(x))
+            return rf(rec(x))
+        elif t.is_comb() and t.head.is_const() and t.head.name in recursive_preds:
+            f = convert_const(t.head.name, t.head.T, ctx)
+            return f(*[rec(arg) for arg in t.args])
         elif t.is_comb():
-            return rec(t.fun)(rec(t.arg))
+            f = rec(t.fun)
+            a = rec(t.arg)
+            if z3.is_array(f):
+                return z3.Select(f, a)
+            return f(a)
         elif t.is_const():
             if t == true:
                 return z3.BoolVal(True, ctx)
             elif t == false:
                 return z3.BoolVal(False, ctx)
+            elif t.T.is_fun():
+                return convert_const(t.name, t.T, ctx)
             else:
                 raise Z3Exception("convert: unsupported constant " + repr(t))
         else:
@@ -225,6 +388,7 @@ def solve_core(s, t, debug=False):
         if debug:
             print(*args)
 
+    register_recursive_defs(s.ctx)
     var_names = [v.name for v in term.get_vars(As + [C])]
     assms = dict()
     to_real = dict()

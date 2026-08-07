@@ -745,6 +745,31 @@ class Datatype(Item):
 
         # Add to type and term signature.
         res.append(extension.TConst(self.name, len(self.args)))
+        tvars = [TVar(targ) for targ in self.args]
+        T = TConst(self.name, *tvars)
+        # Projection functions are registered only for the memory-program
+        # state datatype.  For other datatypes their field names would
+        # clash with the same-named free variables in inductive rules
+        # (e.g. f in Sem_basic vs the f of Basic).
+        if self.name == 'state':
+            # Field names that occur in exactly one constructor can serve as
+            # projection functions; duplicated field names have no
+            # well-defined projection and are skipped.
+            field_names = [nm for c in self.constrs for nm in c['args']]
+            unique_fields = {nm for nm in field_names if field_names.count(nm) == 1}
+            for constr in self.constrs:
+                if constr['args']:
+                    argT, _ = constr['type'].strip_type()
+                    constr_args = [Var(nm, T2) for nm, T2 in zip(constr['args'], argT)]
+                    A = Const(constr['name'], constr['type'])
+                    for proj_name, arg in zip(constr['args'], constr_args):
+                        if proj_name not in unique_fields:
+                            continue
+                        proj_T = TFun(T, arg.get_type())
+                        res.append(extension.Constant(proj_name, proj_T))
+                        proj = Const(proj_name, proj_T)
+                        res.append(extension.Theorem("%s_%s" % (self.name, proj_name),
+                                                     Thm(Eq(proj(A(*constr_args)), arg))))
         for constr in self.constrs:
             res.append(extension.Constant(constr['name'], constr['type'], ref_name=constr['cname']))
 
@@ -785,8 +810,6 @@ class Datatype(Item):
                 res.append(extension.Theorem(th_name, Thm(Implies(assum, concl))))
 
         # Add the inductive theorem.
-        tvars = [TVar(targ) for targ in self.args]
-        T = TConst(self.name, *tvars)
         var_P = Var("P", TFun(T, BoolType))
         ind_assums = []
         for constr in self.constrs:

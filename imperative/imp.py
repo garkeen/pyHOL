@@ -1,7 +1,7 @@
 # Author: Bohua Zhan
 
-from kernel.type import TConst, TFun, BoolType
-from kernel.term import Term, Var, Const, Lambda, Inst, true
+from kernel.type import TConst, TFun, BoolType, NatType
+from kernel.term import Term, Var, Const, Lambda, Inst, Bound, true
 from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
@@ -28,8 +28,11 @@ def comT(T):
 def Skip(T):
     return Const("Skip", comT(T))
 
-def Assign(Ta, Tb):
-    return Const("Assign", TFun(Ta, TFun(TFun(Ta, Tb), Tb), comT(TFun(Ta, Tb))))
+def AssignV(T):
+    return Const("AssignV", TFun(TFun(T, NatType), TFun(TFun(T, NatType), comT(T))))
+
+def AssignH(T):
+    return Const("AssignH", TFun(TFun(T, NatType), TFun(TFun(T, NatType), comT(T))))
 
 def Seq(T):
     return Const("Seq", TFun(comT(T), comT(T), comT(T)))
@@ -64,11 +67,13 @@ def eval_Sem(c, st):
     T = st.get_type()
     if c.is_const("Skip"):
         return apply_theorem("Sem_Skip", inst=Inst(s=st))
-    elif c.is_comb("Assign", 2):
+    elif c.is_comb("AssignV", 2):
         a, b = c.args
-        Ta = a.get_type()
-        Tb = b.get_type().range_type()
-        pt = apply_theorem("Sem_Assign", inst=Inst(a=a, b=b, s=st))
+        pt = apply_theorem("Sem_AssignV", inst=Inst(a=a, b=b, st=st))
+        return pt.on_arg(arg_conv(norm_cv))
+    elif c.is_comb("AssignH", 2):
+        a, b = c.args
+        pt = apply_theorem("Sem_AssignH", inst=Inst(a=a, b=b, st=st))
         return pt.on_arg(arg_conv(norm_cv))
     elif c.is_comb("Seq", 2):
         c1, c2 = c.args
@@ -112,7 +117,7 @@ class eval_Sem_macro(Macro):
     def __init__(self):
         self.level = 10
         self.sig = Term
-        self.limit = 'Sem_Assign'
+        self.limit = 'Sem_AssignV'
 
     def can_eval(self, goal):
         assert isinstance(goal, Term), "eval_Sem_macro"
@@ -136,7 +141,7 @@ class eval_Sem_method(Method):
     """Apply eval_Sem macro."""
     def __init__(self):
         self.sig = []
-        self.limit = 'Sem_Assign'
+        self.limit = 'Sem_AssignV'
 
     def search(self, state, id, prevs, data=None):
         if data:
@@ -169,11 +174,12 @@ def compute_wp(T, c, Q):
     """
     if c.is_const("Skip"):  # Skip
         return apply_theorem("skip_rule", concl=Valid(T)(Q, c, Q))
-    elif c.is_comb("Assign", 2):  # Assign a b
+    elif c.is_comb("AssignV", 2):  # AssignV a b
         a, b = c.args
-        s = Var("s", T)
-        P2 = Lambda(s, Q(function.mk_fun_upd(s, a, b(s).beta_conv())))
-        return apply_theorem("assign_rule", inst=Inst(b=b), concl=Valid(T)(P2, c, Q))
+        return apply_theorem("assign_v_rule", inst=Inst(a=a, b=b, P=Q))
+    elif c.is_comb("AssignH", 2):  # AssignH a b
+        a, b = c.args
+        return apply_theorem("assign_h_rule", inst=Inst(a=a, b=b, P=Q))
     elif c.is_comb("Seq", 2):  # Seq c1 c2
         c1, c2 = c.args
         wp1 = compute_wp(T, c2, Q)  # Valid Q' c2 Q

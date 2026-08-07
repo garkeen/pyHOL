@@ -16,6 +16,7 @@ grammar = r"""
     ?expr: CNAME -> var_expr
         | expr "." CNAME -> field_expr
         | expr "[" expr "]" -> array_expr
+        | "!" expr -> deref_expr
         | INT -> num_expr
         | expr "+" expr -> plus_expr
         | "-" expr -> uminus_expr
@@ -32,6 +33,7 @@ grammar = r"""
         | expr ">=" expr -> greater_eq_cond
         | expr ">" expr -> greater_cond
         | "true" -> true_cond
+        | expr -> expr_cond
         | "if" cond "then" cond "else" cond -> if_cond
         | "forall" CNAME "." cond -> forall_cond
         | "(" cond ")"
@@ -49,6 +51,8 @@ grammar = r"""
     ?cmd: "skip" -> skip_cmd
         | CNAME ":=" expr -> assign_cmd
         | CNAME "[" expr "]" ":=" expr -> array_assign_cmd
+        | "!" expr ":=" expr -> deref_assign_cmd
+        | CNAME ":=" "new" -> new_cmd
         | CNAME "++" -> inc_cmd
         | CNAME "--" -> dec_cmd
         | "break" -> break_cmd
@@ -88,6 +92,9 @@ class HoareTransformer(Transformer):
     def array_expr(self, ident, idx):
         return expr.ArrayElt(ident, idx)
 
+    def deref_expr(self, e):
+        return expr.Deref(e)
+
     def num_expr(self, n):
         return expr.Const(int(n))
 
@@ -109,6 +116,9 @@ class HoareTransformer(Transformer):
     def fun_expr(self, fname, *args):
         assert fname in expr.global_fnames, "Function %s not found" % fname
         return expr.Fun(fname, *args)
+
+    def expr_cond(self, e):
+        return e
 
     def eq_cond(self, e1, e2):
         return expr.Op("==", e1, e2)
@@ -157,6 +167,12 @@ class HoareTransformer(Transformer):
 
     def array_assign_cmd(self, name, idx, e):
         return com.ArrayAssign(str(name), idx, e)
+
+    def deref_assign_cmd(self, ptr, e):
+        return com.DerefAssign(ptr, e)
+
+    def new_cmd(self, v):
+        return com.New(str(v))
 
     def inc_cmd(self, v):
         v = expr.Var(str(v))

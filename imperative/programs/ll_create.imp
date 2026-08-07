@@ -1,0 +1,10 @@
+theory ll_create
+imports hoare
+
+program ll_create
+  vars: p: ref, lim: nat
+  pre: lim == 0
+  post: p == 1 & !p == 0
+  body:
+    p := new;
+    !p := 0

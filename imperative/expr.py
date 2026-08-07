@@ -94,6 +94,26 @@ class Field(Expr):
         return self
 
 
+class Deref(Expr):
+    """Dereference: !e reads the value stored at address e."""
+    def __init__(self, e):
+        typecheck.checkinstance('Deref', e, Expr)
+        self.e = e
+        self.is_ident = False
+
+    def __repr__(self):
+        return "Deref(%s)" % repr(self.e)
+
+    def __str__(self):
+        return "!%s" % str(self.e)
+
+    def __eq__(self, other):
+        return isinstance(other, Deref) and self.e == other.e
+
+    def subst(self, inst):
+        return Deref(self.e.subst(inst))
+
+
 class Const(Expr):
     """Constant value."""
     def __init__(self, val):

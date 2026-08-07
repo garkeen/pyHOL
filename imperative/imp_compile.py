@@ -12,23 +12,24 @@ Each VC is an independent proof obligation.
 Re-translation preserves existing proofs: VCs whose proposition is
 unchanged keep their proof steps; only changed/new VCs are reset.
 
+Semantics: Burstall-Bornat style heap model.  The state is a pair
+Pair (reg :: nat => nat) (heap :: nat => nat): program variables live
+in the register array (assigned variables get indices in declaration
+order), and the heap is an independent array.  !p reads heap st p,
+p := new allocates lim + 1 and advances the user variable lim.
+
 Limitations:
-* nat types only (no int, no arrays).
-* Program variables that are assigned are mapped to numeric state
-  indices (s 0, s 1, ...) in declaration order.
-* for/break/continue are supported: for is desugared into a while with
-  a compiler-generated flag variable (only when the loop body may
-  break), and break path conditions are automatically conjoined to the
-  loop invariant so that exit verification conditions stay provable.
+* nat/ref only (reg and heap are nat-valued arrays; no int).
+* Heap safety is not checked: !p := v is a total function update.
 """
 
 import os
 import re
 import textwrap
 
-from kernel.type import NatType, IntType, TFun
+from kernel.type import NatType, IntType, TFun, TConst
 from kernel import term
-from kernel.term import Term, Var, Lambda, Number, Eq, Not, true, false
+from kernel.term import Term, Var, Lambda, Number, Eq, Not, true, false, Const
 from kernel import theory
 from logic import basic
 from logic.logic import mk_if
@@ -43,6 +44,134 @@ from domains.nat import util_nat as nat
 
 class CompileError(Exception):
     """Error while parsing or translating an .imp file."""
+
+
+# Inductive predicates of the imported theories that may appear in
+# assertions.  Each entry maps the predicate name used in .imp files to
+# the HOL constant name.  Types are resolved from the theory at compile
+# time (see _register_predicates).
+_assertion_preds = ['ll', 'reached']
+
+
+def _load_theories(imports):
+    """Load the given theories (and their dependencies) into the current
+    theory, in dependency order.  Unlike repeated basic.load_theory calls
+    (each of which resets the global theory to EmptyTheory), this merges
+    all the imported theories into a single context."""
+    from logic.basic import load_theory_cache, load_metadata
+    load_metadata()
+    theory_cache = load_theory_cache.__globals__.get('theory_cache', {})
+    closure = []
+
+    def dfs(name):
+        if name in closure:
+            return
+        if name in theory_cache:
+            for import_name in theory_cache[name]['imports']:
+                dfs(import_name)
+        closure.append(name)
+
+    for nm in imports:
+        dfs(nm)
+    if 'hoare' not in closure:
+        closure.append('hoare')
+    for nm in closure:
+        cache = load_theory_cache(nm)
+        for item in cache['content']:
+            if item.error is None:
+                try:
+                    theory.thy.unchecked_extend(item.get_extension())
+                except theory.TheoryException:
+                    pass  # Skip duplicates
+
+
+def _register_predicates():
+    """Register inductive predicates of the loaded theories for use in
+    assertions (e.g. ll(p, s)).  This is safe to call multiple times."""
+    from kernel.type import TFun, BoolType, NatType
+    for pred in _assertion_preds:
+        if theory.thy.has_term_sig(pred) and pred not in expr_mod.global_fnames:
+            T = theory.thy.get_term_sig(pred)
+            expr_mod.global_fnames[pred] = (pred, T)
+    _register_recursive_preds()
+
+
+def _register_recursive_preds():
+    """Register inductive predicates of the loaded theories for Z3
+    recursive functions.
+
+    Recursive function equations are extracted mechanically from the
+    theory's own constructor theorems, not hand-written.  For a predicate
+    P with base constructor (e.g. ll_null: P null s) and step constructor
+    (e.g. ll_step: ~(x = null) --> P (s x) s --> P x s), the equation
+    P args = (base | ~(arg = null) & step_prems) is built from the two
+    theorem props, with null rewritten via null_def.
+    """
+    from kernel.term import Var, Forall, Eq, Or, And, Const
+    from kernel.type import NatType
+    from logic import conv
+
+    def strip_foralls(t):
+        """Strip outer !x_1 ... x_n. Stored theorems use free Vars
+        (no quantifier prefix), so also collect the head's argument
+        variables in argument order."""
+        arg_vars = []
+        while t.is_forall():
+            abs_t = t.arg
+            v = Var(abs_t.var_name, abs_t.var_T)
+            arg_vars.append(v)
+            t = abs_t.subst_bound(v)
+        return t, arg_vars
+
+    def base_from_ctor(base_name, step_lhs):
+        """Base disjunct of the expansion: either arg = null (null
+        constructor) or arg_i = arg_j (reflexive constructor)."""
+        th = theory.thy.get_theorem(base_name, svar=False)
+        base_lhs, _ = strip_foralls(th.prop)
+        args = base_lhs.args
+        null_c = Const('null', NatType)
+        for a in args:
+            if a == null_c:
+                return None  # null branch handled via rewrite below
+        for i in range(len(args)):
+            for j in range(i + 1, len(args)):
+                if args[i] == args[j]:
+                    return Eq(args[i], args[j])
+        raise CompileError("Cannot extract base case from constructor %s" % base_name)
+
+    def unfold_from_ctors(pred_name, base_name, step_name):
+        if not theory.thy.has_theorem(step_name):
+            return None
+        th = theory.thy.get_theorem(step_name, svar=False)
+        t, arg_vars = strip_foralls(th.prop)
+        assms = []
+        while t.is_implies():
+            assms.append(t.arg1)
+            t = t.arg
+        lhs = t
+        conj = And(*assms) if len(assms) > 1 else assms[0]
+        base = base_from_ctor(base_name, lhs)
+        if base is None:
+            base = Eq(lhs.args[0], Const('null', NatType))
+        rhs = Or(base, conj)
+        if theory.thy.has_theorem('null_def'):
+            cv = conv.top_conv(conv.try_conv(conv.rewr_conv('null_def')))
+            rhs = cv.eval(rhs).rhs
+        body = Eq(lhs, rhs)
+        if not arg_vars:
+            arg_vars = [v for v in lhs.args if isinstance(v, Var)]
+        # Quantify in lhs argument order, so that stripping the foralls
+        # in register_recursive_defs yields the same order as t.args.
+        for v in arg_vars:
+            body = Forall(v, body)
+        return body
+
+    for pred, base, step in [
+            ('ll', 'll_null', 'll_step'),
+            ('reached', 'r_self', 'r_step')]:
+        eq_term = unfold_from_ctors(pred, base, step)
+        if eq_term is not None:
+            z3wrapper.register_recursive_pred(pred, eq_term)
 
 
 class ImpProgram:
@@ -168,6 +297,9 @@ def get_assigned_vars(com):
         pass
     elif isinstance(com, com_mod.ArrayAssign):
         res.add(com.name)
+    elif isinstance(com, com_mod.New):
+        res.add(com.v)
+        res.add('lim')
     elif isinstance(com, com_mod.For):
         res |= get_assigned_vars(com.init)
         res |= get_assigned_vars(com.step)
@@ -196,16 +328,22 @@ class Translator:
     def __init__(self, prog, prog_table=None):
         self.prog = prog
         self.prog_table = prog_table or {}
-        # Determine value type: int if any variable is int, else nat.
-        has_int = any(ty == "int" for _, ty in prog.vars)
-        self.value_T = IntType if has_int else NatType
-        self.T = TFun(NatType, self.value_T)
-        self.s = Var("s", self.T)
-
-        # Check types: nat, int, nat[N], int[N] supported.
+        # Check types: nat, nat[N], ref supported (heap model is nat-valued:
+        # the state is Pair (reg :: nat => nat) (heap :: nat => nat), both
+        # variable store and heap are arrays of naturals).
         for nm, ty in prog.vars:
-            if not re.match(r'^(nat|int)(\[\d+\])?$', ty):
-                raise CompileError("Variable '%s': unsupported type %s." % (nm, ty))
+            if not re.match(r'^(nat)(\[\d+\])?$', ty) and ty != 'ref':
+                raise CompileError("Variable '%s': unsupported type %s (heap "
+                                   "model supports nat, nat[N], ref only)." % (nm, ty))
+        has_ref = any(ty == 'ref' for _, ty in prog.vars)
+        self.value_T = NatType
+        self.T = TConst('state')
+        self.st = Var('st', self.T)
+        reg_T = TFun(self.T, TFun(NatType, NatType))
+        self._reg_const = Const('reg', reg_T)
+        self._heap_const = Const('heap', reg_T)
+        # The heap of the current state; 's' in assertions denotes it.
+        self.s = self._heap_const(self.st)
 
         # Parse array declarations: "nat[4]" -> (type, size)
         self.array_info = {}  # name -> (base_index, size)
@@ -245,20 +383,32 @@ class Translator:
         self.pc_stack = []
 
         self.com = com
+        # First pass: translate once to allocate all compiler-generated
+        # flag variables, so indices are stable before real translation.
+        self.translate_com(com)
         self.com_term = self.translate_com(com)
+
+    def _reg(self, idx):
+        """reg st idx: the program variable register at index idx."""
+        return self._reg_const(self.st)(idx)
 
     def new_flag_var(self):
         """Allocate a compiler-generated flag variable (nat 0/1) in the state."""
         name = '__imp_done%d' % self.next_flag
-        self.next_flag += 1
-        self.state_idx[name] = len(self.state_idx)
+        if name not in self.state_idx:
+            self.state_idx[name] = len(self.state_idx)
         return name
 
     def translate_expr(self, e):
         """Translate an expression to a HOL term (nat semantics)."""
         if isinstance(e, expr_mod.Var):
-            if e.name in self.state_idx:
-                return self.s(Number(NatType, self.state_idx[e.name]))
+            if e.name == 's':
+                if e.name in self.state_idx or e.name in self.params:
+                    raise CompileError("Variable name 's' is reserved for the heap.")
+                # The heap, usable in assertions (e.g. ll(p, s)).
+                return self.s
+            elif e.name in self.state_idx:
+                return self._reg(Number(NatType, self.state_idx[e.name]))
             elif e.name in self.params:
                 return Var(e.name, self.value_T)
             else:
@@ -266,7 +416,11 @@ class Translator:
         elif isinstance(e, expr_mod.ArrayElt):
             if e.ident.name not in self.array_info:
                 raise CompileError("Array access to non-array '%s'." % e.ident.name)
-            return self.s(self._array_index(e.ident.name, e.idx))
+            return self._reg(self._array_index(e.ident.name, e.idx))
+        elif isinstance(e, expr_mod.Deref):
+            # Heap read: !e = heap st (e).
+            addr = self.translate_expr(e.e)
+            return self.s(addr)
         elif isinstance(e, expr_mod.Const):
             if isinstance(e.val, bool):
                 return true if e.val else false
@@ -317,6 +471,14 @@ class Translator:
             if e.fname not in expr_mod.global_fnames:
                 raise CompileError("Unknown function '%s'." % e.fname)
             from kernel.term import Const
+            if e.fname == 'll':
+                # ll(p, s): heap predicate evaluated on the heap.
+                if len(e.args) != 2:
+                    raise CompileError("ll takes two arguments: ll(p, s).")
+                p = self.translate_expr(e.args[0])
+                s_t = self.translate_expr(e.args[1])
+                name, T = expr_mod.global_fnames['ll']
+                return Const(name, T)(p, s_t)
             name, T = expr_mod.global_fnames[e.fname]
             return Const(name, T)(*[self.translate_expr(a) for a in e.args])
         else:
@@ -325,7 +487,7 @@ class Translator:
     def translate_pred(self, text):
         """Translate a condition text (pre/post/invariant) to a lambda over the state."""
         e = parser2.parse_cond(text)
-        return Lambda(self.s, self.translate_expr(e))
+        return Lambda(self.st, self.translate_expr(e))
 
     def translate_com(self, com, flag=None):
         """Translate a Com AST to a HOL com term.
@@ -341,13 +503,13 @@ class Translator:
             if com.v.name not in self.state_idx:
                 raise CompileError("Assigning to undeclared or non-state variable '%s'." % com.v.name)
             idx = Number(NatType, self.state_idx[com.v.name])
-            b = Lambda(self.s, self.translate_expr(com.e))
-            return imp.Assign(NatType, self.value_T)(idx, b)
+            b = Lambda(self.st, self.translate_expr(com.e))
+            return imp.AssignV(self.T)(Lambda(self.st, idx), b)
         elif isinstance(com, com_mod.Seq):
             return self.translate_seq(com.c1, com.c2, flag)
         elif isinstance(com, com_mod.Cond):
             b_term = self.translate_expr(com.b)
-            b = Lambda(self.s, b_term)
+            b = Lambda(self.st, b_term)
             self.pc_stack.append(b_term)
             c1 = self.translate_com(com.c1, flag)
             c2 = self.translate_com(com.c2, flag)
@@ -359,6 +521,10 @@ class Translator:
             return self.translate_for(com, flag)
         elif isinstance(com, com_mod.ArrayAssign):
             return self.translate_array_assign(com)
+        elif isinstance(com, com_mod.DerefAssign):
+            return self.translate_deref_assign(com)
+        elif isinstance(com, com_mod.New):
+            return self.translate_new(com)
         elif isinstance(com, com_mod.Break):
             if not self.loop_stack:
                 raise CompileError("break outside of a loop.")
@@ -367,8 +533,8 @@ class Translator:
                 raise CompileError("break: internal error (no flag).")
             pc = term.And(*self.pc_stack) if self.pc_stack else true
             ctx['breaks'].append(pc)
-            return imp.Assign(NatType, self.value_T)(Number(NatType, self.state_idx[ctx['flag']]),
-                                                Lambda(self.s, Number(NatType, 1)))
+            return imp.AssignV(self.T)(Lambda(self.st, Number(NatType, self.state_idx[ctx['flag']])),
+                                       Lambda(self.st, Number(NatType, 1)))
         elif isinstance(com, com_mod.Assert):
             return self.translate_assert(com)
         elif isinstance(com, com_mod.Call):
@@ -398,7 +564,7 @@ class Translator:
             return self.translate_seq(com.c1, com.c2, flag)
         elif isinstance(com, com_mod.Cond):
             b_term = self.translate_expr(com.b)
-            b = Lambda(self.s, b_term)
+            b = Lambda(self.st, b_term)
             self.pc_stack.append(b_term)
             c1 = self.guard_after_break(com.c1, flag)
             c2 = self.guard_after_break(com.c2, flag)
@@ -409,8 +575,8 @@ class Translator:
         elif isinstance(com, com_mod.For):
             return self.translate_for(com, flag, guard=True)
         else:
-            flag_zero = Eq(self.s(Number(NatType, self.state_idx[flag])), Number(NatType, 0))
-            return imp.Cond(self.T)(Lambda(self.s, flag_zero),
+            flag_zero = Eq(self._reg(Number(NatType, self.state_idx[flag])), Number(NatType, 0))
+            return imp.Cond(self.T)(Lambda(self.st, flag_zero),
                                     self.translate_com(com, flag),
                                     imp.Skip(self.T))
 
@@ -424,13 +590,13 @@ class Translator:
         constraint on function values, so flag <= 1 would admit flag = -1."""
         zero = Number(NatType, 0)
         one = Number(NatType, 1)
-        flag = self.s(Number(NatType, self.state_idx[ctx['flag']]))
+        flag = self._reg(Number(NatType, self.state_idx[ctx['flag']]))
         flag_in_01 = term.Or(Eq(flag, zero), Eq(flag, one))
         if not ctx['breaks']:
-            return Lambda(self.s, term.And(inv, flag_in_01))
+            return Lambda(self.st, term.And(inv, flag_in_01))
         flag_eq_1 = Eq(flag, one)
-        return Lambda(self.s, term.And(inv, flag_in_01,
-                                       term.Implies(flag_eq_1, term.Or(*ctx['breaks']))))
+        return Lambda(self.st, term.And(inv, flag_in_01,
+                                        term.Implies(flag_eq_1, term.Or(*ctx['breaks']))))
 
     def translate_while(self, com, flag, guard=False):
         """Translate a While.  A fresh break flag is introduced only if the
@@ -443,24 +609,24 @@ class Translator:
             self.loop_stack.append(ctx)
             body = self.guard_after_break(com.c, flag=f)
             self.loop_stack.pop()
-            b = Lambda(self.s, term.And(self.translate_expr(com.b),
-                                        Eq(self.s(Number(NatType, self.state_idx[f])), Number(NatType, 0))))
+            b = Lambda(self.st, term.And(self.translate_expr(com.b),
+                                         Eq(self._reg(Number(NatType, self.state_idx[f])), Number(NatType, 0))))
             inv = self.loop_invariant(inv_term, ctx)
             wh = imp.While(self.T)(b, inv, body)
-            init = imp.Assign(NatType, self.value_T)(Number(NatType, self.state_idx[f]),
-                                                Lambda(self.s, Number(NatType, 0)))
+            init = imp.AssignV(self.T)(Lambda(self.st, Number(NatType, self.state_idx[f])),
+                                       Lambda(self.st, Number(NatType, 0)))
             res = imp.Seq(self.T)(init, wh)
         else:
-            b = Lambda(self.s, self.translate_expr(com.b))
+            b = Lambda(self.st, self.translate_expr(com.b))
             ctx = {'flag': None, 'breaks': []}
             self.loop_stack.append(ctx)
             body = self.translate_com(com.c, flag)
             self.loop_stack.pop()
-            wh = imp.While(self.T)(b, Lambda(self.s, inv_term), body)
+            wh = imp.While(self.T)(b, Lambda(self.st, inv_term), body)
             res = wh
         if guard:
-            flag_zero = Eq(self.s(Number(NatType, self.state_idx[flag])), Number(NatType, 0))
-            res = imp.Cond(self.T)(Lambda(self.s, flag_zero), res, imp.Skip(self.T))
+            flag_zero = Eq(self._reg(Number(NatType, self.state_idx[flag])), Number(NatType, 0))
+            res = imp.Cond(self.T)(Lambda(self.st, flag_zero), res, imp.Skip(self.T))
         return res
 
     def _array_index(self, name, idx_expr):
@@ -487,11 +653,37 @@ class Translator:
             nat.less(idx_term, Number(NatType, size))
         )
 
-        assign = imp.Assign(NatType, self.value_T)(state_idx, Lambda(self.s, val_term))
+        assign = imp.AssignV(self.T)(Lambda(self.st, state_idx), Lambda(self.st, val_term))
         skip = imp.Skip(self.T)
-        b_true = Lambda(self.s, term.true)
-        stuck = imp.While(self.T)(b_true, Lambda(self.s, false), skip)
-        return imp.Cond(self.T)(Lambda(self.s, bounds), assign, stuck)
+        b_true = Lambda(self.st, term.true)
+        stuck = imp.While(self.T)(b_true, Lambda(self.st, false), skip)
+        return imp.Cond(self.T)(Lambda(self.st, bounds), assign, stuck)
+
+    def translate_deref_assign(self, com):
+        """!p := v -> AssignH p v: write v to heap address p."""
+        idx_term = self.translate_expr(com.ptr)
+        val_term = self.translate_expr(com.e)
+        return imp.AssignH(self.T)(Lambda(self.st, idx_term), Lambda(self.st, val_term))
+
+    def translate_new(self, com):
+        """p := new -> p := lim + 1; lim := lim + 1.
+
+        lim is a user-declared nat variable holding the allocation
+        frontier.  Fresh addresses are lim + 1 (0 is null); both updates
+        are register assignments (variables live in the reg array).
+        """
+        if com.v not in self.state_idx:
+            raise CompileError("new: target variable '%s' is not a state variable." % com.v)
+        if 'lim' not in self.state_idx:
+            raise CompileError("new: variable 'lim' (nat) must be declared for allocation.")
+        v_idx = Number(NatType, self.state_idx[com.v])
+        lim_idx = Number(NatType, self.state_idx['lim'])
+        lim_val = self._reg(lim_idx)
+        a = imp.AssignV(self.T)(Lambda(self.st, v_idx),
+                                Lambda(self.st, nat.plus(lim_val, Number(NatType, 1))))
+        b = imp.AssignV(self.T)(Lambda(self.st, lim_idx),
+                                Lambda(self.st, nat.plus(lim_val, Number(NatType, 1))))
+        return imp.Seq(self.T)(a, b)
 
     def translate_assert(self, com):
         """assert P -> Cond(P, Skip, While(true,true,Skip)).
@@ -501,13 +693,13 @@ class Translator:
         """
         P = self.translate_expr(com.cond)
         skip = imp.Skip(self.T)
-        b_true = Lambda(self.s, term.true)
+        b_true = Lambda(self.st, term.true)
         # While(true, false, Skip): invariant=false means WP=false.
         # Cond(P, Skip, While(true,false,Skip)) gives WP = P ∧ Q:
         #   true branch: P ⟶ Q
         #   false branch: ¬P ⟶ false = P  (P MUST hold)
-        stuck = imp.While(self.T)(b_true, Lambda(self.s, false), skip)
-        return imp.Cond(self.T)(Lambda(self.s, P), skip, stuck)
+        stuck = imp.While(self.T)(b_true, Lambda(self.st, false), skip)
+        return imp.Cond(self.T)(Lambda(self.st, P), skip, stuck)
 
     def translate_call(self, com):
         """y := call f(args) -> Cond(pre_f, Assign(y, post_value), stuck).
@@ -543,12 +735,12 @@ class Translator:
 
         # Assign result = value
         result_idx = Number(NatType, self.state_idx[com.result])
-        assign = imp.Assign(NatType, self.value_T)(result_idx, Lambda(self.s, value_term))
+        assign = imp.AssignV(self.T)(Lambda(self.st, result_idx), Lambda(self.st, value_term))
 
         skip = imp.Skip(self.T)
-        b_true = Lambda(self.s, term.true)
-        stuck = imp.While(self.T)(b_true, Lambda(self.s, false), skip)
-        return imp.Cond(self.T)(Lambda(self.s, pre_term), assign, stuck)
+        b_true = Lambda(self.st, term.true)
+        stuck = imp.While(self.T)(b_true, Lambda(self.st, false), skip)
+        return imp.Cond(self.T)(Lambda(self.st, pre_term), assign, stuck)
 
 
     def translate_for(self, com, flag, guard=False):
@@ -562,24 +754,24 @@ class Translator:
             self.loop_stack.append(ctx)
             body = self.guard_after_break(com.c, flag=f)
             self.loop_stack.pop()
-            b = Lambda(self.s, term.And(self.translate_expr(com.cond),
-                                        Eq(self.s(Number(NatType, self.state_idx[f])), Number(NatType, 0))))
+            b = Lambda(self.st, term.And(self.translate_expr(com.cond),
+                                         Eq(self._reg(Number(NatType, self.state_idx[f])), Number(NatType, 0))))
             inv = self.loop_invariant(inv_term, ctx)
             body = imp.Seq(self.T)(body, step)
             wh = imp.While(self.T)(b, inv, body)
-            init = imp.Assign(NatType, self.value_T)(Number(NatType, self.state_idx[f]),
-                                                Lambda(self.s, Number(NatType, 0)))
+            init = imp.AssignV(self.T)(Lambda(self.st, Number(NatType, self.state_idx[f])),
+                                       Lambda(self.st, Number(NatType, 0)))
             res = imp.Seq(self.T)(init, imp.Seq(self.T)(self.translate_com(com.init, flag=f), wh))
         else:
-            b = Lambda(self.s, self.translate_expr(com.cond))
+            b = Lambda(self.st, self.translate_expr(com.cond))
             ctx = {'flag': None, 'breaks': []}
             self.loop_stack.append(ctx)
             body = imp.Seq(self.T)(self.translate_com(com.c, flag), step)
             self.loop_stack.pop()
-            res = imp.Seq(self.T)(self.translate_com(com.init, flag), imp.While(self.T)(b, Lambda(self.s, inv_term), body))
+            res = imp.Seq(self.T)(self.translate_com(com.init, flag), imp.While(self.T)(b, Lambda(self.st, inv_term), body))
         if guard:
-            flag_zero = Eq(self.s(Number(NatType, self.state_idx[flag])), Number(NatType, 0))
-            res = imp.Cond(self.T)(Lambda(self.s, flag_zero), res, imp.Skip(self.T))
+            flag_zero = Eq(self._reg(Number(NatType, self.state_idx[flag])), Number(NatType, 0))
+            res = imp.Cond(self.T)(Lambda(self.st, flag_zero), res, imp.Skip(self.T))
         return res
 
 
@@ -625,7 +817,10 @@ def compile_programs(imp_file, existing_pyhol_text=None, validate_steps=True):
     all_vcs = []
     content = []
     with theory.fresh_theory():
-        basic.load_theory('hoare')
+        _load_theories(imp_file.imports or ['hoare'])
+        # Register inductive predicates of the imported theories so they can
+        # be used in assertions (e.g. ll(p, s)).
+        _register_predicates()
         # Build program table for cross-program calls
         prog_table = {}
         for p in imp_file.programs:
@@ -637,7 +832,7 @@ def compile_programs(imp_file, existing_pyhol_text=None, validate_steps=True):
             post = tr.translate_pred(prog.post)
             goal = imp.Valid(tr.T)(pre, tr.com_term, post)
             pt = imp.vcg_norm(tr.T, goal)
-            vars_dict = {nm: ('int' if tr.value_T == IntType else 'nat') for nm in tr.params}
+            vars_dict = {nm: 'nat' for nm in tr.params}
 
             prog_vcs = []
             with settings.global_setting(unicode=True):

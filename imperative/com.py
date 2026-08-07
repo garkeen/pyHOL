@@ -91,6 +91,18 @@ class ArrayAssign(Com):
         self.idx = idx
         self.e = e
 
+class DerefAssign(Com):
+    """Memory write: !p := e."""
+    def __init__(self, ptr, e):
+        assert isinstance(ptr, expr.Expr) and isinstance(e, expr.Expr), "DerefAssign"
+        self.ptr = ptr
+        self.e = e
+
+class New(Com):
+    """Allocate: p := new, taking the address lim and incrementing lim."""
+    def __init__(self, v):
+        self.v = str(v)
+
 class Call(Com):
     """Function call (desugared by Translator using callee spec)."""
     def __init__(self, result, fname, args):
