@@ -2,7 +2,7 @@ import os, re, json
 from flask import request
 from flask.json import jsonify
 from SAINT import parser, latex, context
-from SAINT.calcfmt import parse_theory
+from SAINT.calcfmt import parse_calc_text
 from app.app import app
 
 dirname = os.path.dirname(__file__)
@@ -14,7 +14,6 @@ def saint_library():
     """Return library items from base.calc, grouped by section."""
     path = os.path.join(EXAMPLES_DIR, "base.calc")
     with open(path, 'r', encoding='utf-8') as f:
-        from SAINT.calcfmt import parse_calc_text
         info = parse_calc_text(f.read())
 
     sections = []

@@ -1,17 +1,17 @@
 theory  LogFunction02
 -- migrated from the legacy goal/proof format; parameters and targets are placeholders
 
-problem  "Goal 1"
+calculation  "Goal 1"
   goal  -log(1 - x) - log(1 + x) = -SUM(k, 0, oo, (-1) ^ k * (-x) ^ (k + 1) / (k + 1)) - SUM(k, 0, oo, (-1) ^ k * x ^ (k + 1) / (k + 1))
   calc
     SeriesExpansionIdentity  -- TODO: unknown rule  -- TODO: supply parameters
     SeriesExpansionIdentity  -- TODO: unknown rule  -- TODO: supply parameters
   qed
 
-problem  "Goal 2"
+calculation  "Goal 2"
   goal  x / (-(x ^ 2) + 1) = 1/2 * SUM(k, 0, oo, x ^ k) - 1/2 * SUM(k, 0, oo, x ^ k * (-1) ^ k)
 
-problem  "Goal 3"
+calculation  "Goal 3"
   goal  (INT x:[0,pi / 2]. cos(x) / sin(x) * log(1 / cos(x))) = pi ^ 2 / 24
   calc
     substitute  -- TODO: supply parameters

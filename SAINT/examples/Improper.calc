@@ -1,12 +1,12 @@
 
-problem  "Exercise 1"
+calculation  "Exercise 1"
   goal  INT x:[1, inf]. 1/x^2
   calc
     elim_infinity
     simplify
   qed
 
-problem  "Exercise 2"
+calculation  "Exercise 2"
   goal  INT x:[-inf, 0]. x*exp(x)
   calc
     elim_infinity
@@ -15,12 +15,12 @@ problem  "Exercise 2"
     simplify
   qed
 
-problem  "Exercise 3"
+calculation  "Exercise 3"
   goal  INT x:[2, 5]. 1/sqrt(x-2)
   calc
   qed
 
-problem  "Exercise 4"
+calculation  "Exercise 4"
   goal  INT x:[0, 1]. log(x)
   calc
   qed

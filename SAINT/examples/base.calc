@@ -213,18 +213,18 @@ theorem  "(m + 1) * factorial(m) = factorial(m + 1)"  category = factorial
 theorem  "m * factorial(m - 1) = factorial(m)"  attributes = [bidirectional]  category = factorial
 theorem  "binom(2*k+2, k+1) = 2 * binom(2*k, k) * ((2*k+1) / (k+1))"  category = binomial
 header  "Derived integrals"  level = 1
-calculation  "(INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C)"
-calculation  "(INT x. 1 / (a * x + b)) = log(abs(a * x + b)) / a + SKOLEM_CONST(C)"  conds = [a != 0]
-calculation  "(INT x. x / (a * x ^ 2 + b)) = log(a * x ^ 2 + b) / (2 * a) + SKOLEM_CONST(C)"  conds = [a != 0]
-calculation  "(INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C)"  conds = [a != 0]
-calculation  "(INT x. sin(a * x)) = - (cos(a * x) / a) + SKOLEM_CONST(C)"  conds = [a != 0]
-calculation  "(INT x. cos(a * x)) = sin(a * x) / a + SKOLEM_CONST(C)"  conds = [a != 0]
-calculation  "(INT x. 1 / (a ^ 2 + x ^ 2)) = (1 / a) * atan(x / a) + SKOLEM_CONST(C)"  conds = [a != 0]
-calculation  "(INT x. x ^ k * log(x)) = x ^ (k + 1) * log(x) / (k + 1) - x ^ (k + 1) / (k + 1) ^ 2 + SKOLEM_CONST(C)"  conds = [x > 0]
-calculation  "(INT x:[0,1]. x ^ m * log(x) ^ n) = (-1)^n * factorial(n) / (m+1) ^ (n+1)"  conds = [m >= 0; n >= 0]
-calculation  "(INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2)"  conds = [y > 0]
-calculation  "(INT x. a ^ x) = a ^ x / log(a) + SKOLEM_CONST(C)"
-calculation  "(INT x. cos(x) ^ 2) = 1/4 * sin(2 * x) + 1/2 * x + SKOLEM_CONST(C)"
+theorem  "(INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C)"
+theorem  "(INT x. 1 / (a * x + b)) = log(abs(a * x + b)) / a + SKOLEM_CONST(C)"  conds = [a != 0]
+theorem  "(INT x. x / (a * x ^ 2 + b)) = log(a * x ^ 2 + b) / (2 * a) + SKOLEM_CONST(C)"  conds = [a != 0]
+theorem  "(INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C)"  conds = [a != 0]
+theorem  "(INT x. sin(a * x)) = - (cos(a * x) / a) + SKOLEM_CONST(C)"  conds = [a != 0]
+theorem  "(INT x. cos(a * x)) = sin(a * x) / a + SKOLEM_CONST(C)"  conds = [a != 0]
+theorem  "(INT x. 1 / (a ^ 2 + x ^ 2)) = (1 / a) * atan(x / a) + SKOLEM_CONST(C)"  conds = [a != 0]
+theorem  "(INT x. x ^ k * log(x)) = x ^ (k + 1) * log(x) / (k + 1) - x ^ (k + 1) / (k + 1) ^ 2 + SKOLEM_CONST(C)"  conds = [x > 0]
+theorem  "(INT x:[0,1]. x ^ m * log(x) ^ n) = (-1)^n * factorial(n) / (m+1) ^ (n+1)"  conds = [m >= 0; n >= 0]
+theorem  "(INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2)"  conds = [y > 0]
+theorem  "(INT x. a ^ x) = a ^ x / log(a) + SKOLEM_CONST(C)"
+theorem  "(INT x. cos(x) ^ 2) = 1/4 * sin(2 * x) + 1/2 * x + SKOLEM_CONST(C)"
 header  "Results from contour integration"  level = 1
 theorem  "(INT x:[0, oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2))) = (pi * (1 - exp(-a * m))) / (2 * a ^ 2)"  conds = [a > 0; m > 0]
 theorem  "(INT x:[0, oo]. cos(a * x) / (x ^ 2 + b ^ 2)) = (pi / (2 * b)) * exp(-a * b)"  conds = [a > 0; b > 0]

@@ -5,7 +5,7 @@ import os
 
 from SAINT.expr import Expr, expr_to_pattern
 from SAINT import parser
-from SAINT.calcfmt import parse_theory
+from SAINT.calcfmt import parse_calc_text
 from SAINT.conditions import Conditions
 
 dirname = os.path.dirname(__file__)
@@ -311,10 +311,8 @@ class Context:
             self.substs[var] = expr
 
     def extend_by_item(self, item):
-        # Skip multi-line calculation blocks (computation tasks, not library items)
-        if item['type'] == 'calculation' and item.get('goal'):
-            return
-        if item['type'] in ('axiom', 'problem', 'theorem', 'calculation'):
+        # Only load theorem/definition as identities. calculation = computation task, skip.
+        if item['type'] in ('axiom', 'theorem'):
             e = parser.parse_expr(item['expr'])
             if e.is_equals() and e.lhs.is_indefinite_integral():
                 self.add_indefinite_integral(e)
@@ -349,7 +347,7 @@ class Context:
 
         filename = os.path.join(dirname, "examples/" + book_name + '.calc')
         with open(filename, 'r', encoding='utf-8') as f:
-            info = parse_theory(f.read())
+            info = parse_calc_text(f.read())
 
         # Load imported books
         if 'imports' in info:

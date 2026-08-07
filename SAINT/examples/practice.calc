@@ -1,6 +1,6 @@
 theory  practice
 
-problem  "chapter1_practice01_01: Goal 1"
+calculation  "chapter1_practice01_01: Goal 1"
   goal  (INT x:[0,8]. 1 / (x - 2)) = log(3)
   calc
     substitute
@@ -9,7 +9,7 @@ problem  "chapter1_practice01_01: Goal 1"
     simplify
   qed
 
-problem  "chapter1_practice01_02: Goal 1"
+calculation  "chapter1_practice01_02: Goal 1"
   goal  (INT x:[0,3]. 1 / (x - 1) ^ (2/3)) = 3 * (1 + 2 ^ (1/3))
   calc
     substitute
@@ -19,7 +19,7 @@ problem  "chapter1_practice01_02: Goal 1"
     simplify
   qed
 
-problem  "chapter1section5: Goal 1"
+calculation  "chapter1section5: Goal 1"
   goal  (INT x:[0,oo]. log(x) / (x ^ 2 + 1)) = 0
   calc
     split_region
@@ -30,7 +30,7 @@ problem  "chapter1section5: Goal 1"
     simplify
   qed
 
-problem  "chapter2_practice01: Goal 1"
+calculation  "chapter2_practice01: Goal 1"
   goal  (INT y:[0,1]. 1 / (sqrt(y) * sqrt(1 - y))) = pi
   calc
     substitute_inverse
@@ -40,7 +40,7 @@ problem  "chapter2_practice01: Goal 1"
     simplify
   qed
 
-problem  "chapter2_practice01: Goal 2"
+calculation  "chapter2_practice01: Goal 2"
   goal  (INT y:[0,1]. log(y) / (sqrt(y) * sqrt(1 - y))) = -(2 * pi * log(2))
   calc
     substitute_inverse
@@ -52,7 +52,7 @@ problem  "chapter2_practice01: Goal 2"
     simplify
   qed
 
-problem  "chapter2_practice01: Goal 3"
+calculation  "chapter2_practice01: Goal 3"
   goal  (INT x:[0,4]. log(x) / sqrt(4 * x - x ^ 2)) = 0
   calc
     substitute
@@ -68,13 +68,13 @@ problem  "chapter2_practice01: Goal 3"
     simplify
   qed
 
-problem  "chapter2_practice01: Goal 4"
+calculation  "chapter2_practice01: Goal 4"
   goal  4 * x - x ^ 2 > 0
   calc
     Equation
   qed
 
-problem  "chapter2_practice02: Goal 1"
+calculation  "chapter2_practice02: Goal 1"
   goal  (INT x:[0,1]. (x - 2) / (x ^ 2 - x + 1)) = -pi / sqrt(3)
   calc
     Equation
@@ -91,7 +91,7 @@ problem  "chapter2_practice02: Goal 1"
     simplify
   qed
 
-problem  "chapter2_practice02: Goal 2"
+calculation  "chapter2_practice02: Goal 2"
   goal  (INT x:[0,1]. 1 / (x ^ 3 + 1)) = 1/3 * log(2) + pi / (3 * sqrt(3))
   calc
     Equation
@@ -102,7 +102,7 @@ problem  "chapter2_practice02: Goal 2"
     simplify
   qed
 
-problem  "chapter2_practice05: Goal 1"
+calculation  "chapter2_practice05: Goal 1"
   goal  (INT x:[0,oo]. log(x + 1) / x ^ (3/2)) = 2 * pi
   calc
     integrate_by_parts
@@ -113,11 +113,11 @@ problem  "chapter2_practice05: Goal 1"
     simplify
   qed
 
-problem  "Chapter3Practice01: FuncDef"
+calculation  "Chapter3Practice01: FuncDef"
   calc
   qed
 
-problem  "Chapter3Practice01: Goal 2"
+calculation  "Chapter3Practice01: Goal 2"
   goal  (D a. I(a,b)) = pi / (1 + a * b)
   calc
     ExpandDefinition
@@ -132,29 +132,29 @@ problem  "Chapter3Practice01: Goal 2"
     Equation
   qed
 
-problem  "Chapter3Practice01: Goal 3"
+calculation  "Chapter3Practice01: Goal 3"
   goal  I(a,b) = pi / b * log(1 + a * b) + SKOLEM_FUNC(C(b))
   calc
   qed
 
-problem  "Chapter3Practice01: Goal 4"
+calculation  "Chapter3Practice01: Goal 4"
   goal  I(0,b) = 0
   calc
     ExpandDefinition
     simplify
   qed
 
-problem  "Chapter3Practice01: Goal 5"
+calculation  "Chapter3Practice01: Goal 5"
   goal  SKOLEM_FUNC(C(b)) = 0
   calc
   qed
 
-problem  "Chapter3Practice01: Goal 6"
+calculation  "Chapter3Practice01: Goal 6"
   goal  I(a,b) = pi / b * log(1 + a * b)
   calc
   qed
 
-problem  "Chapter3Practice02: Goal 1"
+calculation  "Chapter3Practice02: Goal 1"
   goal  (INT x:[-oo,oo]. cos(a * x) / (b ^ 2 - x ^ 2)) = pi * (sin(a * b) / b)
   calc
     Equation
@@ -179,7 +179,7 @@ problem  "Chapter3Practice02: Goal 1"
     simplify
   qed
 
-problem  "Chapter3Practice03: Goal 1"
+calculation  "Chapter3Practice03: Goal 1"
   goal  (INT x:[-oo,oo]. cos(a * x) / (b ^ 4 - x ^ 4)) = pi * (exp(-a * b) + sin(a * b)) / (2 * b ^ 3)
   calc
     Equation
@@ -194,7 +194,7 @@ problem  "Chapter3Practice03: Goal 1"
     Equation
   qed
 
-problem  "Chapter3Practice04: Goal 1"
+calculation  "Chapter3Practice04: Goal 1"
   goal  (INT x:[0,oo]. x * sin(a * x) / (x ^ 2 - b ^ 2)) = 1/2 * (INT x:[-oo,oo]. x * sin(a * x) / (x ^ 2 - b ^ 2))
   calc
     simplify
@@ -204,16 +204,16 @@ problem  "Chapter3Practice04: Goal 1"
     simplify
   qed
 
-problem  "Chapter3Practice04: Goal 2"
+calculation  "Chapter3Practice04: Goal 2"
   goal  (INT x:[0,oo]. x * sin(a * x) / (x ^ 2 - b ^ 2)) = pi / 2 * cos(a * b)
   calc
   qed
 
-problem  "Chapter3Practice05: FuncDef"
+calculation  "Chapter3Practice05: FuncDef"
   calc
   qed
 
-problem  "Chapter3Practice05: Goal 2"
+calculation  "Chapter3Practice05: Goal 2"
   goal  I(a,b) = 1/2 * (INT x:[0,oo]. sin((b + a) * x) / x) + 1/2 * (INT x:[0,oo]. sin((b - a) * x) / x)
   calc
     ExpandDefinition
@@ -224,7 +224,7 @@ problem  "Chapter3Practice05: Goal 2"
     simplify
   qed
 
-problem  "Chapter3Practice05: Goal 3"
+calculation  "Chapter3Practice05: Goal 3"
   goal  I(a,b) = pi / 2
   calc
     ApplyEquation
@@ -232,7 +232,7 @@ problem  "Chapter3Practice05: Goal 3"
     simplify
   qed
 
-problem  "Chapter3Practice05: Goal 4"
+calculation  "Chapter3Practice05: Goal 4"
   goal  I(a,b) = 0
   calc
     ApplyEquation
@@ -240,7 +240,7 @@ problem  "Chapter3Practice05: Goal 4"
     simplify
   qed
 
-problem  "Chapter3Practice05: Goal 5"
+calculation  "Chapter3Practice05: Goal 5"
   goal  I(a,b) = pi / 4
   calc
     ApplyEquation
@@ -248,7 +248,7 @@ problem  "Chapter3Practice05: Goal 5"
     simplify
   qed
 
-problem  "Chapter3Practice06: Goal 1"
+calculation  "Chapter3Practice06: Goal 1"
   goal  (INT x:[-1,1]. ((1 + x) / (1 - x)) ^ (1/2)) = pi
   calc
     substitute_inverse
@@ -261,11 +261,11 @@ problem  "Chapter3Practice06: Goal 1"
     simplify
   qed
 
-problem  "Chapter3Practice07: FuncDef"
+calculation  "Chapter3Practice07: FuncDef"
   calc
   qed
 
-problem  "Chapter3Practice07: Goal 2"
+calculation  "Chapter3Practice07: Goal 2"
   goal  I(a,b) = exp(b ^ 2 / (4 * a)) * sqrt(pi / a)
   calc
     ExpandDefinition
@@ -278,7 +278,7 @@ problem  "Chapter3Practice07: Goal 2"
     simplify
   qed
 
-problem  "Chapter3Practice07: Goal 3"
+calculation  "Chapter3Practice07: Goal 3"
   goal  (D a. I(a,b)) = -(b ^ 2 / (4 * a ^ 2)) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) - 1 / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a)
   calc
     ApplyEquation
@@ -286,7 +286,7 @@ problem  "Chapter3Practice07: Goal 3"
     simplify
   qed
 
-problem  "Chapter3Practice07: Goal 4"
+calculation  "Chapter3Practice07: Goal 4"
   goal  (D b. I(a,b)) = b / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a)
   calc
     ApplyEquation
@@ -294,17 +294,17 @@ problem  "Chapter3Practice07: Goal 4"
     simplify
   qed
 
-problem  "Chapter3Practice07: Goal 5"
+calculation  "Chapter3Practice07: Goal 5"
   goal  (INT x:[-oo,oo]. x * exp(-(a * x ^ 2) + b * x)) = b / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a)
   calc
   qed
 
-problem  "Chapter3Practice07: Goal 6"
+calculation  "Chapter3Practice07: Goal 6"
   goal  (INT x:[-oo,oo]. x ^ 2 * exp(-(a * x ^ 2) + b * x)) = b ^ 2 / (4 * a ^ 2) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) + 1 / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a)
   calc
   qed
 
-problem  "Chapter3Practice07: Goal 7"
+calculation  "Chapter3Practice07: Goal 7"
   goal  (INT x:[-oo,oo]. x * exp(-(x ^ 2) - x)) = -1/2 * sqrt(pi * sqrt(exp(1)))
   calc
     Equation
@@ -312,7 +312,7 @@ problem  "Chapter3Practice07: Goal 7"
     Equation
   qed
 
-problem  "Chapter3Practice07: Goal 8"
+calculation  "Chapter3Practice07: Goal 8"
   goal  (INT x:[-oo,oo]. x ^ 2 * exp(-(x ^ 2) - x)) = 3/4 * sqrt(pi * sqrt(exp(1)))
   calc
     Equation
@@ -320,7 +320,7 @@ problem  "Chapter3Practice07: Goal 8"
     Equation
   qed
 
-problem  "Chapter3Practice08: Goal 1"
+calculation  "Chapter3Practice08: Goal 1"
   goal  (INT x:[0,oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2))) = pi * (1 - exp(-a * m)) / (2 * a ^ 2)
   calc
     simplify
@@ -328,12 +328,12 @@ problem  "Chapter3Practice08: Goal 1"
     simplify
   qed
 
-problem  "Chapter3Practice08: Goal 2"
+calculation  "Chapter3Practice08: Goal 2"
   goal  (INT x:[0,oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2) ^ 2)) = pi / (2 * a ^ 4) * (1 - (2 + m * a) / 2 * exp(-a * m))
   calc
   qed
 
-problem  "Chapter3Practice09: Goal 1"
+calculation  "Chapter3Practice09: Goal 1"
   goal  (INT x:[0,1]. 1 / (a * x + b * (1 - x)) ^ 2) = 1 / (a * b)
   calc
     substitute
@@ -343,19 +343,19 @@ problem  "Chapter3Practice09: Goal 1"
     Equation
   qed
 
-problem  "Chapter3Practice09: Goal 2"
+calculation  "Chapter3Practice09: Goal 2"
   goal  (INT x:[0,1]. x / (a * x + b * (1 - x)) ^ 3) = 1 / (2 * a ^ 2 * b)
   calc
   qed
 
-problem  "chapter4_practice01: Goal 1"
+calculation  "chapter4_practice01: Goal 1"
   goal  B(2,n + 1) = (INT u:[0,1]. u * (1 - u) ^ n)
   calc
     ExpandDefinition
     simplify
   qed
 
-problem  "chapter4_practice01: Goal 2"
+calculation  "chapter4_practice01: Goal 2"
   goal  (INT x:[0,1]. (1 - sqrt(x)) ^ n) = 2 / ((n + 1) * (n + 2))
   calc
     substitute
@@ -373,13 +373,13 @@ problem  "chapter4_practice01: Goal 2"
     Equation
   qed
 
-problem  "chapter4_practice02: Goal 1"
+calculation  "chapter4_practice02: Goal 1"
   goal  Gamma(n + 1) = (INT t:[0,oo]. t ^ n * exp(-t))
   calc
     ExpandDefinition
   qed
 
-problem  "chapter4_practice02: Goal 2"
+calculation  "chapter4_practice02: Goal 2"
   goal  (INT x:[0,1]. x ^ m * log(x) ^ n) = (-1) ^ n * factorial(n) / (m + 1) ^ (n + 1)
   calc
     substitute_inverse
@@ -400,13 +400,13 @@ problem  "chapter4_practice02: Goal 2"
     simplify
   qed
 
-problem  "chapter4_practice03: Goal 1"
+calculation  "chapter4_practice03: Goal 1"
   goal  B(a + 1,b + 2) = (INT x:[0,1]. x ^ a * (-x + 1) ^ (b + 1))
   calc
     ExpandDefinition
   qed
 
-problem  "chapter4_practice03: Goal 2"
+calculation  "chapter4_practice03: Goal 2"
   goal  (INT x:[0,1]. x ^ a * (INT y:[0,1 - x]. y ^ b)) = factorial(a) * factorial(b) / factorial(a + b + 2)
   calc
     simplify
@@ -420,7 +420,7 @@ problem  "chapter4_practice03: Goal 2"
     simplify
   qed
 
-problem  "easy01: Goal 1"
+calculation  "easy01: Goal 1"
   goal  (INT x:[1,oo]. 1 / ((x + a) * sqrt(x - 1))) = pi / sqrt(a + 1)
   calc
     substitute
@@ -432,7 +432,7 @@ problem  "easy01: Goal 1"
     simplify
   qed
 
-problem  "easy02: Goal 1"
+calculation  "easy02: Goal 1"
   goal  (INT x:[0,oo]. log(a ^ 2 / x ^ 2 + 1)) = pi * a
   calc
     integrate_by_parts
@@ -442,7 +442,7 @@ problem  "easy02: Goal 1"
     simplify
   qed
 
-problem  "easy03: Goal 1"
+calculation  "easy03: Goal 1"
   goal  (INT x:[0,oo]. log(x) / (x ^ 2 + b ^ 2)) = pi * log(b) / (2 * b)
   calc
     substitute_inverse
@@ -457,7 +457,7 @@ problem  "easy03: Goal 1"
     simplify
   qed
 
-problem  "easy04: Goal 1"
+calculation  "easy04: Goal 1"
   goal  (INT x:[0,oo]. 1 / (1 + exp(a * x))) = log(2) / a
   calc
     substitute
@@ -470,7 +470,7 @@ problem  "easy04: Goal 1"
     simplify
   qed
 
-problem  "easy06: Goal 1"
+calculation  "easy06: Goal 1"
   goal  (INT x:[-oo,oo]. 1 / cosh(x)) = pi
   calc
     ExpandDefinition
@@ -483,7 +483,7 @@ problem  "easy06: Goal 1"
     simplify
   qed
 
-problem  "trick2a: Exercise 1"
+calculation  "trick2a: Exercise 1"
   goal  INT x:[0,pi / 2]. sqrt(sin(x)) / (sqrt(sin(x)) + sqrt(cos(x)))
   calc
     substitute  var_name = y, g = pi / 2 - x
@@ -493,7 +493,7 @@ problem  "trick2a: Exercise 1"
     IntegrateByEquation
   qed
 
-problem  "trick2b: Exercise 1"
+calculation  "trick2b: Exercise 1"
   goal  INT x:[0,pi]. x * sin(x) / (1 + cos(x) ^ 2)
   calc
     substitute  var_name = y, g = pi - x
@@ -505,7 +505,7 @@ problem  "trick2b: Exercise 1"
     simplify
   qed
 
-problem  "trick2c: Goal 1"
+calculation  "trick2c: Goal 1"
   goal  (INT x:[0,pi / 2]. sin(x) ^ 2 / (sin(x) + cos(x))) = (INT x:[0,pi / 2]. cos(x) ^ 2 / (sin(x) + cos(x)))
   calc
     substitute
@@ -513,7 +513,7 @@ problem  "trick2c: Goal 1"
     simplify
   qed
 
-problem  "trick2c: Goal 2"
+calculation  "trick2c: Goal 2"
   goal  (INT x:[0,pi / 2]. sin(x) ^ 2 / (sin(x) + cos(x))) = 1/2 * (INT x:[0,pi / 2]. 1 / (sin(x) + cos(x)))
   calc
     simplify
@@ -526,7 +526,7 @@ problem  "trick2c: Goal 2"
     simplify
   qed
 
-problem  "trick2c: Goal 3"
+calculation  "trick2c: Goal 3"
   goal  (INT x:[0,pi / 2]. sin(x) ^ 2 / (sin(x) + cos(x))) = sqrt(2) / 4 * log(3 + 2 * sqrt(2))
   calc
     ApplyEquation
@@ -548,7 +548,7 @@ problem  "trick2c: Goal 3"
     simplify
   qed
 
-problem  "trick2d: Goal 1"
+calculation  "trick2d: Goal 1"
   goal  (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = (INT x:[0,pi / 4]. log(tan(x) + 1))
   calc
     substitute_inverse
@@ -556,13 +556,13 @@ problem  "trick2d: Goal 1"
     simplify
   qed
 
-problem  "trick2d: Goal 2"
+calculation  "trick2d: Goal 2"
   goal  tan(x) + 1 > 0
   calc
     ApplyIdentity
   qed
 
-problem  "trick2d: Goal 3"
+calculation  "trick2d: Goal 3"
   goal  (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = pi / 4 * log(2) - (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1))
   calc
     ApplyEquation
@@ -578,12 +578,12 @@ problem  "trick2d: Goal 3"
     simplify
   qed
 
-problem  "trick2d: Goal 4"
+calculation  "trick2d: Goal 4"
   goal  (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = pi / 8 * log(2)
   calc
   qed
 
-problem  "trick2e: Goal 1"
+calculation  "trick2e: Goal 1"
   goal  (INT x:[0,1]. log(x + 1) / (x ^ 2 + 1)) = a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a)
   calc
     substitute_inverse
@@ -601,19 +601,19 @@ problem  "trick2e: Goal 1"
     simplify
   qed
 
-problem  "trick2e: Goal 2"
+calculation  "trick2e: Goal 2"
   goal  a * (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) - pi / 4 * log(a) = pi * log(2) / 8
   calc
     ApplyEquation
     simplify
   qed
 
-problem  "trick2e: Goal 3"
+calculation  "trick2e: Goal 3"
   goal  (INT t:[0,a]. log(t + a) / (t ^ 2 + a ^ 2)) = pi / (8 * a) * log(2 * a ^ 2)
   calc
   qed
 
-problem  "partialFraction: Goal 1"
+calculation  "partialFraction: Goal 1"
   goal  (INT x:[0,oo]. 1 / (x ^ 4 + 2 * x ^ 2 * cosh(2 * a) + 1)) = pi / (4 * cosh(a))
   calc
     ExpandDefinition
@@ -628,11 +628,11 @@ problem  "partialFraction: Goal 1"
     FoldDefinition
   qed
 
-problem  "partialFraction03: FuncDef"
+calculation  "partialFraction03: FuncDef"
   calc
   qed
 
-problem  "partialFraction03: Goal 2"
+calculation  "partialFraction03: Goal 2"
   goal  I(a) = (INT x:[0,oo]. x ^ 2 / (x ^ 4 + 2 * x ^ 2 * cos(2 * a) + 1))
   calc
     ExpandDefinition
@@ -642,7 +642,7 @@ problem  "partialFraction03: Goal 2"
     simplify
   qed
 
-problem  "partialFraction03: Goal 3"
+calculation  "partialFraction03: Goal 3"
   goal  2 * I(a) = (INT x:[0,oo]. (1 + x ^ 2) / (x ^ 4 + 2 * x ^ 2 * cos(2 * a) + 1))
   calc
     Equation
@@ -654,7 +654,7 @@ problem  "partialFraction03: Goal 3"
     simplify
   qed
 
-problem  "partialFraction03: Goal 4"
+calculation  "partialFraction03: Goal 4"
   goal  (INT x:[-oo,oo]. (x ^ 2 + 1) / (2 * x ^ 2 * cos(2 * a) + x ^ 4 + 1)) = 2 * (INT x:[0,oo]. (x ^ 2 + 1) / (2 * x ^ 2 * cos(2 * a) + x ^ 4 + 1))
   calc
     split_region
@@ -662,7 +662,7 @@ problem  "partialFraction03: Goal 4"
     simplify
   qed
 
-problem  "partialFraction03: Goal 5"
+calculation  "partialFraction03: Goal 5"
   goal  (INT x:[-oo,oo]. -2 * x * sin(a) / ((x ^ 2 - 2 * x * sin(a) + 1) * (x ^ 2 + 2 * x * sin(a) + 1))) = 0
   calc
     split_region
@@ -670,12 +670,12 @@ problem  "partialFraction03: Goal 5"
     simplify
   qed
 
-problem  "partialFraction03: Goal 6"
+calculation  "partialFraction03: Goal 6"
   goal  I(a) = 1/4 * (INT x:[-oo,oo]. 1 / (cos(a) ^ 2 + x ^ 2))
   calc
   qed
 
-problem  "partialFraction03: Goal 7"
+calculation  "partialFraction03: Goal 7"
   goal  I(a) = pi / (4 * cos(a))
   calc
     ApplyEquation
@@ -684,7 +684,7 @@ problem  "partialFraction03: Goal 7"
     simplify
   qed
 
-problem  "partialFraction03: Goal 8"
+calculation  "partialFraction03: Goal 8"
   goal  I(a) = -(pi / (4 * cos(a)))
   calc
     ApplyEquation
@@ -693,7 +693,7 @@ problem  "partialFraction03: Goal 8"
     simplify
   qed
 
-problem  "exp_sinh: Goal 1"
+calculation  "exp_sinh: Goal 1"
   goal  (INT t:[0,oo]. exp(-p * t) * sinh(t) ^ 3) = 6 / (9 - 10 * p ^ 2 + p ^ 4)
   calc
     ExpandDefinition
@@ -707,17 +707,17 @@ problem  "exp_sinh: Goal 1"
     Equation
   qed
 
-problem  "exp_sinh: Goal 2"
+calculation  "exp_sinh: Goal 2"
   goal  9 - 10 * p ^ 2 + p ^ 4 != 0
   calc
     Equation
   qed
 
-problem  "flipside03: FuncDef"
+calculation  "flipside03: FuncDef"
   calc
   qed
 
-problem  "flipside03: Goal 2"
+calculation  "flipside03: Goal 2"
   goal  (D a. I(a)) = 1 / (a + 1)
   calc
     ExpandDefinition
@@ -727,17 +727,17 @@ problem  "flipside03: Goal 2"
     simplify
   qed
 
-problem  "flipside03: Goal 3"
+calculation  "flipside03: Goal 3"
   goal  I(a) = log(a + 1) + SKOLEM_CONST(C)
   calc
   qed
 
-problem  "flipside03: Goal 4"
+calculation  "flipside03: Goal 4"
   goal  SKOLEM_CONST(C) = 0
   calc
   qed
 
-problem  "flipside03: Goal 5"
+calculation  "flipside03: Goal 5"
   goal  I(a) = log(a + 1)
   calc
     ApplyEquation
@@ -745,7 +745,7 @@ problem  "flipside03: Goal 5"
     simplify
   qed
 
-problem  "leibniz01: Goal 1"
+calculation  "leibniz01: Goal 1"
   goal  (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2)) = pi / (2 * a)
   calc
     elim_infinity
@@ -758,21 +758,21 @@ problem  "leibniz01: Goal 1"
     simplify
   qed
 
-problem  "leibniz01: Goal 2"
+calculation  "leibniz01: Goal 2"
   goal  (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 2) = pi / (4 * a ^ 3)
   calc
   qed
 
-problem  "leibniz01: Goal 3"
+calculation  "leibniz01: Goal 3"
   goal  (INT x:[0,oo]. 1 / (x ^ 2 + a ^ 2) ^ 3) = 3 * pi / (16 * a ^ 5)
   calc
   qed
 
-problem  "leibniz02: FuncDef"
+calculation  "leibniz02: FuncDef"
   calc
   qed
 
-problem  "leibniz02: Goal 2"
+calculation  "leibniz02: Goal 2"
   goal  (INT x:[-oo,oo]. exp(-(x ^ 2) / 2)) = 2 * (LIM {t -> oo}. sqrt(g(t)))
   calc
     split_region
@@ -783,7 +783,7 @@ problem  "leibniz02: Goal 2"
     simplify
   qed
 
-problem  "leibniz02: Goal 3"
+calculation  "leibniz02: Goal 3"
   goal  (D t. g(t) + 2 * (INT y:[0,1]. exp(-(1 + y ^ 2) * t ^ 2 / 2) / (1 + y ^ 2))) = 0
   calc
     ExpandDefinition
@@ -796,17 +796,17 @@ problem  "leibniz02: Goal 3"
     simplify
   qed
 
-problem  "leibniz02: Goal 4"
+calculation  "leibniz02: Goal 4"
   goal  2 * (INT y:[0,1]. exp(1/2 * t ^ 2 * (-(y ^ 2) - 1)) * (y ^ 2 + 1) ^ (-1)) + g(t) = SKOLEM_CONST(C)
   calc
   qed
 
-problem  "leibniz02: Goal 5"
+calculation  "leibniz02: Goal 5"
   goal  pi / 2 = SKOLEM_CONST(C)
   calc
   qed
 
-problem  "leibniz02: Goal 6"
+calculation  "leibniz02: Goal 6"
   goal  g(t) = -2 * (INT y:[0,1]. exp(1/2 * t ^ 2 * (-(y ^ 2) - 1)) / (y ^ 2 + 1)) + pi / 2
   calc
     ApplyEquation
@@ -814,7 +814,7 @@ problem  "leibniz02: Goal 6"
     simplify
   qed
 
-problem  "leibniz02: Goal 7"
+calculation  "leibniz02: Goal 7"
   goal  (INT x:[-oo,oo]. exp(-(x ^ 2) / 2)) = sqrt(2 * pi)
   calc
     ApplyEquation
@@ -823,12 +823,12 @@ problem  "leibniz02: Goal 7"
     simplify
   qed
 
-problem  "leibniz02: Goal 8"
+calculation  "leibniz02: Goal 8"
   goal  (INT x:[0,oo]. exp(-(x ^ 2) / 2)) = sqrt(pi / 2)
   calc
   qed
 
-problem  "leibniz02: Goal 9"
+calculation  "leibniz02: Goal 9"
   goal  (INT x:[-oo,oo]. exp(-(a * x ^ 2))) = sqrt(pi / a)
   calc
     substitute
@@ -839,11 +839,11 @@ problem  "leibniz02: Goal 9"
     simplify
   qed
 
-problem  "leibniz03: FuncDef"
+calculation  "leibniz03: FuncDef"
   calc
   qed
 
-problem  "leibniz03: Goal 2"
+calculation  "leibniz03: Goal 2"
   goal  I(0) = sqrt(pi / 2)
   calc
     ExpandDefinition
@@ -854,7 +854,7 @@ problem  "leibniz03: Goal 2"
     simplify
   qed
 
-problem  "leibniz03: Goal 3"
+calculation  "leibniz03: Goal 3"
   goal  (D t. I(t)) = -t * I(t)
   calc
     ExpandDefinition
@@ -865,7 +865,7 @@ problem  "leibniz03: Goal 3"
     simplify
   qed
 
-problem  "leibniz03: Goal 4"
+calculation  "leibniz03: Goal 4"
   goal  (D t. log(I(t)) + t ^ 2 / 2) = 0
   calc
     simplify
@@ -873,17 +873,17 @@ problem  "leibniz03: Goal 4"
     simplify
   qed
 
-problem  "leibniz03: Goal 5"
+calculation  "leibniz03: Goal 5"
   goal  1/2 * t ^ 2 + log(I(t)) = SKOLEM_CONST(C)
   calc
   qed
 
-problem  "leibniz03: Goal 6"
+calculation  "leibniz03: Goal 6"
   goal  log(sqrt(pi / 2)) = SKOLEM_CONST(C)
   calc
   qed
 
-problem  "leibniz03: Goal 7"
+calculation  "leibniz03: Goal 7"
   goal  log(I(t)) = -(t ^ 2) / 2 + log(sqrt(pi / 2))
   calc
     ApplyEquation
@@ -892,7 +892,7 @@ problem  "leibniz03: Goal 7"
     simplify
   qed
 
-problem  "leibniz03: Goal 8"
+calculation  "leibniz03: Goal 8"
   goal  I(t) = sqrt(pi / 2) * exp(-(t ^ 2) / 2)
   calc
   qed

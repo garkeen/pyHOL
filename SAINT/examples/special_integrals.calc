@@ -1,16 +1,16 @@
 theory  special_integrals
 
-problem  "AhmedIntegral: FuncDef"
+calculation  "AhmedIntegral: FuncDef"
   calc
   qed
 
-problem  "AhmedIntegral: Goal 2"
+calculation  "AhmedIntegral: Goal 2"
   goal  I(1) = (INT x:[0,1]. atan(sqrt(x ^ 2 + 2)) / ((x ^ 2 + 1) * sqrt(x ^ 2 + 2)))
   calc
     ExpandDefinition
   qed
 
-problem  "AhmedIntegral: Goal 3"
+calculation  "AhmedIntegral: Goal 3"
   goal  (D u. I(u)) = 1 / (1 + u ^ 2) * (pi / 4 - u / sqrt(1 + 2 * u ^ 2) * atan(u / sqrt(1 + 2 * u ^ 2)))
   calc
     ExpandDefinition
@@ -28,7 +28,7 @@ problem  "AhmedIntegral: Goal 3"
     simplify
   qed
 
-problem  "AhmedIntegral: Goal 4"
+calculation  "AhmedIntegral: Goal 4"
   goal  (INT u:[1,oo]. D u. I(u)) = pi ^ 2 / 12 - I(1)
   calc
     simplify
@@ -39,7 +39,7 @@ problem  "AhmedIntegral: Goal 4"
     simplify
   qed
 
-problem  "AhmedIntegral: Goal 5"
+calculation  "AhmedIntegral: Goal 5"
   goal  (INT u:[1,oo]. D u. I(u)) = -(pi ^ 2 / 48) + I(1)
   calc
     ApplyEquation
@@ -62,12 +62,12 @@ problem  "AhmedIntegral: Goal 5"
     simplify
   qed
 
-problem  "AhmedIntegral: Goal 6"
+calculation  "AhmedIntegral: Goal 6"
   goal  I(1) = 5 * pi ^ 2 / 96
   calc
   qed
 
-problem  "BernoulliIntegral: Goal 1"
+calculation  "BernoulliIntegral: Goal 1"
   goal  (INT x:[0,1]. x ^ (c * x ^ a)) = SUM(k, 0, oo, (-c) ^ k / (k * a + 1) ^ (k + 1))
   calc
     Equation
@@ -83,7 +83,7 @@ problem  "BernoulliIntegral: Goal 1"
     simplify
   qed
 
-problem  "BernoulliIntegral: Goal 2"
+calculation  "BernoulliIntegral: Goal 2"
   goal  (INT x:[0,1]. x ^ x) = SUM(k, 0, oo, (-1) ^ k * (k + 1) ^ (-k - 1))
   calc
     Equation
@@ -91,7 +91,7 @@ problem  "BernoulliIntegral: Goal 2"
     simplify
   qed
 
-problem  "BernoulliIntegral: Goal 3"
+calculation  "BernoulliIntegral: Goal 3"
   goal  (INT x:[0,1]. x ^ -x) = SUM(k, 0, oo, (k + 1) ^ (-k - 1))
   calc
     Equation
@@ -99,7 +99,7 @@ problem  "BernoulliIntegral: Goal 3"
     simplify
   qed
 
-problem  "BernoulliIntegral: Goal 4"
+calculation  "BernoulliIntegral: Goal 4"
   goal  (INT x:[0,1]. x ^ (x ^ 2)) = SUM(k, 0, oo, (-1) ^ k * (2 * k + 1) ^ (-k - 1))
   calc
     Equation
@@ -107,7 +107,7 @@ problem  "BernoulliIntegral: Goal 4"
     simplify
   qed
 
-problem  "BernoulliIntegral: Goal 5"
+calculation  "BernoulliIntegral: Goal 5"
   goal  (INT x:[0,1]. x ^ sqrt(x)) = SUM(k, 0, oo, (-1) ^ k * (2 / (k + 2)) ^ (k + 1))
   calc
     Equation
@@ -119,7 +119,7 @@ problem  "BernoulliIntegral: Goal 5"
     simplify
   qed
 
-problem  "BetaFunction: Goal 1"
+calculation  "BetaFunction: Goal 1"
   goal  (INT x:[0,1]. (x - x ^ 2) ^ k) = factorial(k) ^ 2 / factorial(2 * k + 1)
   calc
     Equation
@@ -134,11 +134,11 @@ problem  "BetaFunction: Goal 1"
     simplify
   qed
 
-problem  "BetaWallis: FuncDef"
+calculation  "BetaWallis: FuncDef"
   calc
   qed
 
-problem  "BetaWallis: Goal 2"
+calculation  "BetaWallis: Goal 2"
   goal  B(m,n) = 2 * (INT x:[0,pi / 2]. cos(x) ^ (2 * m - 1) * sin(x) ^ (2 * n - 1))
   calc
     ExpandDefinition
@@ -147,7 +147,7 @@ problem  "BetaWallis: Goal 2"
     simplify
   qed
 
-problem  "BetaWallis: Goal 3"
+calculation  "BetaWallis: Goal 3"
   goal  (INT x:[0,1]. (x - x ^ 2) ^ n) = factorial(n) ^ 2 / factorial(2 * n + 1)
   calc
     Equation
@@ -161,7 +161,7 @@ problem  "BetaWallis: Goal 3"
     ApplyIdentity
   qed
 
-problem  "BetaWallis: Goal 4"
+calculation  "BetaWallis: Goal 4"
   goal  (INT x:[0,1]. (x - x ^ 2) ^ (1/2)) = pi / 8
   calc
     substitute_inverse
@@ -172,7 +172,7 @@ problem  "BetaWallis: Goal 4"
     simplify
   qed
 
-problem  "BetaWallis: Goal 5"
+calculation  "BetaWallis: Goal 5"
   goal  (INT x:[0,1]. (x - x ^ 2) ^ (1/2)) = factorial(1/2) ^ 2 / 2
   calc
     ApplyEquation
@@ -180,12 +180,12 @@ problem  "BetaWallis: Goal 5"
     simplify
   qed
 
-problem  "BetaWallis: Goal 6"
+calculation  "BetaWallis: Goal 6"
   goal  factorial(1/2) = sqrt(pi) / 2
   calc
   qed
 
-problem  "BetaWallis: Goal 7"
+calculation  "BetaWallis: Goal 7"
   goal  (INT x:[0,oo]. exp(-x) * sqrt(x)) = sqrt(pi) / 2
   calc
     Equation
@@ -195,7 +195,7 @@ problem  "BetaWallis: Goal 7"
     ApplyEquation
   qed
 
-problem  "BetaWallis: Goal 8"
+calculation  "BetaWallis: Goal 8"
   goal  (INT x:[0,1]. sqrt(-log(x))) = sqrt(pi) / 2
   calc
     substitute_inverse
@@ -204,7 +204,7 @@ problem  "BetaWallis: Goal 8"
     ApplyEquation
   qed
 
-problem  "BetaWallis: Goal 9"
+calculation  "BetaWallis: Goal 9"
   goal  (INT x:[0,oo]. exp(-x) / sqrt(x)) = (INT x:[-oo,oo]. exp(-(x ^ 2)))
   calc
     substitute
@@ -214,24 +214,24 @@ problem  "BetaWallis: Goal 9"
     split_region
   qed
 
-problem  "BetaWallis: Goal 10"
+calculation  "BetaWallis: Goal 10"
   goal  (INT x:[0,oo]. exp(-x) / sqrt(x)) = sqrt(pi)
   calc
   qed
 
-problem  "BetaWallis: Goal 11"
+calculation  "BetaWallis: Goal 11"
   goal  Gamma(1/2) = sqrt(pi)
   calc
     ExpandDefinition
     ApplyEquation
   qed
 
-problem  "BetaWallis: Goal 12"
+calculation  "BetaWallis: Goal 12"
   goal  factorial(-1/2) = sqrt(pi)
   calc
   qed
 
-problem  "BetaWallis: Goal 13"
+calculation  "BetaWallis: Goal 13"
   goal  (INT x:[0,pi / 2]. sqrt(sin(x))) = Gamma(3/4) * Gamma(1/2) / (2 * Gamma(5/4))
   calc
     substitute
@@ -242,7 +242,7 @@ problem  "BetaWallis: Goal 13"
     Equation
   qed
 
-problem  "BetaWallis: Goal 14"
+calculation  "BetaWallis: Goal 14"
   goal  (INT x:[0,pi / 2]. sqrt(cos(x))) = Gamma(3/4) * Gamma(1/2) / (2 * Gamma(5/4))
   calc
     substitute
@@ -253,7 +253,7 @@ problem  "BetaWallis: Goal 14"
     Equation
   qed
 
-problem  "BetaWallis: Goal 15"
+calculation  "BetaWallis: Goal 15"
   goal  (INT x:[0,pi / 2]. 1 / sqrt(sin(x) * cos(x))) = 1/2 * B(1/4,1/4)
   calc
     ApplyEquation
@@ -261,22 +261,22 @@ problem  "BetaWallis: Goal 15"
     Equation
   qed
 
-problem  "BetaWallis: Goal 16"
+calculation  "BetaWallis: Goal 16"
   goal  (INT x:[0,pi / 2]. 1 / sqrt(sin(x) * cos(x))) = Gamma(1/4) ^ 2 / (2 * sqrt(pi))
   calc
   qed
 
-problem  "BetaWallis: Goal 17"
+calculation  "BetaWallis: Goal 17"
   goal  (INT x:[0,pi / 2]. 1 / sqrt(sin(x))) = Gamma(1/4) ^ 2 / (2 * sqrt(2 * pi))
   calc
   qed
 
-problem  "BetaWallis: Goal 18"
+calculation  "BetaWallis: Goal 18"
   goal  (INT x:[0,pi / 2]. 1 / sqrt(cos(x))) = Gamma(1/4) ^ 2 / (2 * sqrt(2 * pi))
   calc
   qed
 
-problem  "BetaWallis: Goal 19"
+calculation  "BetaWallis: Goal 19"
   goal  B(m,n) = (INT x:[0,oo]. x ^ (m - 1) / (x + 1) ^ (m + n))
   calc
     ExpandDefinition
@@ -288,14 +288,14 @@ problem  "BetaWallis: Goal 19"
     Equation
   qed
 
-problem  "BetaWallis: Goal 20"
+calculation  "BetaWallis: Goal 20"
   goal  (INT x:[0,oo]. x ^ (m - 1) / (x + 1)) = B(m,1 - m)
   calc
     ApplyEquation
     simplify
   qed
 
-problem  "BetaWallis: Goal 21"
+calculation  "BetaWallis: Goal 21"
   goal  B(m,1 - m) = Gamma(m) * Gamma(1 - m)
   calc
     ApplyIdentity
@@ -303,12 +303,12 @@ problem  "BetaWallis: Goal 21"
     Equation
   qed
 
-problem  "BetaWallis: Goal 22"
+calculation  "BetaWallis: Goal 22"
   goal  Gamma(m) * Gamma(1 - m) = pi / sin(m * pi)
   calc
   qed
 
-problem  "BetaWallis: Goal 23"
+calculation  "BetaWallis: Goal 23"
   goal  factorial(z) * factorial(z) / factorial(2 * z + 1) = (INT x:[0,1]. x ^ z * (1 - x) ^ z)
   calc
     Equation
@@ -320,16 +320,16 @@ problem  "BetaWallis: Goal 23"
     ApplyIdentity
   qed
 
-problem  "BetaWallis: Goal 24"
+calculation  "BetaWallis: Goal 24"
   goal  factorial(z) * factorial(z + 1/2) = 2 ^ (-2 * z - 1) * sqrt(pi) * factorial(2 * z + 1)
   calc
   qed
 
-problem  "CatalanConstant01: FuncDef"
+calculation  "CatalanConstant01: FuncDef"
   calc
   qed
 
-problem  "CatalanConstant01: Goal 2"
+calculation  "CatalanConstant01: Goal 2"
   goal  (INT x:[0,1]. atan(x) / x) = G
   calc
     SeriesExpansionIdentity
@@ -341,7 +341,7 @@ problem  "CatalanConstant01: Goal 2"
     ExpandDefinition
   qed
 
-problem  "CatalanConstant02: Goal 1"
+calculation  "CatalanConstant02: Goal 1"
   goal  (INT x:[1,oo]. log(x) / x ^ k) = 1 / (k - 1) ^ 2
   calc
     elim_infinity
@@ -356,7 +356,7 @@ problem  "CatalanConstant02: Goal 1"
     Equation
   qed
 
-problem  "CatalanConstant02: Goal 2"
+calculation  "CatalanConstant02: Goal 2"
   goal  (INT x:[1,oo]. log(x) / (x ^ 2 + 1)) = G
   calc
     Equation
@@ -370,7 +370,7 @@ problem  "CatalanConstant02: Goal 2"
     ExpandDefinition
   qed
 
-problem  "CatalanConstant02: Goal 3"
+calculation  "CatalanConstant02: Goal 3"
   goal  (INT x:[0,oo]. log(x + 1) / (x ^ 2 + 1)) = pi / 4 * log(2) + G
   calc
     split_region
@@ -387,11 +387,11 @@ problem  "CatalanConstant02: Goal 3"
     Equation
   qed
 
-problem  "dirichletIntegral: FuncDef"
+calculation  "dirichletIntegral: FuncDef"
   calc
   qed
 
-problem  "dirichletIntegral: Goal 2"
+calculation  "dirichletIntegral: Goal 2"
   goal  (D y. g(y,a)) = -a / (a ^ 2 + y ^ 2)
   calc
     ExpandDefinition
@@ -402,36 +402,36 @@ problem  "dirichletIntegral: Goal 2"
     simplify
   qed
 
-problem  "dirichletIntegral: Goal 3"
+calculation  "dirichletIntegral: Goal 3"
   goal  g(y,a) = -atan(y / a) + SKOLEM_FUNC(C(a))
   calc
   qed
 
-problem  "dirichletIntegral: Goal 4"
+calculation  "dirichletIntegral: Goal 4"
   goal  (LIM {y -> oo}. g(y,a)) = 0
   calc
     ExpandDefinition
     simplify
   qed
 
-problem  "dirichletIntegral: Goal 5"
+calculation  "dirichletIntegral: Goal 5"
   goal  SKOLEM_FUNC(C(a)) = pi / 2
   calc
   qed
 
-problem  "dirichletIntegral: Goal 6"
+calculation  "dirichletIntegral: Goal 6"
   goal  SKOLEM_FUNC(C(a)) = -(pi / 2)
   calc
   qed
 
-problem  "dirichletIntegral: Goal 7"
+calculation  "dirichletIntegral: Goal 7"
   goal  g(0,a) = (INT x:[0,oo]. sin(a * x) / x)
   calc
     ExpandDefinition
     simplify
   qed
 
-problem  "dirichletIntegral: Goal 8"
+calculation  "dirichletIntegral: Goal 8"
   goal  (INT x:[0,oo]. sin(a * x) / x) = pi / 2
   calc
     ApplyEquation
@@ -440,7 +440,7 @@ problem  "dirichletIntegral: Goal 8"
     simplify
   qed
 
-problem  "dirichletIntegral: Goal 9"
+calculation  "dirichletIntegral: Goal 9"
   goal  (INT x:[0,oo]. sin(a * x) / x) = -(pi / 2)
   calc
     ApplyEquation
@@ -449,17 +449,17 @@ problem  "dirichletIntegral: Goal 9"
     simplify
   qed
 
-problem  "dirichletIntegral: Goal 10"
+calculation  "dirichletIntegral: Goal 10"
   goal  (INT x:[0,oo]. sin(a * x) / x) = 0
   calc
     simplify
   qed
 
-problem  "EulerConstant01: FuncDef"
+calculation  "EulerConstant01: FuncDef"
   calc
   qed
 
-problem  "EulerConstant01: Goal 2"
+calculation  "EulerConstant01: Goal 2"
   goal  (INT x:[0,1]. (-exp(-x) + 1) / x) - (INT x:[1,oo]. exp(-x) / x) = G
   calc
     integrate_by_parts
@@ -470,11 +470,11 @@ problem  "EulerConstant01: Goal 2"
     simplify
   qed
 
-problem  "FrullaniIntegral: FuncDef"
+calculation  "FrullaniIntegral: FuncDef"
   calc
   qed
 
-problem  "FrullaniIntegral: Goal 2"
+calculation  "FrullaniIntegral: Goal 2"
   goal  (D a. I(a,b)) = pi / (2 * a)
   calc
     ExpandDefinition
@@ -486,17 +486,17 @@ problem  "FrullaniIntegral: Goal 2"
     simplify
   qed
 
-problem  "FrullaniIntegral: Goal 3"
+calculation  "FrullaniIntegral: Goal 3"
   goal  I(a,b) = 1/2 * pi * log(a) + SKOLEM_FUNC(C(b))
   calc
   qed
 
-problem  "FrullaniIntegral: Goal 4"
+calculation  "FrullaniIntegral: Goal 4"
   goal  SKOLEM_FUNC(C(a)) = -1/2 * pi * log(a)
   calc
   qed
 
-problem  "FrullaniIntegral: Goal 5"
+calculation  "FrullaniIntegral: Goal 5"
   goal  I(a,b) = 1/2 * pi * log(a) - 1/2 * pi * log(b)
   calc
     ApplyEquation
@@ -505,7 +505,7 @@ problem  "FrullaniIntegral: Goal 5"
     simplify
   qed
 
-problem  "GammaFunction: Exercise 1"
+calculation  "GammaFunction: Exercise 1"
   goal  INT x:[0,oo]. exp(-(x ^ 3))
   calc
     substitute  var_name = y, g = x ^ 3
@@ -516,15 +516,15 @@ problem  "GammaFunction: Exercise 1"
     ApplyEquation
   qed
 
-problem  "euler_log_sin: FuncDef"
+calculation  "euler_log_sin: FuncDef"
   calc
   qed
 
-problem  "euler_log_sin: FuncDef"
+calculation  "euler_log_sin: FuncDef"
   calc
   qed
 
-problem  "euler_log_sin: Goal 3"
+calculation  "euler_log_sin: Goal 3"
   goal  J(a) = I(a)
   calc
     ExpandDefinition
@@ -537,7 +537,7 @@ problem  "euler_log_sin: Goal 3"
     ExpandDefinition
   qed
 
-problem  "euler_log_sin: Goal 4"
+calculation  "euler_log_sin: Goal 4"
   goal  J(a) = pi / 2 * log(2 / a) + 2 * I(a)
   calc
     ExpandDefinition
@@ -554,7 +554,7 @@ problem  "euler_log_sin: Goal 4"
     simplify
   qed
 
-problem  "euler_log_sin: Goal 5"
+calculation  "euler_log_sin: Goal 5"
   goal  I(a) = pi / 2 * log(a / 2)
   calc
     ApplyEquation
@@ -566,7 +566,7 @@ problem  "euler_log_sin: Goal 5"
     simplify
   qed
 
-problem  "euler_log_sin02: Goal 1"
+calculation  "euler_log_sin02: Goal 1"
   goal  (INT x:[0,pi / 2]. log(sin(x) / x)) = pi / 2 * (1 - log(pi))
   calc
     ApplyIdentity
@@ -579,7 +579,7 @@ problem  "euler_log_sin02: Goal 1"
     simplify
   qed
 
-problem  "euler_log_sin05: Goal 1"
+calculation  "euler_log_sin05: Goal 1"
   goal  (INT x:[0,oo]. log(x ^ a + 1) / (x ^ 2 - b * x + 1)) = (INT x:[0,oo]. log(x ^ a + 1) / (x ^ 2 - b * x + 1)) - a * (INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1))
   calc
     substitute_inverse
@@ -595,26 +595,26 @@ problem  "euler_log_sin05: Goal 1"
     simplify
   qed
 
-problem  "euler_log_sin05: Goal 2"
+calculation  "euler_log_sin05: Goal 2"
   goal  (INT x:[0,oo]. log(x) / (x ^ 2 - b * x + 1)) = 0
   calc
   qed
 
-problem  "euler_log_sin05: Goal 3"
+calculation  "euler_log_sin05: Goal 3"
   goal  x ^ 2 - b * x + 1 != 0
   calc
     Equation
     Equation
   qed
 
-problem  "euler_log_sin05: Goal 4"
+calculation  "euler_log_sin05: Goal 4"
   goal  x ^ 2 - b * x + 1 != 0
   calc
     Equation
     Equation
   qed
 
-problem  "euler_log_sin06: Goal 1"
+calculation  "euler_log_sin06: Goal 1"
   goal  (INT x:[0,1]. (1 - x) / (1 + x + x ^ 2)) = sqrt(3) * pi / 6 - log(3) / 2
   calc
     Equation
@@ -631,11 +631,11 @@ problem  "euler_log_sin06: Goal 1"
     simplify
   qed
 
-problem  "wallis: FuncDef"
+calculation  "wallis: FuncDef"
   calc
   qed
 
-problem  "wallis: Goal 2"
+calculation  "wallis: Goal 2"
   goal  (D b. I(m,b)) = -(m + 1) * I(m + 1,b)
   calc
     ExpandDefinition
@@ -645,12 +645,12 @@ problem  "wallis: Goal 2"
     simplify
   qed
 
-problem  "wallis: Goal 3"
+calculation  "wallis: Goal 3"
   goal  I(m,b) = pi / 2 ^ (2 * m + 1) * binom(2 * m,m) * (1 / b ^ ((2 * m + 1) / 2))
   calc
   qed
 
-problem  "standard: Goal 1"
+calculation  "standard: Goal 1"
   goal  (INT x. 1 / (x + a)) = log(abs(x + a)) + SKOLEM_CONST(C)
   calc
     substitute
@@ -658,7 +658,7 @@ problem  "standard: Goal 1"
     ReplaceSubstitution
   qed
 
-problem  "standard: Goal 2"
+calculation  "standard: Goal 2"
   goal  (INT x. exp(a * x)) = exp(a * x) / a + SKOLEM_CONST(C)
   calc
     substitute
@@ -667,7 +667,7 @@ problem  "standard: Goal 2"
     ReplaceSubstitution
   qed
 
-problem  "standard: Goal 3"
+calculation  "standard: Goal 3"
   goal  (INT x. sin(a * x)) = -(cos(a * x) / a) + SKOLEM_CONST(C)
   calc
     substitute
@@ -677,7 +677,7 @@ problem  "standard: Goal 3"
     simplify
   qed
 
-problem  "standard: Goal 4"
+calculation  "standard: Goal 4"
   goal  (INT x. cos(a * x)) = sin(a * x) / a + SKOLEM_CONST(C)
   calc
     substitute
@@ -686,7 +686,7 @@ problem  "standard: Goal 4"
     ReplaceSubstitution
   qed
 
-problem  "standard: Goal 5"
+calculation  "standard: Goal 5"
   goal  (INT x. 1 / (a ^ 2 + x ^ 2)) = 1 / a * atan(x / a) + SKOLEM_CONST(C)
   calc
     substitute
@@ -697,7 +697,7 @@ problem  "standard: Goal 5"
     simplify
   qed
 
-problem  "standard: Goal 6"
+calculation  "standard: Goal 6"
   goal  (INT x. x ^ k * log(x)) = x ^ (k + 1) * log(x) / (k + 1) - x ^ (k + 1) / (k + 1) ^ 2 + SKOLEM_CONST(C)
   calc
     integrate_by_parts
@@ -706,12 +706,12 @@ problem  "standard: Goal 6"
     simplify
   qed
 
-problem  "standard: Goal 7"
+calculation  "standard: Goal 7"
   goal  (INT x:[0,1]. x ^ m * log(x) ^ n) = (-1) ^ n * factorial(n) / (m + 1) ^ (n + 1)
   calc
   qed
 
-problem  "standard: Goal 8"
+calculation  "standard: Goal 8"
   goal  (INT x:[0,oo]. exp(-(x * y)) * sin(a * x)) = a / (a ^ 2 + y ^ 2)
   calc
     integrate_by_parts
@@ -722,7 +722,7 @@ problem  "standard: Goal 8"
     Equation
   qed
 
-problem  "standard: Goal 9"
+calculation  "standard: Goal 9"
   goal  (INT x. a ^ x) = a ^ x / log(a) + SKOLEM_CONST(C)
   calc
     Equation
@@ -730,7 +730,7 @@ problem  "standard: Goal 9"
     simplify
   qed
 
-problem  "standard: Goal 10"
+calculation  "standard: Goal 10"
   goal  (INT x. cos(x) ^ 2) = 1/4 * sin(2 * x) + 1/2 * x + SKOLEM_CONST(C)
   calc
     ApplyIdentity

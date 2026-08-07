@@ -130,33 +130,21 @@ def saint_load():
             })
             continue
         if t == 'calculation':
-            if item.get('goal'):
-                # Multi-line computation task
-                goal_str = item.get('goal', '')
-                target_str = item.get('target')
-                if not target_str and goal_str:
-                    try:
-                        e = parser.parse_expr(goal_str)
-                        if hasattr(e, 'is_equals') and e.is_equals():
-                            goal_str = str(e.args[0])
-                            target_str = str(e.args[1])
-                    except:
-                        pass
-                items.append({
-                    'type': 'calculation', 'name': item.get('name', ''),
-                    'goal': goal_str, 'target': target_str,
-                })
-            else:
-                # Single-line library item
+            # All calculations are computation tasks (parser always sets goal)
+            goal_str = item.get('goal', '')
+            target_str = item.get('target')
+            if not target_str and goal_str:
                 try:
-                    e = parser.parse_expr(item.get('expr', ''))
-                    lx = latex.convert_expr(e)
+                    e = parser.parse_expr(goal_str)
+                    if hasattr(e, 'is_equals') and e.is_equals():
+                        goal_str = str(e.args[0])
+                        target_str = str(e.args[1])
                 except:
-                    lx = item.get('expr', '')
-                items.append({
-                    'type': 'calculation', 'expr': item.get('expr', ''), 'latex': lx,
-                    'conds': item.get('conds', []),
-                })
+                    pass
+            items.append({
+                'type': 'calculation', 'name': item.get('name', ''),
+                'goal': goal_str, 'target': target_str,
+            })
             continue
     return jsonify({"items": items})
 
