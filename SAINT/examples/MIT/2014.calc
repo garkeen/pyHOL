@@ -1,12 +1,12 @@
 
-problem  "Exercise 1"
+calculation  "Exercise 1"
   goal  INT x:[1, exp(1)]. log(x^2)
   calc
     integrate_by_parts  parts_u = log(x^2), parts_v = x
     simplify
   qed
 
-problem  "Exercise 2"
+calculation  "Exercise 2"
   goal  INT x:[-9, 9]. sin(x ^ (1/3))
   calc
     substitute  f = (3 * u ^ 2) * sin(u), g = x ^ (1/3), var_name = u
@@ -18,7 +18,7 @@ problem  "Exercise 2"
     simplify
   qed
 
-problem  "Exercise 5"
+calculation  "Exercise 5"
   goal  INT x:[0, 1]. sqrt(x)*exp(sqrt(x))
   calc
     integrate_by_parts  parts_u = 2*x, parts_v = exp(sqrt(x))
@@ -28,7 +28,7 @@ problem  "Exercise 5"
     simplify
   qed
 
-problem  "Exercise 6"
+calculation  "Exercise 6"
   goal  INT x:[0, pi]. sin(2*x) * cos(3 * x)
   calc
     rewrite_trigonometric  rule = TR8, at 0
@@ -37,14 +37,14 @@ problem  "Exercise 6"
     simplify
   qed
 
-problem  "Exercise 7"
+calculation  "Exercise 7"
   goal  INT x:[0, 2*pi]. abs(1 + 2*sin(x))
   calc
     elim_abs  c = (7 * pi) / 6
     simplify
   qed
 
-problem  "Exercise 8"
+calculation  "Exercise 8"
   goal  INT x:[0, 1]. x * (1 - x) ^ (2014)
   calc
     substitute  f = (1 - u) * (1 - (1 - u)) ^ 2014 * -1, g = 1 - x, var_name = u

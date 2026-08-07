@@ -1,26 +1,26 @@
 
-problem  "Exercise 1"
+calculation  "Exercise 1"
   goal  INT x:[0, 1]. x*exp(x)
   calc
     integrate_by_parts  parts_u = x, parts_v = exp(x)
     simplify
   qed
 
-problem  "Exercise 2"
+calculation  "Exercise 2"
   goal  INT x:[0, pi/2]. x * sin(x)
   calc
     integrate_by_parts  parts_u = x, parts_v = -cos(x)
     simplify
   qed
 
-problem  "Exercise 3"
+calculation  "Exercise 3"
   goal  INT x:[1, exp(1)]. x * log(x)
   calc
     integrate_by_parts  parts_u = log(x)/2, parts_v = x^2
     simplify
   qed
 
-problem  "Exercise 4"
+calculation  "Exercise 4"
   goal  INT x:[0, pi/4]. x * cos(3*x)
   calc
     substitute  f = (u / 3) * cos(3 * (u / 3)) * (3 / 9), g = 3 * x, var_name = u
@@ -29,33 +29,33 @@ problem  "Exercise 4"
     simplify
   qed
 
-problem  "Exercise 5"
+calculation  "Exercise 5"
   goal  INT x:[1, exp(1)]. log(x)/x^5
   calc
     integrate_by_parts  parts_u = log(x), parts_v = -1/(4 * x^4)
     simplify
   qed
 
-problem  "Exercise 6"
+calculation  "Exercise 6"
   goal  INT x:[0, 1/3]. asin(3*x)
   calc
   qed
 
-problem  "Exercise 7"
+calculation  "Exercise 7"
   goal  INT x:[1, exp(1)]. log(x)
   calc
     integrate_by_parts  parts_u = log(x), parts_v = x
     simplify
   qed
 
-problem  "Exercise 8"
+calculation  "Exercise 8"
   goal  INT x:[0, 1]. 2*x*atan(x)
   calc
     integrate_by_parts  parts_u = atan(x), parts_v = x^2
     simplify
   qed
 
-problem  "Exercise 9"
+calculation  "Exercise 9"
   goal  INT x:[1, 2]. x^2*exp(3*x)
   calc
     integrate_by_parts  parts_u = x^2/3, parts_v = exp(3*x)
@@ -64,14 +64,14 @@ problem  "Exercise 9"
     simplify
   qed
 
-problem  "Exercise 10"
+calculation  "Exercise 10"
   goal  INT x:[1, exp(1)]. x^3*log(5*x)
   calc
     integrate_by_parts  parts_u = log(5*x)/4, parts_v = x ^ 4
     simplify
   qed
 
-problem  "Exercise 11"
+calculation  "Exercise 11"
   goal  INT x:[1, exp(1)]. log(x) ^ 2
   calc
     integrate_by_parts  parts_u = log(x)^2, parts_v = x
@@ -80,7 +80,7 @@ problem  "Exercise 11"
     simplify
   qed
 
-problem  "Exercise 12"
+calculation  "Exercise 12"
   goal  INT x:[1, exp(1)]. log(x) ^ 3
   calc
     integrate_by_parts  parts_u = log(x)^3, parts_v = x
@@ -89,7 +89,7 @@ problem  "Exercise 12"
     simplify
   qed
 
-problem  "Exercise 13"
+calculation  "Exercise 13"
   goal  INT x:[-2, 1]. x * sqrt(x + 3)
   calc
     integrate_by_parts  parts_u = x, parts_v = 2/3 * (x + 3) ^ (3/2)
@@ -98,7 +98,7 @@ problem  "Exercise 13"
     simplify
   qed
 
-problem  "Exercise 14"
+calculation  "Exercise 14"
   goal  INT x:[0, pi/4]. x * sin(x) * cos(x)
   calc
     integrate_by_parts  parts_u = x, parts_v = 1/2 * sin(x) ^ 2
@@ -109,7 +109,7 @@ problem  "Exercise 14"
     simplify
   qed
 
-problem  "Exercise 15"
+calculation  "Exercise 15"
   goal  INT x:[1, exp(1)]. (log(x)/x)^2
   calc
     simplify
@@ -119,7 +119,7 @@ problem  "Exercise 15"
     simplify
   qed
 
-problem  "Exercise 16"
+calculation  "Exercise 16"
   goal  INT x:[0, 1]. x ^ 5 * exp(x ^ 3)
   calc
     integrate_by_parts  parts_u = x ^ 3, parts_v = exp(x ^ 3)/3
@@ -128,7 +128,7 @@ problem  "Exercise 16"
     simplify
   qed
 
-problem  "Exercise 17"
+calculation  "Exercise 17"
   goal  INT x:[0, pi/4]. x ^ 3 * cos(x ^ 2)
   calc
     integrate_by_parts  parts_u = x ^ 2, parts_v = sin(x ^ 2)/2
@@ -137,7 +137,7 @@ problem  "Exercise 17"
     simplify
   qed
 
-problem  "Exercise 18"
+calculation  "Exercise 18"
   goal  INT x:[0, 1]. x ^ 7 * sqrt(5 + 3 * x ^ 4)
   calc
     integrate_by_parts  parts_u = x ^ 4, parts_v = (1/18)*(5 + 3*x^4)^(3/2)
@@ -146,7 +146,7 @@ problem  "Exercise 18"
     simplify
   qed
 
-problem  "Exercise 19"
+calculation  "Exercise 19"
   goal  INT x:[1, 2]. x ^ 3 / (x ^ 2 + 5) ^ 2
   calc
     integrate_by_parts  parts_u = x^2/2, parts_v = -1/(x^2+5)
@@ -155,7 +155,7 @@ problem  "Exercise 19"
     simplify
   qed
 
-problem  "Exercise 20"
+calculation  "Exercise 20"
   goal  INT x:[0, 1]. exp(6 * x) * sin(exp(3 * x))
   calc
     integrate_by_parts  parts_u = exp(3*x), parts_v = -cos(exp(3*x))/3
@@ -164,7 +164,7 @@ problem  "Exercise 20"
     simplify
   qed
 
-problem  "Exercise 21"
+calculation  "Exercise 21"
   goal  INT x:[0, 1]. (x ^ 3 * exp(x^2))/(x^2 + 1) ^ 2
   calc
     integrate_by_parts  parts_u = x^2*exp(x^2)/2, parts_v = -1/(x^2+1)
@@ -173,7 +173,7 @@ problem  "Exercise 21"
     simplify
   qed
 
-problem  "Exercise 22"
+calculation  "Exercise 22"
   goal  INT x:[0, 1]. exp(x) * cos(x)
   calc
     integrate_by_parts  parts_u = exp(x), parts_v = sin(x)
@@ -183,7 +183,7 @@ problem  "Exercise 22"
     solve_equation  factor = 1, prev_id = 0
   qed
 
-problem  "Exercise 23"
+calculation  "Exercise 23"
   goal  INT x:[0, pi/4]. sin(3*x)*cos(5*x)
   calc
     rewrite_trigonometric  rule = TR8, at 0

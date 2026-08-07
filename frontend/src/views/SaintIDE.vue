@@ -3,7 +3,7 @@
     <nav class="navbar navbar-dark bg-dark">
       <span class="navbar-brand">SAINT</span>
       <span class="text-light small">{{ currentFile || 'Interactive Integral CAS' }}</span>
-      <button v-if="dirty" class="btn btn-warning btn-sm ms-auto" @click="saveFile">Save File</button>
+      <button v-if="dirty" class="btn btn-warning btn-sm ms-2" @click="saveFile">Save</button>
     </nav>
     <div class="saint-body">
       <!-- Left: file list -->
@@ -22,6 +22,7 @@
             <button class="btn btn-sm btn-outline-secondary" @click="computing = false">← Back</button>
             <span class="ms-2">{{ computingName }}</span>
           </div>
+
           <div v-if="targetLatex" class="target-bar">
             <span class="target-label">Expected:</span>
             <MathEquation :data="'\\(' + targetLatex + '\\)'" />
@@ -37,7 +38,6 @@
             </div>
           </div>
           <div class="rule-palette" v-if="startLatex">
-                      <div class="rule-palette" v-if="startLatex">
             <!-- Suggestions -->
             <div v-if="suggestions.length" class="suggestions">
               <div class="suggestions-title">Suggestions</div>
@@ -51,23 +51,24 @@
             <div v-if="suggestLoading" class="small text-muted py-1">Finding suggestions...</div>
 
             <div class="rule-buttons mt-2">
-              <button v-for="r in RULES" :key="r.name" class="btn btn-sm" :class="selectedRule === r.name ? 'btn-dark' : 'btn-outline-secondary'" @click="selectRule(r)">{{ r.label }}</button>
-              <button class="btn btn-sm btn-outline-info" @click="loadSuggestions" :disabled="suggestLoading">💡 Suggest</button>
-              <button class="btn btn-sm btn-outline-info" @click="loadSuggestions" :disabled="suggestLoading">💡 Suggest</button>
-            </div>
-              <button v-for="r in RULES" :key="r.name" class="btn btn-sm" :class="selectedRule === r.name ? 'btn-dark' : 'btn-outline-secondary'" @click="selectRule(r)">{{ r.label }}</button>
+              <button v-for="r in RULES" :key="r.name" class="btn btn-sm"
+                :class="selectedRule === r.name ? 'btn-dark' : 'btn-outline-secondary'"
+                @click="selectRule(r)">{{ r.label }}</button>
               <button class="btn btn-sm btn-outline-info" @click="loadSuggestions" :disabled="suggestLoading">💡 Suggest</button>
             </div>
+
             <div v-if="selectedRule && currentRuleParams.length" class="rule-params">
               <div v-for="p in currentRuleParams" :key="p.key" class="param-row">
                 <label class="param-label">{{ p.label }}</label>
                 <input v-model="paramValues[p.key]" class="form-control form-control-sm param-input" :placeholder="p.placeholder" />
               </div>
             </div>
+
             <div class="mt-2">
               <button v-if="selectedRule" class="btn btn-success btn-sm" @click="applyRule" :disabled="applying">{{ applying ? '...' : 'Apply' }}</button>
               <button class="btn btn-outline-danger btn-sm ms-2" @click="undoStep" :disabled="!steps.length">Undo</button>
               <button class="btn btn-outline-secondary btn-sm ms-2" @click="resetCalculation" :disabled="!steps.length">Reset</button>
+              <button class="btn btn-warning btn-sm ms-2" @click="saveSteps" :disabled="!steps.length || computingItemIdx < 0">Save Steps</button>
             </div>
           </div>
           <div v-if="applyError" class="alert alert-danger mt-2 py-1 small">{{ applyError }}</div>
@@ -75,10 +76,11 @@
 
         <!-- Items list -->
         <div v-else class="items-list">
-          <div class="input-bar">
-            <input v-model="exprInput" class="form-control expr-input" placeholder="INT x. x^2" @keyup.enter="startManualCalc" />
-            <button class="btn btn-primary btn-sm" @click="startManualCalc">Compute</button>
-            <button v-if="currentFile" class="btn btn-outline-success btn-sm" @click="addItem">+ Item</button>
+          <!-- Add buttons -->
+          <div v-if="currentFile" class="add-bar">
+            <button class="btn btn-outline-primary btn-sm" @click="addNew('theorem')">+ Theorem</button>
+            <button class="btn btn-outline-info btn-sm" @click="addNew('definition')">+ Definition</button>
+            <button class="btn btn-outline-success btn-sm" @click="addNew('calculation')">+ Calculation</button>
           </div>
           <div v-if="parseError" class="alert alert-danger py-1 small">{{ parseError }}</div>
 
@@ -93,11 +95,25 @@
             </template>
             <!-- Calculation with goal (computation task) -->
             <template v-else-if="item.type === 'calculation' && item.goal">
-              <div class="item-calc">
-                <span class="type-badge type-calculation">calc</span>
-                <span class="item-name">{{ item.name }}</span>
-                <MathEquation :data="'\\(' + item.goal + '\\)'" />
-                <button class="btn btn-outline-primary btn-sm ms-auto" @click="startCompute(item)">Compute</button>
+              <div class="item-calc" @mouseenter="hoverIdx = i" @mouseleave="hoverIdx = -1">
+                <!-- Edit mode -->
+                <template v-if="editIdx === i">
+                  <input v-model="item.name" class="form-control form-control-sm calc-name-input" placeholder="Name" />
+                  <input v-model="item.goal" class="form-control form-control-sm lib-edit-input" placeholder="INT x. ..." @keyup.enter="finishEditCalc(i)" @keyup.esc="cancelEdit" />
+                  <button class="btn btn-success btn-sm" @click="finishEditCalc(i)">OK</button>
+                  <button class="btn btn-outline-secondary btn-sm" @click="cancelEdit">Cancel</button>
+                </template>
+                <!-- Display mode -->
+                <template v-else>
+                  <span class="type-badge type-calculation">calc</span>
+                  <span class="item-name">{{ item.name }}</span>
+                  <MathEquation :data="'\\(' + item.goal_latex + '\\)'" />
+                  <span v-if="hoverIdx === i" class="item-actions">
+                    <button class="btn btn-link btn-sm py-0 px-1" @click.stop="startEdit(i)">✎</button>
+                    <button class="btn btn-link btn-sm py-0 px-1" @click.stop="startCompute(item)">▶</button>
+                    <button class="btn btn-link btn-sm py-0 px-1 text-danger" @click.stop="deleteItem(i)">✕</button>
+                  </span>
+                </template>
               </div>
             </template>
             <!-- Editable items (theorem, definition, single-line calculation) -->
@@ -184,6 +200,7 @@ const savedExpr = ref('')
 
 const computing = ref(false)
 const computingName = ref('')
+const computingItemIdx = ref(-1)
 const exprInput = ref('')
 const parseError = ref('')
 const startLatex = ref('')
@@ -224,6 +241,15 @@ function startEdit(i) {
   editIdx.value = i
   savedExpr.value = fileItems.value[i].expr || ''
 }
+async function finishEditCalc(i) {
+  editIdx.value = -1
+  dirty.value = true
+  // Re-render latex
+  try {
+    const res = await api.post('/saint/parse', { expr: fileItems.value[i].goal })
+    if (res.data.status === 'ok') fileItems.value[i].goal_latex = res.data.latex
+  } catch {}
+}
 function finishEdit() {
   editIdx.value = -1
   dirty.value = true
@@ -239,12 +265,18 @@ function deleteItem(i) {
   fileItems.value.splice(i, 1)
   dirty.value = true
 }
-function addItem() {
-  fileItems.value.push({
-    type: 'theorem', expr: 'f(x) = x', latex: '', category: '', conds: [],
-  })
+function addNew(type) {
+  if (type === 'calculation') {
+    fileItems.value.push({
+      type: 'calculation', name: 'New Problem', goal: 'INT x. x', target: null, conds: [], calc: [],
+    })
+  } else {
+    fileItems.value.push({
+      type: type, expr: 'f(x) = x', latex: '', category: '', conds: [],
+    })
+    startEdit(fileItems.value.length - 1)
+  }
   dirty.value = true
-  startEdit(fileItems.value.length - 1)
 }
 async function refreshItemLatex(i) {
   if (i < 0 || i >= fileItems.value.length) return
@@ -271,6 +303,7 @@ async function saveFile() {
 async function startCompute(item) {
   computing.value = true
   computingName.value = item.name
+  computingItemIdx.value = fileItems.value.indexOf(item)
   exprInput.value = item.goal
   targetExpr.value = item.target || ''
   targetLatex.value = ''
@@ -292,24 +325,20 @@ async function startCompute(item) {
     })
   }
 }
-async function startManualCalc() {
+function newCalculation() {
+  exprInput.value = ''
+  computing.value = true
+  computingName.value = 'New Calculation'
+  startLatex.value = ''
+  startExpr.value = ''
+  targetLatex.value = ''
+  targetExpr.value = ''
+  steps.value = []
+  displaySteps.value = []
+  selectedRule.value = ''
+  verifyStatus.value = ''
   parseError.value = ''
-  if (!exprInput.value.trim()) return
-  try {
-    const res = await api.post('/saint/parse', { expr: exprInput.value })
-    if (res.data.status === 'ok') {
-      computing.value = true
-      computingName.value = 'Manual'
-      startLatex.value = res.data.latex
-      startExpr.value = res.data.text
-      targetLatex.value = ''
-      targetExpr.value = ''
-      steps.value = []
-      displaySteps.value = []
-      selectedRule.value = ''
-      verifyStatus.value = ''
-    } else { parseError.value = res.data.msg }
-  } catch (e) { parseError.value = e.message }
+  suggestions.value = []
 }
 async function loadSuggestions() {
   if (!startExpr.value) return
@@ -370,6 +399,29 @@ async function verifyResult() {
     if (res.data.status === 'ok') verifyStatus.value = res.data.match ? '✓ Match' : '✗ No match'
   } catch (e) { verifyStatus.value = 'Error' }
 }
+function saveSteps() {
+  if (computingItemIdx.value < 0 || !steps.value.length) return
+  const item = fileItems.value[computingItemIdx.value]
+  if (!item) return
+  // Convert frontend steps to calc format
+  item.calc = steps.value.map(s => {
+    const reasonMap = {
+      simplify: "Simplification", substitute: "Substitution",
+      substitute_inverse: "Substitution inverse", integrate_by_parts: "Integrate by parts",
+      rewrite: "Rewrite", rewrite_trig: "Rewrite trigonometric",
+      unfold_power: "Unfold power", split_region: "Split region",
+      elim_abs: "Elim abs", elim_inf_interval: "Eliminate infinity",
+      solve_equation: "Solve equation", series_expansion: "Series expansion",
+      series_evaluation: "Series evaluation", int_sum_exchange: "Exchange integral and sum",
+      expand_polynomial: "Expand polynomial", definite_integral_identity: "Definite integral identity",
+      indefinite_integral_identity: "Indefinite integral identity",
+      integrate_by_equation: "Solve equation", linearity: "Linearity",
+    }
+    return { reason: reasonMap[s.rule] || s.rule, params: s.params || {} }
+  })
+  dirty.value = true
+}
+
 function undoStep() {
   if (!steps.value.length) return
   steps.value.pop()
@@ -396,6 +448,7 @@ function resetCalculation() {
 .file-list li:hover { background: #e9ecef; }
 .file-list li.active { background: #0d6efd; color: white; }
 .saint-main { flex: 1; overflow-y: auto; padding: 16px; }
+.add-bar { display: flex; gap: 6px; margin-bottom: 12px; align-items: center; }
 .input-bar { display: flex; gap: 8px; margin-bottom: 12px; }
 .expr-input { flex: 1; font-family: monospace; }
 .items-list { max-width: 800px; }
@@ -403,8 +456,8 @@ function resetCalculation() {
 .item-header { font-size: 0.9rem; font-weight: 600; color: #343a40; padding: 8px 0 4px; border-bottom: 1px solid #eee; margin-bottom: 4px; }
 .item-lib { display: flex; align-items: baseline; gap: 6px; padding: 3px 8px; border-radius: 4px; }
 .item-lib:hover { background: #f0f7ff; }
-.item-calc { display: flex; align-items: baseline; gap: 6px; padding: 4px 8px; background: #f8f0fc; border-radius: 4px; margin: 2px 0; }
 .item-name { font-size: 0.85rem; font-weight: 600; color: #4a148c; min-width: 80px; }
+.item-calc { display: flex; align-items: baseline; gap: 6px; padding: 4px 8px; background: #f8f0fc; border-radius: 4px; margin: 2px 0; }
 .item-table { font-size: 0.85rem; color: #6c757d; padding: 3px 0; }
 .item-actions { margin-left: auto; white-space: nowrap; }
 .type-badge { font-size: 0.65rem; padding: 0 4px; border-radius: 2px; text-transform: uppercase; white-space: nowrap; min-width: 28px; text-align: center; }
@@ -412,6 +465,7 @@ function resetCalculation() {
 .type-definition { background: #cce5ff; color: #004085; }
 .type-calculation { background: #f3e5f5; color: #4a148c; }
 .type-select { width: auto; font-size: 0.75rem; }
+.calc-name-input { width: 100px; font-size: 0.8rem; }
 .lib-edit-input { flex: 1; font-family: monospace; font-size: 0.8rem; }
 .ms-auto { margin-left: auto; }
 .ms-2 { margin-left: 8px; }

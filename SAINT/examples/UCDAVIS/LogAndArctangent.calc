@@ -1,19 +1,19 @@
 
-problem  "Exercise 1"
+calculation  "Exercise 1"
   goal  INT x:[1, 2]. (3 + x^2)/x
   calc
     rewrite_fraction  denom = x, rhs = x + 3 / x, at 0
     simplify
   qed
 
-problem  "Exercise 2"
+calculation  "Exercise 2"
   goal  INT x:[0, 1]. 7/(x + 5)
   calc
     substitute  f = 7 / u, g = x + 5, var_name = u
     simplify
   qed
 
-problem  "Exercise 3"
+calculation  "Exercise 3"
   goal  INT x:[-1, 1]. 3/(x^2 + 4)
   calc
     substitute  f = (3 / ((2 * u) ^ 2 + 4)) * 2, g = x / 2, var_name = u
@@ -22,21 +22,21 @@ problem  "Exercise 3"
     simplify
   qed
 
-problem  "Exercise 4"
+calculation  "Exercise 4"
   goal  INT x:[-1, 0]. x/(x^2 + 4)
   calc
     substitute  f = 1 / (2 * u), g = x ^ 2 + 4, var_name = u
     simplify
   qed
 
-problem  "Exercise 5"
+calculation  "Exercise 5"
   goal  INT x:[-1, 1].  x^3/(x + 2)
   calc
     rewrite_fraction  rhs = ((x ^ 2 - 2 * x) + 4) - 8 / (x + 2), at 0
     simplify
   qed
 
-problem  "Exercise 6"
+calculation  "Exercise 6"
   goal  INT x:[-1, 1]. (x^4 + x^3)/(x^2 + 1)
   calc
     rewrite_fraction  rhs = (x ^ 2 + x) - (x - 1) / (x ^ 2 + 1) - 1, at 0
@@ -47,21 +47,21 @@ problem  "Exercise 6"
     simplify
   qed
 
-problem  "Exercise 7"
+calculation  "Exercise 7"
   goal  INT x:[1, exp(1)]. 1 / (x * (3 + log(x)))
   calc
     substitute  f = 1 / u, g = log(x) + 3, var_name = u
     simplify
   qed
 
-problem  "Exercise 8"
+calculation  "Exercise 8"
   goal  INT x:[1, exp(1)]. (7 - log(x))/(x * (3 + log(x)))
   calc
     substitute  f = (7 - u) / (u + 3), g = log(x), var_name = u
     simplify
   qed
 
-problem  "Exercise 9"
+calculation  "Exercise 9"
   goal  INT x:[0, 1]. 1 / (x^2 + 4 * x + 5)
   calc
     rewrite  rhs = (x+2)*(x+2)+1, at 0.1
@@ -69,7 +69,7 @@ problem  "Exercise 9"
     simplify
   qed
 
-problem  "Exercise 10"
+calculation  "Exercise 10"
   goal  INT x:[1, 2]. 1 / (2*x^2 + 12*x + 68)
   calc
     rewrite  rhs = 2 * (x + 3) * (x + 3) + 50, at 0.1
@@ -79,7 +79,7 @@ problem  "Exercise 10"
     simplify
   qed
 
-problem  "Exercise 11"
+calculation  "Exercise 11"
   goal  INT x:[9, 16]. 1 / (sqrt(x) * (x + 9))
   calc
     substitute  f = (1 / (sqrt(u ^ 2) * (u ^ 2 + 9))) * (2 * u), g = sqrt(x), var_name = u
@@ -92,21 +92,21 @@ problem  "Exercise 11"
     simplify
   qed
 
-problem  "Exercise 12"
+calculation  "Exercise 12"
   goal  INT x:[0, pi/4]. sin(2*x)/(1 + cos(2*x))
   calc
     substitute  f = -1 / (2 * u), g = cos(2 * x) + 1, var_name = u
     simplify
   qed
 
-problem  "Exercise 13"
+calculation  "Exercise 13"
   goal  INT x:[0, pi/2]. cos(x) / (1 + sin(x) ^ 2)
   calc
     substitute  f = 1 / (u ^ 2 + 1), g = sin(x), var_name = u
     simplify
   qed
 
-problem  "Exercise 14"
+calculation  "Exercise 14"
   goal  INT x:[0, 1]. exp(2*x)/(1 + exp(2*x))
   calc
     substitute  f = 1 / (2 * (u + 1)), g = exp(2 * x), var_name = u
@@ -114,7 +114,7 @@ problem  "Exercise 14"
     simplify
   qed
 
-problem  "Exercise 15"
+calculation  "Exercise 15"
   goal  INT x:[0, 1]. exp(x)/(1 + exp(2*x))
   calc
     rewrite  rhs = exp(x)*exp(x), at 0.1.1
@@ -122,7 +122,7 @@ problem  "Exercise 15"
     simplify
   qed
 
-problem  "Exercise 16"
+calculation  "Exercise 16"
   goal  INT x:[0, 1]. exp(4*x)/(1 + exp(2*x))
   calc
     substitute  f = u / (2 * (u + 1)), g = exp(2 * x), var_name = u
@@ -130,7 +130,7 @@ problem  "Exercise 16"
     simplify
   qed
 
-problem  "Exercise 17"
+calculation  "Exercise 17"
   goal  INT x:[0, 1]. x / (x^2 + 2 * x + 1)
   calc
     rewrite  rhs = (x+1)*(x+1), at 0.1
@@ -138,7 +138,7 @@ problem  "Exercise 17"
     simplify
   qed
 
-problem  "Exercise 18"
+calculation  "Exercise 18"
   goal  INT x:[0, 1]. x / (x ^ 2 + 2 * x + 5)
   calc
     rewrite  rhs = (x+1)*(x+1)+4, at 0.1
@@ -150,7 +150,7 @@ problem  "Exercise 18"
     simplify
   qed
 
-problem  "Exercise 19"
+calculation  "Exercise 19"
   goal  INT x:[-1, 1]. (7 * x - 2)/(2*x^2 - 16 * x + 42)
   calc
     rewrite  rhs = 2*(x-4)*(x-4)+10, at 0.1
@@ -163,7 +163,7 @@ problem  "Exercise 19"
     simplify
   qed
 
-problem  "Exercise 20"
+calculation  "Exercise 20"
   goal  INT x:[0, 1]. 1 / (1 + exp(2*x))
   calc
     rewrite  denom = 1 + exp(2 * x), rhs = exp(-2*x)/(exp(-2*x)+1), at 0
@@ -171,7 +171,7 @@ problem  "Exercise 20"
     simplify
   qed
 
-problem  "Exercise 21"
+calculation  "Exercise 21"
   goal  INT x:[0, 1]. exp(3*x)/(1 + exp(2*x))
   calc
     rewrite  denom = 1 + exp(2 * x), rhs = exp(x)*exp(x)*exp(x) / (1+exp(x)*exp(x)), at 0
@@ -180,7 +180,7 @@ problem  "Exercise 21"
     simplify
   qed
 
-problem  "Exercise 22"
+calculation  "Exercise 22"
   goal  INT x:[1, 4]. (9 + 6*sqrt(x) + x)/(4*sqrt(x) + x)
   calc
     rewrite_fraction  rhs = sqrt(x) * (4 + sqrt(x)), at 0.1

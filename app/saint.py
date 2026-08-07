@@ -141,9 +141,22 @@ def saint_load():
                         target_str = str(e.args[1])
                 except:
                     pass
+            # Render goal and target as LaTeX
+            goal_latex = ''
+            target_latex = ''
+            try:
+                goal_latex = latex.convert_expr(parser.parse_expr(goal_str))
+            except:
+                goal_latex = goal_str
+            if target_str:
+                try:
+                    target_latex = latex.convert_expr(parser.parse_expr(target_str))
+                except:
+                    target_latex = target_str
             items.append({
                 'type': 'calculation', 'name': item.get('name', ''),
-                'goal': goal_str, 'target': target_str,
+                'goal': goal_str, 'goal_latex': goal_latex,
+                'target': target_str, 'target_latex': target_latex,
             })
             continue
     return jsonify({"items": items})

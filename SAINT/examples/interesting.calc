@@ -3,102 +3,177 @@ imports  base
 
 header  "1. Introduction"  level = 1
 header  "1.5 Some Examples of Tricks"  level = 2
-calculation  "(INT x:[0,oo]. log(x) / (x ^ 2 + 1)) = 0"
+calculation  "Problem 1"
+  goal  (INT x:[0,oo]. log(x) / (x ^ 2 + 1)) = 0
 header  "1.10 Challenge Problems"  level = 2
-calculation  "(INT x:[0,8]. 1/(x-2)) = log(3)"
+calculation  "Problem 2"
+  goal  (INT x:[0,8]. 1/(x-2)) = log(3)
 header  "2. 'Easy' integrals"  level = 1
 header  "2.1 Six 'Easy' Warm-Ups"  level = 2
-calculation  "(INT x:[1,oo]. 1 / ((x+a)*sqrt(x-1))) = pi / sqrt(a+1)"  conds = [a > -1]
-calculation  "(INT x:[0, oo]. log(1 + a^2 / x^2)) = pi * a"  conds = [a > 0]
-calculation  "(INT x:[0, oo]. log(x) / (x^2+b^2)) = pi * log(b) / (2*b)"  conds = [b > 0]
-calculation  "(INT x:[0, oo]. 1/(1 + exp(a*x))) = log(2)/a"  conds = [a > 0]
-calculation  "(INT x:[-oo, oo]. 1/cosh(x)) = pi"
+calculation  "Problem 3"
+  goal  (INT x:[1,oo]. 1 / ((x+a)*sqrt(x-1))) = pi / sqrt(a+1)
+calculation  "Problem 4"
+  goal  (INT x:[0, oo]. log(1 + a^2 / x^2)) = pi * a
+calculation  "Problem 5"
+  goal  (INT x:[0, oo]. log(x) / (x^2+b^2)) = pi * log(b) / (2*b)
+calculation  "Problem 6"
+  goal  (INT x:[0, oo]. 1/(1 + exp(a*x))) = log(2)/a
+calculation  "Problem 7"
+  goal  (INT x:[-oo, oo]. 1/cosh(x)) = pi
 header  "2.2 A New Trick"  level = 2
-calculation  "(INT x:[0,pi/2]. sqrt(sin(x)) / (sqrt(sin(x)) + sqrt(cos(x)))) = 1/4 * pi"
-calculation  "(INT x:[0,pi]. x * sin(x) / (1 + cos(x)^2)) = 1/4 * pi^2"
-calculation  "(INT x:[0, pi/2]. sin(x) ^ 2 / (sin(x) + cos(x))) = sqrt(2) / 4 * log(3 + 2*sqrt(2))"
-calculation  "(INT x:[0,1]. log(x+1) / (x^2 + 1)) = pi / 8 * log(2)"  category = new trick
-calculation  "(INT t:[0,a]. log(t+a) / (t^2 + a^2)) = pi /(8*a) * log(2*a^2)"  conds = [a > 0]
+calculation  "Problem 8"
+  goal  (INT x:[0,pi/2]. sqrt(sin(x)) / (sqrt(sin(x)) + sqrt(cos(x)))) = 1/4 * pi
+calculation  "Problem 9"
+  goal  (INT x:[0,pi]. x * sin(x) / (1 + cos(x)^2)) = 1/4 * pi^2
+calculation  "Problem 10"
+  goal  (INT x:[0, pi/2]. sin(x) ^ 2 / (sin(x) + cos(x))) = sqrt(2) / 4 * log(3 + 2*sqrt(2))
+calculation  "Problem 11"
+  goal  (INT x:[0,1]. log(x+1) / (x^2 + 1)) = pi / 8 * log(2)
+calculation  "Problem 12"
+  goal  (INT t:[0,a]. log(t+a) / (t^2 + a^2)) = pi /(8*a) * log(2*a^2)
 header  "2.3 Two Old Tricks, Plus a New One"  level = 2
-calculation  "(INT x:[0,oo]. 1 / (x^4 + 2*x^2*cosh(2*a) + 1)) = pi / (4 * cosh(a))"
-calculation  "(INT x:[0,oo]. x^2 / (x^4 + 2*x^2*cos(2*a) + 1)) = pi / (4 * cos(a))"
+calculation  "Problem 13"
+  goal  (INT x:[0,oo]. 1 / (x^4 + 2*x^2*cosh(2*a) + 1)) = pi / (4 * cosh(a))
+calculation  "Problem 14"
+  goal  (INT x:[0,oo]. x^2 / (x^4 + 2*x^2*cos(2*a) + 1)) = pi / (4 * cos(a))
 header  "2.4 Another Old Trick: Euler's Log-Sine Integral"  level = 2
-calculation  "(INT x:[0,pi/2]. log(a * sin(x))) = pi/2 * log(a/2)"  conds = [a > 0]
-calculation  "(INT x:[0, pi/2]. log(sin(x) / x)) = pi/2 * (1-log(pi))"
-calculation  "(INT x:[0,oo]. log(x) / (x^2-b*x+1)) = 0"  conds = [b > -2; b < 2]
-calculation  "(INT x:[0,1]. (1-x) / (1+x+x^2)) = 1/6 * sqrt(3) * pi - 1/2 * log(3)"
+calculation  "Problem 15"
+  goal  (INT x:[0,pi/2]. log(a * sin(x))) = pi/2 * log(a/2)
+calculation  "Problem 16"
+  goal  (INT x:[0, pi/2]. log(sin(x) / x)) = pi/2 * (1-log(pi))
+calculation  "Problem 17"
+  goal  (INT x:[0,oo]. log(x) / (x^2-b*x+1)) = 0
+calculation  "Problem 18"
+  goal  (INT x:[0,1]. (1-x) / (1+x+x^2)) = 1/6 * sqrt(3) * pi - 1/2 * log(3)
 header  "3. Feynman's Favorite Trick"  level = 1
 header  "3.1 Leibniz's Formula"  level = 2
-calculation  "(INT x:[0,oo]. 1 / (x^2 + a^2)) = pi / (2 * a)"  conds = [a > 0]
-calculation  "(INT x:[0,oo]. 1 / (x^2 + a^2)^2) = pi / (4 * a^3)"  conds = [a > 0]
-calculation  "(INT x:[0,oo]. 1 / (x^2 + a^2)^3) = 3*pi / (16 * a^5)"  conds = [a > 0]
-calculation  "(INT x:[-oo,oo]. exp(-(x^2)/2)) = sqrt(2*pi)"
-calculation  "(INT x:[0,oo]. exp(-(x^2)/2)) = sqrt(pi/2)"
-calculation  "(INT x:[-oo,oo]. exp(-(a*x^2))) = sqrt(pi / a)"  conds = [a > 0]
-calculation  "(INT x:[0, oo]. cos(t*x)*exp(-(x^2)/2)) = sqrt(pi/2)*exp(-(t^2)/2)"
+calculation  "Problem 19"
+  goal  (INT x:[0,oo]. 1 / (x^2 + a^2)) = pi / (2 * a)
+calculation  "Problem 20"
+  goal  (INT x:[0,oo]. 1 / (x^2 + a^2)^2) = pi / (4 * a^3)
+calculation  "Problem 21"
+  goal  (INT x:[0,oo]. 1 / (x^2 + a^2)^3) = 3*pi / (16 * a^5)
+calculation  "Problem 22"
+  goal  (INT x:[-oo,oo]. exp(-(x^2)/2)) = sqrt(2*pi)
+calculation  "Problem 23"
+  goal  (INT x:[0,oo]. exp(-(x^2)/2)) = sqrt(pi/2)
+calculation  "Problem 24"
+  goal  (INT x:[-oo,oo]. exp(-(a*x^2))) = sqrt(pi / a)
+calculation  "Problem 25"
+  goal  (INT x:[0, oo]. cos(t*x)*exp(-(x^2)/2)) = sqrt(pi/2)*exp(-(t^2)/2)
 header  "3.2 An Amazing Integral"  level = 2
-calculation  "(INT x:[0,oo]. sin(a * x) / x) = 1/2 * pi"  conds = [a > 0]
-calculation  "(INT x:[0,oo]. sin(a * x) / x) = 0"  conds = [a = 0]
-calculation  "(INT x:[0,oo]. sin(a * x) / x) = -1/2 * pi"  conds = [a < 0]
+calculation  "Problem 26"
+  goal  (INT x:[0,oo]. sin(a * x) / x) = 1/2 * pi
+calculation  "Problem 27"
+  goal  (INT x:[0,oo]. sin(a * x) / x) = 0
+calculation  "Problem 28"
+  goal  (INT x:[0,oo]. sin(a * x) / x) = -1/2 * pi
 header  "3.3 Frullani's Integral"  level = 2
-calculation  "(INT x:[0,oo]. (atan(a*x) - atan(b*x))/x) = 1/2 * pi * log(a) - 1/2 * pi * log(b)"  conds = [a > 0; b > 0]
+calculation  "Problem 29"
+  goal  (INT x:[0,oo]. (atan(a*x) - atan(b*x))/x) = 1/2 * pi * log(a) - 1/2 * pi * log(b)
 header  "3.4 The Flip-Side of Feynman's Trick"  level = 2
-calculation  "(INT x:[0, 1]. (x ^ a - 1) / log(x)) = log(a + 1)"  conds = [a >= 0]
+calculation  "Problem 30"
+  goal  (INT x:[0, 1]. (x ^ a - 1) / log(x)) = log(a + 1)
 header  "3.10 Challenge Problems"  level = 2
-calculation  "(INT x:[0, oo]. log(1 + a ^ 2 * x ^ 2) / (b ^ 2 + x ^ 2)) = pi / b * log(1 + a*b)"  conds = [a > 0; b > 0]
-calculation  "(INT x:[-oo, oo]. cos(a * x) / (b ^ 2 - x ^ 2)) = pi * (sin(a * b) / b)"  conds = [a > 0; b > 0]
-calculation  "(INT x:[-oo, oo]. cos(a * x) / (b ^ 4 - x ^ 4)) = pi * (exp(-a * b) + sin(a * b)) / (2 * b ^ 3)"  conds = [a > 0; b > 0]
-calculation  "(INT x:[0, oo]. x * sin(a * x) / (x ^ 2 - b ^ 2)) = pi / 2 * cos(a * b)"  conds = [a > 0; b > 0]
-calculation  "(INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi / 2"  conds = [b - a > 0; a > 0; b > 0]
-calculation  "(INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = 0"  conds = [b - a < 0; a > 0; b > 0]
-calculation  "(INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi / 4"  conds = [b - a = 0; a > 0; b > 0]
-calculation  "(INT x:[-1, 1]. ((1 + x) / (1 - x)) ^ (1/2)) = pi"
-calculation  "(INT x:[-oo, oo]. x * exp(-(a * x ^ 2) + b * x)) = (b / (2 * a)) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a)"  conds = [a > 0]
-calculation  "(INT x:[-oo, oo]. x ^ 2 * exp(-(a * x ^ 2) + b * x)) = (b ^ 2 / (4 * a ^ 2)) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) + 1 / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a)"  conds = [a > 0]
-calculation  "(INT x:[-oo, oo]. x * exp(-x^2-x)) = -1/2 * sqrt(pi * sqrt(exp(1)))"
-calculation  "(INT x:[-oo, oo]. x^2 * exp(-x^2-x)) = 3/4 * sqrt(pi * sqrt(exp(1)))"
-calculation  "(INT x:[0, oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2) ^ 2)) = (pi / (2 * a ^ 4)) * (1 - ((2 + m * a) / 2) * exp(- a * m))"  conds = [a > 0; m > 0]
-calculation  "(INT x:[0, 1]. 1 / (a * x + b * (1 - x)) ^ 2) = 1 / (a * b)"  conds = [a > 0; b > 0]
-calculation  "(INT x:[0, 1]. x / (a * x + b * (1 - x)) ^ 3) = 1 / (2 * a ^ 2 * b)"  conds = [a > 0; b > 0]
+calculation  "Problem 31"
+  goal  (INT x:[0, oo]. log(1 + a ^ 2 * x ^ 2) / (b ^ 2 + x ^ 2)) = pi / b * log(1 + a*b)
+calculation  "Problem 32"
+  goal  (INT x:[-oo, oo]. cos(a * x) / (b ^ 2 - x ^ 2)) = pi * (sin(a * b) / b)
+calculation  "Problem 33"
+  goal  (INT x:[-oo, oo]. cos(a * x) / (b ^ 4 - x ^ 4)) = pi * (exp(-a * b) + sin(a * b)) / (2 * b ^ 3)
+calculation  "Problem 34"
+  goal  (INT x:[0, oo]. x * sin(a * x) / (x ^ 2 - b ^ 2)) = pi / 2 * cos(a * b)
+calculation  "Problem 35"
+  goal  (INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi / 2
+calculation  "Problem 36"
+  goal  (INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = 0
+calculation  "Problem 37"
+  goal  (INT x:[0, oo]. cos(a * x) * sin(b * x) / x) = pi / 4
+calculation  "Problem 38"
+  goal  (INT x:[-1, 1]. ((1 + x) / (1 - x)) ^ (1/2)) = pi
+calculation  "Problem 39"
+  goal  (INT x:[-oo, oo]. x * exp(-(a * x ^ 2) + b * x)) = (b / (2 * a)) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a)
+calculation  "Problem 40"
+  goal  (INT x:[-oo, oo]. x ^ 2 * exp(-(a * x ^ 2) + b * x)) = (b ^ 2 / (4 * a ^ 2)) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a) + 1 / (2 * a) * exp(b ^ 2 / (4 * a)) * sqrt(pi / a)
+calculation  "Problem 41"
+  goal  (INT x:[-oo, oo]. x * exp(-x^2-x)) = -1/2 * sqrt(pi * sqrt(exp(1)))
+calculation  "Problem 42"
+  goal  (INT x:[-oo, oo]. x^2 * exp(-x^2-x)) = 3/4 * sqrt(pi * sqrt(exp(1)))
+calculation  "Problem 43"
+  goal  (INT x:[0, oo]. sin(m * x) / (x * (a ^ 2 + x ^ 2) ^ 2)) = (pi / (2 * a ^ 4)) * (1 - ((2 + m * a) / 2) * exp(- a * m))
+calculation  "Problem 44"
+  goal  (INT x:[0, 1]. 1 / (a * x + b * (1 - x)) ^ 2) = 1 / (a * b)
+calculation  "Problem 45"
+  goal  (INT x:[0, 1]. x / (a * x + b * (1 - x)) ^ 3) = 1 / (2 * a ^ 2 * b)
 header  "4. Gamma and Beta Function Integrals"  level = 1
 header  "4.1 Euler's Gamma Function"  level = 2
 definition  "Gamma(n) = (INT x:[0,oo]. exp(-x) * x ^ (n - 1))"
-calculation  "Gamma(n) = factorial(n - 1)"  conds = [n >= 1]  category = gamma-beta
-calculation  "Gamma(n) = (n - 1) * Gamma(n - 1)"  category = gamma-beta
-calculation  "(INT x:[0,oo]. exp(-x^3)) = Gamma(4/3)"
+calculation  "Problem 46"
+  goal  Gamma(n) = factorial(n - 1)
+calculation  "Problem 47"
+  goal  Gamma(n) = (n - 1) * Gamma(n - 1)
+calculation  "Problem 48"
+  goal  (INT x:[0,oo]. exp(-x^3)) = Gamma(4/3)
 header  "4.2 Wallis' Integral and the Beta Function"  level = 2
 definition  "B(m, n) = INT x:[0,1]. x^(m-1) * (1-x)^(n-1)"
-calculation  "B(m, n) = 2 * (INT x:[0, pi / 2]. cos(x) ^ (2 * m - 1) * sin(x) ^ (2 * n - 1))"  conds = [m > 0; n > 0]
-calculation  "(INT x:[0, 1]. (x - x ^ 2) ^ n) = (factorial(n) ^ 2) / (factorial(2 * n + 1))"  conds = [n > -1]
-calculation  "factorial(1/2) = sqrt(pi) / 2"
-calculation  "(INT x:[0, oo]. exp(-x) * sqrt(x)) = sqrt(pi) / 2"
-calculation  "(INT x:[0, 1]. sqrt(-log(x))) = sqrt(pi) / 2"
-calculation  "(INT x:[0, oo]. exp(-x) / sqrt(x)) = sqrt(pi)"
-calculation  "Gamma(1/2) = sqrt(pi)"
-calculation  "factorial(-1/2) = sqrt(pi)"
-calculation  "(INT x:[0, pi / 2]. sqrt(sin(x))) = Gamma(3/4) * Gamma(1/2) / (2 * Gamma(5/4))"
-calculation  "(INT x:[0, pi / 2]. sqrt(cos(x))) = Gamma(3/4) * Gamma(1/2) / (2 * Gamma(5/4))"
-calculation  "(INT x:[0, pi / 2]. 1 / sqrt(sin(x))) = Gamma(1/4) ^ 2 / (2 * sqrt(2 * pi))"
-calculation  "(INT x:[0, pi / 2]. 1 / sqrt(cos(x))) = Gamma(1/4) ^ 2 / (2 * sqrt(2 * pi))"
-calculation  "(INT x:[0, oo]. x ^ (m - 1) / (x + 1)) = B(m, 1 - m)"  conds = [m > 0; m < 1]
-calculation  "B(m, 1 - m) = Gamma(m) * Gamma(1 - m)"  conds = [m > 0; m < 1]
-calculation  "Gamma(m) * Gamma(1 - m) = pi / sin(m * pi)"  conds = [m > 0; m < 1]
-calculation  "factorial(z) * factorial(z + 1/2) = 2 ^ (-2 * z - 1) * sqrt(pi) * factorial(2 * z + 1)"  conds = [z > -1]
+calculation  "Problem 49"
+  goal  B(m, n) = 2 * (INT x:[0, pi / 2]. cos(x) ^ (2 * m - 1) * sin(x) ^ (2 * n - 1))
+calculation  "Problem 50"
+  goal  (INT x:[0, 1]. (x - x ^ 2) ^ n) = (factorial(n) ^ 2) / (factorial(2 * n + 1))
+calculation  "Problem 51"
+  goal  factorial(1/2) = sqrt(pi) / 2
+calculation  "Problem 52"
+  goal  (INT x:[0, oo]. exp(-x) * sqrt(x)) = sqrt(pi) / 2
+calculation  "Problem 53"
+  goal  (INT x:[0, 1]. sqrt(-log(x))) = sqrt(pi) / 2
+calculation  "Problem 54"
+  goal  (INT x:[0, oo]. exp(-x) / sqrt(x)) = sqrt(pi)
+calculation  "Problem 55"
+  goal  Gamma(1/2) = sqrt(pi)
+calculation  "Problem 56"
+  goal  factorial(-1/2) = sqrt(pi)
+calculation  "Problem 57"
+  goal  (INT x:[0, pi / 2]. sqrt(sin(x))) = Gamma(3/4) * Gamma(1/2) / (2 * Gamma(5/4))
+calculation  "Problem 58"
+  goal  (INT x:[0, pi / 2]. sqrt(cos(x))) = Gamma(3/4) * Gamma(1/2) / (2 * Gamma(5/4))
+calculation  "Problem 59"
+  goal  (INT x:[0, pi / 2]. 1 / sqrt(sin(x))) = Gamma(1/4) ^ 2 / (2 * sqrt(2 * pi))
+calculation  "Problem 60"
+  goal  (INT x:[0, pi / 2]. 1 / sqrt(cos(x))) = Gamma(1/4) ^ 2 / (2 * sqrt(2 * pi))
+calculation  "Problem 61"
+  goal  (INT x:[0, oo]. x ^ (m - 1) / (x + 1)) = B(m, 1 - m)
+calculation  "Problem 62"
+  goal  B(m, 1 - m) = Gamma(m) * Gamma(1 - m)
+calculation  "Problem 63"
+  goal  Gamma(m) * Gamma(1 - m) = pi / sin(m * pi)
+calculation  "Problem 64"
+  goal  factorial(z) * factorial(z + 1/2) = 2 ^ (-2 * z - 1) * sqrt(pi) * factorial(2 * z + 1)
 header  "5. Using Power Series to Evaluate Integrals"  level = 1
 header  "5.1 Catalan's Constant"  level = 2
 definition  "G = SUM(n, 0, oo, (-1) ^ n / (2 * n + 1) ^ 2)"
-calculation  "(INT x:[0, 1]. atan(x) / x) = G"
-calculation  "(INT x:[1,oo]. log(x) / (x^2+1)) = G"
-calculation  "(INT x:[0, oo]. log(x + 1) / (x ^ 2 + 1)) = pi / 4 * log(2) + G"
+calculation  "Problem 65"
+  goal  (INT x:[0, 1]. atan(x) / x) = G
+calculation  "Problem 66"
+  goal  (INT x:[1,oo]. log(x) / (x^2+1)) = G
+calculation  "Problem 67"
+  goal  (INT x:[0, oo]. log(x + 1) / (x ^ 2 + 1)) = pi / 4 * log(2) + G
 header  "5.2 Power Series for the Log Function"  level = 2
-calculation  "(INT x:[0,1]. log(x+1) / x) = (pi^2) / 12"
-calculation  "(INT x:[0, pi/2]. cos(x)/sin(x) * log(1/cos(x))) = pi^2/24"
+calculation  "Problem 68"
+  goal  (INT x:[0,1]. log(x+1) / x) = (pi^2) / 12
+calculation  "Problem 69"
+  goal  (INT x:[0, pi/2]. cos(x)/sin(x) * log(1/cos(x))) = pi^2/24
 header  "6. Seven Not-So-Easy Integrals"  level = 1
 header  "6.1 Bernoulli's Integral"  level = 2
-calculation  "(INT x:[0,1]. x^(c*x^a)) = SUM(k,0,oo,(-c)^k / (k*a+1)^(k+1))"
-calculation  "(INT x:[0,1]. x^x) = SUM(k, 0, oo, (-1) ^ k * (k + 1) ^ (-k - 1))"
-calculation  "(INT x:[0,1]. x^(-x)) = SUM(k, 0, oo, (k + 1) ^ (-k - 1))"
-calculation  "(INT x:[0,1]. x^(x^2)) = SUM(k, 0, oo, (-1) ^ k * (2 * k + 1) ^ (-k - 1))"
-calculation  "(INT x:[0,1]. x^(sqrt(x))) = SUM(k, 0, oo, (-1) ^ k * (2 / (k + 2)) ^ (k+1))"
+calculation  "Problem 70"
+  goal  (INT x:[0,1]. x^(c*x^a)) = SUM(k,0,oo,(-c)^k / (k*a+1)^(k+1))
+calculation  "Problem 71"
+  goal  (INT x:[0,1]. x^x) = SUM(k, 0, oo, (-1) ^ k * (k + 1) ^ (-k - 1))
+calculation  "Problem 72"
+  goal  (INT x:[0,1]. x^(-x)) = SUM(k, 0, oo, (k + 1) ^ (-k - 1))
+calculation  "Problem 73"
+  goal  (INT x:[0,1]. x^(x^2)) = SUM(k, 0, oo, (-1) ^ k * (2 * k + 1) ^ (-k - 1))
+calculation  "Problem 74"
+  goal  (INT x:[0,1]. x^(sqrt(x))) = SUM(k, 0, oo, (-1) ^ k * (2 / (k + 2)) ^ (k+1))
 header  "6.2 Ahmed's Integral"  level = 2
-calculation  "(INT x:[0,1]. atan(sqrt(2+x^2)) / ((1+x^2)*sqrt(2+x^2))) = 5*pi^2/96"
+calculation  "Problem 75"
+  goal  (INT x:[0,1]. atan(sqrt(2+x^2)) / ((1+x^2)*sqrt(2+x^2))) = 5*pi^2/96

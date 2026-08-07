@@ -1,10 +1,10 @@
 
-problem  "Exercise 3"
+calculation  "Exercise 3"
   goal  INT x:[exp(1), exp(exp(1))]. (log(x)*log(log(x)))/x
   calc
   qed
 
-problem  "Exercise 5"
+calculation  "Exercise 5"
   goal  INT x:[0, 1].1/(x^2+(x-1)^2)
   calc
     rewrite  rhs = x^2+(x-1)*(x-1), at 0.1
@@ -15,7 +15,7 @@ problem  "Exercise 5"
     simplify
   qed
 
-problem  "Exercise 7"
+calculation  "Exercise 7"
   goal  INT x:[0, pi/4]. sin(x)^4*cos(x)^4*(cos(x) + sin(x))*(cos(x) - sin(x))
   calc
   qed
