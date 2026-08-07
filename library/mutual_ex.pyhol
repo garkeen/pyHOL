@@ -1,0 +1,25 @@
+theory mutual_ex
+imports gcl
+description "Parametrized system in GCL encoding."
+
+header "States"
+
+def I :: nat = I = 0
+def T :: nat = T = 1
+def C :: nat = C = 2
+def E :: nat = E = 3
+
+header "Transition relation"
+
+inductive trans :: (varType ⇒ scalarValue) ⇒ (varType ⇒ scalarValue) ⇒ bool
+  | trans_rule0: s (Para (Ident 0) k) = NatV I ⟶ trans s (s)(Para (Ident 0) k := NatV T)
+  | trans_rule1: s (Para (Ident 0) k) = NatV T ∧ s (Ident 1) = BoolV true ⟶ trans s (s)(Para (Ident 0) k := NatV C, Ident 1 := BoolV false)
+  | trans_rule2: s (Para (Ident 0) k) = NatV C ⟶ trans s (s)(Para (Ident 0) k := NatV E)
+  | trans_rule3: s (Para (Ident 0) k) = NatV E ⟶ trans s (s)(Para (Ident 0) k := NatV I, Ident 1 := BoolV true)
+
+header "Invariant"
+
+def inv :: (varType ⇒ scalarValue) ⇒ bool = inv s ⟷ (∀i. ∀j. ¬(s (Para (Ident 0) i) = NatV C ∧ s (Para (Ident 0) j) = NatV C)) ∧ (∀i. ¬(s (Para (Ident 0) i) = NatV C ∧ s (Ident 1) = BoolV true)) ∧ (∀i. ∀j. ¬(s (Para (Ident 0) i) = NatV C ∧ s (Para (Ident 0) j) = NatV E)) ∧ (∀i. ¬(s (Para (Ident 0) i) = NatV E ∧ s (Ident 1) = BoolV true)) ∧ (∀i. ∀j. ¬(s (Para (Ident 0) i) = NatV E ∧ s (Para (Ident 0) j) = NatV E))
+
+theorem inv_preserved
+  prop (∀s1. ∀s2. inv s1 ⟶ trans s1 s2 ⟶ inv s2)

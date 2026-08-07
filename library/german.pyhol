@@ -1,0 +1,40 @@
+theory german
+imports gcl
+description "Parametrized system in GCL encoding."
+
+header "States"
+
+def I :: nat = I = 0
+def S :: nat = S = 1
+def E :: nat = E = 2
+def Empty :: nat = Empty = 3
+def ReqS :: nat = ReqS = 4
+def ReqE :: nat = ReqE = 5
+def Inv :: nat = Inv = 6
+def InvAck :: nat = InvAck = 7
+def GntS :: nat = GntS = 8
+def GntE :: nat = GntE = 9
+
+header "Transition relation"
+
+inductive trans :: (varType ⇒ scalarValue) ⇒ (varType ⇒ scalarValue) ⇒ bool
+  | trans_rule0: s (Para (Ident 6) k) = NatV I ∧ s (Para (Ident 0) k) = NatV Empty ⟶ trans s (s)(Para (Ident 0) k := NatV ReqS)
+  | trans_rule1: s (Para (Ident 6) k) = NatV I ∧ s (Para (Ident 0) k) = NatV Empty ⟶ trans s (s)(Para (Ident 0) k := NatV ReqE)
+  | trans_rule2: s (Para (Ident 6) k) = NatV S ∧ s (Para (Ident 0) k) = NatV Empty ⟶ trans s (s)(Para (Ident 0) k := NatV ReqE)
+  | trans_rule3: s (Ident 10) = NatV Empty ∧ ¬(s (Para (Ident 0) k) = NatV Empty) ⟶ trans s (s)(Ident 10 := s (Para (Ident 0) k), Para (Ident 0) k := NatV Empty, Ident 14 := NatV k, Ident 9 := s (Ident 8))
+  | trans_rule4: s (Para (Ident 1) k) = NatV Empty ∧ s (Ident 10) = NatV ReqE ∧ s (Para (Ident 9) k) = BoolV true ⟶ trans s (s)(Ident 1 := NatV Inv, Ident 9 := BoolV false)
+  | trans_rule5: s (Para (Ident 1) k) = NatV Empty ∧ s (Ident 10) = NatV ReqS ∧ s (Ident 11) = BoolV true ∧ s (Para (Ident 9) k) = BoolV true ⟶ trans s (s)(Para (Ident 1) k := NatV Inv, Para (Ident 9) k := BoolV false)
+  | trans_rule6: s (Para (Ident 1) k) = NatV Inv ∧ s (Para (Ident 2) k) = NatV Empty ⟶ trans s (s)(Para (Ident 1) k := NatV Empty, Para (Ident 2) k := NatV InvAck, Para (Ident 5) k := if s (Para (Ident 6) k) = NatV E then s (Para (Ident 7) k) else s (Para (Ident 5) k), Para (Ident 6) k := NatV I)
+  | trans_rule7: s (Para (Ident 2) k) = NatV InvAck ∧ s (Ident 10) = NatV Empty ⟶ trans s (s)(Para (Ident 8) k := BoolV false, Ident 12 := if s (Ident 11) = BoolV true then s (Para (Ident 5) k) else s (Ident 12), Ident 11 := if s (Ident 11) = BoolV true then BoolV false else s (Ident 11), Para (Ident 2) k := NatV Empty)
+  | trans_rule8: s (Para (Ident 1) k) = NatV Empty ∧ s (Ident 10) = NatV ReqS ∧ s (Ident 14) = NatV k ∧ s (Ident 11) = BoolV false ⟶ trans s (s)(Para (Ident 8) k := BoolV true, Ident 10 := NatV Empty, Para (Ident 1) k := NatV GntS, Para (Ident 4) k := s (Ident 12))
+  | trans_rule9: s (Para (Ident 1) k) = NatV Empty ∧ s (Ident 10) = NatV ReqE ∧ s (Ident 14) = NatV k ∧ s (Ident 11) = BoolV false ∧ (∀x. s (Para (Ident 8) x) = BoolV false) ⟶ trans s (s)(Para (Ident 8) k := BoolV true, Ident 10 := NatV Empty, Ident 11 := BoolV true, Para (Ident 1) k := NatV GntE, Para (Ident 4) k := s (Ident 12))
+  | trans_rule10: s (Para (Ident 1) k) = NatV GntS ⟶ trans s (s)(Para (Ident 6) k := NatV S, Ident 1 := NatV Empty, Ident 7 := s (Para (Ident 4) k))
+  | trans_rule11: s (Para (Ident 1) k) = NatV GntE ⟶ trans s (s)(Para (Ident 6) k := NatV E, Ident 1 := NatV Empty, Para (Ident 7) k := s (Para (Ident 4) k))
+  | trans_rule12: s (Para (Ident 6) k) = NatV E ⟶ trans s (s)(Para (Ident 7) k := NatV d, Ident 13 := NatV d)
+
+header "Invariant"
+
+def inv :: (varType ⇒ scalarValue) ⇒ bool = inv s ⟷ (∀i. ∀j. ¬(s (Para (Ident 6) i) = NatV E ∧ s (Para (Ident 6) j) = NatV E)) ∧ (s (Ident 11) = BoolV false ∧ ¬(s (Ident 12) = s (Ident 13))) ∧ (∀i. ¬(¬(s (Para (Ident 6) i) = NatV I) ∧ ¬(s (Para (Ident 7) i) = s (Ident 13)))) ∧ (∀i. ∀j. ¬(s (Para (Ident 6) i) = NatV E ∧ s (Para (Ident 1) j) = NatV GntE)) ∧ (∀i. ¬(s (Para (Ident 5) i) = s (Ident 13) ∧ s (Ident 11) = BoolV true ∧ s (Para (Ident 2) i) = NatV InvAck)) ∧ (∀i. ¬(s (Ident 11) = BoolV false ∧ s (Para (Ident 6) i) = NatV E)) ∧ (∀i. ¬(¬(s (Para (Ident 4) i) = s (Ident 13)) ∧ s (Para (Ident 1) i) = NatV GntS)) ∧ (∀i. ¬(¬(s (Para (Ident 4) i) = s (Ident 13)) ∧ s (Para (Ident 1) i) = NatV GntE)) ∧ (∀i. ∀j. ¬(s (Para (Ident 6) i) = NatV I ∧ s (Para (Ident 6) j) = NatV E)) ∧ (∀i. ∀j. ¬(s (Para (Ident 1) i) = NatV GntE ∧ s (Para (Ident 1) j) = NatV GntE)) ∧ (∀i. ¬(s (Ident 11) = BoolV true ∧ ¬(s (Para (Ident 6) i) = NatV E) ∧ s (Para (Ident 1) i) = NatV Inv)) ∧ (∀i. ¬(s (Para (Ident 2) i) = NatV InvAck ∧ s (Para (Ident 8) i) = BoolV false)) ∧ (∀i. ¬(s (Para (Ident 2) i) = NatV InvAck ∧ s (Para (Ident 6) i) = NatV E)) ∧ (∀i. ∀j. ¬(s (Para (Ident 2) i) = NatV InvAck ∧ s (Para (Ident 6) j) = NatV E)) ∧ (∀i. ¬(s (Ident 11) = BoolV false ∧ s (Para (Ident 1) i) = NatV GntE)) ∧ (∀i. ¬(s (Para (Ident 1) i) = NatV GntS ∧ s (Para (Ident 6) i) = NatV E)) ∧ (∀i. ∀j. ¬(s (Para (Ident 1) i) = NatV GntS ∧ s (Para (Ident 6) j) = NatV E)) ∧ (∀i. ¬(s (Para (Ident 1) i) = NatV GntE ∧ s (Para (Ident 6) i) = NatV E)) ∧ (∀i. ∀j. ¬(s (Para (Ident 6) i) = NatV I ∧ s (Para (Ident 1) j) = NatV GntE)) ∧ (∀i. ¬(s (Ident 11) = BoolV true ∧ ¬(s (Para (Ident 6) i) = NatV E) ∧ s (Para (Ident 1) i) = NatV Empty ∧ s (Para (Ident 9) i) = BoolV true)) ∧ (∀i. ¬(s (Para (Ident 1) i) = NatV Inv ∧ s (Para (Ident 8) i) = BoolV false)) ∧ (∀i. ¬(s (Para (Ident 2) i) = NatV InvAck ∧ s (Para (Ident 1) i) = NatV GntE)) ∧ (∀i. ∀j. ¬(s (Para (Ident 6) i) = NatV E ∧ s (Para (Ident 1) j) = NatV Inv)) ∧ (∀i. ∀j. ¬(s (Para (Ident 2) i) = NatV InvAck ∧ s (Para (Ident 1) j) = NatV GntE)) ∧ (∀i. ∀j. ¬(s (Para (Ident 1) i) = NatV GntS ∧ s (Para (Ident 1) j) = NatV GntE)) ∧ (∀i. ¬(¬(s (Para (Ident 6) i) = NatV I) ∧ s (Para (Ident 8) i) = BoolV false)) ∧ (∀i. ¬(BoolV ExGnte = BoolV true ∧ ¬(s (Para (Ident 6) i) = NatV E) ∧ s (Para (Ident 1) i) = NatV Empty ∧ s (Para (Ident 8) i) = BoolV true ∧ s (Ident 10) = NatV Empty)) ∧ (∀i. ¬(s (Para (Ident 9) i) = BoolV true ∧ s (Para (Ident 1) i) = NatV Inv)) ∧ (∀i. ¬(s (Para (Ident 9) i) = BoolV true ∧ s (Para (Ident 8) i) = BoolV false)) ∧ (∀i. ¬(s (Ident 11) = BoolV true ∧ s (Para (Ident 1) i) = NatV GntS)) ∧ (∀i. ¬(s (Para (Ident 1) i) = NatV Inv ∧ s (Para (Ident 2) i) = NatV InvAck)) ∧ (∀i. ∀j. ¬(s (Para (Ident 6) i) = NatV E ∧ s (Para (Ident 9) i) = BoolV true)) ∧ (∀i. ∀j. ¬(NatV (Chan2_cmd i) = NatV Inv ∧ s (Para (Ident 1) j) = NatV GntE)) ∧ (∀i. ¬(s (Para (Ident 1) i) = NatV GntS ∧ s (Para (Ident 8) i) = BoolV false)) ∧ (∀i. ¬(¬(s (Para (Ident 6) i) = NatV I) ∧ s (Para (Ident 2) i) = NatV InvAck)) ∧ (∀i. ¬(s (Para (Ident 8) i) = BoolV false ∧ s (Para (Ident 1) i) = NatV GntE)) ∧ (∀i. ¬(s (Ident 10) = NatV Empty ∧ s (Para (Ident 1) i) = NatV Inv)) ∧ (∀i. ¬(s (Para (Ident 9) i) = BoolV true ∧ s (Para (Ident 2) i) = NatV InvAck)) ∧ (∀i. ∀j. ¬(s (Para (Ident 6) i) = NatV E ∧ s (Para (Ident 8) j) = BoolV true)) ∧ (∀i. ∀j. ¬(s (Para (Ident 9) i) = BoolV true ∧ s (Para (Ident 1) j) = NatV GntE)) ∧ (∀i. ¬(s (Para (Ident 1) i) = NatV GntS ∧ s (Para (Ident 2) i) = NatV InvAck)) ∧ (∀i. ¬(s (Para (Ident 1) i) = NatV Inv ∧ s (Ident 10) = NatV ReqS ∧ s (Ident 11) = BoolV false)) ∧ (∀i. ¬(s (Para (Ident 2) i) = NatV InvAck ∧ s (Ident 10) = NatV Empty)) ∧ (∀i. ∀j. ¬(s (Para (Ident 8) i) = BoolV true ∧ s (Para (Ident 1) j) = NatV GntE)) ∧ (∀i. ¬(s (Para (Ident 2) i) = NatV InvAck ∧ s (Ident 10) = NatV ReqS ∧ s (Ident 11) = BoolV false)) ∧ (∀i. ∀j. ¬(s (Para (Ident 1) i) = NatV Inv ∧ s (Ident 10) = NatV ReqS ∧ s (Para (Ident 2) j) = NatV InvAck)) ∧ (∀i. ∀j. ¬(s (Para (Ident 2) i) = NatV InvAck ∧ s (Ident 10) = NatV ReqS ∧ s (Para (Ident 2) j) = NatV InvAck)) ∧ (∀i. ∀j. ¬(s (Ident 10) = NatV ReqS ∧ s (Para (Ident 2) i) = NatV InvAck ∧ s (Para (Ident 9) j) = BoolV true)) ∧ (∀i. ∀j. ¬(s (Para (Ident 1) i) = NatV Inv ∧ s (Ident 10) = NatV ReqS ∧ s (Para (Ident 1) j) = NatV Inv)) ∧ (∀i. ∀j. ¬(s (Ident 10) = NatV ReqS ∧ s (Para (Ident 9) i) = BoolV true ∧ s (Para (Ident 1) j) = NatV Inv)) ∧ (∀i. ∀j. ¬(s (Para (Ident 9) i) = BoolV true ∧ s (Ident 11) = BoolV true ∧ s (Para (Ident 9) j) = BoolV true)) ∧ (∀i. ∀j. ¬(s (Para (Ident 8) i) = BoolV true ∧ s (Ident 11) = BoolV true ∧ s (Para (Ident 8) j) = BoolV true))
+
+theorem inv_preserved
+  prop (∀s1. ∀s2. inv s1 ⟶ trans s1 s2 ⟶ inv s2)

@@ -184,7 +184,16 @@ SAINT（`SAINT/`）是与 HOL 内核**互相独立**的符号计算 CAS，专精
 | `/api/saint/library` | 返回 `base.calc` 库条目，按章节分组 |
 | `/api/saint/library/save` | 保存库条目回 `base.calc` |
 
-### 6.4 校验监控（server/monitor.py）
+### 6.4 参数化系统验证
+
+参数化系统验证**不是独立组件**，而是直接用 `.pyhol` 理论表达（由主 IDE 管理）。`library/gcl.pyhol` 提供 GCL 基础（`varType`/`scalarValue` 数据类型、`scalar_is_nat` 等）；具体系统作为导入 `gcl` 的理论，用 `inductive` 定义转换关系、`def` 定义不变量、`theorem` 声明不变量保持命题。
+
+- `library/mutual_ex.pyhol`：互斥协议（4 条规则、5 条不变量，最小示例）。
+- `library/german.pyhol`：German 缓存一致性协议（13 条规则、49 条不变量，大型案例）。
+
+**GCL 编码**：状态是函数 `s :: varType ⇒ scalarValue`。标量变量 `CurCmd` 编码为 `s (Ident idx)`，参数化函数 `Cache_State k` 编码为 `s (Para (Ident idx) k)`；nat 值包成 `NatV`、bool 值包成 `BoolV`。转换规则 `trans` 是 `inductive`，其自动生成的 `trans_cases` 处理参数化情形分析（如 `k = i` 分支），配合 `function.pyhol` 的 `fun_upd_same`/`fun_upd_other` 重写引理可证不变量保持。不变量保持命题 `inv_preserved`（`∀s1 s2. inv s1 ⟶ trans s1 s2 ⟶ inv s2`）作为 `theorem` 声明，可留作待证目标（`UNPROVED`）。
+
+### 6.5 校验监控（server/monitor.py）
 
 `validate_theory(filename)`：重放所有定理的证明，记录状态（`VALID`/`STEP_FAILED`/`DEP_FAILED`/`AXIOM`/`UNPROVED`），缓存到 `.json`。
 
@@ -205,7 +214,6 @@ SAINT（`SAINT/`）是与 HOL 内核**互相独立**的符号计算 CAS，专精
 | `library/` | 理论库（`.pyhol` 文件） |
 | `imperative/` | Hoare 逻辑程序验证（独立子模块，`.imp` 格式） |
 | `SAINT/` | 符号积分 CAS（独立子模块，`.calc` 格式） |
-| `paraverifier/` | 参数化系统验证（独立子模块） |
 | `util/` | 工具函数（name/typecheck/unionfind/nat/set/list/string 等） |
 | `manual/` | 本手册 |
 
