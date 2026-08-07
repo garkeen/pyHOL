@@ -139,7 +139,7 @@ def parse_imp(text):
                     continue
                 body_lines.append(line)
                 i += 1
-            cur_prog.body = ' '.join(body_lines)
+            cur_prog.body = '\n'.join(body_lines)
             continue
         raise CompileError("Line %d: unrecognized section '%s'." % (i + 1, raw[:40]))
     finish_prog(cur_prog)

@@ -47,7 +47,7 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 | [`04_conv_matcher.md`](04_conv_matcher.md) | 转换（Conv/组合子/遍历/rewr_conv）+ 匹配（first_order_match/Inst） | 详细 |
 | [`05_tactic.md`](05_tactic.md) | 策略（Tactic/tactical/内置策略目录） | 详细 |
 | [`06_method.md`](06_method.md) | 方法（Method/ProofState/四种分发/方法目录/属性/step格式） | 中等 |
-| [`07_system.md`](07_system.md) | 系统总览（.pyhol/Item/理论加载/domain/自动化/目录索引） | 粗略 |
+| [`07_system.md`](07_system.md) | 系统总览（.pyhol/Item/理论加载/domain/自动化/SAINT/目录索引/数据流） | 粗略 |
 
 ## 详细程度原则
 

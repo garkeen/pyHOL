@@ -20,6 +20,4 @@ program main
   pre: a == 3
   post: c == 7
   body:
-    b := call double(a);
-    assert b == 6;
-    c := call inc(b)
+    b := call double(a); assert b == 6; c := call inc(b)
