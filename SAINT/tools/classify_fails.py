@@ -39,7 +39,7 @@ def classify(book, name):
     data = load_calc_file(os.path.join(EXAMPLES, book + '.calc'))
     item = next(it for it in data['content'] if it.get('name') == name)
     ctx = Context(); ctx.load_book('base')
-    current = parser.parse_expr(item['problem'])
+    current = parser.parse_expr(item['goal'])
     prev = []
     fail_step = None
     fail_msg = None
@@ -56,7 +56,7 @@ def classify(book, name):
     recorded = item['calc'][fail_step].get('text') if fail_step is not None and fail_step < len(item['calc']) else None
     rec_expr = parser.parse_expr(recorded) if recorded else None
 
-    if fail_step is None and 'target' in item:
+    if fail_step is None and item.get('target'):
         target = parser.parse_expr(item['target'])
         fs_cur = fullsimpl(current, ctx)
         fs_tgt = fullsimpl(target, ctx)

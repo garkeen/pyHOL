@@ -2347,7 +2347,7 @@ def check_item(item, target=None, *, debug=False):
     target is given, the final expression must normalize to it.
 
     """
-    problem = parser.parse_expr(item['problem'])
+    problem = parser.parse_expr(item['goal'])
 
     if debug:
         print("\n%s: %s" % (item['name'], problem))

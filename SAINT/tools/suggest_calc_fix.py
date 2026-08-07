@@ -33,7 +33,7 @@ def run(book, name):
     for item in data["content"]:
         if not isinstance(item, dict) or "calc" not in item or item["name"] != name:
             continue
-        problem = parser.parse_expr(item['problem'])
+        problem = parser.parse_expr(item['goal'])
         ctx = Context(); ctx.load_book('base')
         current = problem
         print('%s / %s  target=%s' % (book, name, target_s))

@@ -186,6 +186,8 @@ interval_parser = Lark(grammar, start="interval", parser="lalr", transformer=Exp
 
 def parse_expr(s: str) -> Expr:
     """Parse an integral expression."""
+    if not isinstance(s, str):
+        raise ValueError("parse_expr: expected a string, got %s" % type(s).__name__)
     try:
         return expr_parser.parse(s)
     except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken,
@@ -194,6 +196,8 @@ def parse_expr(s: str) -> Expr:
 
 def parse_interval(s: str) -> Interval:
     """Parse an interval."""
+    if not isinstance(s, str):
+        raise ValueError("parse_interval: expected a string, got %s" % type(s).__name__)
     try:
         return interval_parser.parse(s)
     except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken,
