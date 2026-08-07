@@ -34,14 +34,14 @@ def main():
         print("\n=== %s ===" % filename)
         sys.stdout.flush()
 
-        statuses = validate_theory(filename, force=force)
+        statuses, errors = validate_theory(filename, force=force)
         for name, status in statuses.items():
             if status == 'VALID':
                 total_ok += 1
                 print("  OK: %s" % name)
             elif status == 'STEP_FAILED':
                 total_fail += 1
-                print("  FAIL: %s" % name)
+                print("  FAIL: %s%s" % (name, ("  [" + errors.get(name, '') + "]") if errors.get(name) else ""))
                 failures.append((filename, name, status))
             elif status == 'DEP_FAILED':
                 total_gaps += 1

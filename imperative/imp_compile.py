@@ -218,7 +218,7 @@ class Translator:
                 parsed_vars.append((nm, ty, None))
 
         # State variables: those assigned in the body, in declaration order.
-        com = parser2.com_parser.parse(prog.body)
+        com = parser2.parse_com(prog.body)
         assigned = get_assigned_vars(com)
         self.state_idx = {}   # name -> index (for scalars) or base index (for arrays)
         next_idx = 0
@@ -324,7 +324,7 @@ class Translator:
 
     def translate_pred(self, text):
         """Translate a condition text (pre/post/invariant) to a lambda over the state."""
-        e = parser2.cond_parser.parse(text)
+        e = parser2.parse_cond(text)
         return Lambda(self.s, self.translate_expr(e))
 
     def translate_com(self, com, flag=None):
@@ -521,18 +521,18 @@ class Translator:
         out_var = callee_vars[-1][0]
 
         # Map callee input vars to caller Expr objects
-        from imperative.parser2 import cond_parser
+        from imperative.parser2 import parse_cond
         var_map = {}
         for i, arg in enumerate(com.args):
             if i < len(callee_vars) - 1:
                 var_map[callee_vars[i][0]] = arg  # Expr object
 
         # Parse callee pre and substitute
-        pre_expr = cond_parser.parse(spec['pre'])
+        pre_expr = parse_cond(spec['pre'])
         pre_term = self.translate_expr(pre_expr.subst(var_map))
 
         # Parse callee post: must be "out_var == <expr>"
-        post_expr = cond_parser.parse(spec['post'])
+        post_expr = parse_cond(spec['post'])
         if not (isinstance(post_expr, expr_mod.Op) and post_expr.op == '=='
                 and isinstance(post_expr.args[0], expr_mod.Var)
                 and post_expr.args[0].name == out_var):

@@ -363,9 +363,12 @@
 ```json
 {
     "statuses": { "conj_comm": "VALID", "conjD1": "AXIOM", "big_thm": "UNPROVED", "bad_thm": "STEP_FAILED" },
+    "errors": { "bad_thm": "proof has 1 open goal(s): ..." },
     "valid": 10, "axiom": 3, "unproved": 2, "failed": 1, "total": 16
 }
 ```
+
+`errors` 为每个失败定理的错误原因（`STEP_FAILED`/`DEP_FAILED` 才有），`VALID`/`AXIOM`/`UNPROVED` 无对应条目。
 
 ---
 

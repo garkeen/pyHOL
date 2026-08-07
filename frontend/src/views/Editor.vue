@@ -80,7 +80,8 @@
                   <span class="item-idx">{{ index }}</span>
                   <span class="item-type">{{ typeLabel(item.ty) }}</span>
                   <span class="item-name">{{ item.name || '' }}</span>
-                  <span v-if="thm_status[item.name]" class="item-status" :class="'status-' + thm_status[item.name].toLowerCase()">
+                  <span v-if="thm_status[item.name]" class="item-status" :class="'status-' + thm_status[item.name].toLowerCase()"
+                        :title="thm_errors[item.name] || ''">
                     {{ statusIcon(thm_status[item.name]) }}
                   </span>
                   <div class="item-actions">
@@ -257,6 +258,7 @@ const handle_query_cancel = () => {
   query.value = undefined
 }
 const thm_status = ref({})
+const thm_errors = ref({})
 const validating = ref(false)
 
 // Metadata editing
@@ -578,6 +580,7 @@ const save_proof = async (index, steps) => {
     try {
       const resp = await api.post('/validate-theory', { filename: filename.value, force: false })
       thm_status.value = resp.data.statuses
+      thm_errors.value = resp.data.errors || {}
     } catch (e) {
       console.log('[SAVE] re-validate failed', e)
     }
@@ -590,8 +593,15 @@ const validate_all = async (force = false) => {
   try {
     const resp = await api.post('/validate-theory', { filename: filename.value, force })
     thm_status.value = resp.data.statuses
+    thm_errors.value = resp.data.errors || {}
     const d = resp.data
-    toast({ type: 'OK', data: `Valid: ${d.valid} | Axiom: ${d.axiom} | Unproved: ${d.unproved} | Failed: ${d.failed} | Total: ${d.total}` })
+    let msg = `Valid: ${d.valid} | Axiom: ${d.axiom} | Unproved: ${d.unproved} | Failed: ${d.failed} | Total: ${d.total}`
+    const failed = Object.entries(thm_errors.value).filter(([, e]) => e)
+    if (failed.length) {
+      msg += '\n' + failed.slice(0, 5).map(([n, e]) => `${n}: ${e}`).join('\n')
+      if (failed.length > 5) msg += `\n... and ${failed.length - 5} more`
+    }
+    toast({ type: failed.length ? 'error' : 'OK', data: msg })
   } catch (e) {
     toast({ type: 'error', data: 'Validation failed' })
   } finally {

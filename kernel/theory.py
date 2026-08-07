@@ -247,6 +247,18 @@ class Theory:
         """Return a copy of all theorem statuses."""
         return dict(self.data['thm_status'])
 
+    def set_error(self, name, error):
+        """Record the error message for a theorem (or None to clear it)."""
+        self.data['thm_error'][name] = error
+
+    def get_error(self, name):
+        """Return the recorded error message for a theorem, if any."""
+        return self.data['thm_error'].get(name)
+
+    def get_all_errors(self):
+        """Return a copy of all recorded theorem error messages."""
+        return dict(self.data['thm_error'])
+
     def get_overload_const_name(self, name, T):
         """Obtain the full name of the overloaded constant.
         
@@ -539,6 +551,7 @@ def EmptyTheory():
     thy.add_data_type("attributes")
     thy.add_data_type("overload")
     thy.add_data_type("thm_status")
+    thy.add_data_type("thm_error")
 
     # Fundamental types.
     thy.add_type_sig("bool", 0)

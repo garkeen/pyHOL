@@ -162,18 +162,21 @@ def validate_theory(filename, *, force=False):
 
     If force=True, ignores cache and re-validates everything.
 
-    Returns dict of {theorem_name: status} where status is one of
-    'VALID', 'STEP_FAILED', 'DEP_FAILED', 'AXIOM', 'UNPROVED'.
+    Returns (statuses, errors): statuses is a dict of
+    {theorem_name: status} ('VALID', 'STEP_FAILED', 'DEP_FAILED',
+    'AXIOM', 'UNPROVED'); errors is a dict of
+    {theorem_name: error_message} for every failed theorem.
     """
     # File unchanged, return cached results (unless force)
     if not force and basic.is_cache_valid(filename):
         basic.load_theory(filename)
-        return theory.get_all_statuses()
+        return theory.get_all_statuses(), theory.get_all_errors()
 
     # File changed, re-validate everything
     basic.load_theory(filename)
     content = basic.theory_cache[filename]['content']
     statuses = {}
+    errors = {}
 
     for item in content:
         name = item.name
@@ -181,6 +184,7 @@ def validate_theory(filename, *, force=False):
         if item.ty == 'thm.ax':
             statuses[name] = 'AXIOM'
             theory.thy.set_status(name, 'AXIOM')
+            theory.thy.set_error(name, None)
             continue
 
         if item.ty != 'thm':
@@ -189,19 +193,26 @@ def validate_theory(filename, *, force=False):
         if not item.steps:
             statuses[name] = 'UNPROVED'
             theory.thy.set_status(name, 'UNPROVED')
+            theory.thy.set_error(name, None)
             continue
 
         # Check if any dependency has failed
         dep_failed = False
         for step in item.steps:
             if 'theorem' in step and step['theorem']:
-                if statuses.get(step['theorem']) in ('STEP_FAILED', 'DEP_FAILED'):
+                dep_status = statuses.get(step['theorem'])
+                if dep_status in ('STEP_FAILED', 'DEP_FAILED'):
+                    dep_err = errors.get(step['theorem'], '')
+                    errors[name] = ('depends on %s which failed%s'
+                                    % (step['theorem'],
+                                       (': ' + dep_err) if dep_err else ''))
                     dep_failed = True
                     break
 
         if dep_failed:
             statuses[name] = 'DEP_FAILED'
             theory.thy.set_status(name, 'DEP_FAILED')
+            theory.thy.set_error(name, errors[name])
             continue
 
         # Replay the proof
@@ -215,13 +226,33 @@ def validate_theory(filename, *, force=False):
                 state.check_proof(compute_only=True)
                 gaps = len(state.rpt.gaps)
             statuses[name] = 'VALID' if gaps == 0 else 'STEP_FAILED'
-        except Exception:
+            errors[name] = None if gaps == 0 else _gap_error(state)
+        except Exception as e:
             statuses[name] = 'STEP_FAILED'
+            errors[name] = '%s: %s' % (e.__class__.__name__, str(e))
 
         theory.thy.set_status(name, statuses[name])
+        theory.thy.set_error(name, errors[name])
 
     basic.save_status(filename, statuses)
-    return statuses
+    return statuses, errors
+
+
+def _gap_error(state):
+    """Extract a readable error message from the remaining proof gaps."""
+    try:
+        gaps = state.rpt.gaps
+        if not gaps:
+            return 'proof has unmet goals'
+        parts = []
+        for g in gaps[:5]:
+            txt = str(g)
+            # Keep the first line of each gap.
+            parts.append(txt.split('\n')[0])
+        msg = 'proof has %d open goal(s): %s' % (len(gaps), '; '.join(parts))
+        return msg
+    except Exception:
+        return 'proof has open goals'
 
 
 if __name__ == "__main__":

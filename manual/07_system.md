@@ -195,7 +195,7 @@ SAINT（`SAINT/`）是与 HOL 内核**互相独立**的符号计算 CAS，专精
 
 ### 6.5 校验监控（server/monitor.py）
 
-`validate_theory(filename)`：重放所有定理的证明，记录状态（`VALID`/`STEP_FAILED`/`DEP_FAILED`/`AXIOM`/`UNPROVED`），缓存到 `.json`。
+`validate_theory(filename)`：重放所有定理的证明，记录状态（`VALID`/`STEP_FAILED`/`DEP_FAILED`/`AXIOM`/`UNPROVED`），并记录每个失败定理的错误原因，缓存到 `.json`。
 
 ## 7. 目录索引
 

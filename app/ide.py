@@ -437,6 +437,7 @@ def validate_theory():
 
     Returns:
     * statuses: dict of {name: status}.
+    * errors: dict of {name: error_message} for failed theorems.
     * valid: number of VALID theorems.
     * axiom: number of AXIOM theorems.
     * unproved: number of UNPROVED theorems.
@@ -446,12 +447,13 @@ def validate_theory():
     """
     data = json.loads(request.get_data().decode("utf-8"))
     force = data.get('force', False)
-    statuses = monitor.validate_theory(data['filename'], force=force)
+    statuses, errors = monitor.validate_theory(data['filename'], force=force)
     counts = {}
     for s in statuses.values():
         counts[s] = counts.get(s, 0) + 1
     return jsonify({
         'statuses': statuses,
+        'errors': errors,
         'valid': counts.get('VALID', 0),
         'axiom': counts.get('AXIOM', 0),
         'unproved': counts.get('UNPROVED', 0),

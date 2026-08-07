@@ -4,6 +4,7 @@ from lark import Lark, Transformer, v_args, exceptions
 from decimal import Decimal
 from fractions import Fraction
 
+from util.lark_error import translate_lark_error
 from SAINT import expr
 from SAINT.expr import Expr
 from SAINT.interval import Interval
@@ -187,14 +188,14 @@ def parse_expr(s: str) -> Expr:
     """Parse an integral expression."""
     try:
         return expr_parser.parse(s)
-    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken) as e:
-        print("When parsing:", s)
-        raise e
+    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken,
+            exceptions.UnexpectedEOF) as e:
+        raise translate_lark_error(expr_parser, s, e)
 
 def parse_interval(s: str) -> Interval:
     """Parse an interval."""
     try:
         return interval_parser.parse(s)
-    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken) as e:
-        print("When parsing:", s)
-        raise e
+    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken,
+            exceptions.UnexpectedEOF) as e:
+        raise translate_lark_error(interval_parser, s, e)

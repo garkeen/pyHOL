@@ -4,6 +4,7 @@
 
 from lark import Lark, Transformer, v_args, exceptions
 
+from util.lark_error import translate_lark_error
 from kernel.type import TFun, BoolType
 from kernel.term import Term, Var, Const, Abs, true
 from logic import logic
@@ -197,3 +198,21 @@ class HoareTransformer(Transformer):
 
 cond_parser = Lark(grammar, start="cond", parser="lalr", transformer=HoareTransformer())
 com_parser = Lark(grammar, start="cmd", parser="lalr", transformer=HoareTransformer())
+
+
+def parse_cond(s):
+    """Parse a condition with clear error reporting."""
+    try:
+        return cond_parser.parse(s)
+    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken,
+            exceptions.UnexpectedEOF) as e:
+        raise translate_lark_error(cond_parser, s, e)
+
+
+def parse_com(s):
+    """Parse a command with clear error reporting."""
+    try:
+        return com_parser.parse(s)
+    except (exceptions.UnexpectedCharacters, exceptions.UnexpectedToken,
+            exceptions.UnexpectedEOF) as e:
+        raise translate_lark_error(com_parser, s, e)
