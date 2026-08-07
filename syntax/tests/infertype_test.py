@@ -59,14 +59,13 @@ class InferTypeTest(unittest.TestCase):
             self.assertRaisesRegex(TypeInferenceException, "Unable to unify", type_infer, t)
 
     def testInferTypeFail2(self):
-        test_data = [
-            Abs("x", None, Abs("y", None, Const("equals", None)(Var("x", None), Var("y", None)))),
-            Const("nil", None),
-        ]
+        # Free variables with no type constraint are reported as undeclared.
+        t = Abs("x", None, Abs("y", None, Const("equals", None)(Var("x", None), Var("y", None))))
+        self.assertRaisesRegex(TypeInferenceException, "not declared", type_infer, t)
 
-        for t in test_data:
-            self.assertRaisesRegex(TypeInferenceException,
-                                   "Cannot determine the type of", type_infer, t)
+        # A polymorphic constant with no type annotation cannot be resolved.
+        self.assertRaisesRegex(TypeInferenceException, "Cannot determine the type",
+                               type_infer, Const("nil", None))
 
     def testInferTypeFail3(self):
         test_data = [

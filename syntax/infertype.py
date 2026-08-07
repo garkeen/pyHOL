@@ -213,15 +213,17 @@ def type_infer(t, *, forbid_internal=True):
 
     if forbid_internal and len(unspecified) > 0:
         names = _unspecified_names(t, tyinst, unspecified)
-        hint = "Cannot determine the type of"
         if names:
-            hint += " variable(s): %s" % ', '.join(names)
+            msg = ("The variable(s) %s are not declared "
+                   "(they are neither constants nor bound/declared variables),\n"
+                   "and their type cannot be inferred from the context.\n"
+                   "Declare them (e.g. in `fixes`), annotate their type, or "
+                   "check the spelling." % ', '.join(names))
         else:
-            hint += " some subterm"
-        hint += ".\n"
-        hint += "Check that every name is either a declared constant,\n"
-        hint += "a declared variable, or bound by a quantifier/lambda."
-        raise TypeInferenceException(hint + "\n" + repr(t))
+            msg = ("Cannot determine the type of some subterm.\n"
+                   "Check that every name is declared or bound, or annotate "
+                   "its type.")
+        raise TypeInferenceException(msg + "\n" + repr(t))
 
     has_repl = True
     while has_repl:
