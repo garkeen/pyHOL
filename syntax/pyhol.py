@@ -367,7 +367,6 @@ _METHOD_POSITIONAL = {
     'fold': ['theorem'],
     'subst': ['theorem'],
     'new_var': ['name', 'type'],
-    'call_tactic': ['tactic_name'],
     'rewrite_goal_with_prev': [],
     'rewrite_fact_with_prev': [],
 }

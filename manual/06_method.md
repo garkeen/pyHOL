@@ -49,12 +49,12 @@ class ProofState:
 `state.apply_tactic(id, tactic, args, prevs)` 是方法调用策略的标准流程：
 
 1. 取当前 `sorry` 行的目标 `cur_item.th`。
-2. `pt = tactic.get_proof_term(cur_item.th, args, prevs)`。
+2. `pt = tactic.get_proof_term(args=args, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)`（goal 作为 prevs[0]）。
 3. 若 `pt.rule == 'atom'`：直接用事实替换 sorry 行。
 4. 否则 `new_prf = pt.export(prefix=id, subproof=False)`，插入新行。
 5. `check_proof(compute_only=True)` 校验。
 6. 对新 `sorry` 行调 `find_goal`：若已有证明能解，自动替换。
-7. 对新 `sorry` 行调 `trivial_macro.can_eval`：若是 trivial 目标，自动关闭。
+7. 对新 `sorry` 行调 `trivial` 策略：构造成功则自动关闭（设为 `trivial` 规则）。
 
 ## 3. 四种分发模式
 
@@ -72,10 +72,13 @@ method.apply -> state.apply_tactic(MacroTactic(name)) -> macro.eval -> Thm
 ```
 典型：`norm`、`eval`、`linarith`（按类型分发到 `nat_norm`/`real_norm`/`int_norm`）。
 
-### 模式 C：宏直接路径（向前推理）
+### 模式 C：正向策略路径（向前推理）
 ```
-method.apply -> macro.eval(args, prevs) -> Thm -> state.set_line()
+method.apply -> tactic.X_forward().get_proof_term(args, prevs) -> ProofTerm
+            -> state.add_line_before + state.set_line(pt.rule, args, prevs)
 ```
+正向方法不走 `apply_tactic`（那需要 sorry goal），而是直接调正向策略获取 ProofTerm，再手动插入新行。推理（匹配、效果检查）在策略层完成。
+
 典型：`apply_forward_step`、`rewrite_fact`、`rewrite_fact_with_prev`、`apply_fact`、`forall_elim`、`drule`、`frule`。
 
 ### 模式 D：直接操作
@@ -84,8 +87,6 @@ method.apply -> state.set_line(rule, args, prevs, th)
 ```
 典型：`cut`、`new_var`、`thin`、`insert`、`sym`、`revert_intro`、`exists_elim`。
 
-### 逃生舱
-- `call_tactic`：按名调用底层策略。
 
 ## 4. 方法目录
 
@@ -121,7 +122,6 @@ method.apply -> state.set_line(rule, args, prevs, th)
 | `insert` | `[theorem]` | D | 插入定理作为新行 |
 | `drule` | `[theorem]` | C | 向前推理，**消耗**首个 fact |
 | `frule` | `[theorem]` | C | 向前推理，**保留**所有 fact |
-| `call_tactic` | `[tactic_name]` | A | 直接调用策略 |
 
 ### 4.2 自动化方法
 

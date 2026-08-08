@@ -28,12 +28,14 @@ class TacticTest(unittest.TestCase):
         goal = parser.parse_term(goal)
         goal_pt = ProofTerm.sorry(Thm(goal, assms))
 
-        # Invoke the tactic to get the proof term
+        # Invoke the tactic to get the proof term.
+        # New interface: goal is carried as prevs[0] (unified Tactic API).
+        all_prevs = [goal_pt] + prevs
         if failed is not None:
-            self.assertRaises(failed, tactic.get_proof_term, goal_pt, prevs=prevs, args=args)
+            self.assertRaises(failed, tactic.get_proof_term, prevs=all_prevs, args=args)
             return
 
-        pt = tactic.get_proof_term(goal_pt, prevs=prevs, args=args)
+        pt = tactic.get_proof_term(prevs=all_prevs, args=args)
 
         # Export and check proof
         prefix = ItemID(len(prevs)-1) if len(prevs) > 0 else ItemID(len(prevs))
