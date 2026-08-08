@@ -84,19 +84,19 @@ proof
   ← introduction goal=2
     #[7] real_integrable_on f s ∧ real_integral s f = i
     #[8] has_real_integral f i s
-  -> apply_forward_step conjD1 goal=8 facts=[7]
+  → apply_forward_step conjD1 goal=8 facts=[7]
     #[9] real_integrable_on f s
-  -> rewrite_fact real_integrable_on_def goal=8 facts=[9]
+  → rewrite_fact real_integrable_on_def goal=8 facts=[9]
     #[10] ∃y. has_real_integral f y s
-  -> apply_forward_step conjD2 goal=8 facts=[7]
+  → apply_forward_step conjD2 goal=8 facts=[7]
     #[11] real_integral s f = i
   exists_elim j goal=8 facts=[10]
     #[12] _VAR j
     #[13] has_real_integral f j s
     #[14] has_real_integral f i s
-  -> apply_forward_step real_integral_unique goal=14 facts=[13]
+  → apply_forward_step real_integral_unique goal=14 facts=[13]
     #[15] real_integral s f = j
-  -> rewrite_fact_with_prev goal=14 facts=[11,15]
+  → rewrite_fact_with_prev goal=14 facts=[11,15]
     #[16] i = j
   ← rewrite_goal_with_prev goal=14 facts=[16]
 qed
@@ -216,9 +216,9 @@ proof
     #[3] real_integral s (λx. f x + g x) = real_integral s (λx. f x) + real_integral s (λx. g x)
   ← apply_backward_step real_integral_unique goal=3
     #[4] has_real_integral (λx. f x + g x) (real_integral s (λx. f x) + real_integral s (λx. g x)) s
-  -> apply_forward_step real_integrable_integral goal=4 facts=[1]
+  → apply_forward_step real_integrable_integral goal=4 facts=[1]
     #[5] has_real_integral f (real_integral s f) s
-  -> apply_forward_step real_integrable_integral goal=4 facts=[2]
+  → apply_forward_step real_integrable_integral goal=4 facts=[2]
     #[6] has_real_integral g (real_integral s g) s
   ← apply_backward_step has_real_integral_add goal=4
     #[7] has_real_integral f (real_integral s (λx. f x)) s
@@ -325,9 +325,9 @@ proof
     #[3] real_integrable_on (λx. f x + g x) s
   ← rewrite_goal real_integrable_on_def sym=false goal=3
     #[4] ∃y. has_real_integral (λx. f x + g x) y s
-  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
+  → rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
     #[5] ∃y. has_real_integral f y s
-  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
+  → rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
     #[6] ∃y. has_real_integral g y s
   exists_elim y1 goal=4 facts=[5]
     #[7] _VAR y1
@@ -354,7 +354,7 @@ proof
     #[2] real_integrable_on (λx. c * f x) s
   ← rewrite_goal real_integrable_on_def goal=2
     #[3] ∃y. has_real_integral (λx. c * f x) y s
-  -> rewrite_fact real_integrable_on_def goal=3 facts=[1]
+  → rewrite_fact real_integrable_on_def goal=3 facts=[1]
     #[4] ∃y. has_real_integral f y s
   exists_elim y goal=3 facts=[4]
     #[5] _VAR y
@@ -399,15 +399,15 @@ proof
   ← introduction goal=4
     #[9] ¬(c = 0)
     #[10] c = 0 ∨ real_integrable_on f s
-  -> apply_forward_step real_mul_linv goal=10 facts=[9]
+  → apply_forward_step real_mul_linv goal=10 facts=[9]
     #[11] real_inverse c * c = 1
-  -> apply_forward_step real_integrable_lmul param_c="real_inverse c" goal=10 facts=[6]
+  → apply_forward_step real_integrable_lmul param_c="real_inverse c" goal=10 facts=[6]
     #[12] real_integrable_on (λx. real_inverse c * (c * f x)) s
-  -> rewrite_fact real_mult_assoc goal=10 facts=[12]
+  → rewrite_fact real_mult_assoc goal=10 facts=[12]
     #[13] real_integrable_on (λx. real_inverse c * c * f x) s
-  -> rewrite_fact_with_prev goal=10 facts=[11,13]
+  → rewrite_fact_with_prev goal=10 facts=[11,13]
     #[14] real_integrable_on (λx. 1 * f x) s
-  -> rewrite_fact real_mul_lid goal=10 facts=[14]
+  → rewrite_fact real_mul_lid goal=10 facts=[14]
     #[15] real_integrable_on (λx. f x) s
   ← apply_backward_step disjI2 goal=10
     #[16] real_integrable_on f s
@@ -427,7 +427,7 @@ proof
   ← apply_backward_step real_integrable_lmul goal=24
   ← rewrite_goal real_mul_lzero goal=22
     #[25] real_integrable_on (λx. 0) s
-  -> rewrite_fact eta_conversion goal=16 facts=[15]
+  → rewrite_fact eta_conversion goal=16 facts=[15]
   ← apply_backward_step real_integrable_0 goal=25
     #[26] real_integrable_on (λx. 0) s
 qed
@@ -452,7 +452,7 @@ proof
     #[2] real_integrable_on (λx. -(f x)) s
   ← rewrite_goal real_integrable_on_def goal=2
     #[3] ∃y. has_real_integral (λx. -(f x)) y s
-  -> rewrite_fact real_integrable_on_def goal=3 facts=[1]
+  → rewrite_fact real_integrable_on_def goal=3 facts=[1]
     #[4] ∃y. has_real_integral f y s
   exists_elim y goal=3 facts=[4]
     #[5] _VAR y
@@ -475,9 +475,9 @@ proof
     #[3] real_integrable_on (λx. f x - g x) s
   ← rewrite_goal real_integrable_on_def sym=false goal=3
     #[4] ∃y. has_real_integral (λx. f x - g x) y s
-  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
+  → rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
     #[5] ∃y. has_real_integral f y s
-  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
+  → rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
     #[6] ∃y. has_real_integral g y s
   exists_elim y1 goal=4 facts=[5]
     #[7] _VAR y1
@@ -516,7 +516,7 @@ proof
     #[6] _VAR a
     #[7] a ∈ t
     #[8] has_real_integral (f a) (real_integral s (f a)) s
-  -> apply_fact goal=8 facts=[2,7]
+  → apply_fact goal=8 facts=[2,7]
     #[9] real_integrable_on (f a) s
   ← apply_backward_step real_integrable_integral goal=8 facts=[9]
     #[10] has_real_integral (f a) (real_integral s (f a)) s
@@ -553,13 +553,13 @@ proof
     #[1] ∀x. x ∈ s ⟶ f x = g x
     #[2] has_real_integral f k s
     #[3] has_real_integral g k s
-  -> rewrite_fact real_sub_0 sym=true goal=3 facts=[1]
+  → rewrite_fact real_sub_0 sym=true goal=3 facts=[1]
     #[4] ∀x. x ∈ s ⟶ f x - g x = 0
-  -> apply_forward_step has_real_integral_is_0 goal=3 facts=[4]
+  → apply_forward_step has_real_integral_is_0 goal=3 facts=[4]
     #[5] has_real_integral (λx. f x - g x) 0 s
-  -> apply_forward_step has_real_integral_sub goal=3 facts=[2,5]
+  → apply_forward_step has_real_integral_sub goal=3 facts=[2,5]
     #[6] has_real_integral (λx. f x - (f x - g x)) (k - 0) s
-  -> rewrite_fact real_sub_rzero sym=false goal=3 facts=[6]
+  → rewrite_fact real_sub_rzero sym=false goal=3 facts=[6]
     #[7] has_real_integral (λx. f x - (f x - g x)) k s
   cut "(λx. f x - (f x - g x)) = g" goal=3
     #[8] (λx. f x - (f x - g x)) = g
@@ -567,7 +567,7 @@ proof
     #[9] ∀x. f x - (f x - g x) = g x
   ← z3 goal=9
     #[10] ∀x. f x - (f x - g x) = g x
-  -> rewrite_fact_with_prev goal=3 facts=[8,7]
+  → rewrite_fact_with_prev goal=3 facts=[8,7]
 qed
 
 theorem real_integrable_eq
@@ -581,7 +581,7 @@ proof
     #[3] real_integrable_on g s
   ← rewrite_goal real_integrable_on_def sym=false goal=3
     #[4] ∃y. has_real_integral g y s
-  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
+  → rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
     #[5] ∃y. has_real_integral f y s
   exists_elim y goal=4 facts=[5]
     #[6] _VAR y
@@ -612,7 +612,7 @@ proof
   ← introduction goal=4
     #[7] has_real_integral g k s
     #[8] has_real_integral f k s
-  -> rewrite_fact eq_sym_eq sym=false goal=8 facts=[1]
+  → rewrite_fact eq_sym_eq sym=false goal=8 facts=[1]
     #[9] ∀x. x ∈ s ⟶ g x = f x
   ← apply_backward_step has_real_integral_eq goal=8 facts=[9,7]
 qed
@@ -630,9 +630,9 @@ proof
   ← introduction goal=0
     #[1] b ≤ a
     #[2] has_real_integral f i (real_closed_interval a b) ⟷ i = 0
-  -> apply_forward_step has_real_integral_null param_f=f goal=2 facts=[1]
+  → apply_forward_step has_real_integral_null param_f=f goal=2 facts=[1]
     #[3] has_real_integral f 0 (real_closed_interval a b)
-  -> apply_forward_step real_integral_unique goal=2 facts=[3]
+  → apply_forward_step real_integral_unique goal=2 facts=[3]
     #[4] real_integral (real_closed_interval a b) f = 0
   ← apply_backward_step iffI goal=2
     #[5] has_real_integral f i (real_closed_interval a b) ⟶ i = 0
@@ -988,7 +988,7 @@ proof
   ← introduction goal=5
     #[8] has_real_integral g y t
     #[9] has_real_integral f y t
-  -> rewrite_fact eq_sym_eq sym=false goal=9 facts=[2]
+  → rewrite_fact eq_sym_eq sym=false goal=9 facts=[2]
     #[10] ∀x. x ∈ diff t s ⟶ f x = g x
   ← apply_backward_step has_real_integral_spike goal=9 facts=[1,10,8]
 qed
@@ -1005,7 +1005,7 @@ proof
     #[4] real_integrable_on g t
   ← rewrite_goal real_integrable_on_def sym=false goal=4
     #[5] ∃y. has_real_integral g y t
-  -> rewrite_fact real_integrable_on_def sym=false goal=5 facts=[3]
+  → rewrite_fact real_integrable_on_def sym=false goal=5 facts=[3]
     #[6] ∃y. has_real_integral f y t
   exists_elim y goal=5 facts=[6]
     #[7] _VAR y
@@ -1037,7 +1037,7 @@ proof
   ← introduction goal=5
     #[8] real_integrable_on g t
     #[9] real_integrable_on f t
-  -> rewrite_fact eq_sym_eq sym=false goal=9 facts=[2]
+  → rewrite_fact eq_sym_eq sym=false goal=9 facts=[2]
     #[10] ∀x. x ∈ diff t s ⟶ f x = g x
   ← apply_backward_step real_integrable_spike goal=9 facts=[1,10,8]
 qed
@@ -1192,7 +1192,7 @@ proof
     #[8] has_real_integral f y (real_closed_interval a b)
   ← apply_backward_step has_real_integral_spike_interior param_f=g goal=8
     #[9] ∀x. x ∈ real_open_interval a b ⟶ f x = g x
-  -> rewrite_fact eq_sym_eq sym=false goal=9 facts=[1]
+  → rewrite_fact eq_sym_eq sym=false goal=9 facts=[1]
     #[10] ∀x. x ∈ real_open_interval a b ⟶ f x = g x
 qed
 
@@ -1207,7 +1207,7 @@ proof
     #[3] real_integrable_on g (real_closed_interval a b)
   ← rewrite_goal real_integrable_on_def sym=false goal=3
     #[4] ∃y. has_real_integral g y (real_closed_interval a b)
-  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
+  → rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
     #[5] ∃y. has_real_integral f y (real_closed_interval a b)
   exists_elim y goal=4 facts=[5]
     #[6] _VAR y
@@ -1334,9 +1334,9 @@ proof
     #[5] real_integrable_on f (real_closed_interval a b)
   ← rewrite_goal real_integrable_on_def sym=false goal=5
     #[6] ∃y. has_real_integral f y (real_closed_interval a b)
-  -> rewrite_fact real_integrable_on_def sym=false goal=6 facts=[3]
+  → rewrite_fact real_integrable_on_def sym=false goal=6 facts=[3]
     #[7] ∃y. has_real_integral f y (real_closed_interval a c)
-  -> rewrite_fact real_integrable_on_def sym=false goal=6 facts=[4]
+  → rewrite_fact real_integrable_on_def sym=false goal=6 facts=[4]
     #[8] ∃y. has_real_integral f y (real_closed_interval c b)
   exists_elim y1 goal=6 facts=[7]
     #[9] _VAR y1
@@ -1381,7 +1381,7 @@ proof
     #[7] real_continuous f (within (atreal x) (real_closed_interval a b))
   ← apply_backward_step real_integrable_continuous goal=6 facts=[1]
     #[8] real_integrable_on f (real_closed_interval a b)
-  -> rewrite_fact real_continuous_on_eq_continuous_within sym=false goal=7 facts=[1]
+  → rewrite_fact real_continuous_on_eq_continuous_within sym=false goal=7 facts=[1]
     #[9] ∀x. x ∈ real_closed_interval a b ⟶ real_continuous f (within (atreal x) (real_closed_interval a b))
   ← apply_prev goal=7 facts=[9]
 qed
@@ -1407,7 +1407,7 @@ proof
   ← introduction goal=0
     #[1] real_continuous_on f (real_closed_interval a b)
     #[2] ∃g. ∀u. ∀v. u ∈ real_closed_interval a b ⟶ v ∈ real_closed_interval a b ⟶ u ≤ v ⟶ has_real_integral f (g v - g u) (real_closed_interval u v)
-  -> apply_forward_step real_antiderivative_continuous goal=2 facts=[1]
+  → apply_forward_step real_antiderivative_continuous goal=2 facts=[1]
     #[3] ∃g. ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval a b))
   exists_elim g goal=2 facts=[3]
     #[4] _VAR g
@@ -1432,9 +1432,9 @@ proof
     #[18] real_closed_interval u v ⊆ real_closed_interval a b
   ← rewrite_goal real_closed_interval_def sym=false goal=18
     #[19] {p. u ≤ p ∧ p ≤ v} ⊆ {p. a ≤ p ∧ p ≤ b}
-  -> rewrite_fact real_closed_interval_def sym=false goal=19 facts=[10]
+  → rewrite_fact real_closed_interval_def sym=false goal=19 facts=[10]
     #[20] u ∈ {p. a ≤ p ∧ p ≤ b}
-  -> rewrite_fact real_closed_interval_def sym=false goal=20 facts=[11]
+  → rewrite_fact real_closed_interval_def sym=false goal=20 facts=[11]
     #[21] v ∈ {p. a ≤ p ∧ p ≤ b}
   ← z3 goal=19 facts=[21,20]
     #[22] {p. u ≤ p ∧ p ≤ v} ⊆ {p. a ≤ p ∧ p ≤ b}
@@ -1461,7 +1461,7 @@ proof
     #[3] real_integrable_on (λx. f (m * x + c)) (image (λx. real_inverse m * (x - c)) (real_closed_interval a b))
   ← rewrite_goal real_integrable_on_def sym=false goal=3
     #[4] ∃y. has_real_integral (λx. f (m * x + c)) y (image (λx. real_inverse m * (x - c)) (real_closed_interval a b))
-  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
+  → rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
     #[5] ∃y. has_real_integral f y (real_closed_interval a b)
   exists_elim y goal=4 facts=[5]
     #[6] _VAR y
@@ -1483,11 +1483,11 @@ proof
     #[1] has_real_integral f i (real_closed_interval a b)
     #[2] ¬(m = 0)
     #[3] has_real_integral (λx. f (m * x)) (real_inverse (abs m) * i) (image (λx. real_inverse m * x) (real_closed_interval a b))
-  -> apply_forward_step has_real_integral_affinity param_c="(0::real)" goal=3 facts=[1,2]
+  → apply_forward_step has_real_integral_affinity param_c="(0::real)" goal=3 facts=[1,2]
     #[4] has_real_integral (λx. f (m * x + 0)) (real_inverse (abs m) * i) (image (λx. real_inverse m * (x - 0)) (real_closed_interval a b))
-  -> rewrite_fact real_add_rid sym=false goal=3 facts=[4]
+  → rewrite_fact real_add_rid sym=false goal=3 facts=[4]
     #[5] has_real_integral (λx. f (m * x)) (real_inverse (abs m) * i) (image (λx. real_inverse m * (x - 0)) (real_closed_interval a b))
-  -> rewrite_fact real_sub_rzero sym=false goal=3 facts=[5]
+  → rewrite_fact real_sub_rzero sym=false goal=3 facts=[5]
 qed
 
 theorem real_integrable_stretch
@@ -1501,7 +1501,7 @@ proof
     #[3] real_integrable_on (λx. f (m * x)) (image (λx. real_inverse m * x) (real_closed_interval a b))
   ← rewrite_goal real_integrable_on_def sym=false goal=3
     #[4] ∃y. has_real_integral (λx. f (m * x)) y (image (λx. real_inverse m * x) (real_closed_interval a b))
-  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
+  → rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
     #[5] ∃y. has_real_integral f y (real_closed_interval a b)
   exists_elim i goal=4 facts=[5]
     #[6] _VAR i
@@ -1530,11 +1530,11 @@ proof
   ← introduction goal=1
     #[3] has_real_integral (λx. f (-x)) i (real_closed_interval (-b) (-a))
     #[4] has_real_integral f i (real_closed_interval a b)
-  -> apply_forward_step has_real_integral_reflect_lemma goal=4 facts=[3]
+  → apply_forward_step has_real_integral_reflect_lemma goal=4 facts=[3]
     #[5] has_real_integral (λx. f (--x)) i (real_closed_interval (--a) (--b))
-  -> rewrite_fact real_neg_neg goal=4 facts=[5]
+  → rewrite_fact real_neg_neg goal=4 facts=[5]
     #[6] has_real_integral (λx. f x) i (real_closed_interval a b)
-  -> rewrite_fact eta_conversion goal=4 facts=[6]
+  → rewrite_fact eta_conversion goal=4 facts=[6]
   ← introduction goal=2
     #[7] has_real_integral f i (real_closed_interval a b)
     #[8] has_real_integral (λx. f (-x)) i (real_closed_interval (-b) (-a))
@@ -1617,7 +1617,7 @@ proof
     #[10] x ∈ diff (real_closed_interval a b) s
   ← rewrite_goal real_closed_interval_def sym=false goal=10
     #[11] x ∈ diff ({p. a ≤ p ∧ p ≤ b}) s
-  -> rewrite_fact real_open_interval_def sym=false goal=11 facts=[8]
+  → rewrite_fact real_open_interval_def sym=false goal=11 facts=[8]
     #[12] x ∈ diff ({p. a < p ∧ p < b}) s
   ← z3 goal=11 facts=[12]
     #[13] x ∈ diff ({p. a ≤ p ∧ p ≤ b}) s
@@ -1667,20 +1667,20 @@ proof
     #[22] has_real_derivative (λx1. x1) 1 (atreal x)
   ← apply_backward_step has_real_derivative_id goal=22
     #[23] has_real_derivative (λx1. x1) 1 (atreal x)
-  -> rewrite_fact real_of_nat_id sym=false goal=20 facts=[21]
+  → rewrite_fact real_of_nat_id sym=false goal=20 facts=[21]
     #[24] has_real_derivative (λx1. x1 ^ (2::nat)) (2 * x ^ ((2::nat) - 1) * 1) (atreal x)
-  -> rewrite_fact real_mul_rid sym=false goal=20 facts=[24]
+  → rewrite_fact real_mul_rid sym=false goal=20 facts=[24]
     #[25] has_real_derivative (λx1. x1 ^ (2::nat)) (2 * x ^ ((2::nat) - 1)) (atreal x)
   cut "2-1=(1::nat)" goal=20
     #[26] (2::nat) - 1 = 1
   ← z3 goal=26
     #[27] (2::nat) - 1 = 1
-  -> rewrite_fact_with_prev goal=20 facts=[27,25]
+  → rewrite_fact_with_prev goal=20 facts=[27,25]
     #[28] has_real_derivative (λx1. x1 ^ (2::nat)) (2 * x ^ (1::nat)) (atreal x)
-  -> rewrite_fact real_pow_1 sym=false goal=20 facts=[28]
-  -> rewrite_fact real_mult_comm sym=false goal=18 facts=[19]
+  → rewrite_fact real_pow_1 sym=false goal=20 facts=[28]
+  → rewrite_fact real_mult_comm sym=false goal=18 facts=[19]
     #[29] has_real_derivative (λb1. real_inverse 2 * b1 ^ (2::nat)) (real_inverse 2 * (2 * x)) (atreal x)
-  -> rewrite_fact real_mult_assoc sym=false goal=18 facts=[29]
+  → rewrite_fact real_mult_assoc sym=false goal=18 facts=[29]
     #[30] has_real_derivative (λb1. real_inverse 2 * b1 ^ (2::nat)) (real_inverse 2 * 2 * x) (atreal x)
   cut "real_inverse 2 * 2 =1" goal=18
     #[31] real_inverse 2 * 2 = 1
@@ -1688,9 +1688,9 @@ proof
     #[32] ¬((2::real) = 0)
   ← z3 goal=32
     #[33] ¬((2::real) = 0)
-  -> rewrite_fact_with_prev goal=18 facts=[31,30]
+  → rewrite_fact_with_prev goal=18 facts=[31,30]
     #[34] has_real_derivative (λb1. real_inverse 2 * b1 ^ (2::nat)) (1 * x) (atreal x)
-  -> rewrite_fact real_mul_lid sym=false goal=18 facts=[34]
+  → rewrite_fact real_mul_lid sym=false goal=18 facts=[34]
     #[35] has_real_derivative (λb1. real_inverse 2 * b1 ^ (2::nat)) x (atreal x)
   ← rewrite_goal real_mult_comm sym=false goal=18
 qed
@@ -1793,9 +1793,9 @@ proof
     #[1] real_negligible (diff s t ∪ diff t s)
     #[2] has_real_integral f y s
     #[3] has_real_integral f y t
-  -> apply_forward_step has_real_integral_spike_set_eq param_f=f param_y=y goal=3 facts=[1]
+  → apply_forward_step has_real_integral_spike_set_eq param_f=f param_y=y goal=3 facts=[1]
     #[4] has_real_integral f y s ⟷ has_real_integral f y t
-  -> rewrite_fact_with_prev goal=3 facts=[4,2]
+  → rewrite_fact_with_prev goal=3 facts=[4,2]
 qed
 
 theorem real_integrable_spike_set
@@ -1809,7 +1809,7 @@ proof
     #[3] real_integrable_on f t
   ← rewrite_goal real_integrable_on_def goal=3
     #[4] ∃y. has_real_integral f y t
-  -> rewrite_fact real_integrable_on_def goal=4 facts=[2]
+  → rewrite_fact real_integrable_on_def goal=4 facts=[2]
     #[5] ∃y. has_real_integral f y s
   exists_elim y goal=4 facts=[5]
     #[6] _VAR y
@@ -1818,9 +1818,9 @@ proof
     #[9] real_integrable_on f t
   ← inst_exists_goal y goal=8
     #[10] has_real_integral f y t
-  -> apply_forward_step has_real_integral_spike_set_eq param_f=f param_y=y goal=10 facts=[1]
+  → apply_forward_step has_real_integral_spike_set_eq param_f=f param_y=y goal=10 facts=[1]
     #[11] has_real_integral f y s ⟷ has_real_integral f y t
-  -> rewrite_fact_with_prev goal=10 facts=[11,7]
+  → rewrite_fact_with_prev goal=10 facts=[11,7]
     #[12] has_real_integral f y t
 qed
 
@@ -1889,7 +1889,7 @@ proof
     #[4] has_real_integral f i t
   ← rewrite_goal has_real_integral_restrict_univ sym=true goal=4
     #[5] has_real_integral (λx. if x ∈ t then f x else 0) i univ
-  -> rewrite_fact has_real_integral_restrict_univ sym=true goal=5 facts=[3]
+  → rewrite_fact has_real_integral_restrict_univ sym=true goal=5 facts=[3]
     #[6] has_real_integral (λx. if x ∈ s then f x else 0) i univ
   ← apply_backward_step has_real_integral_eq param_f="(λx. if x ∈ s then f x else 0)" goal=5
     #[7] ∀x. x ∈ univ ⟶ (if x ∈ s then f x else 0) = (if x ∈ t then f x else 0)
@@ -1913,7 +1913,7 @@ proof
     #[4] real_integrable_on f t
   ← rewrite_goal real_integrable_on_def sym=false goal=4
     #[5] ∃y. has_real_integral f y t
-  -> rewrite_fact real_integrable_on_def sym=false goal=5 facts=[3]
+  → rewrite_fact real_integrable_on_def sym=false goal=5 facts=[3]
     #[6] ∃y. has_real_integral f y s
   exists_elim i goal=5 facts=[6]
     #[7] _VAR i
@@ -1946,7 +1946,7 @@ proof
     #[2] real_integral t (λx. if x ∈ s then f x else 0) = real_integral s f
   ← apply_backward_step real_integral_unique goal=2
     #[3] has_real_integral (λx. if x ∈ s then f x else 0) (real_integral s f) t
-  -> apply_forward_step has_real_integral_restrict param_f=f param_i="(real_integral s f)" goal=3 facts=[1]
+  → apply_forward_step has_real_integral_restrict param_f=f param_i="(real_integral s f)" goal=3 facts=[1]
     #[4] has_real_integral (λx. if x ∈ s then f x else 0) (real_integral s f) t ⟷ has_real_integral f (real_integral s f) s
   ← rewrite_goal_with_prev goal=3 facts=[4]
     #[5] has_real_integral f (real_integral s f) s
@@ -2143,7 +2143,7 @@ proof
     #[4] abs (real_integral s f) ≤ real_integral s g
   ← rewrite_goal real_abs_bounds sym=false goal=4
     #[5] -(real_integral s g) ≤ real_integral s f ∧ real_integral s f ≤ real_integral s g
-  -> rewrite_fact real_abs_bounds sym=false goal=5 facts=[3]
+  → rewrite_fact real_abs_bounds sym=false goal=5 facts=[3]
     #[6] ∀x. x ∈ s ⟶ -(g x) ≤ f x ∧ f x ≤ g x
   ← apply_backward_step conjI goal=5
     #[7] -(real_integral s g) ≤ real_integral s f
@@ -2178,7 +2178,7 @@ proof
     #[3] real_integrable_on f s
     #[4] real_integrable_on (λx. abs (f x)) s
     #[5] ∀x. x ∈ s ⟶ abs (f x) ≤ abs (f x)
-  -> rewrite_fact absolutely_real_integrable_on_def goal=3 facts=[1]
+  → rewrite_fact absolutely_real_integrable_on_def goal=3 facts=[1]
     #[6] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
   ← apply_backward_step conjD1 goal=3 facts=[6]
   ← apply_backward_step conjD2 goal=4 facts=[6]
@@ -2200,7 +2200,7 @@ proof
     #[4] real_integrable_on (λx. abs of_nat 0) s
   ← rewrite_goal real_abs_nat goal=4
     #[5] real_integrable_on (λx. of_nat 0) s
-  -> rewrite_fact real_zero_def goal=5 facts=[2]
+  → rewrite_fact real_zero_def goal=5 facts=[2]
 qed
 
 theorem absolutely_real_integrable_const
@@ -2225,7 +2225,7 @@ proof
   ← introduction goal=0
     #[1] absolutely_real_integrable_on f s
     #[2] absolutely_real_integrable_on (λx. c * f x) s
-  -> rewrite_fact absolutely_real_integrable_on_def goal=2 facts=[1]
+  → rewrite_fact absolutely_real_integrable_on_def goal=2 facts=[1]
     #[3] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
   ← rewrite_goal absolutely_real_integrable_on_def goal=2
     #[4] real_integrable_on (λx. c * f x) s ∧ real_integrable_on (λx. abs (c * f x)) s
@@ -2252,7 +2252,7 @@ proof
     #[2] absolutely_real_integrable_on (λx. -(f x)) s
   ← rewrite_goal absolutely_real_integrable_on_def goal=2
     #[3] real_integrable_on (λx. -(f x)) s ∧ real_integrable_on (λx. abs (-(f x))) s
-  -> rewrite_fact absolutely_real_integrable_on_def goal=3 facts=[1]
+  → rewrite_fact absolutely_real_integrable_on_def goal=3 facts=[1]
     #[4] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
   ← apply_backward_step conjI goal=3
     #[5] real_integrable_on (λx. -(f x)) s
@@ -2273,7 +2273,7 @@ proof
   ← introduction goal=0
     #[1] absolutely_real_integrable_on f s
     #[2] absolutely_real_integrable_on (λx. abs (f x)) s
-  -> rewrite_fact absolutely_real_integrable_on_def goal=2 facts=[1]
+  → rewrite_fact absolutely_real_integrable_on_def goal=2 facts=[1]
     #[3] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
   ← rewrite_goal absolutely_real_integrable_on_def goal=2
     #[4] real_integrable_on (λx. abs (f x)) s ∧ real_integrable_on (λx. abs (abs (f x))) s
@@ -2295,15 +2295,15 @@ proof
     #[3] absolutely_real_integrable_on f (real_closed_interval a b)
   ← rewrite_goal absolutely_real_integrable_on_def sym=false goal=3
     #[4] real_integrable_on f (real_closed_interval a b) ∧ real_integrable_on (λx. abs (f x)) (real_closed_interval a b)
-  -> rewrite_fact absolutely_real_integrable_on_def sym=false goal=4 facts=[1]
+  → rewrite_fact absolutely_real_integrable_on_def sym=false goal=4 facts=[1]
     #[5] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
   ← apply_backward_step conjI goal=4
     #[6] real_integrable_on f (real_closed_interval a b)
     #[7] real_integrable_on (λx. abs (f x)) (real_closed_interval a b)
-  -> apply_forward_step conjD1 goal=6 facts=[5]
+  → apply_forward_step conjD1 goal=6 facts=[5]
     #[8] real_integrable_on f s
   ← apply_backward_step real_integrable_on_subinterval goal=6 facts=[8,2]
-  -> apply_forward_step conjD2 goal=7 facts=[5]
+  → apply_forward_step conjD2 goal=7 facts=[5]
     #[9] real_integrable_on (λx. abs (f x)) s
   ← apply_backward_step real_integrable_on_subinterval goal=7 facts=[9,2]
 qed
@@ -2357,7 +2357,7 @@ proof
   ← introduction goal=0
     #[1] absolutely_real_integrable_on f s
     #[2] real_integrable_on f s
-  -> rewrite_fact absolutely_real_integrable_on_def goal=2 facts=[1]
+  → rewrite_fact absolutely_real_integrable_on_def goal=2 facts=[1]
     #[3] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
   ← apply_backward_step conjD1 goal=2 facts=[3]
 qed
@@ -2389,7 +2389,7 @@ proof
     #[4] absolutely_real_integrable_on f s
   ← apply_backward_step absolutely_real_integrable_integrable_bound goal=4 facts=[1,2]
     #[5] real_integrable_on (λx. abs (g x)) s
-  -> rewrite_fact absolutely_real_integrable_on_def sym=false goal=5 facts=[3]
+  → rewrite_fact absolutely_real_integrable_on_def sym=false goal=5 facts=[3]
     #[6] real_integrable_on g s ∧ real_integrable_on (λx. abs (g x)) s
   ← apply_backward_step conjD2 goal=5 facts=[6]
     #[7] real_integrable_on (λx. abs (g x)) s
@@ -2434,9 +2434,9 @@ proof
     #[1] has_real_measure s m1
     #[2] has_real_measure s m2
     #[3] m1 = m2
-  -> rewrite_fact has_real_measure_def sym=false goal=3 facts=[1]
+  → rewrite_fact has_real_measure_def sym=false goal=3 facts=[1]
     #[4] has_real_integral (λx. 1) m1 s
-  -> rewrite_fact has_real_measure_def sym=false goal=3 facts=[2]
+  → rewrite_fact has_real_measure_def sym=false goal=3 facts=[2]
     #[5] has_real_integral (λx. 1) m2 s
   ← apply_backward_step has_real_integral_unique goal=3 facts=[4,5]
 qed
@@ -2481,15 +2481,15 @@ proof
   ← introduction goal=2
     #[9] real_measurable s ∧ real_measure s = m
     #[10] has_real_measure s m
-  -> rewrite_fact has_real_measure_mesure goal=10 facts=[9]
+  → rewrite_fact has_real_measure_mesure goal=10 facts=[9]
     #[11] has_real_measure s (real_measure s) ∧ real_measure s = m
-  -> rewrite_fact conj_comm goal=10 facts=[11]
+  → rewrite_fact conj_comm goal=10 facts=[11]
     #[12] real_measure s = m ∧ has_real_measure s (real_measure s)
-  -> apply_forward_step conjD1 goal=10 facts=[12]
+  → apply_forward_step conjD1 goal=10 facts=[12]
     #[13] real_measure s = m
-  -> apply_forward_step conjD2 goal=10 facts=[12]
+  → apply_forward_step conjD2 goal=10 facts=[12]
     #[14] has_real_measure s (real_measure s)
-  -> rewrite_fact_with_prev goal=10 facts=[13,14]
+  → rewrite_fact_with_prev goal=10 facts=[13,14]
 qed
 
 theorem has_real_measure
@@ -2537,7 +2537,7 @@ proof
     #[5] has_real_integral (λx. 1) (real_integral s (λx. 1)) s
   ← apply_backward_step real_integrable_integral goal=5
     #[6] real_integrable_on (λx. 1) s
-  -> rewrite_fact real_measurable sym=false goal=6 facts=[1]
+  → rewrite_fact real_measurable sym=false goal=6 facts=[1]
 qed
 
 theorem real_measure_real_integral_univ
@@ -2556,7 +2556,7 @@ proof
     #[5] has_real_integral (λx. if x ∈ s then 1 else 0) (real_integral univ (λx. if x ∈ s then 1 else 0)) univ
   ← apply_backward_step real_integrable_integral goal=5
     #[6] real_integrable_on (λx. if x ∈ s then 1 else 0) univ
-  -> rewrite_fact real_measurable_real_integrable sym=false goal=6 facts=[1]
+  → rewrite_fact real_measurable_real_integrable sym=false goal=6 facts=[1]
 qed
 
 theorem real_integral_real_measure
@@ -2567,7 +2567,7 @@ proof
   ← introduction goal=0
     #[1] real_measurable s
     #[2] real_integral s (λx. 1) = real_measure s
-  -> apply_forward_step real_measure_real_integral goal=2 facts=[1]
+  → apply_forward_step real_measure_real_integral goal=2 facts=[1]
     #[3] real_measure s = real_integral s (λx. 1)
   ← rewrite_goal_with_prev goal=2 facts=[3]
 qed
@@ -2580,7 +2580,7 @@ proof
   ← introduction goal=0
     #[1] real_measurable s
     #[2] real_integral univ (λx. if x ∈ s then 1 else 0) = real_measure s
-  -> apply_forward_step real_measure_real_integral_univ goal=2 facts=[1]
+  → apply_forward_step real_measure_real_integral_univ goal=2 facts=[1]
     #[3] real_measure s = real_integral univ (λx. if x ∈ s then 1 else 0)
   ← rewrite_goal_with_prev goal=2 facts=[3]
 qed
@@ -2668,14 +2668,14 @@ proof
     #[13] real_integrable_on (λx. if x ∈ s then 1 else 0) univ
   ← z3 goal=12
     #[14] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ s then 1 else 0)
-  -> rewrite_fact real_measurable_real_integrable sym=false goal=13 facts=[1]
+  → rewrite_fact real_measurable_real_integrable sym=false goal=13 facts=[1]
     #[15] real_integrable_on (λx. if x ∈ s then 1 else 0) univ
   ← apply_backward_step monnegative_absolutely_real_integrable goal=11
     #[16] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ t then 1 else 0)
     #[17] real_integrable_on (λx. if x ∈ t then 1 else 0) univ
   ← z3 goal=16
     #[18] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ t then 1 else 0)
-  -> rewrite_fact real_measurable_real_integrable sym=false goal=17 facts=[2]
+  → rewrite_fact real_measurable_real_integrable sym=false goal=17 facts=[2]
     #[19] real_integrable_on (λx. if x ∈ t then 1 else 0) univ
 qed
 
@@ -2708,14 +2708,14 @@ proof
     #[13] real_integrable_on (λx. if x ∈ s then 1 else 0) univ
   ← z3 goal=12
     #[14] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ s then 1 else 0)
-  -> rewrite_fact real_measurable_real_integrable sym=false goal=13 facts=[1]
+  → rewrite_fact real_measurable_real_integrable sym=false goal=13 facts=[1]
     #[15] real_integrable_on (λx. if x ∈ s then 1 else 0) univ
   ← apply_backward_step monnegative_absolutely_real_integrable goal=11
     #[16] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ t then 1 else 0)
     #[17] real_integrable_on (λx. if x ∈ t then 1 else 0) univ
   ← z3 goal=16
     #[18] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ t then 1 else 0)
-  -> rewrite_fact real_measurable_real_integrable sym=false goal=17 facts=[2]
+  → rewrite_fact real_measurable_real_integrable sym=false goal=17 facts=[2]
     #[19] real_integrable_on (λx. if x ∈ t then 1 else 0) univ
 qed
 
@@ -2761,7 +2761,7 @@ proof
   ← introduction goal=0
     #[1] has_real_measure s m
     #[2] 0 ≤ m
-  -> rewrite_fact has_real_measure_def goal=2 facts=[1]
+  → rewrite_fact has_real_measure_def goal=2 facts=[1]
     #[3] has_real_integral (λx. 1) m s
   ← apply_backward_step has_real_integral_pos param_f="(%x::real. (1::real))" param_s=s goal=2
     #[4] ∀x. x ∈ s ⟶ (0::real) ≤ 1
@@ -2783,7 +2783,7 @@ proof
     #[2] 0 ≤ real_measure s
   ← apply_backward_step has_real_measure_pos_le param_s=s goal=2
     #[3] has_real_measure s (real_measure s)
-  -> rewrite_fact has_real_measure_mesure goal=3 facts=[1]
+  → rewrite_fact has_real_measure_mesure goal=3 facts=[1]
 qed
 
 theorem has_real_measure_subset
@@ -2796,9 +2796,9 @@ proof
     #[2] has_real_measure s2 m2
     #[3] s1 ⊆ s2
     #[4] m1 ≤ m2
-  -> rewrite_fact has_real_measure_def sym=false goal=4 facts=[1]
+  → rewrite_fact has_real_measure_def sym=false goal=4 facts=[1]
     #[5] has_real_integral (λx. 1) m1 s1
-  -> rewrite_fact has_real_measure_def sym=false goal=4 facts=[2]
+  → rewrite_fact has_real_measure_def sym=false goal=4 facts=[2]
     #[6] has_real_integral (λx. 1) m2 s2
   ← apply_backward_step has_real_integral_subset_le goal=4 facts=[3,5,6]
     #[7] ∀x. x ∈ s2 ⟶ (0::real) ≤ 1
@@ -2900,9 +2900,9 @@ proof
   ← introduction goal=6
     #[8] real_measure s = 0
     #[9] has_real_measure s 0
-  -> rewrite_fact has_real_measure_mesure goal=9 facts=[1]
+  → rewrite_fact has_real_measure_mesure goal=9 facts=[1]
     #[10] has_real_measure s (real_measure s)
-  -> rewrite_fact_with_prev goal=9 facts=[8,10]
+  → rewrite_fact_with_prev goal=9 facts=[8,10]
   ← introduction goal=7
     #[11] has_real_measure s 0
     #[12] real_measure s = 0
@@ -2919,7 +2919,7 @@ proof
     #[2] 0 < real_measure s ⟷ ¬(real_negligible s)
   ← rewrite_goal real_lt_le goal=2
     #[3] 0 ≤ real_measure s ∧ ¬(0 = real_measure s) ⟷ ¬(real_negligible s)
-  -> apply_forward_step real_measure_pos_le goal=3 facts=[1]
+  → apply_forward_step real_measure_pos_le goal=3 facts=[1]
     #[4] 0 ≤ real_measure s
   ← apply_backward_step iffI goal=3
     #[5] 0 ≤ real_measure s ∧ ¬(0 = real_measure s) ⟶ ¬(real_negligible s)
@@ -2927,9 +2927,9 @@ proof
   ← introduction goal=5
     #[7] 0 ≤ real_measure s ∧ ¬(0 = real_measure s)
     #[8] ¬(real_negligible s)
-  -> apply_forward_step real_measurable_real_measure_eq_0 goal=8 facts=[1]
+  → apply_forward_step real_measurable_real_measure_eq_0 goal=8 facts=[1]
     #[9] real_measure s = 0 ⟷ real_negligible s
-  -> apply_forward_step conjD2 goal=8 facts=[7]
+  → apply_forward_step conjD2 goal=8 facts=[7]
     #[10] ¬(0 = real_measure s)
   ← apply_backward_step negI goal=8
     #[11] real_negligible s ⟶ false
@@ -2955,7 +2955,7 @@ proof
     #[22] ¬¬(real_negligible s)
   ← rewrite_goal double_neg sym=false goal=22
     #[23] real_negligible s
-  -> rewrite_fact double_neg sym=false goal=23 facts=[21]
+  → rewrite_fact double_neg sym=false goal=23 facts=[21]
     #[24] real_measure s = 0
   ← rewrite_goal has_real_measure_0 sym=true goal=23
     #[25] has_real_measure s 0
@@ -3004,9 +3004,9 @@ proof
   ← apply_backward_step has_real_measure_diff_subset goal=5
     #[6] has_real_measure s (real_measure s)
     #[7] has_real_measure t (real_measure t)
-  -> rewrite_fact has_real_measure_mesure sym=false goal=6 facts=[1]
+  → rewrite_fact has_real_measure_mesure sym=false goal=6 facts=[1]
     #[8] has_real_measure s (real_measure s)
-  -> rewrite_fact has_real_measure_mesure sym=false goal=7 facts=[2]
+  → rewrite_fact has_real_measure_mesure sym=false goal=7 facts=[2]
     #[9] has_real_measure t (real_measure t)
 qed
 
@@ -3072,7 +3072,7 @@ proof
     #[4] real_measurable s1
   ← rewrite_goal real_measurable_def sym=false goal=4
     #[5] ∃m. has_real_measure s1 m
-  -> rewrite_fact real_measurable_def sym=false goal=5 facts=[1]
+  → rewrite_fact real_measurable_def sym=false goal=5 facts=[1]
     #[6] ∃m. has_real_measure s m
   exists_elim m goal=5 facts=[6]
     #[7] _VAR m
@@ -3104,9 +3104,9 @@ proof
   ← apply_backward_step has_real_measure_real_negligible_union goal=5
     #[6] has_real_measure s (real_measure s)
     #[7] has_real_measure t (real_measure t)
-  -> rewrite_fact has_real_measure_mesure sym=false goal=6 facts=[1]
+  → rewrite_fact has_real_measure_mesure sym=false goal=6 facts=[1]
     #[8] has_real_measure s (real_measure s)
-  -> rewrite_fact has_real_measure_mesure sym=false goal=7 facts=[2]
+  → rewrite_fact has_real_measure_mesure sym=false goal=7 facts=[2]
     #[9] has_real_measure t (real_measure t)
 qed
 
@@ -3136,7 +3136,7 @@ proof
     #[3] real_measurable t
   ← rewrite_goal real_measurable_def sym=false goal=3
     #[4] ∃m. has_real_measure t m
-  -> rewrite_fact real_measurable_def sym=false goal=4 facts=[1]
+  → rewrite_fact real_measurable_def sym=false goal=4 facts=[1]
     #[5] ∃m. has_real_measure s m
   exists_elim m goal=4 facts=[5]
     #[6] _VAR m
@@ -3169,9 +3169,9 @@ proof
   ← apply_backward_step has_real_measure_real_negligible_symdiff param_s=t goal=8
     #[9] has_real_measure t (real_measure t)
     #[10] real_negligible (diff t s ∪ diff s t)
-  -> apply_forward_step real_measurable_real_negligible_symdiff goal=9 facts=[6,2]
+  → apply_forward_step real_measurable_real_negligible_symdiff goal=9 facts=[6,2]
     #[11] real_measurable t
-  -> rewrite_fact has_real_measure_mesure sym=false goal=9 facts=[11]
+  → rewrite_fact has_real_measure_mesure sym=false goal=9 facts=[11]
     #[12] has_real_measure t (real_measure t)
   ← rewrite_goal union_comm sym=false goal=10
   ← introduction goal=5
@@ -3182,7 +3182,7 @@ proof
   ← apply_backward_step has_real_measure_real_negligible_symdiff param_s=t goal=15
     #[16] has_real_measure t (real_measure t)
     #[17] real_negligible (diff t s ∪ diff s t)
-  -> rewrite_fact has_real_measure_mesure sym=false goal=16 facts=[13]
+  → rewrite_fact has_real_measure_mesure sym=false goal=16 facts=[13]
     #[18] has_real_measure t (real_measure t)
   ← rewrite_goal union_comm sym=false goal=17
 qed
@@ -3217,7 +3217,7 @@ proof
     #[2] ∀s. s ∈ f ⟶ has_real_measure s (m s)
     #[3] ∀s. ∀t. s ∈ f ⟶ t ∈ f ⟶ ¬(s = t) ⟶ disjoint s t
     #[4] has_real_measure (⋃f) (sum f m)
-  -> rewrite_fact disjoint_def sym=false goal=4 facts=[3]
+  → rewrite_fact disjoint_def sym=false goal=4 facts=[3]
     #[5] ∀s. ∀t. s ∈ f ⟶ t ∈ f ⟶ ¬(s = t) ⟶ s ∩ t = ∅
   ← apply_backward_step has_real_measure_real_negligible_unions goal=4 facts=[1,2]
     #[6] ∀s. ∀t. s ∈ f ⟶ t ∈ f ⟶ ¬(s = t) ⟶ real_negligible (s ∩ t)
@@ -3228,7 +3228,7 @@ proof
     #[10] t ∈ f
     #[11] ¬(s = t)
     #[12] real_negligible (s ∩ t)
-  -> apply_fact goal=12 facts=[5,9,10,11]
+  → apply_fact goal=12 facts=[5,9,10,11]
     #[13] s ∩ t = ∅
   ← rewrite_goal_with_prev goal=12 facts=[13]
     #[14] real_negligible ∅
@@ -3290,9 +3290,9 @@ proof
     #[9] y ∈ s
     #[10] ¬(x = y)
     #[11] real_negligible (f x ∩ f y)
-  -> apply_fact goal=11 facts=[3,8,9,10]
+  → apply_fact goal=11 facts=[3,8,9,10]
     #[12] disjoint (f x) (f y)
-  -> rewrite_fact disjoint_def sym=false goal=11 facts=[12]
+  → rewrite_fact disjoint_def sym=false goal=11 facts=[12]
     #[13] f x ∩ f y = ∅
   ← rewrite_goal_with_prev goal=11 facts=[13]
     #[14] real_negligible ∅
@@ -3354,9 +3354,9 @@ proof
     #[9] y ∈ s
     #[10] ¬(x = y)
     #[11] real_negligible (f x ∩ f y)
-  -> apply_fact goal=11 facts=[3,8,9,10]
+  → apply_fact goal=11 facts=[3,8,9,10]
     #[12] disjoint (f x) (f y)
-  -> rewrite_fact disjoint_def sym=false goal=11 facts=[12]
+  → rewrite_fact disjoint_def sym=false goal=11 facts=[12]
     #[13] f x ∩ f y = ∅
   ← rewrite_goal_with_prev goal=11 facts=[13]
     #[14] real_negligible ∅
@@ -3393,7 +3393,7 @@ proof
     #[1] real_measurable s
     #[2] real_measurable t
     #[3] real_measure (s ∪ t) ≤ real_measure s + real_measure t
-  -> apply_forward_step real_measure_union goal=3 facts=[1,2]
+  → apply_forward_step real_measure_union goal=3 facts=[1,2]
     #[4] real_measure (s ∪ t) = real_measure s + real_measure t - real_measure (s ∩ t)
   ← rewrite_goal_with_prev goal=3 facts=[4]
     #[5] real_measure s + real_measure t - real_measure (s ∩ t) ≤ real_measure s + real_measure t
@@ -3456,9 +3456,9 @@ proof
   ← introduction goal=0
     #[1] has_real_measure s y
     #[2] has_real_measure (image (λx. m * x) s) (abs m * y)
-  -> apply_forward_step has_real_measure_affinity param_c="(0::real)" param_m=m goal=2 facts=[1]
+  → apply_forward_step has_real_measure_affinity param_c="(0::real)" param_m=m goal=2 facts=[1]
     #[3] has_real_measure (image (λx. m * x + 0) s) (abs m * y)
-  -> rewrite_fact real_add_rid goal=2 facts=[3]
+  → rewrite_fact real_add_rid goal=2 facts=[3]
 qed
 
 theorem has_real_measure_translation
@@ -3469,15 +3469,15 @@ proof
   ← introduction goal=0
     #[1] has_real_measure s m
     #[2] has_real_measure (image (λx. x + a) s) m
-  -> apply_forward_step has_real_measure_affinity param_c=a param_m="(1::real)" goal=2 facts=[1]
+  → apply_forward_step has_real_measure_affinity param_c=a param_m="(1::real)" goal=2 facts=[1]
     #[3] has_real_measure (image (λx. 1 * x + a) s) (abs 1 * m)
-  -> rewrite_fact real_mul_lid goal=2 facts=[3]
+  → rewrite_fact real_mul_lid goal=2 facts=[3]
     #[4] has_real_measure (image (λx. x + a) s) (abs 1 * m)
   cut "abs 1 * m = m" goal=2
     #[5] abs 1 * m = m
   ← z3 goal=5
     #[6] abs 1 * m = m
-  -> rewrite_fact_with_prev goal=2 facts=[6,4]
+  → rewrite_fact_with_prev goal=2 facts=[6,4]
 qed
 
 theorem real_negligible_translation
@@ -3531,7 +3531,7 @@ proof
   ← introduction goal=0
     #[1] real_measurable s
     #[2] real_measure (image (λx. x + a) s) = real_measure s
-  -> rewrite_fact has_real_measure_mesure goal=2 facts=[1]
+  → rewrite_fact has_real_measure_mesure goal=2 facts=[1]
     #[3] has_real_measure s (real_measure s)
   ← apply_backward_step real_measure_unique goal=2
     #[4] has_real_measure (image (λx. x + a) s) (real_measure s)
@@ -3553,14 +3553,14 @@ proof
     #[2] real_measurable (image (λx. c * x) s)
   ← rewrite_goal real_measurable_def goal=2
     #[3] ∃m. has_real_measure (image (λx. c * x) s) m
-  -> rewrite_fact real_measurable_def goal=3 facts=[1]
+  → rewrite_fact real_measurable_def goal=3 facts=[1]
     #[4] ∃m. has_real_measure s m
   exists_elim m goal=3 facts=[4]
     #[5] _VAR m
     #[6] has_real_measure s m
     #[7] ∃m. has_real_measure (image (λx. c * x) s) m
     #[8] real_measurable (image (λx. c * x) s)
-  -> apply_forward_step has_real_measure_scaling param_m=c goal=7 facts=[6]
+  → apply_forward_step has_real_measure_scaling param_m=c goal=7 facts=[6]
     #[9] has_real_measure (image (λx. c * x) s) (abs c * m)
   ← apply_backward_step exI goal=7 facts=[9]
     #[10] ∃m. has_real_measure (image (λx. c * x) s) m
@@ -3579,7 +3579,7 @@ proof
   ← introduction goal=0
     #[1] real_measurable s
     #[2] real_measure (image (λx. c * x) s) = abs c * real_measure s
-  -> rewrite_fact has_real_measure_mesure goal=2 facts=[1]
+  → rewrite_fact has_real_measure_mesure goal=2 facts=[1]
     #[3] has_real_measure s (real_measure s)
   ← apply_backward_step real_measure_unique goal=2
     #[4] has_real_measure (image (λx. c * x) s) (abs c * real_measure s)
@@ -3601,7 +3601,7 @@ proof
     #[2] ∀n. real_measure (s n) ≤ B
     #[3] ∀n. s n ⊆ s (Suc n)
     #[4] real_measurable (⋃({y. ∃n. y = s n}))
-  -> apply_forward_step has_real_measure_nested_unions goal=4 facts=[1,2,3]
+  → apply_forward_step has_real_measure_nested_unions goal=4 facts=[1,2,3]
     #[5] real_measurable (⋃({y. ∃n. y = s n})) ∧ tendsto_real (λn. real_measure (s n)) (real_measure (⋃({y. ∃n. y = s n}))) sequentially
   ← apply_backward_step conjD1 goal=4 facts=[5]
 qed
@@ -3673,7 +3673,7 @@ proof
     #[4] ∀x. x ∈ diff (real_open_interval a b) c ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x)
     #[5] has_real_integral (λx. f x * g1 x) (f b * g b - f a * g a - y) (real_closed_interval a b)
     #[6] has_real_integral (λx. f1 x * g x) y (real_closed_interval a b)
-  -> apply_forward_step real_fundamental_theorem_of_calculus_interior_strong param_f1="(λx. f x * g1 x + f1 x * g x) " goal=6 facts=[2,1,3]
+  → apply_forward_step real_fundamental_theorem_of_calculus_interior_strong param_f1="(λx. f x * g1 x + f1 x * g x) " goal=6 facts=[2,1,3]
     #[7] (∀x. x ∈ diff (real_open_interval a b) c ⟶ has_real_derivative (λx1. f x1 * g x1) (f x * g1 x + f1 x * g x) (atreal x)) ⟶ has_real_integral (λx. f x * g1 x + f1 x * g x) (f b * g b - f a * g a) (real_closed_interval a b)
   cut "has_real_integral (λx. f x * g1 x + f1 x * g x) (f b * g b - f a * g a) (real_closed_interval a b)" goal=6
     #[8] has_real_integral (λx. f x * g1 x + f1 x * g x) (f b * g b - f a * g a) (real_closed_interval a b)
@@ -3686,13 +3686,13 @@ proof
   ← apply_backward_step has_real_derivative_mul_atreal goal=12
     #[13] has_real_derivative f (f1 x) (atreal x)
     #[14] has_real_derivative g (g1 x) (atreal x)
-  -> apply_fact goal=13 facts=[4,11]
+  → apply_fact goal=13 facts=[4,11]
     #[15] has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x)
   ← apply_backward_step conjD1 goal=13 facts=[15]
     #[16] has_real_derivative f (f1 x) (atreal x)
   ← apply_backward_step conjD2 goal=14 facts=[15]
     #[17] has_real_derivative g (g1 x) (atreal x)
-  -> apply_forward_step has_real_integral_sub goal=6 facts=[8,5]
+  → apply_forward_step has_real_integral_sub goal=6 facts=[8,5]
     #[18] has_real_integral (λx. f x * g1 x + f1 x * g x - f x * g1 x) (f b * g b - f a * g a - (f b * g b - f a * g a - y)) (real_closed_interval a b)
   cut "(λx. f x * g1 x + f1 x * g x - f x * g1 x) = (λx. f1 x * g x)" goal=6 facts=[18]
     #[19] (λx. f x * g1 x + f1 x * g x - f x * g1 x) = (λx. f1 x * g x)
@@ -3704,9 +3704,9 @@ proof
     #[22] f b * g b - f a * g a - (f b * g b - f a * g a - y) = y
   real_norm goal=22
     #[23] f b * g b - f a * g a - (f b * g b - f a * g a - y) = y
-  -> rewrite_fact_with_prev goal=6 facts=[19,18]
+  → rewrite_fact_with_prev goal=6 facts=[19,18]
     #[24] has_real_integral (λx. f1 x * g x) (f b * g b - f a * g a - (f b * g b - f a * g a - y)) (real_closed_interval a b)
-  -> rewrite_fact_with_prev goal=6 facts=[23,24]
+  → rewrite_fact_with_prev goal=6 facts=[23,24]
 qed
 
 theorem real_integration_by_parts_simple
@@ -3741,7 +3741,7 @@ proof
     #[11] real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
   ← rewrite_goal real_integrable_on_def sym=false goal=11
     #[12] ∃y. has_real_integral (λx. f1 x * g x) y (real_closed_interval a b)
-  -> rewrite_fact real_integrable_on_def sym=false goal=12 facts=[4]
+  → rewrite_fact real_integrable_on_def sym=false goal=12 facts=[4]
     #[13] ∃y. has_real_integral (λx. f x * g1 x) y (real_closed_interval a b)
   exists_elim y goal=12 facts=[13]
     #[14] _VAR y
@@ -3785,11 +3785,11 @@ proof
     #[10] real_integrable_on (λx. f x * g1 x) (real_closed_interval a b)
   ← rewrite_goal real_mult_comm sym=false goal=10
     #[11] real_integrable_on (λx. g1 x * f x) (real_closed_interval a b)
-  -> rewrite_fact real_mult_comm sym=false goal=11 facts=[2]
+  → rewrite_fact real_mult_comm sym=false goal=11 facts=[2]
     #[12] real_continuous_on (λx. g x * f x) (real_closed_interval a b)
-  -> rewrite_fact real_mult_comm sym=false goal=11 facts=[9]
+  → rewrite_fact real_mult_comm sym=false goal=11 facts=[9]
     #[13] real_integrable_on (λx. g x * f1 x) (real_closed_interval a b)
-  -> rewrite_fact conj_comm sym=false goal=11 facts=[3]
+  → rewrite_fact conj_comm sym=false goal=11 facts=[3]
     #[14] ∀x. x ∈ diff (real_open_interval a b) c ⟶ has_real_derivative g (g1 x) (atreal x) ∧ has_real_derivative f (f1 x) (atreal x)
   ← apply_backward_step real_integrable_by_parts goal=11 facts=[1,12,14,13]
 qed
@@ -3879,9 +3879,9 @@ proof
     #[1] real_open ({x. P x})
     #[2] ∃x. P x
     #[3] ∃x. rational x ∧ P x
-  -> apply_forward_step real_open_set_rational goal=3 facts=[1]
+  → apply_forward_step real_open_set_rational goal=3 facts=[1]
     #[4] ¬({x. P x} = ∅) ⟶ (∃x. rational x ∧ x ∈ {x1. P x1})
-  -> rewrite_fact member_collect sym=false goal=3 facts=[4]
+  → rewrite_fact member_collect sym=false goal=3 facts=[4]
     #[5] ¬({x. P x} = ∅) ⟶ (∃x. rational x ∧ P x)
   ← apply_prev goal=3 facts=[5]
     #[6] ¬({x. P x} = ∅)
@@ -3907,7 +3907,7 @@ proof
     #[7] _VAR x
     #[8] rational x ∧ x ∈ s
     #[9] ∃x. x ∈ s
-  -> apply_forward_step conjD2 goal=9 facts=[8]
+  → apply_forward_step conjD2 goal=9 facts=[8]
     #[10] x ∈ s
   ← apply_backward_step exI goal=9 facts=[10]
     #[11] ∃x. x ∈ s
@@ -3928,9 +3928,9 @@ proof
   ← introduction goal=0
     #[1] real_open ({x. P x})
     #[2] (∃x. rational x ∧ P x) ⟷ (∃x. P x)
-  -> apply_forward_step real_open_set_exists_rational goal=2 facts=[1]
+  → apply_forward_step real_open_set_exists_rational goal=2 facts=[1]
     #[3] (∃x. rational x ∧ x ∈ {x1. P x1}) ⟷ (∃x. x ∈ {x1. P x1})
-  -> rewrite_fact member_collect sym=false goal=2 facts=[3]
+  → rewrite_fact member_collect sym=false goal=2 facts=[3]
 qed
 
 theorem real_continuous_on_const_dyadic_rationals
@@ -3970,11 +3970,11 @@ proof
   ← rewrite_goal real_sub_lt sym=false goal=11
     #[13] floor x < x
   ← rewrite_goal real_floor_lt_refl sym=false goal=13
-  -> apply_forward_step floor param_x=x goal=12
+  → apply_forward_step floor param_x=x goal=12
     #[14] integer (floor x) ∧ floor x ≤ x ∧ x < floor x + 1
   ← rewrite_goal real_sub_lt sym=false goal=12
     #[15] x < floor x + 1
-  -> apply_forward_step conjD2 goal=15 facts=[14]
+  → apply_forward_step conjD2 goal=15 facts=[14]
     #[16] floor x ≤ x ∧ x < floor x + 1
   ← apply_backward_step conjD2 goal=15 facts=[16]
     #[17] x < floor x + 1
@@ -3998,16 +3998,16 @@ proof
   ← apply_backward_step conjI goal=26
     #[28] floor x ≤ x1
     #[29] x1 < floor x + 1
-  -> rewrite_fact real_lt_min sym=false goal=28 facts=[19]
+  → rewrite_fact real_lt_min sym=false goal=28 facts=[19]
     #[30] abs (x1 - x) < x - floor x ∧ abs (x1 - x) < floor x + 1 - x
-  -> apply_forward_step conjD1 goal=28 facts=[30]
+  → apply_forward_step conjD1 goal=28 facts=[30]
     #[31] abs (x1 - x) < x - floor x
   cut "!y. abs(x1 -x) < x - y --> y <= x1" goal=28
     #[32] ∀y. abs (x1 - x) < x - y ⟶ y ≤ x1
   ← z3 goal=32
     #[33] ∀y. abs (x1 - x) < x - y ⟶ y ≤ x1
   ← apply_prev goal=28 facts=[33]
-  -> apply_forward_step conjD2 goal=29 facts=[30]
+  → apply_forward_step conjD2 goal=29 facts=[30]
     #[34] abs (x1 - x) < floor x + 1 - x
   cut "∀y. abs (x1 - x) < y+1 - x ⟶ x1 < y + 1" goal=29
     #[35] ∀y. abs (x1 - x) < y + 1 - x ⟶ x1 < y + 1

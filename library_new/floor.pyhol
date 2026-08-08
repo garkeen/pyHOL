@@ -25,13 +25,13 @@ proof
   ← introduction goal=7
     #[9] 0 ≤ x
     #[10] (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
-  -> rewrite_fact if_P sym=false goal=10 facts=[5,9]
+  → rewrite_fact if_P sym=false goal=10 facts=[5,9]
     #[11] ∃n. x = of_nat n
   ← apply_backward_step disjI1 goal=10
   ← introduction goal=8
     #[12] ¬(0 ≤ x)
     #[13] (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
-  -> rewrite_fact if_not_P sym=false goal=13 facts=[5,12]
+  → rewrite_fact if_not_P sym=false goal=13 facts=[5,12]
     #[14] ∃n. -x = of_nat n
   ← apply_backward_step disjI2 goal=13
     #[15] ∃n. x = -(of_nat n)
@@ -42,7 +42,7 @@ proof
     #[19] (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
   ← inst_exists_goal n goal=18
     #[20] x = -(of_nat n)
-  -> rewrite_fact eq_sym_eq sym=false goal=20 facts=[17]
+  → rewrite_fact eq_sym_eq sym=false goal=20 facts=[17]
     #[21] of_nat n = -x
   ← rewrite_goal_with_prev goal=20 facts=[21]
     #[22] x = --x
@@ -240,18 +240,18 @@ proof
   ← introduction goal=2
     #[4] floor x ≤ x ∧ ¬(floor x = x)
     #[5] ¬(integer x)
-  -> apply_forward_step conjD2 goal=5 facts=[4]
+  → apply_forward_step conjD2 goal=5 facts=[4]
     #[6] ¬(floor x = x)
-  -> rewrite_fact real_floor_eq sym=false goal=5 facts=[6]
+  → rewrite_fact real_floor_eq sym=false goal=5 facts=[6]
   ← introduction goal=3
     #[7] ¬(integer x)
     #[8] floor x ≤ x ∧ ¬(floor x = x)
   ← apply_backward_step conjI goal=8
     #[9] floor x ≤ x
     #[10] ¬(floor x = x)
-  -> apply_forward_step floor param_x=x goal=9
+  → apply_forward_step floor param_x=x goal=9
     #[11] integer (floor x) ∧ floor x ≤ x ∧ x < floor x + 1
-  -> apply_forward_step conjD2 goal=9 facts=[11]
+  → apply_forward_step conjD2 goal=9 facts=[11]
     #[12] floor x ≤ x ∧ x < floor x + 1
   ← apply_backward_step conjD1 goal=9 facts=[12]
     #[13] floor x ≤ x

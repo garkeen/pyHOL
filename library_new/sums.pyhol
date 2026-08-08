@@ -16,7 +16,7 @@ proof
     #[3] (THE x::nat. ∀y. y + x = y ∧ x = 0) = 0
   ← rewrite_goal eq_add_lcancel_0 sym=false goal=3
     #[4] (THE x::nat. ∀y::nat. x = 0 ∧ x = 0) = 0
-  -> apply_forward_step theI param_P="(%x::nat. ∀y::nat. x = 0 ∧ x = 0)" param_a="(0::nat)" goal=4
+  → apply_forward_step theI param_P="(%x::nat. ∀y::nat. x = 0 ∧ x = 0)" param_a="(0::nat)" goal=4
     #[5] (∀y::nat. (0::nat) = 0 ∧ (0::nat) = 0) ⟶ (∀x::nat. (∀y::nat. x = 0 ∧ x = 0) ⟶ x = 0) ⟶ (∀y::nat. (THE x::nat. ∀y1::nat. x = 0 ∧ x = 0) = 0 ∧ (THE x::nat. ∀y1::nat. x = 0 ∧ x = 0) = 0)
   cut "(∀y::nat. (0::nat) = 0 ∧ (0::nat) = 0)" goal=4
     #[6] ∀y::nat. (0::nat) = 0 ∧ (0::nat) = 0
@@ -26,7 +26,7 @@ proof
   ← apply_backward_step conjI goal=8
     #[9] (0::nat) = 0
   ← apply_backward_step eq_refl goal=9
-  -> apply_fact goal=4 facts=[5,6]
+  → apply_fact goal=4 facts=[5,6]
     #[10] (∀x::nat. (∀y::nat. x = 0 ∧ x = 0) ⟶ x = 0) ⟶ (∀y::nat. (THE x::nat. ∀y1::nat. x = 0 ∧ x = 0) = 0 ∧ (THE x::nat. ∀y1::nat. x = 0 ∧ x = 0) = 0)
   cut "(∀x::nat. (∀y::nat. x = 0 ∧ x = 0) ⟶ x = 0)" goal=4
     #[11] ∀x::nat. (∀y::nat. x = 0 ∧ x = 0) ⟶ x = 0
@@ -34,10 +34,10 @@ proof
     #[12] _VAR x
     #[13] ∀y::nat. x = 0 ∧ x = 0
     #[14] x = 0
-  -> forall_elim x goal=14 facts=[13]
+  → forall_elim x goal=14 facts=[13]
     #[15] x = 0 ∧ x = 0
   ← apply_backward_step conjD1 goal=14 facts=[15]
-  -> apply_fact goal=4 facts=[10,11]
+  → apply_fact goal=4 facts=[10,11]
     #[16] ∀y::nat. (THE x::nat. ∀y1::nat. x = 0 ∧ x = 0) = 0 ∧ (THE x::nat. ∀y1::nat. x = 0 ∧ x = 0) = 0
   ← apply_prev goal=4 facts=[11]
 qed
@@ -162,7 +162,7 @@ proof
     #[3] nsum s f + nsum t f = nsum (s ∪ t) f + nsum (s ∩ t) f
   ← rewrite_goal nsum_def sym=false goal=3
     #[4] iterate plus s f + iterate plus t f = iterate plus (s ∪ t) f + iterate plus (s ∩ t) f
-  -> apply_forward_step monoidal_nat_add goal=4
+  → apply_forward_step monoidal_nat_add goal=4
     #[5] monoidal (plus::nat ⇒ nat ⇒ nat)
   ← apply_backward_step iterate_incl_excl goal=4 facts=[5,1,2]
 qed
@@ -298,9 +298,9 @@ proof
   ← apply_backward_step lt_imp_le goal=9
     #[10] f x < g x
   ← apply_prev goal=10 facts=[3]
-  -> rewrite_fact set_equal_iff sym=false goal=6 facts=[2]
+  → rewrite_fact set_equal_iff sym=false goal=6 facts=[2]
     #[11] ¬(∀x. x ∈ s ⟷ x ∈ ∅)
-  -> rewrite_fact not_all sym=false goal=6 facts=[11]
+  → rewrite_fact not_all sym=false goal=6 facts=[11]
     #[12] ∃x. ¬(x ∈ s ⟷ x ∈ ∅)
   exists_elim a goal=6 facts=[12]
     #[13] _VAR a
@@ -368,7 +368,7 @@ proof
     #[11] ∀n::nat. n = 0 ⟷ n ≤ 0
   ← rewrite_goal_with_prev goal=9 facts=[11]
     #[12] f x ≤ 0
-  -> rewrite_fact_with_prev goal=12 facts=[11,5]
+  → rewrite_fact_with_prev goal=12 facts=[11,5]
     #[13] nsum s f ≤ 0
   ← apply_backward_step nsum_pos_bound param_s=s goal=12
   ← introduction goal=4
@@ -388,7 +388,7 @@ proof
     #[3] 0 < nsum s f
   ← apply_backward_step le_1_1 goal=3
     #[4] ¬(nsum s f = 0)
-  -> apply_forward_step nsum_eq_0_iff param_f=f goal=4 facts=[1]
+  → apply_forward_step nsum_eq_0_iff param_f=f goal=4 facts=[1]
     #[5] nsum s f = 0 ⟷ (∀x. x ∈ s ⟶ f x = 0)
   ← rewrite_goal_with_prev goal=4 facts=[5]
     #[6] ¬(∀x. x ∈ s ⟶ f x = 0)
@@ -412,9 +412,9 @@ proof
     #[4] 0 < nsum s f
   ← apply_backward_step nsum_pos_lt goal=4
     #[5] ∃x. x ∈ s ∧ 0 < f x
-  -> rewrite_fact set_equal_iff sym=false goal=5 facts=[2]
+  → rewrite_fact set_equal_iff sym=false goal=5 facts=[2]
     #[6] ¬(∀x. x ∈ s ⟷ x ∈ ∅)
-  -> rewrite_fact not_all sym=false goal=5 facts=[6]
+  → rewrite_fact not_all sym=false goal=5 facts=[6]
     #[7] ∃x. ¬(x ∈ s ⟷ x ∈ ∅)
   exists_elim a goal=5 facts=[7]
     #[8] _VAR a
@@ -443,7 +443,7 @@ proof
     #[3] f a + nsum (delete s a) f = nsum s f
   ← rewrite_goal nsum_def sym=false goal=3
     #[4] f a + iterate plus (delete s a) f = iterate plus s f
-  -> apply_forward_step monoidal_nat_add goal=4
+  → apply_forward_step monoidal_nat_add goal=4
     #[5] monoidal (plus::nat ⇒ nat ⇒ nat)
   ← apply_backward_step iterate_delete goal=4 facts=[5,1,2]
 qed
@@ -558,9 +558,9 @@ proof
     #[1] finite s
     #[2] ∀x. x ∈ s ⟶ f x ≤ b
     #[3] nsum s f ≤ card s * b
-  -> apply_forward_step nsum_const param_c=b goal=3 facts=[1]
+  → apply_forward_step nsum_const param_c=b goal=3 facts=[1]
     #[4] nsum s (λn. b) = card s * b
-  -> rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
+  → rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
     #[5] card s * b = nsum s (λn. b)
   ← rewrite_goal_with_prev goal=3 facts=[5]
     #[6] nsum s f ≤ nsum s (λn. b)
@@ -586,7 +586,7 @@ proof
     #[5] nsum s f < nsum s (λx. b)
     #[6] nsum s (λx. b) ≤ card s * b
   ← apply_backward_step nsum_lt goal=5
-  -> apply_forward_step nsum_const param_c=b goal=6 facts=[1]
+  → apply_forward_step nsum_const param_c=b goal=6 facts=[1]
     #[7] nsum s (λn. b) = card s * b
   ← rewrite_goal_with_prev goal=6 facts=[7]
     #[8] card s * b ≤ card s * b
@@ -610,7 +610,7 @@ proof
     #[3] ∀x. x ∈ t ⟶ f x = g x
     #[4] ∀x. x ∈ s ⟶ ¬(x ∈ t) ⟶ f x = 0
     #[5] nsum s f = nsum t g
-  -> apply_forward_step nsum_superset goal=5 facts=[2,4]
+  → apply_forward_step nsum_superset goal=5 facts=[2,4]
     #[6] nsum s f = nsum t f
   ← rewrite_goal_with_prev goal=5 facts=[6]
     #[7] nsum t f = nsum t g
@@ -653,7 +653,7 @@ proof
   ← introduction goal=0
     #[1] finite s
     #[2] card s = nsum s (λx. 1)
-  -> apply_forward_step nsum_const param_c="(1::nat)" goal=2 facts=[1]
+  → apply_forward_step nsum_const param_c="(1::nat)" goal=2 facts=[1]
     #[3] nsum s (λn. 1) = card s * 1
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] card s = card s * 1
@@ -887,7 +887,7 @@ proof
     #[5] R (nsum s f) (nsum s g)
   ← rewrite_goal nsum_def sym=false goal=5
     #[6] R (iterate plus s f) (iterate plus s g)
-  -> apply_forward_step iterate_related param_R=R param_f=f param_g=g param_op="(plus::nat⇒nat⇒nat)" param_s=s goal=6
+  → apply_forward_step iterate_related param_R=R param_f=f param_g=g param_op="(plus::nat⇒nat⇒nat)" param_s=s goal=6
     #[7] monoidal (plus::nat ⇒ nat ⇒ nat) ⟶ R (neutral plus) (neutral plus) ⟶ (∀x1. ∀y1. ∀x2. ∀y2. R x1 x2 ⟶ R y1 y2 ⟶ R (x1 + y1) (x2 + y2)) ⟶ finite s ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (iterate plus s f) (iterate plus s g)
   ← apply_prev goal=6 facts=[7]
     #[8] monoidal (plus::nat ⇒ nat ⇒ nat)
@@ -939,7 +939,7 @@ proof
     #[5] R (nsum s f) (nsum s g)
   ← rewrite_goal nsum_def sym=false goal=5
     #[6] R (iterate plus s f) (iterate plus s g)
-  -> apply_forward_step iterate_related_nonempty param_R=R param_f=f param_g=g param_op="(plus::nat⇒nat⇒nat)" param_s=s goal=6
+  → apply_forward_step iterate_related_nonempty param_R=R param_f=f param_g=g param_op="(plus::nat⇒nat⇒nat)" param_s=s goal=6
     #[7] monoidal (plus::nat ⇒ nat ⇒ nat) ⟶ (∀x1. ∀y1. ∀x2. ∀y2. R x1 x2 ⟶ R y1 y2 ⟶ R (x1 + y1) (x2 + y2)) ⟶ finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (iterate plus s f) (iterate plus s g)
   ← apply_prev goal=6 facts=[7]
     #[8] monoidal (plus::nat ⇒ nat ⇒ nat)
@@ -1065,7 +1065,7 @@ proof
   cut "finite {m..n}" goal=0
     #[1] finite ({m..n})
   ← apply_backward_step finite_natseg goal=1
-  -> apply_forward_step nsum_eq_0_iff param_f=f goal=0 facts=[1]
+  → apply_forward_step nsum_eq_0_iff param_f=f goal=0 facts=[1]
     #[2] nsum ({m..n}) f = 0 ⟷ (∀x. x ∈ {m..n} ⟶ f x = 0)
   ← rewrite_goal_with_prev goal=0 facts=[2]
     #[3] (∀x. x ∈ {m..n} ⟶ f x = 0) ⟷ (∀i. m ≤ i ⟶ i ≤ n ⟶ f i = 0)
@@ -1109,11 +1109,11 @@ theorem nsum_0_natseg
 proof
   ← rewrite_goal nsum_def sym=false goal=0
     #[1] iterate plus ({m..0}) f = (if m = 0 then f 0 else 0)
-  -> apply_forward_step monoidal_nat_add goal=1
+  → apply_forward_step monoidal_nat_add goal=1
     #[2] monoidal (plus::nat ⇒ nat ⇒ nat)
-  -> apply_forward_step iterate_natseg_0 param_f=f param_m=m goal=1 facts=[2]
+  → apply_forward_step iterate_natseg_0 param_f=f param_m=m goal=1 facts=[2]
     #[3] iterate plus ({m..0}) f = (if m = 0 then f 0 else neutral plus)
-  -> rewrite_fact neutral_nat_add sym=false goal=1 facts=[3]
+  → rewrite_fact neutral_nat_add sym=false goal=1 facts=[3]
 qed
 
 theorem nsum_Suc_natseg
@@ -1192,7 +1192,7 @@ proof
   ← introduction goal=0
     #[1] m ≤ n + 1
     #[2] nsum ({m..n + p}) f = nsum ({m..n}) f + nsum ({n + 1..n + p}) f
-  -> apply_forward_step natseg_add_split param_p=p goal=2 facts=[1]
+  → apply_forward_step natseg_add_split param_p=p goal=2 facts=[1]
     #[3] {m..n + p} = {m..n} ∪ {n + 1..n + p}
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] nsum ({m..n} ∪ {n + 1..n + p}) f = nsum ({m..n}) f + nsum ({n + 1..n + p}) f
@@ -1229,7 +1229,7 @@ proof
     #[3] nsum ({m..n}) f = nsum ({0 + m..n - m + m}) f
   ← rewrite_goal nat_plus_def_1 sym=false goal=3
     #[4] nsum ({m..n}) f = nsum ({m..n - m + m}) f
-  -> apply_forward_step sub_add goal=4 facts=[1]
+  → apply_forward_step sub_add goal=4 facts=[1]
     #[5] n - m + m = n
   ← rewrite_goal_with_prev goal=4 facts=[5]
 qed
@@ -1242,7 +1242,7 @@ proof
   ← introduction goal=0
     #[1] m ≤ n
     #[2] nsum ({m..n}) f = f m + nsum ({m + 1..n}) f
-  -> apply_forward_step natseg_lrec goal=2 facts=[1]
+  → apply_forward_step natseg_lrec goal=2 facts=[1]
     #[3] {m..n} = insert m ({m + 1..n})
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] nsum (insert m ({m + 1..n})) f = f m + nsum ({m + 1..n}) f
@@ -1250,7 +1250,7 @@ proof
     #[5] finite ({m + 1..n})
   ← apply_backward_step finite_natseg goal=5
     #[6] finite ({m + 1..n})
-  -> apply_forward_step nsum_insert param_f=f param_x=m goal=4 facts=[6]
+  → apply_forward_step nsum_insert param_f=f param_x=m goal=4 facts=[6]
     #[7] nsum (insert m ({m + 1..n})) f = (if m ∈ {m + 1..n} then nsum ({m + 1..n}) f else f m + nsum ({m + 1..n}) f)
   cut "~(m ∈ {m + 1..n})" goal=4
     #[8] ¬(m ∈ {m + 1..n})
@@ -1264,7 +1264,7 @@ proof
     #[12] m < m + 1
   ← z3 goal=12
     #[13] m < m + 1
-  -> rewrite_fact if_not_P sym=false goal=4 facts=[7,8]
+  → rewrite_fact if_not_P sym=false goal=4 facts=[7,8]
 qed
 
 theorem nsum_clauses_right
@@ -1321,14 +1321,14 @@ theorem nsum_reflect
 proof
   ← rewrite_goal nsum_def sym=false goal=0
     #[1] iterate plus ({m..n}) x = (if n < m then 0 else iterate plus ({0..n - m}) (λi. x (n - i)))
-  -> apply_forward_step iterate_reflect param_m=m param_n=n param_op="(plus::nat⇒nat⇒nat)" param_x=x goal=1
+  → apply_forward_step iterate_reflect param_m=m param_n=n param_op="(plus::nat⇒nat⇒nat)" param_x=x goal=1
     #[2] monoidal (plus::nat ⇒ nat ⇒ nat) ⟶ iterate plus ({m..n}) x = (if n < m then neutral plus else iterate plus ({0..n - m}) (λi. x (n - i)))
   cut "monoidal (plus::nat ⇒ nat ⇒ nat)" goal=1
     #[3] monoidal (plus::nat ⇒ nat ⇒ nat)
   ← apply_backward_step monoidal_nat_add goal=3
-  -> apply_fact goal=1 facts=[2,3]
+  → apply_fact goal=1 facts=[2,3]
     #[4] iterate plus ({m..n}) x = (if n < m then neutral plus else iterate plus ({0..n - m}) (λi. x (n - i)))
-  -> rewrite_fact neutral_nat_add sym=false goal=1 facts=[4]
+  → rewrite_fact neutral_nat_add sym=false goal=1 facts=[4]
 qed
 
 theorem mod_nsum_mod
@@ -1354,7 +1354,7 @@ theorem neutral_real_add
 proof
   ← rewrite_goal neutral_def sym=false goal=0
     #[1] (THE x::real. ∀y. x + y = y ∧ y + x = y) = 0
-  -> apply_forward_step theI param_P="(%x::real. ∀y. x + y = y ∧ y + x = y)" param_a="(0::real)" goal=1
+  → apply_forward_step theI param_P="(%x::real. ∀y. x + y = y ∧ y + x = y)" param_a="(0::real)" goal=1
     #[2] (∀y::real. 0 + y = y ∧ y + 0 = y) ⟶ (∀x::real. (∀y. x + y = y ∧ y + x = y) ⟶ x = 0) ⟶ (∀y::real. (THE x. ∀y1. x + y1 = y1 ∧ y1 + x = y1) + y = y ∧ y + (THE x. ∀y1. x + y1 = y1 ∧ y1 + x = y1) = y)
   cut "(∀y::real. 0 + y = y ∧ y + 0 = y)" goal=1
     #[3] ∀y::real. 0 + y = y ∧ y + 0 = y
@@ -1366,12 +1366,12 @@ proof
     #[7] y + 0 = y
   ← rewrite_goal real_add_lid sym=false goal=6
   ← rewrite_goal real_add_rid sym=false goal=7
-  -> apply_fact goal=1 facts=[2,3]
+  → apply_fact goal=1 facts=[2,3]
     #[8] (∀x::real. (∀y. x + y = y ∧ y + x = y) ⟶ x = 0) ⟶ (∀y::real. (THE x. ∀y1. x + y1 = y1 ∧ y1 + x = y1) + y = y ∧ y + (THE x. ∀y1. x + y1 = y1 ∧ y1 + x = y1) = y)
   cut "(∀x::real. (∀y. x + y = y ∧ y + x = y) ⟶ x = 0)" goal=1 facts=[8]
     #[9] ∀x::real. (∀y. x + y = y ∧ y + x = y) ⟶ x = 0
   ← z3 goal=9
-  -> apply_fact goal=1 facts=[8,9]
+  → apply_fact goal=1 facts=[8,9]
     #[10] ∀y::real. (THE x. ∀y1. x + y1 = y1 ∧ y1 + x = y1) + y = y ∧ y + (THE x. ∀y1. x + y1 = y1 ∧ y1 + x = y1) = y
   ← apply_prev goal=1 facts=[9]
 qed
@@ -1382,17 +1382,17 @@ theorem neutral_real_mul
 proof
   ← rewrite_goal neutral_def sym=false goal=0
     #[1] (THE x::real. ∀y. x * y = y ∧ y * x = y) = 1
-  -> apply_forward_step theI param_P="(%x::real. ∀y. x * y = y ∧ y * x = y)" param_a="(1::real)" goal=1
+  → apply_forward_step theI param_P="(%x::real. ∀y. x * y = y ∧ y * x = y)" param_a="(1::real)" goal=1
     #[2] (∀y::real. 1 * y = y ∧ y * 1 = y) ⟶ (∀x::real. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1) ⟶ (∀y::real. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y)
   cut "(∀y::real. 1 * y = y ∧ y * 1 = y)" goal=1
     #[3] ∀y::real. 1 * y = y ∧ y * 1 = y
   ← z3 goal=3
-  -> apply_fact goal=1 facts=[2,3]
+  → apply_fact goal=1 facts=[2,3]
     #[4] (∀x::real. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1) ⟶ (∀y::real. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y)
   cut "(∀x::real. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1)" goal=1
     #[5] ∀x::real. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1
   ← z3 goal=5
-  -> apply_fact goal=1 facts=[4,5]
+  → apply_fact goal=1 facts=[4,5]
     #[6] ∀y::real. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y
   ← apply_prev goal=1 facts=[5]
 qed
@@ -1520,7 +1520,7 @@ proof
     #[3] sum s f + sum t f = sum (s ∪ t) f + sum (s ∩ t) f
   ← rewrite_goal sum_def sym=false goal=3
     #[4] iterate plus s f + iterate plus t f = iterate plus (s ∪ t) f + iterate plus (s ∩ t) f
-  -> apply_forward_step iterate_incl_excl param_f=f param_op="(plus::real⇒real⇒real)" param_s=s param_t=t goal=4
+  → apply_forward_step iterate_incl_excl param_f=f param_op="(plus::real⇒real⇒real)" param_s=s param_t=t goal=4
     #[5] monoidal (plus::real ⇒ real ⇒ real) ⟶ finite s ⟶ finite t ⟶ iterate plus s f + iterate plus t f = iterate plus (s ∪ t) f + iterate plus (s ∩ t) f
   ← apply_prev goal=4 facts=[5]
     #[6] monoidal (plus::real ⇒ real ⇒ real)
@@ -1634,7 +1634,7 @@ proof
   cut "!x::real. -x = -1 * x" goal=0
     #[1] ∀x::real. -x = -1 * x
   ← z3 goal=1
-  -> forall_elim "(sum s f)" goal=0 facts=[1]
+  → forall_elim "(sum s f)" goal=0 facts=[1]
     #[2] -(sum s f) = -1 * sum s f
   ← rewrite_goal_with_prev goal=0 facts=[2]
     #[3] sum s (λx. -(f x)) = -1 * sum s f
@@ -1658,9 +1658,9 @@ proof
     #[2] sum s (λx. f x - g x) = sum s f - sum s g
   ← rewrite_goal real_minus_def sym=false goal=2
     #[3] sum s (λx. f x + -(g x)) = sum s f + -(sum s g)
-  -> apply_forward_step sum_add param_f=f param_g="(%x. -g x)" goal=3 facts=[1]
+  → apply_forward_step sum_add param_f=f param_g="(%x. -g x)" goal=3 facts=[1]
     #[4] sum s (λx. f x + -(g x)) = sum s f + sum s (λx. -(g x))
-  -> rewrite_fact sum_neg sym=false goal=3 facts=[4]
+  → rewrite_fact sum_neg sym=false goal=3 facts=[4]
 qed
 
 theorem sum_le
@@ -1767,9 +1767,9 @@ proof
     #[7] 0 ≤ sum (support plus f s) f
   ← rewrite_goal support_def sym=false goal=7
     #[8] 0 ≤ sum ({x. x ∈ s ∧ ¬(f x = neutral plus)}) f
-  -> apply_forward_step sum_le param_f="(%x::'a. (0::real))" param_g=f goal=8 facts=[5]
+  → apply_forward_step sum_le param_f="(%x::'a. (0::real))" param_g=f goal=8 facts=[5]
     #[9] (∀x. x ∈ {x1. x1 ∈ s ∧ ¬(f x1 = 0)} ⟶ 0 ≤ f x) ⟶ sum ({x. x ∈ s ∧ ¬(f x = 0)}) (λx. 0) ≤ sum ({x. x ∈ s ∧ ¬(f x = 0)}) f
-  -> rewrite_fact sum_0 sym=false goal=8 facts=[9]
+  → rewrite_fact sum_0 sym=false goal=8 facts=[9]
     #[10] (∀x. x ∈ {x1. x1 ∈ s ∧ ¬(f x1 = 0)} ⟶ 0 ≤ f x) ⟶ 0 ≤ sum ({x. x ∈ s ∧ ¬(f x = 0)}) f
   ← rewrite_goal neutral_real_add sym=false goal=8
     #[11] 0 ≤ sum ({x. x ∈ s ∧ ¬(f x = 0)}) f
@@ -1781,14 +1781,14 @@ proof
     #[15] 0 ≤ f x
   ← apply_prev goal=15 facts=[1]
     #[16] x ∈ s
-  -> rewrite_fact member_collect sym=false goal=16 facts=[14]
+  → rewrite_fact member_collect sym=false goal=16 facts=[14]
     #[17] x ∈ s ∧ ¬(f x = 0)
   ← apply_backward_step conjD1 goal=16 facts=[17]
     #[18] x ∈ s
   ← introduction goal=4
     #[19] ¬(finite ({x. x ∈ s ∧ ¬(f x = 0)}))
     #[20] 0 ≤ sum s f
-  -> apply_forward_step sum_degenerate goal=20 facts=[19]
+  → apply_forward_step sum_degenerate goal=20 facts=[19]
     #[21] sum s f = 0
   ← rewrite_goal_with_prev goal=20 facts=[21]
     #[22] (0::real) ≤ 0
@@ -1810,13 +1810,13 @@ proof
     #[2] ∀x. x ∈ s ⟶ 0 ≤ f x
     #[3] sum s f = 0
     #[4] ∀x. x ∈ s ⟶ f x = 0
-  -> rewrite_fact real_le_antisym sym=true goal=4 facts=[3]
+  → rewrite_fact real_le_antisym sym=true goal=4 facts=[3]
     #[5] sum s f ≤ 0 ∧ 0 ≤ sum s f
-  -> apply_forward_step conjD1 goal=4 facts=[5]
+  → apply_forward_step conjD1 goal=4 facts=[5]
     #[6] sum s f ≤ 0
-  -> apply_forward_step conjD2 goal=4 facts=[5]
+  → apply_forward_step conjD2 goal=4 facts=[5]
     #[7] 0 ≤ sum s f
-  -> apply_forward_step sum_pos_bound goal=4 facts=[1,2,6]
+  → apply_forward_step sum_pos_bound goal=4 facts=[1,2,6]
     #[8] ∀x. x ∈ s ⟶ f x ≤ 0
   ← introduction x goal=4
     #[9] _VAR x
@@ -1884,7 +1884,7 @@ proof
     #[26] sum s (λx. -(u x)) = 0
   ← rewrite_goal sum_neg sym=false goal=26
     #[27] -(sum s u) = 0
-  -> rewrite_fact_with_prev goal=27 facts=[24,2]
+  → rewrite_fact_with_prev goal=27 facts=[24,2]
     #[28] -(sum s u) = 0
 qed
 
@@ -2026,9 +2026,9 @@ proof
     #[1] finite s
     #[2] ∀x. x ∈ s ⟶ f x ≤ b
     #[3] sum s f ≤ of_nat (card s) * b
-  -> apply_forward_step sum_const param_c=b goal=3 facts=[1]
+  → apply_forward_step sum_const param_c=b goal=3 facts=[1]
     #[4] sum s (λn. b) = of_nat (card s) * b
-  -> rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
+  → rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
     #[5] of_nat (card s) * b = sum s (λn. b)
   ← rewrite_goal_with_prev goal=3 facts=[5]
     #[6] sum s f ≤ sum s (λn. b)
@@ -2103,7 +2103,7 @@ proof
     #[11] ∀x. x ∈ s ⟶ f x ≤ b
     #[12] ∃x. x ∈ s ∧ f x < b
     #[13] sum s f < of_nat (card s) * b
-  -> apply_fact goal=11 facts=[3,10]
+  → apply_fact goal=11 facts=[3,10]
     #[14] f a < b
   ← introduction x goal=11
     #[15] _VAR x
@@ -2182,7 +2182,7 @@ proof
   ← introduction goal=0
     #[1] finite s
     #[2] of_nat (card s) = sum s (λx. 1)
-  -> apply_forward_step sum_const param_c="(1::real)" goal=2 facts=[1]
+  → apply_forward_step sum_const param_c="(1::real)" goal=2 facts=[1]
     #[3] sum s (λn. 1) = of_nat (card s) * 1
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] of_nat (card s) = of_nat (card s) * (1::real)
@@ -2210,7 +2210,7 @@ proof
   ← apply_backward_step sum_multicount_gen goal=5
   ← rewrite_goal_with_prev goal=4 facts=[5]
     #[6] sum t (λi. of_nat k) = of_nat (k * card t)
-  -> apply_forward_step sum_const param_c="(of_nat::nat⇒real) k" goal=6 facts=[2]
+  → apply_forward_step sum_const param_c="(of_nat::nat⇒real) k" goal=6 facts=[2]
     #[7] sum t (λn. of_nat k) = of_nat (card t) * of_nat k
   ← rewrite_goal_with_prev goal=6 facts=[7]
     #[8] (of_nat::nat ⇒ real) (card t) * of_nat k = of_nat (k * card t)
@@ -2247,9 +2247,9 @@ proof
     #[1] finite s
     #[2] image f s ⊆ t
     #[3] sum t (λy. sum ({x. x ∈ s ∧ f x = y}) g) = sum s g
-  -> apply_forward_step sum_image_gen param_f=f param_g=g param_s=s goal=3
+  → apply_forward_step sum_image_gen param_f=f param_g=g param_s=s goal=3
     #[4] finite s ⟶ sum s g = sum (image f s) (λy. sum ({x. x ∈ s ∧ f x = y}) g)
-  -> apply_fact goal=3 facts=[4,1]
+  → apply_fact goal=3 facts=[4,1]
     #[5] sum s g = sum (image f s) (λy. sum ({x. x ∈ s ∧ f x = y}) g)
   ← rewrite_goal_with_prev goal=3 facts=[5]
     #[6] sum t (λy. sum ({x. x ∈ s ∧ f x = y}) g) = sum (image f s) (λy. sum ({x. x ∈ s ∧ f x = y}) g)
@@ -2266,13 +2266,13 @@ proof
     #[13] _VAR x1
     #[14] x1 ∈ {x2. x2 ∈ s ∧ f x2 = x}
     #[15] g x1 = 0
-  -> rewrite_fact member_collect sym=false goal=15 facts=[14]
+  → rewrite_fact member_collect sym=false goal=15 facts=[14]
     #[16] x1 ∈ s ∧ f x1 = x
-  -> apply_forward_step conjD1 goal=15 facts=[16]
+  → apply_forward_step conjD1 goal=15 facts=[16]
     #[17] x1 ∈ s
-  -> apply_forward_step conjD2 goal=15 facts=[16]
+  → apply_forward_step conjD2 goal=15 facts=[16]
     #[18] f x1 = x
-  -> rewrite_fact in_image sym=false goal=15 facts=[10]
+  → rewrite_fact in_image sym=false goal=15 facts=[10]
     #[19] ¬(∃x1. x1 ∈ s ∧ x = f x1)
   ← apply_backward_step negE_gen goal=15 facts=[19]
     #[20] ∃x1. x1 ∈ s ∧ x = f x1
@@ -2453,7 +2453,7 @@ proof
     #[5] R (sum s f) (sum s g)
   ← rewrite_goal sum_def sym=false goal=5
     #[6] R (iterate plus s f) (iterate plus s g)
-  -> apply_forward_step iterate_related param_R=R param_f=f param_g=g param_op="(plus::real⇒real⇒real)" param_s=s goal=6
+  → apply_forward_step iterate_related param_R=R param_f=f param_g=g param_op="(plus::real⇒real⇒real)" param_s=s goal=6
     #[7] monoidal (plus::real ⇒ real ⇒ real) ⟶ R (neutral plus) (neutral plus) ⟶ (∀x1. ∀y1. ∀x2. ∀y2. R x1 x2 ⟶ R y1 y2 ⟶ R (x1 + y1) (x2 + y2)) ⟶ finite s ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (iterate plus s f) (iterate plus s g)
   ← apply_prev goal=6 facts=[7]
     #[8] monoidal (plus::real ⇒ real ⇒ real)
@@ -2505,7 +2505,7 @@ proof
     #[5] R (sum s f) (sum s g)
   ← rewrite_goal sum_def sym=false goal=5
     #[6] R (iterate plus s f) (iterate plus s g)
-  -> apply_forward_step iterate_related_nonempty param_R=R param_f=f param_g=g param_op="(plus::real⇒real⇒real)" param_s=s goal=6
+  → apply_forward_step iterate_related_nonempty param_R=R param_f=f param_g=g param_op="(plus::real⇒real⇒real)" param_s=s goal=6
     #[7] monoidal (plus::real ⇒ real ⇒ real) ⟶ (∀x1. ∀y1. ∀x2. ∀y2. R x1 x2 ⟶ R y1 y2 ⟶ R (x1 + y1) (x2 + y2)) ⟶ finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (iterate plus s f) (iterate plus s g)
   ← apply_prev goal=6 facts=[7]
     #[8] monoidal (plus::real ⇒ real ⇒ real)
@@ -2613,7 +2613,7 @@ proof
   ← apply_prev goal=6 facts=[1]
     #[7] m ≤ i
     #[8] i ≤ n
-  -> rewrite_fact member_natseg sym=false goal=7 facts=[5]
+  → rewrite_fact member_natseg sym=false goal=7 facts=[5]
     #[9] m ≤ i ∧ i ≤ n
   ← apply_backward_step conjD1 goal=7 facts=[9]
     #[10] m ≤ i
@@ -2639,9 +2639,9 @@ proof
   cut "finite {m..n}" goal=0
     #[1] finite ({m..n})
   ← apply_backward_step finite_natseg goal=1
-  -> apply_forward_step sum_const param_c=c goal=0 facts=[1]
+  → apply_forward_step sum_const param_c=c goal=0 facts=[1]
     #[2] sum ({m..n}) (λn1. c) = of_nat (card ({m..n})) * c
-  -> rewrite_fact card_natseg sym=false goal=0 facts=[2]
+  → rewrite_fact card_natseg sym=false goal=0 facts=[2]
 qed
 
 theorem sum_eq_0_natseg
@@ -2661,7 +2661,7 @@ proof
   ← apply_prev goal=6 facts=[1]
     #[7] m ≤ i
     #[8] i ≤ n
-  -> rewrite_fact member_natseg sym=false goal=7 facts=[5]
+  → rewrite_fact member_natseg sym=false goal=7 facts=[5]
     #[9] m ≤ i ∧ i ≤ n
   ← apply_backward_step conjD1 goal=7 facts=[9]
     #[10] m ≤ i
@@ -2712,7 +2712,7 @@ proof
   ← apply_prev goal=6 facts=[1]
     #[7] m ≤ p
     #[8] p ≤ n
-  -> rewrite_fact member_natseg sym=false goal=7 facts=[5]
+  → rewrite_fact member_natseg sym=false goal=7 facts=[5]
     #[9] m ≤ p ∧ p ≤ n
   ← apply_backward_step conjD1 goal=7 facts=[9]
     #[10] m ≤ p
@@ -2743,7 +2743,7 @@ proof
   ← apply_prev goal=10 facts=[1]
     #[11] m ≤ p
     #[12] p ≤ n
-  -> rewrite_fact member_natseg sym=false goal=11 facts=[9]
+  → rewrite_fact member_natseg sym=false goal=11 facts=[9]
     #[13] m ≤ p ∧ p ≤ n
   ← apply_backward_step conjD1 goal=11 facts=[13]
     #[14] m ≤ p
@@ -2777,9 +2777,9 @@ theorem sum_0_natseg
 proof
   ← rewrite_goal sum_def sym=false goal=0
     #[1] iterate plus ({m..0}) f = (if m = 0 then f 0 else 0)
-  -> apply_forward_step iterate_natseg_0 param_f=f param_m=m param_op="(plus::real⇒real⇒real)" goal=1
+  → apply_forward_step iterate_natseg_0 param_f=f param_m=m param_op="(plus::real⇒real⇒real)" goal=1
     #[2] monoidal (plus::real ⇒ real ⇒ real) ⟶ iterate plus ({m..0}) f = (if m = 0 then f 0 else neutral plus)
-  -> rewrite_fact neutral_real_add sym=false goal=1 facts=[2]
+  → rewrite_fact neutral_real_add sym=false goal=1 facts=[2]
     #[3] monoidal (plus::real ⇒ real ⇒ real) ⟶ iterate plus ({m..0}) f = (if m = 0 then f 0 else 0)
   ← apply_prev goal=1 facts=[3]
     #[4] monoidal (plus::real ⇒ real ⇒ real)
@@ -2864,7 +2864,7 @@ proof
   ← introduction goal=0
     #[1] m ≤ n + 1
     #[2] sum ({m..n + p}) f = sum ({m..n}) f + sum ({n + 1..n + p}) f
-  -> apply_forward_step natseg_add_split param_p=p goal=2 facts=[1]
+  → apply_forward_step natseg_add_split param_p=p goal=2 facts=[1]
     #[3] {m..n + p} = {m..n} ∪ {n + 1..n + p}
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] sum ({m..n} ∪ {n + 1..n + p}) f = sum ({m..n}) f + sum ({n + 1..n + p}) f
@@ -2915,7 +2915,7 @@ proof
   ← introduction goal=0
     #[1] m ≤ n
     #[2] sum ({m..n}) f = f m + sum ({m + 1..n}) f
-  -> apply_forward_step natseg_lrec goal=2 facts=[1]
+  → apply_forward_step natseg_lrec goal=2 facts=[1]
     #[3] {m..n} = insert m ({m + 1..n})
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] sum (insert m ({m + 1..n})) f = f m + sum ({m + 1..n}) f
@@ -2923,7 +2923,7 @@ proof
     #[5] finite ({m + 1..n})
   ← apply_backward_step finite_natseg goal=5
     #[6] finite ({m + 1..n})
-  -> apply_forward_step sum_insert param_f=f param_x=m goal=4 facts=[6]
+  → apply_forward_step sum_insert param_f=f param_x=m goal=4 facts=[6]
     #[7] sum (insert m ({m + 1..n})) f = (if m ∈ {m + 1..n} then sum ({m + 1..n}) f else f m + sum ({m + 1..n}) f)
   cut "~(m ∈ {m + 1..n})" goal=4
     #[8] ¬(m ∈ {m + 1..n})
@@ -2935,7 +2935,7 @@ proof
     #[11] ¬(m + 1 ≤ m)
   ← z3 goal=11
     #[12] ¬(m + 1 ≤ m)
-  -> rewrite_fact if_not_P sym=false goal=4 facts=[7,8]
+  → rewrite_fact if_not_P sym=false goal=4 facts=[7,8]
 qed
 
 theorem sum_clauses_right
@@ -2992,9 +2992,9 @@ theorem sum_reflect
 proof
   ← rewrite_goal sum_def sym=false goal=0
     #[1] iterate plus ({m..n}) x = (if n < m then 0 else iterate plus ({0..n - m}) (λi. x (n - i)))
-  -> apply_forward_step iterate_reflect param_m=m param_n=n param_op="(plus::real⇒real⇒real)" param_x=x goal=1
+  → apply_forward_step iterate_reflect param_m=m param_n=n param_op="(plus::real⇒real⇒real)" param_x=x goal=1
     #[2] monoidal (plus::real ⇒ real ⇒ real) ⟶ iterate plus ({m..n}) x = (if n < m then neutral plus else iterate plus ({0..n - m}) (λi. x (n - i)))
-  -> rewrite_fact neutral_real_add sym=false goal=1 facts=[2]
+  → rewrite_fact neutral_real_add sym=false goal=1 facts=[2]
     #[3] monoidal (plus::real ⇒ real ⇒ real) ⟶ iterate plus ({m..n}) x = (if n < m then 0 else iterate plus ({0..n - m}) (λi. x (n - i)))
   ← apply_prev goal=1 facts=[3]
     #[4] monoidal (plus::real ⇒ real ⇒ real)
@@ -3052,7 +3052,7 @@ proof
     #[20] sum ({m..0}) (λk. f k * (g (k + 1) - g k)) = (if m ≤ 0 then f (0 + 1) * g (0 + 1) - f m * g m - sum ({m..0}) (λk. g (k + 1) * (f (k + 1) - f k)) else 0)
   ← rewrite_goal if_not_P sym=false goal=20 facts=[19]
     #[21] sum ({m..0}) (λk. f k * (g (k + 1) - g k)) = 0
-  -> rewrite_fact not_le sym=false goal=21 facts=[19]
+  → rewrite_fact not_le sym=false goal=21 facts=[19]
     #[22] 0 < m
   ← apply_backward_step sum_triv_natseg goal=21 facts=[22]
   ← introduction n goal=2
@@ -3071,7 +3071,7 @@ proof
     #[31] (if m ≤ Suc n then sum ({m..n}) (λk. f k * (g (k + 1) - g k)) + f (Suc n) * (g (Suc n + 1) - g (Suc n)) else sum ({m..n}) (λk. f k * (g (k + 1) - g k))) = f (Suc n + 1) * g (Suc n + 1) - f m * g m - (if m ≤ Suc n then sum ({m..n}) (λk. g (k + 1) * (f (k + 1) - f k)) + g (Suc n + 1) * (f (Suc n + 1) - f (Suc n)) else sum ({m..n}) (λk. g (k + 1) * (f (k + 1) - f k)))
   ← rewrite_goal if_P sym=false goal=31 facts=[28]
     #[32] sum ({m..n}) (λk. f k * (g (k + 1) - g k)) + f (Suc n) * (g (Suc n + 1) - g (Suc n)) = f (Suc n + 1) * g (Suc n + 1) - f m * g m - (sum ({m..n}) (λk. g (k + 1) * (f (k + 1) - f k)) + g (Suc n + 1) * (f (Suc n + 1) - f (Suc n)))
-  -> rewrite_fact nat_less_eq_def_2 sym=false goal=32 facts=[28]
+  → rewrite_fact nat_less_eq_def_2 sym=false goal=32 facts=[28]
     #[33] m = Suc n ∨ m ≤ n
   ← apply_backward_step disjE goal=32 facts=[33]
     #[34] m = Suc n ⟶ sum ({m..n}) (λk. f k * (g (k + 1) - g k)) + f (Suc n) * (g (Suc n + 1) - g (Suc n)) = f (Suc n + 1) * g (Suc n + 1) - f m * g m - (sum ({m..n}) (λk. g (k + 1) * (f (k + 1) - f k)) + g (Suc n + 1) * (f (Suc n + 1) - f (Suc n)))
@@ -3089,9 +3089,9 @@ proof
     #[41] n = n
   ← apply_backward_step eq_refl goal=41
     #[42] n = n
-  -> apply_forward_step sum_triv_natseg param_f="(λk. f k * (g (k + 1) - g k))" goal=38 facts=[39]
+  → apply_forward_step sum_triv_natseg param_f="(λk. f k * (g (k + 1) - g k))" goal=38 facts=[39]
     #[43] sum ({Suc n..n}) (λk. f k * (g (k + 1) - g k)) = 0
-  -> apply_forward_step sum_triv_natseg param_f="(λk. g (k + 1) * (f (k + 1) - f k))" goal=38 facts=[39]
+  → apply_forward_step sum_triv_natseg param_f="(λk. g (k + 1) * (f (k + 1) - f k))" goal=38 facts=[39]
     #[44] sum ({Suc n..n}) (λk. g (k + 1) * (f (k + 1) - f k)) = 0
   ← rewrite_goal_with_prev goal=38 facts=[43]
     #[45] 0 + f (Suc n) * (g (Suc n + 1) - g (Suc n)) = f (Suc n + 1) * g (Suc n + 1) - f (Suc n) * g (Suc n) - (sum ({Suc n..n}) (λk. g (k + 1) * (f (k + 1) - f k)) + g (Suc n + 1) * (f (Suc n + 1) - f (Suc n)))
@@ -3102,7 +3102,7 @@ proof
   ← introduction goal=35
     #[48] m ≤ n
     #[49] sum ({m..n}) (λk. f k * (g (k + 1) - g k)) + f (Suc n) * (g (Suc n + 1) - g (Suc n)) = f (Suc n + 1) * g (Suc n + 1) - f m * g m - (sum ({m..n}) (λk. g (k + 1) * (f (k + 1) - f k)) + g (Suc n + 1) * (f (Suc n + 1) - f (Suc n)))
-  -> rewrite_fact if_P sym=false goal=49 facts=[24,48]
+  → rewrite_fact if_P sym=false goal=49 facts=[24,48]
     #[50] sum ({m..n}) (λk. f k * (g (k + 1) - g k)) = f (n + 1) * g (n + 1) - f m * g m - sum ({m..n}) (λk. g (k + 1) * (f (k + 1) - f k))
   ← rewrite_goal_with_prev goal=49 facts=[50]
     #[51] f (n + 1) * g (n + 1) - f m * g m - sum ({m..n}) (λk. g (k + 1) * (f (k + 1) - f k)) + f (Suc n) * (g (Suc n + 1) - g (Suc n)) = f (Suc n + 1) * g (Suc n + 1) - f m * g m - (sum ({m..n}) (λk. g (k + 1) * (f (k + 1) - f k)) + g (Suc n + 1) * (f (Suc n + 1) - f (Suc n)))
@@ -3117,7 +3117,7 @@ proof
     #[56] sum ({m..Suc n}) (λk. f k * (g (k + 1) - g k)) = 0
   ← apply_backward_step sum_triv_natseg goal=56
     #[57] Suc n < m
-  -> rewrite_fact not_le sym=false goal=57 facts=[54]
+  → rewrite_fact not_le sym=false goal=57 facts=[54]
     #[58] Suc n < m
 qed
 
@@ -3126,9 +3126,9 @@ theorem sum_partial_Pre
   prop sum ({m..n}) (%k. f k * (g k - g (k - 1))) = (if m <= n then f (n + 1) * g n - f m * g (m - 1) - sum ({m..n}) (%k. g k * (f (k + 1) - f k)) else 0)
   [hint_rewrite]
 proof
-  -> apply_forward_step sum_partial_Suc param_f=f param_g="(%k. g(k - 1))" param_m=m param_n=n goal=0
+  → apply_forward_step sum_partial_Suc param_f=f param_g="(%k. g(k - 1))" param_m=m param_n=n goal=0
     #[1] sum ({m..n}) (λk. f k * (g (k + 1 - 1) - g (k - 1))) = (if m ≤ n then f (n + 1) * g (n + 1 - 1) - f m * g (m - 1) - sum ({m..n}) (λk. g (k + 1 - 1) * (f (k + 1) - f k)) else 0)
-  -> rewrite_fact nat_plus_minus sym=false goal=0 facts=[1]
+  → rewrite_fact nat_plus_minus sym=false goal=0 facts=[1]
 qed
 
 theorem sum_diffs

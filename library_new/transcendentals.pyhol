@@ -54,17 +54,17 @@ proof
     #[1] 1 * exp (-x) = 1 * real_inverse (exp x)
   ← rewrite_goal real_mult_comm sym=false goal=1
     #[2] exp (-x) * 1 = real_inverse (exp x) * 1
-  -> apply_forward_step real_exp_neg_mul param_x=x goal=2
+  → apply_forward_step real_exp_neg_mul param_x=x goal=2
     #[3] exp x * exp (-x) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=2 facts=[3]
+  → rewrite_fact eq_sym_eq sym=false goal=2 facts=[3]
     #[4] 1 = exp x * exp (-x)
   ← rewrite_goal_with_prev goal=2 facts=[4]
     #[5] exp (-x) * (exp x * exp (-x)) = real_inverse (exp x) * (exp x * exp (-x))
   ← rewrite_goal real_mult_assoc sym=false goal=5
     #[6] exp (-x) * exp x * exp (-x) = real_inverse (exp x) * exp x * exp (-x)
-  -> apply_forward_step real_exp_nz param_x=x goal=6
+  → apply_forward_step real_exp_nz param_x=x goal=6
     #[7] ¬(exp x = 0)
-  -> apply_forward_step real_mul_linv goal=6 facts=[7]
+  → apply_forward_step real_mul_linv goal=6 facts=[7]
     #[8] real_inverse (exp x) * exp x = 1
   ← rewrite_goal_with_prev goal=6 facts=[8]
     #[9] exp (-x) * exp x * exp (-x) = 1 * exp (-x)
@@ -197,7 +197,7 @@ proof
   ← introduction goal=0
     #[1] 0 < x
     #[2] 1 < exp x
-  -> apply_forward_step real_exp_le_x param_x=x goal=2
+  → apply_forward_step real_exp_le_x param_x=x goal=2
     #[3] 1 + x ≤ exp x
   ← apply_backward_step real_lte_trans param_y=1+x goal=2
     #[4] 1 < 1 + x
@@ -212,11 +212,11 @@ proof
   ← introduction goal=0
     #[1] x < y
     #[2] exp x < exp y
-  -> rewrite_fact real_sub_lt sym=true goal=2 facts=[1]
+  → rewrite_fact real_sub_lt sym=true goal=2 facts=[1]
     #[3] 0 < y - x
-  -> apply_forward_step real_exp_lt_1 goal=2 facts=[3]
+  → apply_forward_step real_exp_lt_1 goal=2 facts=[3]
     #[4] 1 < exp (y - x)
-  -> rewrite_fact real_exp_sub sym=false goal=2 facts=[4]
+  → rewrite_fact real_exp_sub sym=false goal=2 facts=[4]
     #[5] 1 < exp y / exp x
   cut "!a::real. !b. 0 < a --> 1 < b / a --> a < b" goal=2
     #[6] ∀a. ∀b. 0 < a ⟶ 1 < b / a ⟶ a < b
@@ -320,9 +320,9 @@ theorem sin_circle2
   fixes x :: real
   prop sin x ^ (2::nat) = 1 - cos x ^ (2::nat)
 proof
-  -> apply_forward_step sin_circle param_x=x goal=0
+  → apply_forward_step sin_circle param_x=x goal=0
     #[1] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=0 facts=[1]
+  → rewrite_fact eq_sym_eq sym=false goal=0 facts=[1]
     #[2] 1 = sin x ^ (2::nat) + cos x ^ (2::nat)
   ← rewrite_goal_with_prev goal=0 facts=[2]
     #[3] sin x ^ (2::nat) = sin x ^ (2::nat) + cos x ^ (2::nat) - cos x ^ (2::nat)
@@ -333,9 +333,9 @@ theorem sin_circle3
   fixes x :: real
   prop cos x ^ (2::nat) = 1 - sin x ^ (2::nat)
 proof
-  -> apply_forward_step sin_circle param_x=x goal=0
+  → apply_forward_step sin_circle param_x=x goal=0
     #[1] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=0 facts=[1]
+  → rewrite_fact eq_sym_eq sym=false goal=0 facts=[1]
     #[2] 1 = sin x ^ (2::nat) + cos x ^ (2::nat)
   ← rewrite_goal_with_prev goal=0 facts=[2]
     #[3] cos x ^ (2::nat) = sin x ^ (2::nat) + cos x ^ (2::nat) - sin x ^ (2::nat)
@@ -411,9 +411,9 @@ theorem cos_double_cos
 proof
   ← rewrite_goal cos_double sym=false goal=0
     #[1] cos x ^ (2::nat) - sin x ^ (2::nat) = 2 * cos x ^ (2::nat) - 1
-  -> apply_forward_step sin_circle param_x=x goal=1
+  → apply_forward_step sin_circle param_x=x goal=1
     #[2] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=1 facts=[2]
+  → rewrite_fact eq_sym_eq sym=false goal=1 facts=[2]
     #[3] 1 = sin x ^ (2::nat) + cos x ^ (2::nat)
   ← rewrite_goal_with_prev goal=1 facts=[3]
     #[4] cos x ^ (2::nat) - sin x ^ (2::nat) = 2 * cos x ^ (2::nat) - (sin x ^ (2::nat) + cos x ^ (2::nat))
@@ -434,27 +434,27 @@ theorem sin_bound
   prop abs (sin x) <= 1
   [hint_backward]
 proof
-  -> apply_forward_step real_abs_nat param_n="(1::nat)" goal=0
+  → apply_forward_step real_abs_nat param_n="(1::nat)" goal=0
     #[1] (abs::real ⇒ real) of_nat 1 = of_nat 1
-  -> rewrite_fact real_one_def sym=true goal=0 facts=[1]
+  → rewrite_fact real_one_def sym=true goal=0 facts=[1]
     #[2] abs (1::real) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=0 facts=[2]
+  → rewrite_fact eq_sym_eq sym=false goal=0 facts=[2]
     #[3] (1::real) = abs 1
   ← rewrite_goal_with_prev goal=0 facts=[3]
     #[4] abs (sin x) ≤ abs 1
   ← rewrite_goal real_le_square_abs sym=false goal=4
     #[5] sin x ^ (2::nat) ≤ 1 ^ (2::nat)
-  -> apply_forward_step sin_circle param_x=x goal=5
+  → apply_forward_step sin_circle param_x=x goal=5
     #[6] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> apply_forward_step real_le_square param_x="cos x" goal=5
+  → apply_forward_step real_le_square param_x="cos x" goal=5
     #[7] 0 ≤ cos x * cos x
   ← rewrite_goal real_pow_2 sym=false goal=5
     #[8] sin x * sin x ≤ 1 * 1
   ← rewrite_goal real_mul_lid sym=false goal=8
     #[9] sin x * sin x ≤ 1
-  -> rewrite_fact real_pow_2 sym=false goal=9 facts=[6]
+  → rewrite_fact real_pow_2 sym=false goal=9 facts=[6]
     #[10] sin x * sin x + cos x * cos x = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=9 facts=[10]
+  → rewrite_fact eq_sym_eq sym=false goal=9 facts=[10]
     #[11] 1 = sin x * sin x + cos x * cos x
   ← rewrite_goal_with_prev goal=9 facts=[11]
     #[12] sin x * sin x ≤ sin x * sin x + cos x * cos x
@@ -479,9 +479,9 @@ proof
     #[4] cos x ^ (2::nat) ≤ 1 ^ (2::nat)
   ← rewrite_goal real_pow_one sym=false goal=4
     #[5] cos x ^ (2::nat) ≤ 1
-  -> apply_forward_step sin_circle param_x=x goal=5
+  → apply_forward_step sin_circle param_x=x goal=5
     #[6] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=5 facts=[6]
+  → rewrite_fact eq_sym_eq sym=false goal=5 facts=[6]
     #[7] 1 = sin x ^ (2::nat) + cos x ^ (2::nat)
   ← rewrite_goal_with_prev goal=5 facts=[7]
     #[8] cos x ^ (2::nat) ≤ sin x ^ (2::nat) + cos x ^ (2::nat)
@@ -498,9 +498,9 @@ theorem sin_lbound
   prop -1 <= sin x
   [hint_backward]
 proof
-  -> apply_forward_step sin_bound param_x=x goal=0
+  → apply_forward_step sin_bound param_x=x goal=0
     #[1] abs (sin x) ≤ 1
-  -> rewrite_fact real_abs_bounds sym=false goal=0 facts=[1]
+  → rewrite_fact real_abs_bounds sym=false goal=0 facts=[1]
     #[2] -1 ≤ sin x ∧ sin x ≤ 1
   ← apply_backward_step conjD1 goal=0 facts=[2]
 qed
@@ -510,9 +510,9 @@ theorem sin_ubound
   prop sin x <= 1
   [hint_backward]
 proof
-  -> apply_forward_step sin_bound param_x=x goal=0
+  → apply_forward_step sin_bound param_x=x goal=0
     #[1] abs (sin x) ≤ 1
-  -> rewrite_fact real_abs_bounds sym=false goal=0 facts=[1]
+  → rewrite_fact real_abs_bounds sym=false goal=0 facts=[1]
     #[2] -1 ≤ sin x ∧ sin x ≤ 1
   ← apply_backward_step conjD2 goal=0 facts=[2]
 qed
@@ -522,9 +522,9 @@ theorem cos_lbound
   prop -1 <= cos x
   [hint_backward]
 proof
-  -> apply_forward_step cos_bound param_x=x goal=0
+  → apply_forward_step cos_bound param_x=x goal=0
     #[1] abs (cos x) ≤ 1
-  -> rewrite_fact real_abs_bounds sym=false goal=0 facts=[1]
+  → rewrite_fact real_abs_bounds sym=false goal=0 facts=[1]
     #[2] -1 ≤ cos x ∧ cos x ≤ 1
   ← apply_backward_step conjD1 goal=0 facts=[2]
 qed
@@ -534,9 +534,9 @@ theorem cos_ubound
   prop cos x <= 1
   [hint_backward]
 proof
-  -> apply_forward_step cos_bound param_x=x goal=0
+  → apply_forward_step cos_bound param_x=x goal=0
     #[1] abs (cos x) ≤ 1
-  -> rewrite_fact real_abs_bounds sym=false goal=0 facts=[1]
+  → rewrite_fact real_abs_bounds sym=false goal=0 facts=[1]
     #[2] -1 ≤ cos x ∧ cos x ≤ 1
   ← apply_backward_step conjD2 goal=0 facts=[2]
 qed
@@ -743,9 +743,9 @@ proof
     #[1] cos (x + x) = 1 - (sin x ^ (2::nat) + sin x ^ (2::nat))
   ← rewrite_goal cos_add sym=false goal=1
     #[2] cos x * cos x - sin x * sin x = 1 - (sin x ^ (2::nat) + sin x ^ (2::nat))
-  -> apply_forward_step sin_circle param_x=x goal=2
+  → apply_forward_step sin_circle param_x=x goal=2
     #[3] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=2 facts=[3]
+  → rewrite_fact eq_sym_eq sym=false goal=2 facts=[3]
     #[4] 1 = sin x ^ (2::nat) + cos x ^ (2::nat)
   ← rewrite_goal_with_prev goal=2 facts=[4]
     #[5] cos x * cos x - sin x * sin x = sin x ^ (2::nat) + cos x ^ (2::nat) - (sin x ^ (2::nat) + sin x ^ (2::nat))
@@ -805,7 +805,7 @@ proof
   ← introduction goal=1
     #[3] exp (log x) = x
     #[4] 0 < x
-  -> rewrite_fact eq_sym_eq sym=false goal=4 facts=[3]
+  → rewrite_fact eq_sym_eq sym=false goal=4 facts=[3]
     #[5] x = exp (log x)
   ← rewrite_goal_with_prev goal=4 facts=[5]
     #[6] 0 < exp (log x)
@@ -830,9 +830,9 @@ proof
     #[4] exp (log (x * y)) = exp (log x + log y)
   ← rewrite_goal real_exp_add sym=false goal=4
     #[5] exp (log (x * y)) = exp (log x) * exp (log y)
-  -> apply_forward_step exp_log goal=5 facts=[1]
+  → apply_forward_step exp_log goal=5 facts=[1]
     #[6] exp (log x) = x
-  -> apply_forward_step exp_log goal=5 facts=[2]
+  → apply_forward_step exp_log goal=5 facts=[2]
     #[7] exp (log y) = y
   ← rewrite_goal_with_prev goal=5 facts=[6]
     #[8] exp (log (x * y)) = x * exp (log y)
@@ -858,15 +858,15 @@ proof
   ← introduction goal=4
     #[6] log x = log y
     #[7] x = y
-  -> rewrite_fact real_exp_inj sym=true goal=7 facts=[6]
+  → rewrite_fact real_exp_inj sym=true goal=7 facts=[6]
     #[8] exp (log x) = exp (log y)
-  -> apply_forward_step exp_log goal=7 facts=[1]
+  → apply_forward_step exp_log goal=7 facts=[1]
     #[9] exp (log x) = x
-  -> apply_forward_step exp_log goal=7 facts=[2]
+  → apply_forward_step exp_log goal=7 facts=[2]
     #[10] exp (log y) = y
-  -> rewrite_fact_with_prev goal=7 facts=[9,8]
+  → rewrite_fact_with_prev goal=7 facts=[9,8]
     #[11] x = exp (log y)
-  -> rewrite_fact_with_prev goal=7 facts=[10,11]
+  → rewrite_fact_with_prev goal=7 facts=[10,11]
   ← introduction goal=5
     #[12] x = y
     #[13] log x = log y
@@ -899,7 +899,7 @@ proof
     #[3] exp (log (real_inverse x)) = exp (-(log x))
   ← rewrite_goal real_exp_neg sym=false goal=3
     #[4] exp (log (real_inverse x)) = real_inverse (exp (log x))
-  -> apply_forward_step exp_log goal=4 facts=[1]
+  → apply_forward_step exp_log goal=4 facts=[1]
     #[5] exp (log x) = x
   ← rewrite_goal_with_prev goal=4 facts=[5]
     #[6] exp (log (real_inverse x)) = real_inverse x
@@ -921,9 +921,9 @@ proof
     #[4] log (x * real_inverse y) = log x - log y
   ← rewrite_goal real_minus_def sym=false goal=4
     #[5] log (x * real_inverse y) = log x + -(log y)
-  -> apply_forward_step log_inv goal=5 facts=[2]
+  → apply_forward_step log_inv goal=5 facts=[2]
     #[6] log (real_inverse y) = -(log y)
-  -> rewrite_fact eq_sym_eq sym=false goal=5 facts=[6]
+  → rewrite_fact eq_sym_eq sym=false goal=5 facts=[6]
     #[7] -(log y) = log (real_inverse y)
   ← rewrite_goal_with_prev goal=5 facts=[7]
     #[8] log (x * real_inverse y) = log x + log (real_inverse y)
@@ -942,9 +942,9 @@ proof
     #[1] 0 < x
     #[2] 0 < y
     #[3] log x < log y ⟷ x < y
-  -> apply_forward_step exp_log goal=3 facts=[1]
+  → apply_forward_step exp_log goal=3 facts=[1]
     #[4] exp (log x) = x
-  -> apply_forward_step exp_log goal=3 facts=[2]
+  → apply_forward_step exp_log goal=3 facts=[2]
     #[5] exp (log y) = y
   ← apply_backward_step iffI goal=3
     #[6] log x < log y ⟶ x < y
@@ -952,11 +952,11 @@ proof
   ← introduction goal=6
     #[8] log x < log y
     #[9] x < y
-  -> rewrite_fact real_exp_mono_lt sym=true goal=9 facts=[8]
+  → rewrite_fact real_exp_mono_lt sym=true goal=9 facts=[8]
     #[10] exp (log x) < exp (log y)
-  -> rewrite_fact_with_prev goal=9 facts=[4,10]
+  → rewrite_fact_with_prev goal=9 facts=[4,10]
     #[11] x < exp (log y)
-  -> rewrite_fact_with_prev goal=9 facts=[5,11]
+  → rewrite_fact_with_prev goal=9 facts=[5,11]
   ← introduction goal=7
     #[12] x < y
     #[13] log x < log y
@@ -976,9 +976,9 @@ proof
     #[1] 0 < x
     #[2] x < y
     #[3] log x < log y
-  -> apply_forward_step real_lt_trans goal=3 facts=[1,2]
+  → apply_forward_step real_lt_trans goal=3 facts=[1,2]
     #[4] 0 < y
-  -> apply_forward_step log_mono_lt goal=3 facts=[1,4]
+  → apply_forward_step log_mono_lt goal=3 facts=[1,4]
     #[5] log x < log y ⟷ x < y
   ← rewrite_goal_with_prev goal=3 facts=[5]
 qed
@@ -993,9 +993,9 @@ proof
     #[2] 0 < y
     #[3] log x < log y
     #[4] x < y
-  -> apply_forward_step log_mono_lt goal=4 facts=[1,2]
+  → apply_forward_step log_mono_lt goal=4 facts=[1,2]
     #[5] log x < log y ⟷ x < y
-  -> rewrite_fact_with_prev goal=4 facts=[5,3]
+  → rewrite_fact_with_prev goal=4 facts=[5,3]
 qed
 
 theorem log_mono_le
@@ -1007,9 +1007,9 @@ proof
     #[1] 0 < x
     #[2] 0 < y
     #[3] log x ≤ log y ⟷ x ≤ y
-  -> apply_forward_step exp_log goal=3 facts=[1]
+  → apply_forward_step exp_log goal=3 facts=[1]
     #[4] exp (log x) = x
-  -> apply_forward_step exp_log goal=3 facts=[2]
+  → apply_forward_step exp_log goal=3 facts=[2]
     #[5] exp (log y) = y
   ← apply_backward_step iffI goal=3
     #[6] log x ≤ log y ⟶ x ≤ y
@@ -1017,11 +1017,11 @@ proof
   ← introduction goal=6
     #[8] log x ≤ log y
     #[9] x ≤ y
-  -> rewrite_fact real_exp_mono_le sym=true goal=9 facts=[8]
+  → rewrite_fact real_exp_mono_le sym=true goal=9 facts=[8]
     #[10] exp (log x) ≤ exp (log y)
-  -> rewrite_fact_with_prev goal=9 facts=[4,10]
+  → rewrite_fact_with_prev goal=9 facts=[4,10]
     #[11] x ≤ exp (log y)
-  -> rewrite_fact_with_prev goal=9 facts=[5,11]
+  → rewrite_fact_with_prev goal=9 facts=[5,11]
   ← introduction goal=7
     #[12] x ≤ y
     #[13] log x ≤ log y
@@ -1044,7 +1044,7 @@ proof
   cut "0 < y" goal=3
     #[4] 0 < y
   ← apply_backward_step real_lte_trans goal=4 facts=[1,2]
-  -> apply_forward_step log_mono_le goal=3 facts=[1,4]
+  → apply_forward_step log_mono_le goal=3 facts=[1,4]
     #[5] log x ≤ log y ⟷ x ≤ y
   ← rewrite_goal_with_prev goal=3 facts=[5]
 qed
@@ -1059,9 +1059,9 @@ proof
     #[2] 0 < y
     #[3] log x ≤ log y
     #[4] x ≤ y
-  -> apply_forward_step log_mono_le goal=4 facts=[1,2]
+  → apply_forward_step log_mono_le goal=4 facts=[1,2]
     #[5] log x ≤ log y ⟷ x ≤ y
-  -> rewrite_fact_with_prev goal=4 facts=[5,3]
+  → rewrite_fact_with_prev goal=4 facts=[5,3]
 qed
 
 theorem log_pow
@@ -1076,13 +1076,13 @@ proof
     #[3] exp (log (x ^ n)) = exp (of_nat n * log x)
   ← rewrite_goal real_exp_n sym=false goal=3
     #[4] exp (log (x ^ n)) = exp (log x) ^ n
-  -> apply_forward_step real_pow_lt param_n=n goal=4 facts=[1]
+  → apply_forward_step real_pow_lt param_n=n goal=4 facts=[1]
     #[5] 0 < x ^ n
-  -> apply_forward_step exp_log goal=4 facts=[5]
+  → apply_forward_step exp_log goal=4 facts=[5]
     #[6] exp (log (x ^ n)) = x ^ n
   ← rewrite_goal_with_prev goal=4 facts=[6]
     #[7] x ^ n = exp (log x) ^ n
-  -> apply_forward_step exp_log goal=7 facts=[1]
+  → apply_forward_step exp_log goal=7 facts=[1]
     #[8] exp (log x) = x
   ← rewrite_goal_with_prev goal=7 facts=[8]
 qed
@@ -1101,7 +1101,7 @@ proof
     #[2] log (1 + x) ≤ x
   ← rewrite_goal real_exp_mono_le sym=true goal=2
     #[3] exp (log (1 + x)) ≤ exp x
-  -> apply_forward_step exp_log goal=3 facts=[1]
+  → apply_forward_step exp_log goal=3 facts=[1]
     #[4] exp (log (1 + x)) = 1 + x
   ← rewrite_goal_with_prev goal=3 facts=[4]
     #[5] 1 + x ≤ exp x
@@ -1132,11 +1132,11 @@ proof
     #[2] log x < x
   ← rewrite_goal real_exp_mono_lt sym=true goal=2
     #[3] exp (log x) < exp x
-  -> apply_forward_step exp_log goal=3 facts=[1]
+  → apply_forward_step exp_log goal=3 facts=[1]
     #[4] exp (log x) = x
   ← rewrite_goal_with_prev goal=3 facts=[4]
     #[5] x < exp x
-  -> apply_forward_step real_exp_le_x param_x=x goal=5
+  → apply_forward_step real_exp_le_x param_x=x goal=5
     #[6] 1 + x ≤ exp x
   ← apply_backward_step real_lte_trans param_y=1+x goal=5
     #[7] x < 1 + x
@@ -1203,9 +1203,9 @@ proof
     #[13] ¬¬(log x < 0)
   ← rewrite_goal double_neg sym=false goal=13
     #[14] log x < 0
-  -> rewrite_fact real_less_def sym=false goal=14 facts=[11]
+  → rewrite_fact real_less_def sym=false goal=14 facts=[11]
     #[15] ¬¬(x ≤ 0)
-  -> rewrite_fact double_neg sym=false goal=14 facts=[15]
+  → rewrite_fact double_neg sym=false goal=14 facts=[15]
     #[16] x ≤ 0
 qed
 
@@ -1234,17 +1234,17 @@ theorem sin_nontrivial
   prop ?x. 0 < x & ~(sin x = 0)
   [hint_backward]
 proof
-  -> apply_forward_step sin_nearzero goal=0
+  → apply_forward_step sin_nearzero goal=0
     #[1] ∃x. 0 < x ∧ (∀y. 0 < y ⟶ y ≤ x ⟶ 0 < sin y)
   exists_elim x goal=0 facts=[1]
     #[2] _VAR x
     #[3] 0 < x ∧ (∀y. 0 < y ⟶ y ≤ x ⟶ 0 < sin y)
     #[4] ∃x. 0 < x ∧ ¬(sin x = 0)
-  -> apply_forward_step conjD1 goal=4 facts=[3]
+  → apply_forward_step conjD1 goal=4 facts=[3]
     #[5] 0 < x
-  -> apply_forward_step conjD2 goal=4 facts=[3]
+  → apply_forward_step conjD2 goal=4 facts=[3]
     #[6] ∀y. 0 < y ⟶ y ≤ x ⟶ 0 < sin y
-  -> forall_elim x goal=4 facts=[6]
+  → forall_elim x goal=4 facts=[6]
     #[7] 0 < x ⟶ x ≤ x ⟶ 0 < sin x
   ← inst_exists_goal x goal=4
     #[8] 0 < x ∧ ¬(sin x = 0)
@@ -1266,15 +1266,15 @@ theorem cos_nontrivial
   prop ?x. 0 < x & ~(cos x = 1)
   [hint_backward]
 proof
-  -> apply_forward_step sin_nontrivial goal=0
+  → apply_forward_step sin_nontrivial goal=0
     #[1] ∃x. 0 < x ∧ ¬(sin x = 0)
   exists_elim x goal=0 facts=[1]
     #[2] _VAR x
     #[3] 0 < x ∧ ¬(sin x = 0)
     #[4] ∃x. 0 < x ∧ ¬(cos x = 1)
-  -> apply_forward_step conjD1 goal=4 facts=[3]
+  → apply_forward_step conjD1 goal=4 facts=[3]
     #[5] 0 < x
-  -> apply_forward_step conjD2 goal=4 facts=[3]
+  → apply_forward_step conjD2 goal=4 facts=[3]
     #[6] ¬(sin x = 0)
   ← inst_exists_goal x goal=4
     #[7] 0 < x ∧ ¬(cos x = 1)
@@ -1287,21 +1287,21 @@ proof
   ← introduction goal=10
     #[11] cos x = 1
     #[12] sin x = 0
-  -> apply_forward_step sin_circle param_x=x goal=12
+  → apply_forward_step sin_circle param_x=x goal=12
     #[13] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact_with_prev goal=12 facts=[11,13]
+  → rewrite_fact_with_prev goal=12 facts=[11,13]
     #[14] sin x ^ (2::nat) + 1 ^ (2::nat) = 1
-  -> rewrite_fact real_pow_one sym=false goal=12 facts=[14]
+  → rewrite_fact real_pow_one sym=false goal=12 facts=[14]
     #[15] sin x ^ (2::nat) + 1 = 1
   cut "∀a::real. a + 1 = 1 ⟶ a = 0" goal=12
     #[16] ∀a::real. a + 1 = 1 ⟶ a = 0
   ← z3 goal=16
     #[17] ∀a::real. a + 1 = 1 ⟶ a = 0
-  -> apply_fact goal=12 facts=[17,15]
+  → apply_fact goal=12 facts=[17,15]
     #[18] sin x ^ (2::nat) = 0
-  -> rewrite_fact real_pow_2 sym=false goal=12 facts=[18]
+  → rewrite_fact real_pow_2 sym=false goal=12 facts=[18]
     #[19] sin x * sin x = 0
-  -> rewrite_fact real_entire sym=false goal=12 facts=[19]
+  → rewrite_fact real_entire sym=false goal=12 facts=[19]
     #[20] sin x = 0 ∨ sin x = 0
   ← apply_backward_step disjE goal=12 facts=[20]
     #[21] sin x = 0 ⟶ sin x = 0
@@ -1346,9 +1346,9 @@ proof
   ← introduction goal=4
     #[5] ¬(∃n::nat. cos (2 ^ n * x) < 0)
     #[6] false
-  -> rewrite_fact not_exists sym=false goal=6 facts=[5]
+  → rewrite_fact not_exists sym=false goal=6 facts=[5]
     #[7] ∀n::nat. ¬(cos (2 ^ n * x) < 0)
-  -> rewrite_fact real_not_lt sym=false goal=6 facts=[7]
+  → rewrite_fact real_not_lt sym=false goal=6 facts=[7]
     #[8] ∀n::nat. 0 ≤ cos (2 ^ n * x)
   cut "!n::nat. 2 ^ n * (1-cos x) <= 1-cos (2 ^ n * x)" goal=6
     #[9] ∀n::nat. 2 ^ n * (1 - cos x) ≤ 1 - cos (2 ^ n * x)
@@ -1384,7 +1384,7 @@ proof
     #[26] 0 ≤ cos (2 ^ n * x)
   ← apply_prev goal=26 facts=[8]
     #[27] 0 ≤ cos (2 ^ n * x)
-  -> apply_forward_step real_arch_pow2 param_x="1/(1-cos x)" goal=6
+  → apply_forward_step real_arch_pow2 param_x="1/(1-cos x)" goal=6
     #[28] ∃n::nat. 1 / (1 - cos x) < 2 ^ n
   exists_elim n goal=6 facts=[28]
     #[29] 1 / (1 - cos x) < 2 ^ n
@@ -1393,14 +1393,14 @@ proof
     #[31] ∀x::real. x < 1 ⟶ 0 < 1 - x
   ← z3 goal=31
     #[32] ∀x::real. x < 1 ⟶ 0 < 1 - x
-  -> apply_fact goal=30 facts=[32,1]
+  → apply_fact goal=30 facts=[32,1]
     #[33] 0 < 1 - cos x
-  -> apply_forward_step real_lt_ldiv_eq param_x="(1::real)" param_y="(2::real) ^ n" goal=30 facts=[33]
+  → apply_forward_step real_lt_ldiv_eq param_x="(1::real)" param_y="(2::real) ^ n" goal=30 facts=[33]
     #[34] 1 / (1 - cos x) < 2 ^ n ⟷ 1 < 2 ^ n * (1 - cos x)
-  -> rewrite_fact_with_prev goal=30 facts=[34,29]
+  → rewrite_fact_with_prev goal=30 facts=[34,29]
     #[35] 1 < 2 ^ n * (1 - cos x)
-  -> forall_elim n goal=30 facts=[9]
-  -> apply_forward_step real_lte_trans goal=30 facts=[35,11]
+  → forall_elim n goal=30 facts=[9]
+  → apply_forward_step real_lte_trans goal=30 facts=[35,11]
     #[36] 1 < 1 - cos (2 ^ n * x)
   ← apply_backward_step contrapositive goal=30 facts=[36]
     #[37] ¬false ⟶ ¬(1 < 1 - cos (2 ^ n * x))
@@ -1422,19 +1422,19 @@ theorem cos_goesnegative
   prop ?x. 0 < x & cos x < 0
   [hint_backward]
 proof
-  -> apply_forward_step cos_nontrivial goal=0
+  → apply_forward_step cos_nontrivial goal=0
     #[1] ∃x. 0 < x ∧ ¬(cos x = 1)
   exists_elim x goal=0 facts=[1]
     #[2] _VAR x
     #[3] 0 < x ∧ ¬(cos x = 1)
     #[4] ∃x. 0 < x ∧ cos x < 0
-  -> apply_forward_step conjD1 goal=4 facts=[3]
+  → apply_forward_step conjD1 goal=4 facts=[3]
     #[5] 0 < x
-  -> apply_forward_step conjD2 goal=4 facts=[3]
+  → apply_forward_step conjD2 goal=4 facts=[3]
     #[6] ¬(cos x = 1)
-  -> apply_forward_step cos_ubound param_x=x goal=4
+  → apply_forward_step cos_ubound param_x=x goal=4
     #[7] cos x ≤ 1
-  -> rewrite_fact real_le_lt sym=false goal=4 facts=[7]
+  → rewrite_fact real_le_lt sym=false goal=4 facts=[7]
     #[8] cos x < 1 ∨ cos x = 1
   ← apply_backward_step disjE goal=4 facts=[8]
     #[9] cos x < 1 ⟶ (∃x1. 0 < x1 ∧ cos x1 < 0)
@@ -1442,7 +1442,7 @@ proof
   ← introduction goal=9
     #[11] cos x < 1
     #[12] ∃x. 0 < x ∧ cos x < 0
-  -> apply_forward_step cos_goesnegative_lemma goal=12 facts=[11]
+  → apply_forward_step cos_goesnegative_lemma goal=12 facts=[11]
     #[13] ∃n::nat. cos (2 ^ n * x) < 0
   exists_elim n goal=12 facts=[13]
     #[14] _VAR n
@@ -1470,7 +1470,7 @@ theorem sin_haszero
   prop ?x. 0 < x & sin x = 0
   [hint_backward]
 proof
-  -> apply_forward_step cos_haszero goal=0
+  → apply_forward_step cos_haszero goal=0
     #[1] ∃x. 0 < x ∧ cos x = 0
   exists_elim x goal=0 facts=[1]
     #[2] _VAR x
@@ -1478,9 +1478,9 @@ proof
     #[4] ∃x. 0 < x ∧ sin x = 0
   ← inst_exists_goal "2 * x" goal=4
     #[5] 0 < 2 * x ∧ sin (2 * x) = 0
-  -> apply_forward_step conjD1 goal=5 facts=[3]
+  → apply_forward_step conjD1 goal=5 facts=[3]
     #[6] 0 < x
-  -> apply_forward_step conjD2 goal=5 facts=[3]
+  → apply_forward_step conjD2 goal=5 facts=[3]
     #[7] cos x = 0
   ← apply_backward_step conjI goal=5
     #[8] 0 < 2 * x
@@ -1508,25 +1508,25 @@ theorem pi_works
   prop 0 < pi & sin pi = 0 & (!x. 0 < x --> x < pi --> ~(sin x = 0))
   [hint_backward]
 proof
-  -> apply_forward_step sin_haszero_minimal goal=0
+  → apply_forward_step sin_haszero_minimal goal=0
     #[1] ∃p. 0 < p ∧ sin p = 0 ∧ (∀x. 0 < x ⟶ x < p ⟶ ¬(sin x = 0))
   exists_elim p goal=0 facts=[1]
     #[2] _VAR p
     #[3] 0 < p ∧ sin p = 0 ∧ (∀x. 0 < x ⟶ x < p ⟶ ¬(sin x = 0))
     #[4] 0 < pi ∧ sin pi = 0 ∧ (∀x. 0 < x ⟶ x < pi ⟶ ¬(sin x = 0))
-  -> rewrite_fact conj_assoc sym=false goal=4 facts=[3]
+  → rewrite_fact conj_assoc sym=false goal=4 facts=[3]
     #[5] (0 < p ∧ sin p = 0) ∧ (∀x. 0 < x ⟶ x < p ⟶ ¬(sin x = 0))
-  -> apply_forward_step conjD1 goal=4 facts=[5]
+  → apply_forward_step conjD1 goal=4 facts=[5]
     #[6] 0 < p ∧ sin p = 0
-  -> apply_forward_step conjD2 goal=4 facts=[5]
+  → apply_forward_step conjD2 goal=4 facts=[5]
     #[7] ∀x. 0 < x ⟶ x < p ⟶ ¬(sin x = 0)
-  -> apply_forward_step conjD1 goal=4 facts=[6]
+  → apply_forward_step conjD1 goal=4 facts=[6]
     #[8] 0 < p
-  -> apply_forward_step conjD2 goal=4 facts=[6]
+  → apply_forward_step conjD2 goal=4 facts=[6]
     #[9] sin p = 0
   ← rewrite_goal pi_def sym=false goal=4
     #[10] 0 < (THE p. 0 < p ∧ sin p = 0 ∧ (∀x. 0 < x ⟶ x < p ⟶ ¬(sin x = 0))) ∧ sin (THE p. 0 < p ∧ sin p = 0 ∧ (∀x. 0 < x ⟶ x < p ⟶ ¬(sin x = 0))) = 0 ∧ (∀x. 0 < x ⟶ x < (THE p. 0 < p ∧ sin p = 0 ∧ (∀x1. 0 < x1 ⟶ x1 < p ⟶ ¬(sin x1 = 0))) ⟶ ¬(sin x = 0))
-  -> apply_forward_step theI param_P="(%p. 0 < p ∧ sin p = 0 ∧ (∀x. 0 < x ⟶ x < p ⟶ ¬(sin x = 0)))" param_a=p goal=10
+  → apply_forward_step theI param_P="(%p. 0 < p ∧ sin p = 0 ∧ (∀x. 0 < x ⟶ x < p ⟶ ¬(sin x = 0)))" param_a=p goal=10
     #[11] 0 < p ∧ sin p = 0 ∧ (∀x. 0 < x ⟶ x < p ⟶ ¬(sin x = 0)) ⟶ (∀x. 0 < x ∧ sin x = 0 ∧ (∀x1. 0 < x1 ⟶ x1 < x ⟶ ¬(sin x1 = 0)) ⟶ x = p) ⟶ 0 < (THE x. 0 < x ∧ sin x = 0 ∧ (∀x1. 0 < x1 ⟶ x1 < x ⟶ ¬(sin x1 = 0))) ∧ sin (THE x. 0 < x ∧ sin x = 0 ∧ (∀x1. 0 < x1 ⟶ x1 < x ⟶ ¬(sin x1 = 0))) = 0 ∧ (∀x. 0 < x ⟶ x < (THE x1. 0 < x1 ∧ sin x1 = 0 ∧ (∀x2. 0 < x2 ⟶ x2 < x1 ⟶ ¬(sin x2 = 0))) ⟶ ¬(sin x = 0))
   ← apply_prev goal=10 facts=[11]
     #[12] ∀x. 0 < x ∧ sin x = 0 ∧ (∀x1. 0 < x1 ⟶ x1 < x ⟶ ¬(sin x1 = 0)) ⟶ x = p
@@ -1534,13 +1534,13 @@ proof
     #[13] _VAR x
     #[14] 0 < x ∧ sin x = 0 ∧ (∀x1. 0 < x1 ⟶ x1 < x ⟶ ¬(sin x1 = 0))
     #[15] x = p
-  -> apply_forward_step conjD1 goal=15 facts=[14]
+  → apply_forward_step conjD1 goal=15 facts=[14]
     #[16] 0 < x
-  -> apply_forward_step conjD2 goal=15 facts=[14]
+  → apply_forward_step conjD2 goal=15 facts=[14]
     #[17] sin x = 0 ∧ (∀x1. 0 < x1 ⟶ x1 < x ⟶ ¬(sin x1 = 0))
-  -> apply_forward_step conjD1 goal=15 facts=[17]
+  → apply_forward_step conjD1 goal=15 facts=[17]
     #[18] sin x = 0
-  -> apply_forward_step conjD2 goal=15 facts=[17]
+  → apply_forward_step conjD2 goal=15 facts=[17]
     #[19] ∀x1. 0 < x1 ⟶ x1 < x ⟶ ¬(sin x1 = 0)
   ← rewrite_goal double_neg sym=true goal=15
     #[20] ¬¬(x = p)
@@ -1549,13 +1549,13 @@ proof
   ← introduction goal=21
     #[22] ¬(x = p)
     #[23] false
-  -> rewrite_fact real_le_antisym sym=true goal=23 facts=[22]
+  → rewrite_fact real_le_antisym sym=true goal=23 facts=[22]
     #[24] ¬(x ≤ p ∧ p ≤ x)
-  -> rewrite_fact de_morgan_thm1 sym=false goal=23 facts=[24]
+  → rewrite_fact de_morgan_thm1 sym=false goal=23 facts=[24]
     #[25] ¬(x ≤ p) ∨ ¬(p ≤ x)
-  -> rewrite_fact real_not_lt sym=true goal=23 facts=[25]
+  → rewrite_fact real_not_lt sym=true goal=23 facts=[25]
     #[26] ¬¬(p < x) ∨ ¬¬(x < p)
-  -> rewrite_fact double_neg sym=false goal=23 facts=[26]
+  → rewrite_fact double_neg sym=false goal=23 facts=[26]
     #[27] p < x ∨ x < p
   ← apply_backward_step disjE goal=23 facts=[27]
     #[28] p < x ⟶ false
@@ -1563,14 +1563,14 @@ proof
   ← introduction goal=28
     #[30] p < x
     #[31] false
-  -> apply_fact goal=31 facts=[19,8,30]
+  → apply_fact goal=31 facts=[19,8,30]
     #[32] ¬(sin p = 0)
   ← apply_backward_step negE_gen goal=31 facts=[32,9]
     #[33] false
   ← introduction goal=29
     #[34] x < p
     #[35] false
-  -> apply_fact goal=35 facts=[7,16,34]
+  → apply_fact goal=35 facts=[7,16,34]
     #[36] ¬(sin x = 0)
   ← apply_backward_step negE_gen goal=35 facts=[36,18]
     #[37] false
@@ -1580,7 +1580,7 @@ theorem pi_pos
   prop 0 < pi
   [hint_backward]
 proof
-  -> apply_forward_step pi_works goal=0
+  → apply_forward_step pi_works goal=0
     #[1] 0 < pi ∧ sin pi = 0 ∧ (∀x. 0 < x ⟶ x < pi ⟶ ¬(sin x = 0))
   ← apply_backward_step conjD1 goal=0 facts=[1]
 qed
@@ -1589,9 +1589,9 @@ theorem real_sin_pi
   prop sin pi = 0
   [hint_rewrite]
 proof
-  -> apply_forward_step pi_works goal=0
+  → apply_forward_step pi_works goal=0
     #[1] 0 < pi ∧ sin pi = 0 ∧ (∀x. 0 < x ⟶ x < pi ⟶ ¬(sin x = 0))
-  -> apply_forward_step conjD2 goal=0 facts=[1]
+  → apply_forward_step conjD2 goal=0 facts=[1]
     #[2] sin pi = 0 ∧ (∀x. 0 < x ⟶ x < pi ⟶ ¬(sin x = 0))
   ← apply_backward_step conjD1 goal=0 facts=[2]
 qed
@@ -1605,18 +1605,18 @@ theorem real_cos_pi2
   prop cos (pi / 2) = 0
   [hint_rewrite]
 proof
-  -> apply_forward_step sin_double param_x=pi/2 goal=0
+  → apply_forward_step sin_double param_x=pi/2 goal=0
     #[1] sin (2 * (pi / 2)) = 2 * sin (pi / 2) * cos (pi / 2)
   cut "2 * (pi/2) = pi" goal=0
     #[2] 2 * (pi / 2) = pi
   real_norm goal=2
-  -> rewrite_fact_with_prev goal=0 facts=[2,1]
+  → rewrite_fact_with_prev goal=0 facts=[2,1]
     #[3] sin pi = 2 * sin (pi / 2) * cos (pi / 2)
-  -> rewrite_fact real_sin_pi sym=false goal=0 facts=[3]
+  → rewrite_fact real_sin_pi sym=false goal=0 facts=[3]
     #[4] 0 = 2 * sin (pi / 2) * cos (pi / 2)
-  -> rewrite_fact eq_sym_eq sym=false goal=0 facts=[4]
+  → rewrite_fact eq_sym_eq sym=false goal=0 facts=[4]
     #[5] 2 * sin (pi / 2) * cos (pi / 2) = 0
-  -> rewrite_fact real_entire sym=false goal=0 facts=[5]
+  → rewrite_fact real_entire sym=false goal=0 facts=[5]
     #[6] 2 * sin (pi / 2) = 0 ∨ cos (pi / 2) = 0
   ← apply_backward_step disjE goal=0 facts=[6]
     #[7] 2 * sin (pi / 2) = 0 ⟶ cos (pi / 2) = 0
@@ -1624,7 +1624,7 @@ proof
   ← introduction goal=7
     #[9] 2 * sin (pi / 2) = 0
     #[10] cos (pi / 2) = 0
-  -> rewrite_fact real_entire sym=false goal=10 facts=[9]
+  → rewrite_fact real_entire sym=false goal=10 facts=[9]
     #[11] (2::real) = 0 ∨ sin (pi / 2) = 0
   ← apply_backward_step disjE goal=10 facts=[11]
     #[12] (2::real) = 0 ⟶ cos (pi / 2) = 0
@@ -1659,7 +1659,7 @@ proof
   ← apply_backward_step sin_pos_pi goal=28
     #[29] 0 < pi / 2
     #[30] pi / 2 < pi
-  -> apply_forward_step pi_pos goal=29
+  → apply_forward_step pi_pos goal=29
     #[31] 0 < pi
   ← rewrite_goal real_divide_def sym=false goal=29
     #[32] 0 < pi * real_inverse 2
@@ -1699,20 +1699,20 @@ theorem real_sin_pi2
   prop sin (pi / 2) = 1
   [hint_rewrite]
 proof
-  -> apply_forward_step sin_circle param_x="pi / 2" goal=0
+  → apply_forward_step sin_circle param_x="pi / 2" goal=0
     #[1] sin (pi / 2) ^ (2::nat) + cos (pi / 2) ^ (2::nat) = 1
-  -> rewrite_fact real_cos_pi2 sym=false goal=0 facts=[1]
+  → rewrite_fact real_cos_pi2 sym=false goal=0 facts=[1]
     #[2] sin (pi / 2) ^ (2::nat) + 0 ^ (2::nat) = 1
-  -> rewrite_fact real_pow_2 sym=false goal=0 facts=[2]
+  → rewrite_fact real_pow_2 sym=false goal=0 facts=[2]
     #[3] sin (pi / 2) * sin (pi / 2) + 0 * 0 = 1
-  -> rewrite_fact real_mul_lzero sym=false goal=0 facts=[3]
+  → rewrite_fact real_mul_lzero sym=false goal=0 facts=[3]
     #[4] sin (pi / 2) * sin (pi / 2) + 0 = 1
-  -> rewrite_fact real_add_rid sym=false goal=0 facts=[4]
+  → rewrite_fact real_add_rid sym=false goal=0 facts=[4]
     #[5] sin (pi / 2) * sin (pi / 2) = 1
   cut "!x::real. x * x = 1 <--> x = 1 | x = -1" goal=0
     #[6] ∀x::real. x * x = 1 ⟷ x = 1 ∨ x = -1
   ← z3 goal=6
-  -> rewrite_fact_with_prev goal=0 facts=[6,5]
+  → rewrite_fact_with_prev goal=0 facts=[6,5]
     #[7] sin (pi / 2) = 1 ∨ sin (pi / 2) = -1
   ← apply_backward_step disjE goal=0 facts=[7]
     #[8] sin (pi / 2) = 1 ⟶ sin (pi / 2) = 1
@@ -2000,19 +2000,19 @@ theorem real_sin_pi4
   prop sin (1 / 4 * pi) = sqrt 2 / 2
   [hint_rewrite]
 proof
-  -> apply_forward_step cos_double_sin param_x="1 / 4 * pi" goal=0
+  → apply_forward_step cos_double_sin param_x="1 / 4 * pi" goal=0
     #[1] cos (2 * (1 / 4 * pi)) = 1 - 2 * sin (1 / 4 * pi) ^ (2::nat)
   cut "2 * (1 / 4 * pi) = pi / 2" goal=0 facts=[1]
     #[2] 2 * (1 / 4 * pi) = pi / 2
   real_norm goal=2
-  -> rewrite_fact_with_prev goal=0 facts=[2,1]
+  → rewrite_fact_with_prev goal=0 facts=[2,1]
     #[3] cos (pi / 2) = 1 - 2 * sin (1 / 4 * pi) ^ (2::nat)
-  -> rewrite_fact real_cos_pi2 sym=false goal=0 facts=[3]
+  → rewrite_fact real_cos_pi2 sym=false goal=0 facts=[3]
     #[4] 0 = 1 - 2 * sin (1 / 4 * pi) ^ (2::nat)
   cut "!a::real. 0 = 1- 2 * a --> a=1/2" goal=0
     #[5] ∀a. 0 = 1 - 2 * a ⟶ a = 1 / 2
   ← z3 goal=5
-  -> apply_fact goal=0 facts=[5,4]
+  → apply_fact goal=0 facts=[5,4]
     #[6] sin (1 / 4 * pi) ^ (2::nat) = 1 / 2
   cut "1/2 = (sqrt 2 / 2) ^ (2::nat)" goal=0
     #[7] 1 / 2 = (sqrt 2 / 2) ^ (2::nat)
@@ -2035,11 +2035,11 @@ proof
   ← rewrite_goal_with_prev goal=11 facts=[12]
     #[15] 1 * real_inverse 2 = 2 * (real_inverse 2 * real_inverse 2)
   ← z3 goal=15
-  -> rewrite_fact_with_prev goal=0 facts=[7,6]
+  → rewrite_fact_with_prev goal=0 facts=[7,6]
     #[16] sin (1 / 4 * pi) ^ (2::nat) = (sqrt 2 / 2) ^ (2::nat)
-  -> rewrite_fact real_eq_square_abs sym=true goal=0 facts=[16]
+  → rewrite_fact real_eq_square_abs sym=true goal=0 facts=[16]
     #[17] abs (sin (1 / 4 * pi)) = abs (sqrt 2 / 2)
-  -> rewrite_fact abs_def sym=false goal=0 facts=[17]
+  → rewrite_fact abs_def sym=false goal=0 facts=[17]
     #[18] (if 0 ≤ sin (1 / 4 * pi) then sin (1 / 4 * pi) else -(sin (1 / 4 * pi))) = (if 0 ≤ sqrt 2 / 2 then sqrt 2 / 2 else -(sqrt 2 / 2))
   cut "0 ≤ sin (1 / 4 * pi)" goal=0
     #[19] 0 ≤ sin (1 / 4 * pi)
@@ -2062,7 +2062,7 @@ proof
   ← apply_backward_step real_lt_lmul: goal=27
     #[28] 1 * (1 / 4) < 1
   ← z3 goal=28
-  -> rewrite_fact if_P sym=false goal=0 facts=[18,19]
+  → rewrite_fact if_P sym=false goal=0 facts=[18,19]
     #[29] sin (1 / 4 * pi) = (if 0 ≤ sqrt 2 / 2 then sqrt 2 / 2 else -(sqrt 2 / 2))
   cut "0 ≤ sqrt 2 / 2" goal=0
     #[30] 0 ≤ sqrt 2 / 2
@@ -2073,36 +2073,36 @@ proof
     #[33] 0 ≤ real_inverse 2
   ← apply_backward_step sqrt_pos_le goal=32
   ← z3 goal=33
-  -> rewrite_fact if_P sym=false goal=0 facts=[29,30]
+  → rewrite_fact if_P sym=false goal=0 facts=[29,30]
 qed
 
 theorem real_cos_pi4
   prop cos (1 / 4 * pi) = sqrt 2 / 2
   [hint_rewrite]
 proof
-  -> apply_forward_step sin_double param_x="1 / 4 * pi" goal=0
+  → apply_forward_step sin_double param_x="1 / 4 * pi" goal=0
     #[1] sin (2 * (1 / 4 * pi)) = 2 * sin (1 / 4 * pi) * cos (1 / 4 * pi)
   cut "2 * (1 / 4 * pi) = pi / 2" goal=0
     #[2] 2 * (1 / 4 * pi) = pi / 2
   real_norm goal=2
-  -> rewrite_fact_with_prev goal=0 facts=[2,1]
+  → rewrite_fact_with_prev goal=0 facts=[2,1]
     #[3] sin (pi / 2) = 2 * sin (1 / 4 * pi) * cos (1 / 4 * pi)
-  -> rewrite_fact real_sin_pi2 sym=false goal=0 facts=[3]
+  → rewrite_fact real_sin_pi2 sym=false goal=0 facts=[3]
     #[4] 1 = 2 * sin (1 / 4 * pi) * cos (1 / 4 * pi)
-  -> rewrite_fact real_sin_pi4 sym=false goal=0 facts=[4]
+  → rewrite_fact real_sin_pi4 sym=false goal=0 facts=[4]
     #[5] 1 = 2 * (sqrt 2 / 2) * cos (1 / 4 * pi)
   cut "2 * (sqrt 2 / 2) = sqrt 2" goal=0
     #[6] 2 * (sqrt 2 / 2) = sqrt 2
   real_norm goal=6
-  -> rewrite_fact_with_prev goal=0 facts=[6,5]
+  → rewrite_fact_with_prev goal=0 facts=[6,5]
     #[7] 1 = sqrt 2 * cos (1 / 4 * pi)
-  -> rewrite_fact eq_sym_eq sym=false goal=0 facts=[7]
+  → rewrite_fact eq_sym_eq sym=false goal=0 facts=[7]
     #[8] sqrt 2 * cos (1 / 4 * pi) = 1
-  -> rewrite_fact real_mult_comm sym=false goal=0 facts=[8]
+  → rewrite_fact real_mult_comm sym=false goal=0 facts=[8]
     #[9] cos (1 / 4 * pi) * sqrt 2 = 1
-  -> apply_forward_step real_mul_linv_uniq goal=0 facts=[9]
+  → apply_forward_step real_mul_linv_uniq goal=0 facts=[9]
     #[10] real_inverse (sqrt 2) = cos (1 / 4 * pi)
-  -> rewrite_fact eq_sym_eq sym=false goal=0 facts=[10]
+  → rewrite_fact eq_sym_eq sym=false goal=0 facts=[10]
     #[11] cos (1 / 4 * pi) = real_inverse (sqrt 2)
   ← rewrite_goal_with_prev goal=0 facts=[11]
     #[12] real_inverse (sqrt 2) = sqrt 2 / 2
@@ -2258,9 +2258,9 @@ proof
     #[1] -(pi / 2) < x
     #[2] x < pi / 2
     #[3] 0 < cos x
-  -> apply_forward_step cos_pos_pi2 param_x="abs x" goal=3
+  → apply_forward_step cos_pos_pi2 param_x="abs x" goal=3
     #[4] 0 < abs x ⟶ abs x < pi / 2 ⟶ 0 < cos (abs x)
-  -> rewrite_fact cos_abs sym=false goal=3 facts=[4]
+  → rewrite_fact cos_abs sym=false goal=3 facts=[4]
     #[5] 0 < abs x ⟶ abs x < pi / 2 ⟶ 0 < cos x
   ← cases "x = 0" goal=3
     #[6] x = 0 ⟶ 0 < cos x
@@ -2295,9 +2295,9 @@ proof
     #[1] -(pi / 2) ≤ x
     #[2] x ≤ pi / 2
     #[3] 0 ≤ cos x
-  -> rewrite_fact real_le_lt sym=false goal=3 facts=[2]
+  → rewrite_fact real_le_lt sym=false goal=3 facts=[2]
     #[4] x < pi / 2 ∨ x = pi / 2
-  -> rewrite_fact real_le_lt sym=false goal=3 facts=[1]
+  → rewrite_fact real_le_lt sym=false goal=3 facts=[1]
     #[5] -(pi / 2) < x ∨ -(pi / 2) = x
   ← apply_backward_step disjE goal=3 facts=[5]
     #[6] -(pi / 2) < x ⟶ 0 ≤ cos x
@@ -2326,7 +2326,7 @@ proof
   ← introduction goal=7
     #[20] -(pi / 2) = x
     #[21] 0 ≤ cos x
-  -> rewrite_fact eq_sym_eq sym=false goal=21 facts=[20]
+  → rewrite_fact eq_sym_eq sym=false goal=21 facts=[20]
     #[22] x = -(pi / 2)
   ← rewrite_goal_with_prev goal=21 facts=[22]
     #[23] 0 ≤ cos (-(pi / 2))
@@ -2346,9 +2346,9 @@ proof
     #[1] 0 ≤ x
     #[2] x ≤ pi
     #[3] 0 ≤ sin x
-  -> rewrite_fact real_le_lt sym=false goal=3 facts=[1]
+  → rewrite_fact real_le_lt sym=false goal=3 facts=[1]
     #[4] 0 < x ∨ 0 = x
-  -> rewrite_fact real_le_lt sym=false goal=3 facts=[2]
+  → rewrite_fact real_le_lt sym=false goal=3 facts=[2]
     #[5] x < pi ∨ x = pi
   ← apply_backward_step disjE goal=3 facts=[5]
     #[6] x < pi ⟶ 0 ≤ sin x
@@ -2366,7 +2366,7 @@ proof
   ← introduction goal=9
     #[14] 0 = x
     #[15] 0 ≤ sin x
-  -> rewrite_fact eq_sym_eq sym=false goal=15 facts=[14]
+  → rewrite_fact eq_sym_eq sym=false goal=15 facts=[14]
     #[16] x = 0
   ← rewrite_goal_with_prev goal=15 facts=[16]
     #[17] 0 ≤ sin 0
@@ -2394,7 +2394,7 @@ theorem sin_eq_0
   prop sin x = 0 <--> (?n. integer n & x = n * pi)
   [hint_rewrite]
 proof
-  -> apply_forward_step sin_pimul_eq_0 param_n=x/pi goal=0
+  → apply_forward_step sin_pimul_eq_0 param_n=x/pi goal=0
     #[1] sin (x / pi * pi) = 0 ⟷ integer (x / pi)
   cut "x / pi * pi = x" goal=0
     #[2] x / pi * pi = x
@@ -2415,7 +2415,7 @@ proof
   ← rewrite_goal_with_prev goal=8 facts=[4]
     #[9] x * 1 = x
   ← rewrite_goal real_mul_rid sym=false goal=9
-  -> rewrite_fact_with_prev goal=0 facts=[2,1]
+  → rewrite_fact_with_prev goal=0 facts=[2,1]
     #[10] sin x = 0 ⟷ integer (x / pi)
   ← rewrite_goal_with_prev goal=0 facts=[10]
     #[11] integer (x / pi) ⟷ (∃n. integer n ∧ x = n * pi)
@@ -2446,9 +2446,9 @@ proof
     #[8] _VAR n
     #[9] integer n ∧ pi / 2 - x = n * pi
     #[10] ∃n. integer n ∧ x = (n + 1 / 2) * pi
-  -> apply_forward_step conjD1 goal=10 facts=[9]
+  → apply_forward_step conjD1 goal=10 facts=[9]
     #[11] integer n
-  -> apply_forward_step conjD2 goal=10 facts=[9]
+  → apply_forward_step conjD2 goal=10 facts=[9]
     #[12] pi / 2 - x = n * pi
   ← inst_exists_goal -n goal=10
     #[13] integer (-n) ∧ x = (-n + 1 / 2) * pi
@@ -2456,7 +2456,7 @@ proof
     #[14] integer (-n)
     #[15] x = (-n + 1 / 2) * pi
   ← rewrite_goal integer_neg sym=false goal=14
-  -> rewrite_fact_with_prev goal=15 facts=[3,12]
+  → rewrite_fact_with_prev goal=15 facts=[3,12]
     #[16] x = (-n + 1 / 2) * pi
   ← introduction goal=5
     #[17] ∃n. integer n ∧ x = (n + 1 / 2) * pi
@@ -2464,9 +2464,9 @@ proof
   exists_elim n goal=18 facts=[17]
     #[19] integer n ∧ x = (n + 1 / 2) * pi
     #[20] ∃n. integer n ∧ pi / 2 - x = n * pi
-  -> apply_forward_step conjD1 goal=20 facts=[19]
+  → apply_forward_step conjD1 goal=20 facts=[19]
     #[21] integer n
-  -> apply_forward_step conjD2 goal=20 facts=[19]
+  → apply_forward_step conjD2 goal=20 facts=[19]
     #[22] x = (n + 1 / 2) * pi
   ← inst_exists_goal -n goal=20
     #[23] integer (-n) ∧ pi / 2 - x = -n * pi
@@ -2498,9 +2498,9 @@ proof
     #[7] _VAR n
     #[8] ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = n * pi
     #[9] (∃n. x = of_nat n * pi) ∨ (∃n. x = -(of_nat n * pi))
-  -> apply_forward_step conjD1 goal=9 facts=[8]
+  → apply_forward_step conjD1 goal=9 facts=[8]
     #[10] (∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))
-  -> apply_forward_step conjD2 goal=9 facts=[8]
+  → apply_forward_step conjD2 goal=9 facts=[8]
     #[11] x = n * pi
   ← apply_backward_step disjE goal=9 facts=[10]
     #[12] (∃n1. n = of_nat n1) ⟶ (∃n1. x = of_nat n1 * pi) ∨ (∃n1. x = -(of_nat n1 * pi))
@@ -2517,7 +2517,7 @@ proof
     #[20] (∃n. x = of_nat n * pi) ∨ (∃n. x = -(of_nat n * pi))
   ← inst_exists_goal n1 goal=19
     #[21] x = of_nat n1 * pi
-  -> rewrite_fact_with_prev goal=21 facts=[18,11]
+  → rewrite_fact_with_prev goal=21 facts=[18,11]
     #[22] x = of_nat n1 * pi
   ← introduction goal=13
     #[23] ∃n1. n = -(of_nat n1)
@@ -2530,7 +2530,7 @@ proof
     #[28] (∃n. x = of_nat n * pi) ∨ (∃n. x = -(of_nat n * pi))
   ← inst_exists_goal n1 goal=27
     #[29] x = -(of_nat n1 * pi)
-  -> rewrite_fact_with_prev goal=29 facts=[26,11]
+  → rewrite_fact_with_prev goal=29 facts=[26,11]
     #[30] x = -(of_nat n1) * pi
   ← rewrite_goal real_mul_lneg sym=true goal=29
   ← introduction goal=4
@@ -2594,9 +2594,9 @@ proof
     #[7] _VAR n
     #[8] ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = (n + 1 / 2) * pi
     #[9] (∃n. x = (of_nat n + 1 / 2) * pi) ∨ (∃n. x = -((of_nat n + 1 / 2) * pi))
-  -> apply_forward_step conjD1 goal=9 facts=[8]
+  → apply_forward_step conjD1 goal=9 facts=[8]
     #[10] (∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))
-  -> apply_forward_step conjD2 goal=9 facts=[8]
+  → apply_forward_step conjD2 goal=9 facts=[8]
     #[11] x = (n + 1 / 2) * pi
   ← apply_backward_step disjE goal=9 facts=[10]
     #[12] (∃n1. n = of_nat n1) ⟶ (∃n1. x = (of_nat n1 + 1 / 2) * pi) ∨ (∃n1. x = -((of_nat n1 + 1 / 2) * pi))
@@ -2612,7 +2612,7 @@ proof
     #[19] ∃n. x = (of_nat n + 1 / 2) * pi
   ← inst_exists_goal n1 goal=19
     #[20] x = (of_nat n1 + 1 / 2) * pi
-  -> rewrite_fact_with_prev goal=20 facts=[17,11]
+  → rewrite_fact_with_prev goal=20 facts=[17,11]
     #[21] x = (of_nat n1 + 1 / 2) * pi
   ← introduction goal=13
     #[22] ∃n1. n = -(of_nat n1)
@@ -2630,13 +2630,13 @@ proof
     #[30] ∃n. x = (of_nat n + 1 / 2) * pi
   ← inst_exists_goal n1 goal=30
     #[31] x = (of_nat n1 + 1 / 2) * pi
-  -> rewrite_fact_with_prev goal=31 facts=[28,24]
+  → rewrite_fact_with_prev goal=31 facts=[28,24]
     #[32] n = -of_nat 0
-  -> rewrite_fact real_zero_def sym=true goal=31 facts=[32]
+  → rewrite_fact real_zero_def sym=true goal=31 facts=[32]
     #[33] n = -0
-  -> rewrite_fact real_neg_0 sym=false goal=31 facts=[33]
+  → rewrite_fact real_neg_0 sym=false goal=31 facts=[33]
     #[34] n = 0
-  -> rewrite_fact_with_prev goal=31 facts=[34,11]
+  → rewrite_fact_with_prev goal=31 facts=[34,11]
     #[35] x = (0 + 1 / 2) * pi
   ← rewrite_goal_with_prev goal=31 facts=[28]
     #[36] x = (of_nat 0 + 1 / 2) * pi
@@ -2676,7 +2676,7 @@ proof
     #[53] x = (1 / 2 - of_nat n1) * pi
   ← rewrite_goal real_minus_def sym=false goal=53
     #[54] x = (1 / 2 + -(of_nat n1)) * pi
-  -> rewrite_fact eq_sym_eq sym=false goal=54 facts=[24]
+  → rewrite_fact eq_sym_eq sym=false goal=54 facts=[24]
     #[55] -(of_nat n1) = n
   ← rewrite_goal_with_prev goal=54 facts=[55]
     #[56] x = (1 / 2 + n) * pi
@@ -2823,14 +2823,14 @@ proof
   ← introduction goal=46
     #[48] ∃n. even n ∧ x = of_nat n * (pi / 2)
     #[49] (∃n. x = of_nat n * pi) ∨ (∃n. x = -(of_nat n * pi))
-  -> rewrite_fact even_exists sym=false goal=49 facts=[48]
+  → rewrite_fact even_exists sym=false goal=49 facts=[48]
     #[50] ∃n. (∃m. n = 2 * m) ∧ x = of_nat n * (pi / 2)
   exists_elim n goal=49 facts=[50]
     #[51] (∃m. n = 2 * m) ∧ x = of_nat n * (pi / 2)
     #[52] (∃n. x = of_nat n * pi) ∨ (∃n. x = -(of_nat n * pi))
-  -> apply_forward_step conjD1 goal=52 facts=[51]
+  → apply_forward_step conjD1 goal=52 facts=[51]
     #[53] ∃m. n = 2 * m
-  -> apply_forward_step conjD2 goal=52 facts=[51]
+  → apply_forward_step conjD2 goal=52 facts=[51]
     #[54] x = of_nat n * (pi / 2)
   exists_elim m goal=52 facts=[53]
     #[55] n = 2 * m
@@ -2839,7 +2839,7 @@ proof
     #[57] ∃n. x = of_nat n * pi
   ← inst_exists_goal m goal=57
     #[58] x = of_nat m * pi
-  -> rewrite_fact_with_prev goal=58 facts=[55,54]
+  → rewrite_fact_with_prev goal=58 facts=[55,54]
     #[59] x = of_nat (2 * m) * (pi / 2)
   ← rewrite_goal_with_prev goal=58 facts=[59]
     #[60] of_nat (2 * m) * (pi / 2) = of_nat m * pi
@@ -2852,14 +2852,14 @@ proof
   ← introduction goal=47
     #[64] ∃n. even n ∧ x = -(of_nat n * (pi / 2))
     #[65] (∃n. x = of_nat n * pi) ∨ (∃n. x = -(of_nat n * pi))
-  -> rewrite_fact even_exists sym=false goal=65 facts=[64]
+  → rewrite_fact even_exists sym=false goal=65 facts=[64]
     #[66] ∃n. (∃m. n = 2 * m) ∧ x = -(of_nat n * (pi / 2))
   exists_elim n goal=65 facts=[66]
     #[67] (∃m. n = 2 * m) ∧ x = -(of_nat n * (pi / 2))
     #[68] (∃n. x = of_nat n * pi) ∨ (∃n. x = -(of_nat n * pi))
-  -> apply_forward_step conjD1 goal=68 facts=[67]
+  → apply_forward_step conjD1 goal=68 facts=[67]
     #[69] ∃m. n = 2 * m
-  -> apply_forward_step conjD2 goal=68 facts=[67]
+  → apply_forward_step conjD2 goal=68 facts=[67]
     #[70] x = -(of_nat n * (pi / 2))
   exists_elim m goal=68 facts=[69]
     #[71] (∃n. x = of_nat n * pi) ∨ (∃n. x = -(of_nat n * pi))
@@ -2969,9 +2969,9 @@ proof
   ← introduction goal=3
     #[52] (∃n. ¬(even n) ∧ x = of_nat n * (pi / 2)) ∨ (∃n. ¬(even n) ∧ x = -(of_nat n * (pi / 2)))
     #[53] (∃n. x = (of_nat n + 1 / 2) * pi) ∨ (∃n. x = -((of_nat n + 1 / 2) * pi))
-  -> rewrite_fact not_even sym=false goal=53 facts=[52]
+  → rewrite_fact not_even sym=false goal=53 facts=[52]
     #[54] (∃n. odd n ∧ x = of_nat n * (pi / 2)) ∨ (∃n. odd n ∧ x = -(of_nat n * (pi / 2)))
-  -> rewrite_fact odd_exists sym=false goal=53 facts=[54]
+  → rewrite_fact odd_exists sym=false goal=53 facts=[54]
     #[55] (∃n. (∃m. n = Suc (2 * m)) ∧ x = of_nat n * (pi / 2)) ∨ (∃n. (∃m. n = Suc (2 * m)) ∧ x = -(of_nat n * (pi / 2)))
   ← apply_backward_step disjE goal=53 facts=[55]
     #[56] (∃n. (∃m. n = Suc (2 * m)) ∧ x = of_nat n * (pi / 2)) ⟶ (∃n. x = (of_nat n + 1 / 2) * pi) ∨ (∃n. x = -((of_nat n + 1 / 2) * pi))
@@ -2985,9 +2985,9 @@ proof
     #[61] (∃m. n = Suc (2 * m)) ∧ x = of_nat n * (pi / 2)
     #[62] ∃n. x = (of_nat n + 1 / 2) * pi
     #[63] (∃n. x = (of_nat n + 1 / 2) * pi) ∨ (∃n. x = -((of_nat n + 1 / 2) * pi))
-  -> apply_forward_step conjD1 goal=62 facts=[61]
+  → apply_forward_step conjD1 goal=62 facts=[61]
     #[64] ∃m. n = Suc (2 * m)
-  -> apply_forward_step conjD2 goal=62 facts=[61]
+  → apply_forward_step conjD2 goal=62 facts=[61]
     #[65] x = of_nat n * (pi / 2)
   exists_elim m goal=62 facts=[64]
     #[66] n = Suc (2 * m)
@@ -3014,9 +3014,9 @@ proof
     #[78] (∃m. n = Suc (2 * m)) ∧ x = -(of_nat n * (pi / 2))
     #[79] ∃n. x = -((of_nat n + 1 / 2) * pi)
     #[80] (∃n. x = (of_nat n + 1 / 2) * pi) ∨ (∃n. x = -((of_nat n + 1 / 2) * pi))
-  -> apply_forward_step conjD1 goal=79 facts=[78]
+  → apply_forward_step conjD1 goal=79 facts=[78]
     #[81] ∃m. n = Suc (2 * m)
-  -> apply_forward_step conjD2 goal=79 facts=[78]
+  → apply_forward_step conjD2 goal=79 facts=[78]
     #[82] x = -(of_nat n * (pi / 2))
   exists_elim m goal=79 facts=[81]
     #[83] ∃n. x = -((of_nat n + 1 / 2) * pi)
@@ -3048,17 +3048,17 @@ proof
     #[5] ∀c::real. ∀s. c = 1 ⟶ c * c + s * s = 1 ⟶ s = 0
   ← z3 goal=5
     #[6] ∀c::real. ∀s. c = 1 ⟶ c * c + s * s = 1 ⟶ s = 0
-  -> apply_fact goal=4 facts=[6,3]
+  → apply_fact goal=4 facts=[6,3]
     #[7] ∀s. cos x * cos x + s * s = 1 ⟶ s = 0
-  -> apply_forward_step sin_circle param_x=x goal=4
+  → apply_forward_step sin_circle param_x=x goal=4
     #[8] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact real_add_comm sym=false goal=4 facts=[8]
+  → rewrite_fact real_add_comm sym=false goal=4 facts=[8]
     #[9] cos x ^ (2::nat) + sin x ^ (2::nat) = 1
-  -> rewrite_fact real_pow_2 sym=false goal=4 facts=[9]
+  → rewrite_fact real_pow_2 sym=false goal=4 facts=[9]
     #[10] cos x * cos x + sin x * sin x = 1
-  -> apply_fact goal=4 facts=[7,10]
+  → apply_fact goal=4 facts=[7,10]
     #[11] sin x = 0
-  -> rewrite_fact sin_zero_pi sym=false goal=4 facts=[11]
+  → rewrite_fact sin_zero_pi sym=false goal=4 facts=[11]
     #[12] (∃n. x = of_nat n * pi) ∨ (∃n. x = -(of_nat n * pi))
   ← apply_backward_step disjE goal=4 facts=[12]
     #[13] (∃n. x = of_nat n * pi) ⟶ (∃n. x = of_nat n * 2 * pi) ∨ (∃n. x = -(of_nat n * 2 * pi))
@@ -3073,11 +3073,11 @@ proof
     #[19] x = of_nat n * pi
     #[20] ∃n. x = of_nat n * 2 * pi
     #[21] (∃n. x = of_nat n * 2 * pi) ∨ (∃n. x = -(of_nat n * 2 * pi))
-  -> rewrite_fact_with_prev goal=20 facts=[19,3]
+  → rewrite_fact_with_prev goal=20 facts=[19,3]
     #[22] cos (of_nat n * pi) = 1
-  -> rewrite_fact cos_npi sym=false goal=20 facts=[22]
+  → rewrite_fact cos_npi sym=false goal=20 facts=[22]
     #[23] -(1::real) ^ n = 1
-  -> rewrite_fact real_pow_neg sym=false goal=20 facts=[23]
+  → rewrite_fact real_pow_neg sym=false goal=20 facts=[23]
     #[24] (if even n then (1::real) ^ n else -(1 ^ n)) = 1
   ← cases "even n" goal=20
     #[25] even n ⟶ (∃n1. x = of_nat n1 * 2 * pi)
@@ -3085,7 +3085,7 @@ proof
   ← introduction goal=25
     #[27] even n
     #[28] ∃n. x = of_nat n * 2 * pi
-  -> rewrite_fact even_exists sym=false goal=28 facts=[27]
+  → rewrite_fact even_exists sym=false goal=28 facts=[27]
     #[29] ∃m. n = 2 * m
   exists_elim m goal=28 facts=[29]
     #[30] _VAR m
@@ -3102,9 +3102,9 @@ proof
   ← introduction goal=26
     #[37] ¬(even n)
     #[38] ∃n. x = of_nat n * 2 * pi
-  -> rewrite_fact if_not_P sym=false goal=38 facts=[24,37]
+  → rewrite_fact if_not_P sym=false goal=38 facts=[24,37]
     #[39] -((1::real) ^ n) = 1
-  -> rewrite_fact real_pow_one sym=false goal=38 facts=[39]
+  → rewrite_fact real_pow_one sym=false goal=38 facts=[39]
     #[40] -(1::real) = 1
   ← z3 goal=38 facts=[40]
     #[41] ∃n. x = of_nat n * 2 * pi
@@ -3117,20 +3117,20 @@ proof
     #[45] x = -(of_nat n * pi)
     #[46] ∃n. x = -(of_nat n * 2 * pi)
     #[47] (∃n. x = of_nat n * 2 * pi) ∨ (∃n. x = -(of_nat n * 2 * pi))
-  -> rewrite_fact_with_prev goal=46 facts=[45,3]
+  → rewrite_fact_with_prev goal=46 facts=[45,3]
     #[48] cos (-(of_nat n * pi)) = 1
-  -> rewrite_fact cos_neg sym=false goal=46 facts=[48]
+  → rewrite_fact cos_neg sym=false goal=46 facts=[48]
     #[49] cos (of_nat n * pi) = 1
-  -> rewrite_fact cos_npi sym=false goal=46 facts=[49]
+  → rewrite_fact cos_npi sym=false goal=46 facts=[49]
     #[50] -(1::real) ^ n = 1
-  -> rewrite_fact real_pow_neg sym=false goal=46 facts=[50]
+  → rewrite_fact real_pow_neg sym=false goal=46 facts=[50]
     #[51] (if even n then (1::real) ^ n else -(1 ^ n)) = 1
   ← cases "even n" goal=46
     #[52] even n ⟶ (∃n1. x = -(of_nat n1 * 2 * pi))
     #[53] ¬(even n) ⟶ (∃n1. x = -(of_nat n1 * 2 * pi))
   ← introduction goal=52
     #[54] ∃n. x = -(of_nat n * 2 * pi)
-  -> rewrite_fact even_exists sym=false goal=54 facts=[27]
+  → rewrite_fact even_exists sym=false goal=54 facts=[27]
   exists_elim m goal=54 facts=[29]
     #[55] ∃n. x = -(of_nat n * 2 * pi)
   ← inst_exists_goal m goal=55
@@ -3143,9 +3143,9 @@ proof
     #[59] -(of_nat (2 * m) * pi) = -(of_nat m * 2 * pi)
   ← introduction goal=53
     #[60] ∃n. x = -(of_nat n * 2 * pi)
-  -> rewrite_fact if_not_P sym=false goal=60 facts=[51,37]
+  → rewrite_fact if_not_P sym=false goal=60 facts=[51,37]
     #[61] -((1::real) ^ n) = 1
-  -> rewrite_fact real_pow_one sym=false goal=60 facts=[61]
+  → rewrite_fact real_pow_one sym=false goal=60 facts=[61]
     #[62] -(1::real) = 1
   ← z3 goal=60 facts=[62]
     #[63] ∃n. x = -(of_nat n * 2 * pi)
@@ -3213,9 +3213,9 @@ proof
     #[3] sqrt (1 - cos x ^ (2::nat)) = sin x
   ← apply_backward_step sqrt_unique goal=3
     #[4] sin x ^ (2::nat) = 1 - cos x ^ (2::nat)
-  -> apply_forward_step sin_circle param_x=x goal=4
+  → apply_forward_step sin_circle param_x=x goal=4
     #[5] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=4 facts=[5]
+  → rewrite_fact eq_sym_eq sym=false goal=4 facts=[5]
     #[6] 1 = sin x ^ (2::nat) + cos x ^ (2::nat)
   ← rewrite_goal_with_prev goal=4 facts=[6]
     #[7] sin x ^ (2::nat) = sin x ^ (2::nat) + cos x ^ (2::nat) - cos x ^ (2::nat)
@@ -3233,17 +3233,17 @@ proof
     #[2] x < pi
     #[3] sin x = 0
     #[4] x = 0
-  -> rewrite_fact sin_eq_0 sym=false goal=4 facts=[3]
+  → rewrite_fact sin_eq_0 sym=false goal=4 facts=[3]
     #[5] ∃n. integer n ∧ x = n * pi
-  -> rewrite_fact real_poly_neg1 sym=false goal=4 facts=[1]
+  → rewrite_fact real_poly_neg1 sym=false goal=4 facts=[1]
     #[6] -1 * pi < x
   exists_elim n goal=4 facts=[5]
     #[7] _VAR n
     #[8] integer n ∧ x = n * pi
     #[9] x = 0
-  -> apply_forward_step conjD1 goal=9 facts=[8]
+  → apply_forward_step conjD1 goal=9 facts=[8]
     #[10] integer n
-  -> apply_forward_step conjD2 goal=9 facts=[8]
+  → apply_forward_step conjD2 goal=9 facts=[8]
     #[11] x = n * pi
   ← rewrite_goal_with_prev goal=9 facts=[11]
     #[12] n * pi = 0
@@ -3251,24 +3251,24 @@ proof
     #[13] n = 0 ∨ pi = 0
   ← apply_backward_step disjI1 goal=13
     #[14] n = 0
-  -> apply_forward_step real_abs_integer_lemma goal=14 facts=[10]
+  → apply_forward_step real_abs_integer_lemma goal=14 facts=[10]
     #[15] ¬(n = 0) ⟶ 1 ≤ abs n
-  -> rewrite_fact_with_prev goal=14 facts=[11,6]
+  → rewrite_fact_with_prev goal=14 facts=[11,6]
     #[16] -1 * pi < n * pi
-  -> rewrite_fact_with_prev goal=14 facts=[11,2]
+  → rewrite_fact_with_prev goal=14 facts=[11,2]
     #[17] n * pi < pi
-  -> rewrite_fact real_mul_lid sym=true goal=14 facts=[17]
+  → rewrite_fact real_mul_lid sym=true goal=14 facts=[17]
     #[18] 1 * (n * pi) < 1 * pi
-  -> rewrite_fact real_mult_assoc sym=false goal=14 facts=[18]
+  → rewrite_fact real_mult_assoc sym=false goal=14 facts=[18]
     #[19] 1 * n * pi < 1 * pi
-  -> apply_forward_step conjI goal=14 facts=[19,16]
+  → apply_forward_step conjI goal=14 facts=[19,16]
     #[20] 1 * n * pi < 1 * pi ∧ -1 * pi < n * pi
   ← apply_backward_step contrapositive goal=14 facts=[20]
     #[21] ¬(n = 0) ⟶ ¬(1 * n * pi < 1 * pi ∧ -1 * pi < n * pi)
   ← introduction goal=21
     #[22] ¬(n = 0)
     #[23] ¬(1 * n * pi < 1 * pi ∧ -1 * pi < n * pi)
-  -> apply_fact goal=23 facts=[15,22]
+  → apply_fact goal=23 facts=[15,22]
     #[24] 1 ≤ abs n
   ← apply_backward_step contrapositive goal=23 facts=[24]
     #[25] ¬¬(1 * n * pi < 1 * pi ∧ -1 * pi < n * pi) ⟶ ¬(1 ≤ abs n)
@@ -3286,23 +3286,23 @@ proof
   ← apply_backward_step conjI goal=31
     #[32] -1 < n
     #[33] n < 1
-  -> apply_forward_step conjD1 goal=32 facts=[27]
+  → apply_forward_step conjD1 goal=32 facts=[27]
     #[34] 1 * n * pi < 1 * pi
-  -> apply_forward_step conjD2 goal=32 facts=[27]
+  → apply_forward_step conjD2 goal=32 facts=[27]
     #[35] -1 * pi < n * pi
   cut "!p::real. !a. !b. a*p < b * p --> 0 < p --> a < b" goal=32
     #[36] ∀p::real. ∀a. ∀b. a * p < b * p ⟶ 0 < p ⟶ a < b
   ← z3 goal=36
     #[37] ∀p::real. ∀a. ∀b. a * p < b * p ⟶ 0 < p ⟶ a < b
-  -> apply_fact goal=32 facts=[37,35]
+  → apply_fact goal=32 facts=[37,35]
     #[38] 0 < pi ⟶ -1 < n
   ← apply_prev goal=32 facts=[38]
     #[39] 0 < pi
   ← apply_backward_step pi_pos goal=39
     #[40] 0 < pi
-  -> apply_fact goal=33 facts=[37,34]
+  → apply_fact goal=33 facts=[37,34]
     #[41] 0 < pi ⟶ 1 * n < 1
-  -> rewrite_fact real_mul_lid sym=false goal=33 facts=[41]
+  → rewrite_fact real_mul_lid sym=false goal=33 facts=[41]
     #[42] 0 < pi ⟶ n < 1
   ← apply_prev goal=33 facts=[42]
 qed
@@ -3330,9 +3330,9 @@ proof
     #[7] (2 * cos x ^ (2::nat) - 1) * cos x - 2 * sin x ^ (2::nat) * cos x = 4 * cos x ^ (3::nat) - 3 * cos x
   cut "sin x ^ (2::nat) = 1 - cos x ^ (2::nat)" goal=7
     #[8] sin x ^ (2::nat) = 1 - cos x ^ (2::nat)
-  -> apply_forward_step sin_circle param_x=x goal=8
+  → apply_forward_step sin_circle param_x=x goal=8
     #[9] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=8 facts=[9]
+  → rewrite_fact eq_sym_eq sym=false goal=8 facts=[9]
     #[10] 1 = sin x ^ (2::nat) + cos x ^ (2::nat)
   ← rewrite_goal_with_prev goal=8 facts=[10]
     #[11] sin x ^ (2::nat) = sin x ^ (2::nat) + cos x ^ (2::nat) - cos x ^ (2::nat)
@@ -3356,14 +3356,14 @@ theorem real_cos_pi6
   prop cos (1 / 6 * pi) = sqrt 3 / 2
   [hint_rewrite]
 proof
-  -> apply_forward_step cos_treble_cos param_x="1 / 6 * pi" goal=0
+  → apply_forward_step cos_treble_cos param_x="1 / 6 * pi" goal=0
     #[1] cos (3 * (1 / 6 * pi)) = 4 * cos (1 / 6 * pi) ^ (3::nat) - 3 * cos (1 / 6 * pi)
   cut "3 * (1 / 6 * pi) = pi / 2" goal=0
     #[2] 3 * (1 / 6 * pi) = pi / 2
   real_norm goal=2
-  -> rewrite_fact_with_prev goal=0 facts=[2,1]
+  → rewrite_fact_with_prev goal=0 facts=[2,1]
     #[3] cos (pi / 2) = 4 * cos (1 / 6 * pi) ^ (3::nat) - 3 * cos (1 / 6 * pi)
-  -> rewrite_fact real_cos_pi2 sym=false goal=0 facts=[3]
+  → rewrite_fact real_cos_pi2 sym=false goal=0 facts=[3]
     #[4] 0 = 4 * cos (1 / 6 * pi) ^ (3::nat) - 3 * cos (1 / 6 * pi)
   cut "!c::real. 0 = 4 * c ^ (3::nat) - 3 * c <-->\n                         c = 0 | (2 * c) ^ (2::nat) = 3" goal=0
     #[5] ∀c::real. 0 = 4 * c ^ (3::nat) - 3 * c ⟷ c = 0 ∨ (2 * c) ^ (2::nat) = 3
@@ -3378,7 +3378,7 @@ proof
   ← rewrite_goal real_pow_2 sym=false goal=9
     #[10] 0 = 4 * (c * c * c) - 3 * c ⟷ c = 0 ∨ 2 * c * (2 * c) = 3
   ← z3 goal=10
-  -> rewrite_fact_with_prev goal=0 facts=[5,4]
+  → rewrite_fact_with_prev goal=0 facts=[5,4]
     #[11] cos (1 / 6 * pi) = 0 ∨ (2 * cos (1 / 6 * pi)) ^ (2::nat) = 3
   cut "0 < cos (1 / 6 * pi)" goal=0
     #[12] 0 < cos (1 / 6 * pi)
@@ -3406,28 +3406,28 @@ proof
   ← introduction goal=21
     #[23] cos (1 / 6 * pi) = 0
     #[24] cos (1 / 6 * pi) = sqrt 3 / 2
-  -> rewrite_fact_with_prev goal=24 facts=[23,12]
+  → rewrite_fact_with_prev goal=24 facts=[23,12]
     #[25] (0::real) < 0
   ← z3 goal=24 facts=[25]
   ← introduction goal=22
     #[26] (2 * cos (1 / 6 * pi)) ^ (2::nat) = 3
     #[27] cos (1 / 6 * pi) = sqrt 3 / 2
-  -> rewrite_fact sqrt_inj sym=true goal=27 facts=[26]
+  → rewrite_fact sqrt_inj sym=true goal=27 facts=[26]
     #[28] sqrt ((2 * cos (1 / 6 * pi)) ^ (2::nat)) = sqrt 3
-  -> rewrite_fact pow_2_sqrt_abs sym=false goal=27 facts=[28]
+  → rewrite_fact pow_2_sqrt_abs sym=false goal=27 facts=[28]
     #[29] abs (2 * cos (1 / 6 * pi)) = sqrt 3
-  -> rewrite_fact real_abs_mul sym=false goal=27 facts=[29]
+  → rewrite_fact real_abs_mul sym=false goal=27 facts=[29]
     #[30] abs 2 * abs (cos (1 / 6 * pi)) = sqrt 3
-  -> rewrite_fact real_abs_nat sym=false goal=27 facts=[30]
+  → rewrite_fact real_abs_nat sym=false goal=27 facts=[30]
     #[31] 2 * abs (cos (1 / 6 * pi)) = sqrt 3
-  -> rewrite_fact abs_def sym=false goal=27 facts=[31]
+  → rewrite_fact abs_def sym=false goal=27 facts=[31]
     #[32] 2 * (if 0 ≤ cos (1 / 6 * pi) then cos (1 / 6 * pi) else -(cos (1 / 6 * pi))) = sqrt 3
   cut "0 ≤ cos (1 / 6 * pi)" goal=27 facts=[32]
     #[33] 0 ≤ cos (1 / 6 * pi)
   ← apply_backward_step real_lt_imp_le goal=33
-  -> rewrite_fact if_P sym=false goal=27 facts=[32,33]
+  → rewrite_fact if_P sym=false goal=27 facts=[32,33]
     #[34] 2 * cos (1 / 6 * pi) = sqrt 3
-  -> rewrite_fact eq_sym_eq sym=false goal=27 facts=[34]
+  → rewrite_fact eq_sym_eq sym=false goal=27 facts=[34]
     #[35] sqrt 3 = 2 * cos (1 / 6 * pi)
   ← rewrite_goal_with_prev goal=27 facts=[35]
     #[36] cos (1 / 6 * pi) = 2 * cos (1 / 6 * pi) / 2
@@ -3439,15 +3439,15 @@ theorem real_sin_pi6
   prop sin (1 / 6 * pi) = 1 / 2
   [hint_rewrite]
 proof
-  -> apply_forward_step sin_circle param_x="1 / 6 * pi" goal=0
+  → apply_forward_step sin_circle param_x="1 / 6 * pi" goal=0
     #[1] sin (1 / 6 * pi) ^ (2::nat) + cos (1 / 6 * pi) ^ (2::nat) = 1
-  -> rewrite_fact real_cos_pi6 sym=false goal=0 facts=[1]
+  → rewrite_fact real_cos_pi6 sym=false goal=0 facts=[1]
     #[2] sin (1 / 6 * pi) ^ (2::nat) + (sqrt 3 / 2) ^ (2::nat) = 1
-  -> rewrite_fact real_pow_div sym=false goal=0 facts=[2]
+  → rewrite_fact real_pow_div sym=false goal=0 facts=[2]
     #[3] sin (1 / 6 * pi) ^ (2::nat) + sqrt 3 ^ (2::nat) / 2 ^ (2::nat) = 1
-  -> rewrite_fact sqrt_works_gen_2 sym=false goal=0 facts=[3]
+  → rewrite_fact sqrt_works_gen_2 sym=false goal=0 facts=[3]
     #[4] sin (1 / 6 * pi) ^ (2::nat) + abs 3 / 2 ^ (2::nat) = 1
-  -> rewrite_fact real_abs_nat sym=false goal=0 facts=[4]
+  → rewrite_fact real_abs_nat sym=false goal=0 facts=[4]
     #[5] sin (1 / 6 * pi) ^ (2::nat) + 3 / 2 ^ (2::nat) = 1
   cut "∀s. 0 < s ⟶ s ^ (2::nat) + 3 / 2 ^ (2::nat) = 1 ⟶ s = 1 / 2" goal=0
     #[6] ∀s. 0 < s ⟶ s ^ (2::nat) + 3 / 2 ^ (2::nat) = 1 ⟶ s = 1 / 2
@@ -3456,7 +3456,7 @@ proof
     #[8] 0 < s
     #[9] s ^ (2::nat) + 3 / 2 ^ (2::nat) = 1
     #[10] s = 1 / 2
-  -> rewrite_fact real_pow_2 sym=false goal=10 facts=[9]
+  → rewrite_fact real_pow_2 sym=false goal=10 facts=[9]
     #[11] s * s + 3 / (2 * 2) = 1
   ← z3 goal=10 facts=[8,11]
   ← apply_prev goal=0 facts=[6]
@@ -3496,9 +3496,9 @@ proof
   ← introduction goal=5
     #[7] x = 0
     #[8] 0 < x ∧ x < pi
-  -> rewrite_fact_with_prev goal=8 facts=[7,3]
+  → rewrite_fact_with_prev goal=8 facts=[7,3]
     #[9] 0 < sin 0
-  -> rewrite_fact real_sin_0 sym=false goal=8 facts=[9]
+  → rewrite_fact real_sin_0 sym=false goal=8 facts=[9]
     #[10] (0::real) < 0
   ← z3 goal=8 facts=[10]
     #[11] 0 < x ∧ x < pi
@@ -3511,9 +3511,9 @@ proof
   ← introduction goal=14
     #[16] x = pi
     #[17] 0 < x ∧ x < pi
-  -> rewrite_fact_with_prev goal=17 facts=[16,3]
+  → rewrite_fact_with_prev goal=17 facts=[16,3]
     #[18] 0 < sin pi
-  -> rewrite_fact real_sin_pi sym=false goal=17 facts=[18]
+  → rewrite_fact real_sin_pi sym=false goal=17 facts=[18]
     #[19] (0::real) < 0
   ← z3 goal=17 facts=[19]
     #[20] 0 < x ∧ x < pi
@@ -3526,9 +3526,9 @@ proof
   ← introduction goal=23
     #[25] x = 2 * pi
     #[26] 0 < x ∧ x < pi
-  -> rewrite_fact_with_prev goal=26 facts=[25,3]
+  → rewrite_fact_with_prev goal=26 facts=[25,3]
     #[27] 0 < sin (2 * pi)
-  -> rewrite_fact sin_npi sym=false goal=26 facts=[27]
+  → rewrite_fact sin_npi sym=false goal=26 facts=[27]
     #[28] (0::real) < 0
   ← z3 goal=26 facts=[28]
     #[29] 0 < x ∧ x < pi
@@ -3542,9 +3542,9 @@ proof
   ← introduction goal=33
     #[34] ¬(¬(x ≤ 0) ∧ ¬(pi ≤ x))
     #[35] ¬(0 < sin x)
-  -> rewrite_fact de_morgan_thm1 sym=false goal=35 facts=[34]
+  → rewrite_fact de_morgan_thm1 sym=false goal=35 facts=[34]
     #[36] ¬¬(x ≤ 0) ∨ ¬¬(pi ≤ x)
-  -> rewrite_fact double_neg sym=false goal=35 facts=[36]
+  → rewrite_fact double_neg sym=false goal=35 facts=[36]
     #[37] x ≤ 0 ∨ pi ≤ x
   ← apply_backward_step disjE goal=35 facts=[37]
     #[38] x ≤ 0 ⟶ ¬(0 < sin x)
@@ -3671,9 +3671,9 @@ proof
     #[2] 0 ≤ y
     #[3] x ^ (2::nat) + y ^ (2::nat) = 1
     #[4] ∃t. 0 ≤ t ∧ t ≤ pi / 2 ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step sin_total_pos param_y=y goal=4
+  → apply_forward_step sin_total_pos param_y=y goal=4
     #[5] 0 ≤ y ⟶ y ≤ 1 ⟶ (∃x. 0 ≤ x ∧ x ≤ pi / 2 ∧ sin x = y)
-  -> apply_fact goal=4 facts=[5,2]
+  → apply_fact goal=4 facts=[5,2]
     #[6] y ≤ 1 ⟶ (∃x. 0 ≤ x ∧ x ≤ pi / 2 ∧ sin x = y)
   cut "y ≤ 1" goal=4
     #[7] y ≤ 1
@@ -3690,19 +3690,19 @@ proof
     #[13] ¬(x * x + y * y = 1)
   ← z3 goal=13 facts=[11]
     #[14] ¬(x * x + y * y = 1)
-  -> apply_fact goal=4 facts=[6,7]
+  → apply_fact goal=4 facts=[6,7]
     #[15] ∃x. 0 ≤ x ∧ x ≤ pi / 2 ∧ sin x = y
   exists_elim t goal=4 facts=[15]
     #[16] _VAR t
     #[17] 0 ≤ t ∧ t ≤ pi / 2 ∧ sin t = y
     #[18] ∃t. 0 ≤ t ∧ t ≤ pi / 2 ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step conjD1 goal=18 facts=[17]
+  → apply_forward_step conjD1 goal=18 facts=[17]
     #[19] 0 ≤ t
-  -> apply_forward_step conjD2 goal=18 facts=[17]
+  → apply_forward_step conjD2 goal=18 facts=[17]
     #[20] t ≤ pi / 2 ∧ sin t = y
-  -> apply_forward_step conjD1 goal=18 facts=[20]
+  → apply_forward_step conjD1 goal=18 facts=[20]
     #[21] t ≤ pi / 2
-  -> apply_forward_step conjD2 goal=18 facts=[20]
+  → apply_forward_step conjD2 goal=18 facts=[20]
     #[22] sin t = y
   ← inst_exists_goal t goal=18
     #[23] 0 ≤ t ∧ t ≤ pi / 2 ∧ x = cos t ∧ y = sin t
@@ -3715,13 +3715,13 @@ proof
     #[27] y = sin t
   cut "x = cos t | x = -cos t" goal=26
     #[28] x = cos t ∨ x = -(cos t)
-  -> apply_forward_step sin_circle param_x=t goal=28
+  → apply_forward_step sin_circle param_x=t goal=28
     #[29] sin t ^ (2::nat) + cos t ^ (2::nat) = 1
-  -> rewrite_fact_with_prev goal=28 facts=[22,29]
+  → rewrite_fact_with_prev goal=28 facts=[22,29]
     #[30] y ^ (2::nat) + cos t ^ (2::nat) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=28 facts=[3]
+  → rewrite_fact eq_sym_eq sym=false goal=28 facts=[3]
     #[31] 1 = x ^ (2::nat) + y ^ (2::nat)
-  -> rewrite_fact_with_prev goal=28 facts=[31,30]
+  → rewrite_fact_with_prev goal=28 facts=[31,30]
     #[32] y ^ (2::nat) + cos t ^ (2::nat) = x ^ (2::nat) + y ^ (2::nat)
   cut "∀a::real. ∀b. ∀c. a + b ^ (2::nat) = c ^ (2::nat) + a ⟷ (c = b | c = -b)" goal=28
     #[33] ∀a::real. ∀b. ∀c. a + b ^ (2::nat) = c ^ (2::nat) + a ⟷ c = b ∨ c = -b
@@ -3734,16 +3734,16 @@ proof
     #[38] a + b * b = c * c + a ⟷ c = b ∨ c = -b
   ← z3 goal=38
     #[39] a + b * b = c * c + a ⟷ c = b ∨ c = -b
-  -> rewrite_fact_with_prev goal=28 facts=[33,32]
+  → rewrite_fact_with_prev goal=28 facts=[33,32]
   ← apply_backward_step disjE goal=26 facts=[28]
     #[40] x = cos t ⟶ x = cos t
     #[41] x = -(cos t) ⟶ x = cos t
   ← introduction goal=41
     #[42] x = -(cos t)
     #[43] x = cos t
-  -> rewrite_fact_with_prev goal=43 facts=[42,1]
+  → rewrite_fact_with_prev goal=43 facts=[42,1]
     #[44] 0 ≤ -(cos t)
-  -> rewrite_fact real_le_lt sym=false goal=43 facts=[44]
+  → rewrite_fact real_le_lt sym=false goal=43 facts=[44]
     #[45] 0 < -(cos t) ∨ 0 = -(cos t)
   ← apply_backward_step disjE goal=43 facts=[45]
     #[46] 0 < -(cos t) ⟶ x = cos t
@@ -3813,21 +3813,21 @@ proof
   ← introduction goal=6
     #[8] 0 ≤ x
     #[9] ∃t. 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step sincos_total_pi2 goal=9 facts=[8,1,2]
+  → apply_forward_step sincos_total_pi2 goal=9 facts=[8,1,2]
     #[10] ∃t. 0 ≤ t ∧ t ≤ pi / 2 ∧ x = cos t ∧ y = sin t
   exists_elim t goal=9 facts=[10]
     #[11] _VAR t
     #[12] 0 ≤ t ∧ t ≤ pi / 2 ∧ x = cos t ∧ y = sin t
     #[13] ∃t. 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step conjD1 goal=13 facts=[12]
+  → apply_forward_step conjD1 goal=13 facts=[12]
     #[14] 0 ≤ t
-  -> apply_forward_step conjD2 goal=13 facts=[12]
+  → apply_forward_step conjD2 goal=13 facts=[12]
     #[15] t ≤ pi / 2 ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step conjD1 goal=13 facts=[15]
+  → apply_forward_step conjD1 goal=13 facts=[15]
     #[16] t ≤ pi / 2
-  -> apply_forward_step conjD2 goal=13 facts=[15]
+  → apply_forward_step conjD2 goal=13 facts=[15]
     #[17] x = cos t ∧ y = sin t
-  -> apply_forward_step conjD2 goal=17 facts=[15]
+  → apply_forward_step conjD2 goal=17 facts=[15]
   ← inst_exists_goal t goal=13
     #[18] 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ y = sin t
   ← apply_backward_step conjI goal=18
@@ -3845,9 +3845,9 @@ proof
   ← introduction goal=7
     #[25] 0 ≤ -x
     #[26] ∃t. 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step sincos_total_pi2 goal=26 facts=[25,1]
+  → apply_forward_step sincos_total_pi2 goal=26 facts=[25,1]
     #[27] -x ^ (2::nat) + y ^ (2::nat) = 1 ⟶ (∃t. 0 ≤ t ∧ t ≤ pi / 2 ∧ -x = cos t ∧ y = sin t)
-  -> rewrite_fact real_pow_neg sym=false goal=26 facts=[27]
+  → rewrite_fact real_pow_neg sym=false goal=26 facts=[27]
     #[28] (if even 2 then x ^ (2::nat) else -(x ^ (2::nat))) + y ^ (2::nat) = 1 ⟶ (∃t. 0 ≤ t ∧ t ≤ pi / 2 ∧ -x = cos t ∧ y = sin t)
   cut "even 2" goal=26
     #[29] even 2
@@ -3857,25 +3857,25 @@ proof
     #[31] (2::nat) = 2 * 1
   ← rewrite_goal mult_1_right sym=false goal=31
     #[32] (2::nat) = 2 * 1
-  -> rewrite_fact if_P sym=false goal=26 facts=[28,29]
+  → rewrite_fact if_P sym=false goal=26 facts=[28,29]
     #[33] x ^ (2::nat) + y ^ (2::nat) = 1 ⟶ (∃t. 0 ≤ t ∧ t ≤ pi / 2 ∧ -x = cos t ∧ y = sin t)
-  -> apply_fact goal=26 facts=[33,2]
+  → apply_fact goal=26 facts=[33,2]
     #[34] ∃t. 0 ≤ t ∧ t ≤ pi / 2 ∧ -x = cos t ∧ y = sin t
   exists_elim t goal=26 facts=[34]
     #[35] 0 ≤ t ∧ t ≤ pi / 2 ∧ -x = cos t ∧ y = sin t
     #[36] ∃t. 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step conjD1 goal=36 facts=[35]
+  → apply_forward_step conjD1 goal=36 facts=[35]
     #[37] 0 ≤ t
-  -> apply_forward_step conjD2 goal=36 facts=[35]
+  → apply_forward_step conjD2 goal=36 facts=[35]
     #[38] t ≤ pi / 2 ∧ -x = cos t ∧ y = sin t
-  -> apply_forward_step conjD1 goal=36 facts=[38]
+  → apply_forward_step conjD1 goal=36 facts=[38]
     #[39] t ≤ pi / 2
-  -> apply_forward_step conjD2 goal=36 facts=[38]
+  → apply_forward_step conjD2 goal=36 facts=[38]
     #[40] -x = cos t ∧ y = sin t
-  -> apply_forward_step conjD1 goal=36 facts=[40]
+  → apply_forward_step conjD1 goal=36 facts=[40]
     #[41] -x = cos t
-  -> apply_forward_step conjD1 goal=41 facts=[40]
-  -> apply_forward_step conjD2 goal=36 facts=[40]
+  → apply_forward_step conjD1 goal=41 facts=[40]
+  → apply_forward_step conjD2 goal=36 facts=[40]
     #[42] y = sin t
   ← inst_exists_goal "pi - t" goal=36
     #[43] 0 ≤ pi - t ∧ pi - t ≤ pi ∧ x = cos (pi - t) ∧ y = sin (pi - t)
@@ -3921,7 +3921,7 @@ proof
     #[63] x = -(cos t) ∧ y = sin t
   ← apply_backward_step conjI goal=63
     #[64] x = -(cos t)
-  -> rewrite_fact eq_sym_eq sym=false goal=64 facts=[41]
+  → rewrite_fact eq_sym_eq sym=false goal=64 facts=[41]
     #[65] cos t = -x
   ← rewrite_goal_with_prev goal=64 facts=[65]
     #[66] x = --x
@@ -3937,7 +3937,7 @@ proof
   ← introduction goal=0
     #[1] x ^ (2::nat) + y ^ (2::nat) = 1
     #[2] ∃t. 0 ≤ t ∧ t < 2 * pi ∧ x = cos t ∧ y = sin t
-  -> rewrite_fact real_pow_2 sym=false goal=2 facts=[1]
+  → rewrite_fact real_pow_2 sym=false goal=2 facts=[1]
     #[3] x * x + y * y = 1
   ← cases "x=1" goal=2
     #[4] x = 1 ⟶ (∃t. 0 ≤ t ∧ t < 2 * pi ∧ x = cos t ∧ y = sin t)
@@ -4026,7 +4026,7 @@ proof
   ← introduction goal=48
     #[50] 0 ≤ y
     #[51] ∃t. 0 ≤ t ∧ t < 2 * pi ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step sincos_total_pi goal=51 facts=[50,1]
+  → apply_forward_step sincos_total_pi goal=51 facts=[50,1]
     #[52] ∃t. 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ y = sin t
   exists_elim t goal=51 facts=[52]
     #[53] _VAR t
@@ -4034,13 +4034,13 @@ proof
     #[55] ∃t. 0 ≤ t ∧ t < 2 * pi ∧ x = cos t ∧ y = sin t
   ← inst_exists_goal t goal=55
     #[56] 0 ≤ t ∧ t < 2 * pi ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step conjD1 goal=56 facts=[54]
+  → apply_forward_step conjD1 goal=56 facts=[54]
     #[57] 0 ≤ t
-  -> apply_forward_step conjD2 goal=56 facts=[54]
+  → apply_forward_step conjD2 goal=56 facts=[54]
     #[58] t ≤ pi ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step conjD1 goal=56 facts=[58]
+  → apply_forward_step conjD1 goal=56 facts=[58]
     #[59] t ≤ pi
-  -> apply_forward_step conjD2 goal=56 facts=[58]
+  → apply_forward_step conjD2 goal=56 facts=[58]
     #[60] x = cos t ∧ y = sin t
   ← apply_backward_step conjI goal=56
     #[61] t < 2 * pi ∧ x = cos t ∧ y = sin t
@@ -4056,9 +4056,9 @@ proof
   ← introduction goal=49
     #[66] 0 ≤ -y
     #[67] ∃t. 0 ≤ t ∧ t < 2 * pi ∧ x = cos t ∧ y = sin t
-  -> apply_forward_step sincos_total_pi param_x=x goal=67 facts=[66]
+  → apply_forward_step sincos_total_pi param_x=x goal=67 facts=[66]
     #[68] x ^ (2::nat) + -y ^ (2::nat) = 1 ⟶ (∃t. 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ -y = sin t)
-  -> rewrite_fact real_pow_neg sym=false goal=67 facts=[68]
+  → rewrite_fact real_pow_neg sym=false goal=67 facts=[68]
     #[69] x ^ (2::nat) + (if even 2 then y ^ (2::nat) else -(y ^ (2::nat))) = 1 ⟶ (∃t. 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ -y = sin t)
   cut "even 2" goal=67
     #[70] even 2
@@ -4068,26 +4068,26 @@ proof
     #[72] (2::nat) = 2 * 1
   ← rewrite_goal mult_1_right sym=false goal=72
     #[73] (2::nat) = 2 * 1
-  -> rewrite_fact if_P sym=false goal=67 facts=[69,70]
+  → rewrite_fact if_P sym=false goal=67 facts=[69,70]
     #[74] x ^ (2::nat) + y ^ (2::nat) = 1 ⟶ (∃t. 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ -y = sin t)
-  -> apply_fact goal=67 facts=[74,1]
+  → apply_fact goal=67 facts=[74,1]
     #[75] ∃t. 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ -y = sin t
   exists_elim t goal=67 facts=[75]
     #[76] 0 ≤ t ∧ t ≤ pi ∧ x = cos t ∧ -y = sin t
     #[77] ∃t. 0 ≤ t ∧ t < 2 * pi ∧ x = cos t ∧ y = sin t
   ← inst_exists_goal "2 * pi - t" goal=77
     #[78] 0 ≤ 2 * pi - t ∧ 2 * pi - t < 2 * pi ∧ x = cos (2 * pi - t) ∧ y = sin (2 * pi - t)
-  -> apply_forward_step conjD1 goal=78 facts=[76]
+  → apply_forward_step conjD1 goal=78 facts=[76]
     #[79] 0 ≤ t
-  -> apply_forward_step conjD2 goal=78 facts=[76]
+  → apply_forward_step conjD2 goal=78 facts=[76]
     #[80] t ≤ pi ∧ x = cos t ∧ -y = sin t
-  -> apply_forward_step conjD1 goal=78 facts=[80]
+  → apply_forward_step conjD1 goal=78 facts=[80]
     #[81] t ≤ pi
-  -> apply_forward_step conjD2 goal=78 facts=[80]
+  → apply_forward_step conjD2 goal=78 facts=[80]
     #[82] x = cos t ∧ -y = sin t
-  -> apply_forward_step conjD1 goal=78 facts=[82]
+  → apply_forward_step conjD1 goal=78 facts=[82]
     #[83] x = cos t
-  -> apply_forward_step conjD2 goal=78 facts=[82]
+  → apply_forward_step conjD2 goal=78 facts=[82]
     #[84] -y = sin t
   ← apply_backward_step conjI goal=78
     #[85] 0 ≤ 2 * pi - t
@@ -4119,11 +4119,11 @@ proof
   ← introduction goal=98
     #[99] 0 = t
     #[100] y = 0
-  -> rewrite_fact eq_sym_eq sym=false goal=100 facts=[99]
+  → rewrite_fact eq_sym_eq sym=false goal=100 facts=[99]
     #[101] t = 0
-  -> rewrite_fact_with_prev goal=100 facts=[101,84]
+  → rewrite_fact_with_prev goal=100 facts=[101,84]
     #[102] -y = sin 0
-  -> rewrite_fact real_sin_0 sym=false goal=100 facts=[102]
+  → rewrite_fact real_sin_0 sym=false goal=100 facts=[102]
     #[103] -y = 0
   ← z3 goal=100 facts=[103]
     #[104] y = 0
@@ -4163,7 +4163,7 @@ proof
     #[121] x = cos t ∧ y = -(sin t)
   ← apply_backward_step conjI goal=121
     #[122] y = -(sin t)
-  -> rewrite_fact eq_sym_eq sym=false goal=122 facts=[84]
+  → rewrite_fact eq_sym_eq sym=false goal=122 facts=[84]
     #[123] sin t = -y
   ← rewrite_goal_with_prev goal=122 facts=[123]
     #[124] y = --y
@@ -4179,7 +4179,7 @@ proof
   ← introduction goal=0
     #[1] x ^ (2::nat) + y ^ (2::nat) = 1
     #[2] ∃t. x = cos t ∧ y = sin t
-  -> apply_forward_step sincos_total_2pi goal=2 facts=[1]
+  → apply_forward_step sincos_total_2pi goal=2 facts=[1]
     #[3] ∃t. 0 ≤ t ∧ t < 2 * pi ∧ x = cos t ∧ y = sin t
   exists_elim t goal=2 facts=[3]
     #[4] _VAR t
@@ -4187,7 +4187,7 @@ proof
     #[6] ∃t. x = cos t ∧ y = sin t
   ← inst_exists_goal t goal=6
     #[7] x = cos t ∧ y = sin t
-  -> apply_forward_step conjD2 goal=7 facts=[5]
+  → apply_forward_step conjD2 goal=7 facts=[5]
     #[8] t < 2 * pi ∧ x = cos t ∧ y = sin t
   ← apply_backward_step conjD2 goal=7 facts=[8]
     #[9] x = cos t ∧ y = sin t
@@ -4235,7 +4235,7 @@ proof
     #[2] cos (2 * pi * n) = 1
   ← rewrite_goal cos_one_2pi sym=false goal=2
     #[3] (∃n1. 2 * pi * n = of_nat n1 * 2 * pi) ∨ (∃n1. 2 * pi * n = -(of_nat n1 * 2 * pi))
-  -> rewrite_fact integer_cases sym=false goal=3 facts=[1]
+  → rewrite_fact integer_cases sym=false goal=3 facts=[1]
     #[4] (∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))
   ← apply_backward_step disjE goal=3 facts=[4]
     #[5] (∃n1. n = of_nat n1) ⟶ (∃n1. 2 * pi * n = of_nat n1 * 2 * pi) ∨ (∃n1. 2 * pi * n = -(of_nat n1 * 2 * pi))
@@ -4299,31 +4299,31 @@ proof
   ← introduction goal=1
     #[3] cos x = 1
     #[4] ∃n. integer n ∧ x = 2 * n * pi
-  -> apply_forward_step sin_circle param_x=x goal=4
+  → apply_forward_step sin_circle param_x=x goal=4
     #[5] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact_with_prev goal=4 facts=[3,5]
+  → rewrite_fact_with_prev goal=4 facts=[3,5]
     #[6] sin x ^ (2::nat) + 1 ^ (2::nat) = 1
-  -> rewrite_fact real_pow_one sym=false goal=4 facts=[6]
+  → rewrite_fact real_pow_one sym=false goal=4 facts=[6]
     #[7] sin x ^ (2::nat) + 1 = 1
-  -> rewrite_fact real_pow_2 sym=false goal=4 facts=[7]
+  → rewrite_fact real_pow_2 sym=false goal=4 facts=[7]
     #[8] sin x * sin x + 1 = 1
   cut "!a::real. a * a +1 =1 --> a = 0" goal=4
     #[9] ∀a::real. a * a + 1 = 1 ⟶ a = 0
   ← z3 goal=9
     #[10] ∀a::real. a * a + 1 = 1 ⟶ a = 0
-  -> apply_fact goal=4 facts=[10,8]
+  → apply_fact goal=4 facts=[10,8]
     #[11] sin x = 0
-  -> rewrite_fact sin_eq_0 sym=false goal=4 facts=[11]
+  → rewrite_fact sin_eq_0 sym=false goal=4 facts=[11]
     #[12] ∃n. integer n ∧ x = n * pi
   exists_elim n goal=4 facts=[12]
     #[13] _VAR n
     #[14] integer n ∧ x = n * pi
     #[15] ∃n. integer n ∧ x = 2 * n * pi
-  -> apply_forward_step conjD1 goal=15 facts=[14]
+  → apply_forward_step conjD1 goal=15 facts=[14]
     #[16] integer n
-  -> apply_forward_step conjD2 goal=15 facts=[14]
+  → apply_forward_step conjD2 goal=15 facts=[14]
     #[17] x = n * pi
-  -> rewrite_fact integer_cases sym=false goal=15 facts=[16]
+  → rewrite_fact integer_cases sym=false goal=15 facts=[16]
     #[18] (∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))
   ← rewrite_goal integer_cases sym=false goal=15
     #[19] ∃n. ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = 2 * n * pi
@@ -4337,7 +4337,7 @@ proof
     #[24] _VAR m
     #[25] n = of_nat m
     #[26] ∃n. ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = 2 * n * pi
-  -> apply_forward_step even_or_odd param_n=m goal=26
+  → apply_forward_step even_or_odd param_n=m goal=26
     #[27] even m ∨ odd m
   ← apply_backward_step disjE goal=26 facts=[27]
     #[28] even m ⟶ (∃n. ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = 2 * n * pi)
@@ -4345,7 +4345,7 @@ proof
   ← introduction goal=28
     #[30] even m
     #[31] ∃n. ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = 2 * n * pi
-  -> rewrite_fact even_exists sym=false goal=31 facts=[30]
+  → rewrite_fact even_exists sym=false goal=31 facts=[30]
     #[32] ∃m1. m = 2 * m1
   exists_elim m1 goal=31 facts=[32]
     #[33] _VAR m1
@@ -4386,7 +4386,7 @@ proof
     #[53] ¬(-(1::real) ^ m = 1)
   ← rewrite_goal real_pow_neg sym=false goal=53
     #[54] ¬((if even m then (1::real) ^ m else -(1 ^ m)) = 1)
-  -> rewrite_fact not_even sym=true goal=54 facts=[46]
+  → rewrite_fact not_even sym=true goal=54 facts=[46]
     #[55] ¬(even m)
   ← rewrite_goal if_not_P sym=false goal=54 facts=[55]
     #[56] ¬(-((1::real) ^ m) = 1)
@@ -4400,13 +4400,13 @@ proof
   exists_elim m goal=60 facts=[59]
     #[61] n = -(of_nat m)
     #[62] ∃n. ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = 2 * n * pi
-  -> apply_forward_step even_or_odd param_n=m goal=62
+  → apply_forward_step even_or_odd param_n=m goal=62
   ← apply_backward_step disjE goal=62 facts=[27]
     #[63] even m ⟶ (∃n. ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = 2 * n * pi)
     #[64] odd m ⟶ (∃n. ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = 2 * n * pi)
   ← introduction goal=63
     #[65] ∃n. ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = 2 * n * pi
-  -> rewrite_fact even_exists sym=false goal=65 facts=[30]
+  → rewrite_fact even_exists sym=false goal=65 facts=[30]
   exists_elim m1 goal=65 facts=[32]
     #[66] ∃n. ((∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))) ∧ x = 2 * n * pi
   ← inst_exists_goal "-(of_nat::nat⇒real) m1" goal=66
@@ -4446,7 +4446,7 @@ proof
     #[84] ¬(-(1::real) ^ m = 1)
   ← rewrite_goal real_pow_neg sym=false goal=84
     #[85] ¬((if even m then (1::real) ^ m else -(1 ^ m)) = 1)
-  -> rewrite_fact not_even sym=true goal=85 facts=[46]
+  → rewrite_fact not_even sym=true goal=85 facts=[46]
   ← rewrite_goal if_not_P sym=false goal=85 facts=[55]
     #[86] ¬(-((1::real) ^ m) = 1)
   ← rewrite_goal real_pow_one sym=false goal=86
@@ -4458,13 +4458,13 @@ proof
   exists_elim n goal=89 facts=[88]
     #[90] integer n ∧ x = 2 * n * pi
     #[91] cos x = 1
-  -> apply_forward_step conjD2 goal=91 facts=[90]
+  → apply_forward_step conjD2 goal=91 facts=[90]
     #[92] x = 2 * n * pi
   ← rewrite_goal_with_prev goal=91 facts=[92]
     #[93] cos (2 * n * pi) = 1
-  -> apply_forward_step conjD1 goal=93 facts=[90]
+  → apply_forward_step conjD1 goal=93 facts=[90]
     #[94] integer n
-  -> rewrite_fact integer_cases sym=false goal=93 facts=[94]
+  → rewrite_fact integer_cases sym=false goal=93 facts=[94]
     #[95] (∃n1. n = of_nat n1) ∨ (∃n1. n = -(of_nat n1))
   ← apply_backward_step disjE goal=93 facts=[95]
     #[96] (∃n1. n = of_nat n1) ⟶ cos (2 * n * pi) = 1
@@ -4510,21 +4510,21 @@ proof
   ← introduction goal=1
     #[3] sin x = 1
     #[4] ∃n. integer n ∧ x = (2 * n + 1 / 2) * pi
-  -> apply_forward_step sin_circle param_x=x goal=4
+  → apply_forward_step sin_circle param_x=x goal=4
     #[5] sin x ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact_with_prev goal=4 facts=[3,5]
+  → rewrite_fact_with_prev goal=4 facts=[3,5]
     #[6] 1 ^ (2::nat) + cos x ^ (2::nat) = 1
-  -> rewrite_fact real_pow_one sym=false goal=4 facts=[6]
+  → rewrite_fact real_pow_one sym=false goal=4 facts=[6]
     #[7] 1 + cos x ^ (2::nat) = 1
-  -> rewrite_fact real_pow_2 sym=false goal=4 facts=[7]
+  → rewrite_fact real_pow_2 sym=false goal=4 facts=[7]
     #[8] 1 + cos x * cos x = 1
   cut "!a::real. 1+ a* a =1 --> a=0" goal=4
     #[9] ∀a::real. 1 + a * a = 1 ⟶ a = 0
   ← z3 goal=9
     #[10] ∀a::real. 1 + a * a = 1 ⟶ a = 0
-  -> apply_fact goal=4 facts=[10,8]
+  → apply_fact goal=4 facts=[10,8]
     #[11] cos x = 0
-  -> rewrite_fact cos_zero_pi sym=false goal=4 facts=[11]
+  → rewrite_fact cos_zero_pi sym=false goal=4 facts=[11]
     #[12] (∃n. x = (of_nat n + 1 / 2) * pi) ∨ (∃n. x = -((of_nat n + 1 / 2) * pi))
   ← apply_backward_step disjE goal=4 facts=[12]
     #[13] (∃n. x = (of_nat n + 1 / 2) * pi) ⟶ (∃n. integer n ∧ x = (2 * n + 1 / 2) * pi)
@@ -4536,7 +4536,7 @@ proof
     #[17] _VAR n
     #[18] x = (of_nat n + 1 / 2) * pi
     #[19] ∃n. integer n ∧ x = (2 * n + 1 / 2) * pi
-  -> apply_forward_step even_or_odd param_n=n goal=19
+  → apply_forward_step even_or_odd param_n=n goal=19
     #[20] even n ∨ odd n
   ← apply_backward_step disjE goal=19 facts=[20]
     #[21] even n ⟶ (∃n1. integer n1 ∧ x = (2 * n1 + 1 / 2) * pi)
@@ -4544,7 +4544,7 @@ proof
   ← introduction goal=21
     #[23] even n
     #[24] ∃n. integer n ∧ x = (2 * n + 1 / 2) * pi
-  -> rewrite_fact even_exists sym=false goal=24 facts=[23]
+  → rewrite_fact even_exists sym=false goal=24 facts=[23]
     #[25] ∃m. n = 2 * m
   exists_elim m goal=24 facts=[25]
     #[26] _VAR m
@@ -4619,7 +4619,7 @@ proof
   exists_elim n goal=63 facts=[62]
     #[64] x = -((of_nat n + 1 / 2) * pi)
     #[65] ∃n. integer n ∧ x = (2 * n + 1 / 2) * pi
-  -> apply_forward_step even_or_odd param_n=n goal=65
+  → apply_forward_step even_or_odd param_n=n goal=65
   ← apply_backward_step disjE goal=65 facts=[20]
     #[66] even n ⟶ (∃n1. integer n1 ∧ x = (2 * n1 + 1 / 2) * pi)
     #[67] odd n ⟶ (∃n1. integer n1 ∧ x = (2 * n1 + 1 / 2) * pi)
@@ -4663,7 +4663,7 @@ proof
   nat_const_ineq goal=85
   ← introduction goal=67
     #[86] ∃n. integer n ∧ x = (2 * n + 1 / 2) * pi
-  -> rewrite_fact odd_exists sym=false goal=86 facts=[40]
+  → rewrite_fact odd_exists sym=false goal=86 facts=[40]
     #[87] ∃m. n = Suc (2 * m)
   exists_elim m goal=86 facts=[87]
     #[88] n = Suc (2 * m)
@@ -4698,9 +4698,9 @@ proof
     #[104] _VAR n
     #[105] integer n ∧ x = (2 * n + 1 / 2) * pi
     #[106] sin x = 1
-  -> apply_forward_step conjD1 goal=106 facts=[105]
+  → apply_forward_step conjD1 goal=106 facts=[105]
     #[107] integer n
-  -> apply_forward_step conjD2 goal=106 facts=[105]
+  → apply_forward_step conjD2 goal=106 facts=[105]
     #[108] x = (2 * n + 1 / 2) * pi
   ← rewrite_goal_with_prev goal=106 facts=[108]
     #[109] sin ((2 * n + 1 / 2) * pi) = 1
@@ -4757,9 +4757,9 @@ proof
     #[9] _VAR n
     #[10] integer n ∧ -x = (2 * n + 1 / 2) * pi
     #[11] ∃n. integer n ∧ x = (2 * n + 3 / 2) * pi
-  -> apply_forward_step conjD1 goal=11 facts=[10]
+  → apply_forward_step conjD1 goal=11 facts=[10]
     #[12] integer n
-  -> apply_forward_step conjD2 goal=11 facts=[10]
+  → apply_forward_step conjD2 goal=11 facts=[10]
     #[13] -x = (2 * n + 1 / 2) * pi
   ← inst_exists_goal "-(n+1)" goal=11
     #[14] integer (-(n + 1)) ∧ x = (2 * -(n + 1) + 3 / 2) * pi
@@ -4780,9 +4780,9 @@ proof
     #[22] (of_nat::nat ⇒ real) 1 = of_nat 1
   ← apply_backward_step eq_refl goal=22
     #[23] (of_nat::nat ⇒ real) 1 = of_nat 1
-  -> rewrite_fact eq_sym_eq sym=false goal=16 facts=[1]
+  → rewrite_fact eq_sym_eq sym=false goal=16 facts=[1]
     #[24] ∀a::real. ∀b. -a = b ⟷ a = -b
-  -> rewrite_fact_with_prev goal=16 facts=[24,13]
+  → rewrite_fact_with_prev goal=16 facts=[24,13]
     #[25] x = -((2 * n + 1 / 2) * pi)
   ← rewrite_goal_with_prev goal=16 facts=[25]
     #[26] -((2 * n + 1 / 2) * pi) = (2 * -(n + 1) + 3 / 2) * pi
@@ -4794,9 +4794,9 @@ proof
   exists_elim n goal=29 facts=[28]
     #[30] integer n ∧ x = (2 * n + 3 / 2) * pi
     #[31] ∃n. integer n ∧ -x = (2 * n + 1 / 2) * pi
-  -> apply_forward_step conjD1 goal=31 facts=[30]
+  → apply_forward_step conjD1 goal=31 facts=[30]
     #[32] integer n
-  -> apply_forward_step conjD2 goal=31 facts=[30]
+  → apply_forward_step conjD2 goal=31 facts=[30]
     #[33] x = (2 * n + 3 / 2) * pi
   ← inst_exists_goal "-(n+1)" goal=31
     #[34] integer (-(n + 1)) ∧ -x = (2 * -(n + 1) + 1 / 2) * pi
@@ -4846,9 +4846,9 @@ proof
     #[9] _VAR n
     #[10] integer n ∧ x + pi = 2 * n * pi
     #[11] ∃n. integer n ∧ x = (2 * n + 1) * pi
-  -> apply_forward_step conjD1 goal=11 facts=[10]
+  → apply_forward_step conjD1 goal=11 facts=[10]
     #[12] integer n
-  -> apply_forward_step conjD2 goal=11 facts=[10]
+  → apply_forward_step conjD2 goal=11 facts=[10]
     #[13] x + pi = 2 * n * pi
   ← inst_exists_goal n-1 goal=11
     #[14] integer (n - 1) ∧ x = (2 * (n - 1) + 1) * pi
@@ -4878,9 +4878,9 @@ proof
   exists_elim n goal=26 facts=[25]
     #[27] integer n ∧ x = (2 * n + 1) * pi
     #[28] ∃n. integer n ∧ x + pi = 2 * n * pi
-  -> apply_forward_step conjD1 goal=28 facts=[27]
+  → apply_forward_step conjD1 goal=28 facts=[27]
     #[29] integer n
-  -> apply_forward_step conjD2 goal=28 facts=[27]
+  → apply_forward_step conjD2 goal=28 facts=[27]
     #[30] x = (2 * n + 1) * pi
   ← inst_exists_goal n+1 goal=28
     #[31] integer (n + 1) ∧ x + pi = 2 * (n + 1) * pi
@@ -4915,11 +4915,11 @@ proof
   ← introduction goal=1
     #[3] sin x = sin y
     #[4] ∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi)
-  -> rewrite_fact real_sub_0 sym=true goal=4 facts=[3]
+  → rewrite_fact real_sub_0 sym=true goal=4 facts=[3]
     #[5] sin x - sin y = 0
-  -> rewrite_fact real_sub_sin sym=false goal=4 facts=[5]
+  → rewrite_fact real_sub_sin sym=false goal=4 facts=[5]
     #[6] 2 * sin ((x - y) / 2) * cos ((x + y) / 2) = 0
-  -> rewrite_fact real_entire sym=false goal=4 facts=[6]
+  → rewrite_fact real_entire sym=false goal=4 facts=[6]
     #[7] 2 * sin ((x - y) / 2) = 0 ∨ cos ((x + y) / 2) = 0
   ← apply_backward_step disjE goal=4 facts=[7]
     #[8] 2 * sin ((x - y) / 2) = 0 ⟶ (∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi))
@@ -4927,7 +4927,7 @@ proof
   ← introduction goal=8
     #[10] 2 * sin ((x - y) / 2) = 0
     #[11] ∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi)
-  -> rewrite_fact real_entire sym=false goal=11 facts=[10]
+  → rewrite_fact real_entire sym=false goal=11 facts=[10]
     #[12] (2::real) = 0 ∨ sin ((x - y) / 2) = 0
   ← apply_backward_step disjE goal=11 facts=[12]
     #[13] (2::real) = 0 ⟶ (∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi))
@@ -4940,7 +4940,7 @@ proof
   ← introduction goal=14
     #[18] sin ((x - y) / 2) = 0
     #[19] ∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi)
-  -> rewrite_fact sin_zero_pi sym=false goal=19 facts=[18]
+  → rewrite_fact sin_zero_pi sym=false goal=19 facts=[18]
     #[20] (∃n. (x - y) / 2 = of_nat n * pi) ∨ (∃n. (x - y) / 2 = -(of_nat n * pi))
   ← apply_backward_step disjE goal=19 facts=[20]
     #[21] (∃n. (x - y) / 2 = of_nat n * pi) ⟶ (∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi))
@@ -4967,7 +4967,7 @@ proof
     #[34] (of_nat::nat ⇒ real) n = of_nat n
   ← apply_backward_step disjI1 goal=30
     #[35] x = y + 2 * of_nat n * pi
-  -> rewrite_fact eq_sym_eq sym=false goal=35 facts=[26]
+  → rewrite_fact eq_sym_eq sym=false goal=35 facts=[26]
     #[36] of_nat n * pi = (x - y) / 2
   ← rewrite_goal real_mult_assoc sym=true goal=35
     #[37] x = y + 2 * (of_nat n * pi)
@@ -5001,7 +5001,7 @@ proof
     #[52] x = y + 2 * (-(of_nat n) * pi)
   ← rewrite_goal real_mul_lneg sym=false goal=52
     #[53] x = y + 2 * -(of_nat n * pi)
-  -> rewrite_fact eq_sym_eq sym=false goal=53 facts=[42]
+  → rewrite_fact eq_sym_eq sym=false goal=53 facts=[42]
     #[54] -(of_nat n * pi) = (x - y) / 2
   ← rewrite_goal_with_prev goal=53 facts=[54]
     #[55] x = y + 2 * ((x - y) / 2)
@@ -5009,7 +5009,7 @@ proof
   ← introduction goal=9
     #[56] cos ((x + y) / 2) = 0
     #[57] ∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi)
-  -> rewrite_fact cos_eq_0 sym=false goal=57 facts=[56]
+  → rewrite_fact cos_eq_0 sym=false goal=57 facts=[56]
     #[58] ∃n. integer n ∧ (x + y) / 2 = (n + 1 / 2) * pi
   exists_elim n goal=57 facts=[58]
     #[59] _VAR n
@@ -5017,9 +5017,9 @@ proof
     #[61] ∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi)
   ← inst_exists_goal n goal=61
     #[62] integer n ∧ (x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi)
-  -> apply_forward_step conjD1 goal=62 facts=[60]
+  → apply_forward_step conjD1 goal=62 facts=[60]
     #[63] integer n
-  -> apply_forward_step conjD2 goal=62 facts=[60]
+  → apply_forward_step conjD2 goal=62 facts=[60]
     #[64] (x + y) / 2 = (n + 1 / 2) * pi
   ← apply_backward_step conjI goal=62
     #[65] x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi
@@ -5048,9 +5048,9 @@ proof
     #[78] 2 * sin ((x - y) / 2) * cos ((x + y) / 2) = 0
     #[79] sin x - sin y = 0
     #[80] sin x = sin y
-  -> apply_forward_step conjD1 goal=76 facts=[75]
+  → apply_forward_step conjD1 goal=76 facts=[75]
     #[81] integer n
-  -> apply_forward_step conjD2 goal=76 facts=[75]
+  → apply_forward_step conjD2 goal=76 facts=[75]
     #[82] x = y + 2 * n * pi ∨ x = -y + (2 * n + 1) * pi
   ← apply_backward_step disjE goal=76 facts=[82]
     #[83] x = y + 2 * n * pi ⟶ ((2::real) = 0 ∨ sin ((x - y) / 2) = 0) ∨ cos ((x + y) / 2) = 0
@@ -5132,15 +5132,15 @@ proof
   ← introduction goal=15
     #[19] sin ((x + y) / 2) = 0
     #[20] ∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + 2 * n * pi)
-  -> rewrite_fact sin_eq_0 sym=false goal=20 facts=[19]
+  → rewrite_fact sin_eq_0 sym=false goal=20 facts=[19]
     #[21] ∃n. integer n ∧ (x + y) / 2 = n * pi
   exists_elim n goal=20 facts=[21]
     #[22] _VAR n
     #[23] integer n ∧ (x + y) / 2 = n * pi
     #[24] ∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + 2 * n * pi)
-  -> apply_forward_step conjD1 goal=24 facts=[23]
+  → apply_forward_step conjD1 goal=24 facts=[23]
     #[25] integer n
-  -> apply_forward_step conjD2 goal=24 facts=[23]
+  → apply_forward_step conjD2 goal=24 facts=[23]
     #[26] (x + y) / 2 = n * pi
   ← inst_exists_goal n goal=24
     #[27] integer n ∧ (x = y + 2 * n * pi ∨ x = -y + 2 * n * pi)
@@ -5148,7 +5148,7 @@ proof
     #[28] x = y + 2 * n * pi ∨ x = -y + 2 * n * pi
   ← apply_backward_step disjI2 goal=28
     #[29] x = -y + 2 * n * pi
-  -> rewrite_fact eq_sym_eq sym=false goal=29 facts=[26]
+  → rewrite_fact eq_sym_eq sym=false goal=29 facts=[26]
     #[30] n * pi = (x + y) / 2
   ← rewrite_goal real_mult_assoc sym=true goal=29
     #[31] x = -y + 2 * (n * pi)
@@ -5159,14 +5159,14 @@ proof
   ← introduction goal=11
     #[34] sin ((y - x) / 2) = 0
     #[35] ∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + 2 * n * pi)
-  -> rewrite_fact sin_eq_0 sym=false goal=35 facts=[34]
+  → rewrite_fact sin_eq_0 sym=false goal=35 facts=[34]
     #[36] ∃n. integer n ∧ (y - x) / 2 = n * pi
   exists_elim n goal=35 facts=[36]
     #[37] integer n ∧ (y - x) / 2 = n * pi
     #[38] ∃n. integer n ∧ (x = y + 2 * n * pi ∨ x = -y + 2 * n * pi)
-  -> apply_forward_step conjD1 goal=38 facts=[37]
+  → apply_forward_step conjD1 goal=38 facts=[37]
     #[39] integer n
-  -> apply_forward_step conjD2 goal=38 facts=[37]
+  → apply_forward_step conjD2 goal=38 facts=[37]
     #[40] (y - x) / 2 = n * pi
   ← inst_exists_goal -n goal=38
     #[41] integer (-n) ∧ (x = y + 2 * -n * pi ∨ x = -y + 2 * -n * pi)
@@ -5180,7 +5180,7 @@ proof
     #[45] x = y + 2 * (-n * pi)
   ← rewrite_goal real_mul_lneg sym=false goal=45
     #[46] x = y + 2 * -(n * pi)
-  -> rewrite_fact eq_sym_eq sym=false goal=46 facts=[40]
+  → rewrite_fact eq_sym_eq sym=false goal=46 facts=[40]
     #[47] n * pi = (y - x) / 2
   ← rewrite_goal_with_prev goal=46 facts=[47]
     #[48] x = y + 2 * -((y - x) / 2)
@@ -5192,9 +5192,9 @@ proof
   exists_elim n goal=51 facts=[50]
     #[52] integer n ∧ (x = y + 2 * n * pi ∨ x = -y + 2 * n * pi)
     #[53] ((2::real) = 0 ∨ sin ((x + y) / 2) = 0) ∨ sin ((y - x) / 2) = 0
-  -> apply_forward_step conjD1 goal=53 facts=[52]
+  → apply_forward_step conjD1 goal=53 facts=[52]
     #[54] integer n
-  -> apply_forward_step conjD2 goal=53 facts=[52]
+  → apply_forward_step conjD2 goal=53 facts=[52]
     #[55] x = y + 2 * n * pi ∨ x = -y + 2 * n * pi
   ← apply_backward_step disjE goal=53 facts=[55]
     #[56] x = y + 2 * n * pi ⟶ ((2::real) = 0 ∨ sin ((x + y) / 2) = 0) ∨ sin ((y - x) / 2) = 0
@@ -5359,7 +5359,7 @@ proof
     #[6] sin (x + y) / (cos x * cos y - sin x * sin y) = (sin x / cos x + sin y / cos y) / (1 - sin x / cos x * (sin y / cos y))
   ← rewrite_goal sin_add sym=false goal=6
     #[7] (sin x * cos y + cos x * sin y) / (cos x * cos y - sin x * sin y) = (sin x / cos x + sin y / cos y) / (1 - sin x / cos x * (sin y / cos y))
-  -> rewrite_fact cos_add sym=false goal=7 facts=[3]
+  → rewrite_fact cos_add sym=false goal=7 facts=[3]
     #[8] ¬(cos x * cos y - sin x * sin y = 0)
   cut "!cx::real. !cy. !sx. !sy. ~(cx = 0) --> ~(cy = 0) --> ~(cx *cy - sx * sy = 0) --> (sx * cy + cx * sy) / (cx * cy - sx * sy) = (sx / cx + sy / cy) / (1 - sx / cx * (sy / cy))" goal=7
     #[9] ∀cx. ∀cy. ∀sx. ∀sy. ¬(cx = 0) ⟶ ¬(cy = 0) ⟶ ¬(cx * cy - sx * sy = 0) ⟶ (sx * cy + cx * sy) / (cx * cy - sx * sy) = (sx / cx + sy / cy) / (1 - sx / cx * (sy / cy))
@@ -5394,7 +5394,7 @@ proof
     #[11] ¬(cos (-y) = 0)
     #[12] ¬(cos (x + -y) = 0)
   ← rewrite_goal cos_neg sym=false goal=11
-  -> rewrite_fact real_minus_def sym=false goal=12 facts=[3]
+  → rewrite_fact real_minus_def sym=false goal=12 facts=[3]
     #[13] ¬(cos (x + -y) = 0)
 qed
 
@@ -5436,25 +5436,25 @@ proof
     #[18] sin (2 * x) / cos (2 * x) = 2 * (sin x / cos x) / (1 - (sin x / cos x) ^ (2::nat))
   ← rewrite_goal_with_prev goal=18 facts=[16]
     #[19] sin (2 * x) / 0 = 2 * (sin x / cos x) / (1 - (sin x / cos x) ^ (2::nat))
-  -> rewrite_fact cos_double sym=false goal=19 facts=[16]
+  → rewrite_fact cos_double sym=false goal=19 facts=[16]
     #[20] cos x ^ (2::nat) - sin x ^ (2::nat) = 0
-  -> rewrite_fact real_sub_0 sym=false goal=19 facts=[20]
+  → rewrite_fact real_sub_0 sym=false goal=19 facts=[20]
     #[21] cos x ^ (2::nat) = sin x ^ (2::nat)
   ← rewrite_goal real_pow_div sym=false goal=19
     #[22] sin (2 * x) / 0 = 2 * (sin x / cos x) / (1 - sin x ^ (2::nat) / cos x ^ (2::nat))
-  -> rewrite_fact eq_sym_eq sym=false goal=22 facts=[21]
+  → rewrite_fact eq_sym_eq sym=false goal=22 facts=[21]
     #[23] sin x ^ (2::nat) = cos x ^ (2::nat)
   ← rewrite_goal_with_prev goal=22 facts=[23]
     #[24] sin (2 * x) / 0 = 2 * (sin x / cos x) / (1 - cos x ^ (2::nat) / cos x ^ (2::nat))
   ← rewrite_goal real_divide_def sym=false goal=24
     #[25] sin (2 * x) * real_inverse 0 = 2 * (sin x / cos x) * real_inverse (1 - cos x ^ (2::nat) / cos x ^ (2::nat))
-  -> apply_forward_step real_pow_nz param_n="(2::nat)" goal=25 facts=[12]
+  → apply_forward_step real_pow_nz param_n="(2::nat)" goal=25 facts=[12]
     #[26] ¬(cos x ^ (2::nat) = 0)
   ← rewrite_goal real_divide_def sym=false goal=25
     #[27] sin (2 * x) * real_inverse 0 = 2 * (sin x * real_inverse (cos x)) * real_inverse (1 - cos x ^ (2::nat) * real_inverse (cos x ^ (2::nat)))
-  -> apply_forward_step real_mul_linv goal=27 facts=[26]
+  → apply_forward_step real_mul_linv goal=27 facts=[26]
     #[28] real_inverse (cos x ^ (2::nat)) * cos x ^ (2::nat) = 1
-  -> rewrite_fact real_mult_comm sym=false goal=27 facts=[28]
+  → rewrite_fact real_mult_comm sym=false goal=27 facts=[28]
     #[29] cos x ^ (2::nat) * real_inverse (cos x ^ (2::nat)) = 1
   ← rewrite_goal_with_prev goal=27 facts=[29]
     #[30] sin (2 * x) * real_inverse 0 = 2 * (sin x * real_inverse (cos x)) * real_inverse (1 - 1)
@@ -5668,7 +5668,7 @@ proof
     #[1] 0 ≤ x
     #[2] x < pi / 2
     #[3] 0 ≤ tan x
-  -> rewrite_fact real_le_lt sym=false goal=3 facts=[1]
+  → rewrite_fact real_le_lt sym=false goal=3 facts=[1]
     #[4] 0 < x ∨ 0 = x
   ← apply_backward_step disjE goal=3 facts=[4]
     #[5] 0 < x ⟶ 0 ≤ tan x
@@ -5682,7 +5682,7 @@ proof
   ← introduction goal=6
     #[10] 0 = x
     #[11] 0 ≤ tan x
-  -> rewrite_fact eq_sym_eq sym=false goal=11 facts=[10]
+  → rewrite_fact eq_sym_eq sym=false goal=11 facts=[10]
     #[12] x = 0
   ← rewrite_goal_with_prev goal=11 facts=[12]
     #[13] 0 ≤ tan 0
@@ -5748,7 +5748,7 @@ proof
   ← apply_backward_step cos_pos_pi goal=26
     #[27] -(pi / 2) < x
     #[28] x < pi / 2
-  -> rewrite_fact real_abs_lt sym=false goal=27 facts=[1]
+  → rewrite_fact real_abs_lt sym=false goal=27 facts=[1]
     #[29] -(pi / 2) < x ∧ x < pi / 2
   ← apply_backward_step conjD1 goal=27 facts=[29]
   ← apply_backward_step conjD2 goal=28 facts=[29]
@@ -5799,9 +5799,9 @@ proof
     #[7] a * real_inverse b = a * (1 * real_inverse b)
   ← rewrite_goal real_mul_lid sym=false goal=7
     #[8] a * real_inverse b = a * (1 * real_inverse b)
-  -> apply_forward_step cos_tan goal=2 facts=[1]
+  → apply_forward_step cos_tan goal=2 facts=[1]
     #[9] cos x = 1 / sqrt (1 + tan x ^ (2::nat))
-  -> rewrite_fact eq_sym_eq sym=false goal=2 facts=[9]
+  → rewrite_fact eq_sym_eq sym=false goal=2 facts=[9]
     #[10] 1 / sqrt (1 + tan x ^ (2::nat)) = cos x
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[11] sin x = tan x * (1 / sqrt (1 + tan x ^ (2::nat)))
@@ -5817,7 +5817,7 @@ proof
     #[16] real_inverse (cos x) * cos x = 1
   ← apply_backward_step real_mul_linv goal=16
     #[17] ¬(cos x = 0)
-  -> rewrite_fact real_abs_lt sym=false goal=17 facts=[1]
+  → rewrite_fact real_abs_lt sym=false goal=17 facts=[1]
     #[18] -(pi / 2) < x ∧ x < pi / 2
   cut "!a::real. 0 < a --> ~(a = 0)" goal=17
     #[19] ∀a::real. 0 < a ⟶ ¬(a = 0)
@@ -5901,7 +5901,7 @@ proof
     #[2] x ≤ y
     #[3] y ≤ pi / 2
     #[4] sin x ≤ sin y
-  -> rewrite_fact real_le_lt sym=false goal=4 facts=[2]
+  → rewrite_fact real_le_lt sym=false goal=4 facts=[2]
     #[5] x < y ∨ x = y
   ← apply_backward_step disjE goal=4 facts=[5]
     #[6] x < y ⟶ sin x ≤ sin y
@@ -5940,7 +5940,7 @@ proof
     #[9] x < y
   ← rewrite_goal real_less_def sym=false goal=9
     #[10] ¬(y ≤ x)
-  -> rewrite_fact real_less_def sym=false goal=10 facts=[8]
+  → rewrite_fact real_less_def sym=false goal=10 facts=[8]
     #[11] ¬(sin y ≤ sin x)
   ← apply_backward_step contrapositive goal=10 facts=[11]
     #[12] ¬¬(y ≤ x) ⟶ ¬¬(sin y ≤ sin x)
@@ -5975,7 +5975,7 @@ proof
     #[9] x ≤ y
   ← rewrite_goal real_not_lt sym=true goal=9
     #[10] ¬(y < x)
-  -> rewrite_fact real_not_lt sym=true goal=10 facts=[8]
+  → rewrite_fact real_not_lt sym=true goal=10 facts=[8]
     #[11] ¬(sin y < sin x)
   ← apply_backward_step contrapositive goal=10 facts=[11]
     #[12] ¬¬(y < x) ⟶ ¬¬(sin y < sin x)
@@ -6005,21 +6005,21 @@ proof
     #[6] x = y
   ← rewrite_goal real_le_antisym sym=true goal=6
     #[7] x ≤ y ∧ y ≤ x
-  -> rewrite_fact real_le_antisym sym=true goal=7 facts=[5]
+  → rewrite_fact real_le_antisym sym=true goal=7 facts=[5]
     #[8] sin x ≤ sin y ∧ sin y ≤ sin x
-  -> apply_forward_step conjD1 goal=7 facts=[8]
+  → apply_forward_step conjD1 goal=7 facts=[8]
     #[9] sin x ≤ sin y
-  -> apply_forward_step conjD2 goal=7 facts=[8]
+  → apply_forward_step conjD2 goal=7 facts=[8]
     #[10] sin y ≤ sin x
   ← apply_backward_step conjI goal=7
     #[11] x ≤ y
     #[12] y ≤ x
-  -> apply_forward_step sin_mono_le_eq goal=11 facts=[1,2,3,4]
+  → apply_forward_step sin_mono_le_eq goal=11 facts=[1,2,3,4]
     #[13] sin x ≤ sin y ⟷ x ≤ y
-  -> rewrite_fact_with_prev goal=11 facts=[13,9]
-  -> apply_forward_step sin_mono_le_eq goal=12 facts=[3,4,1,2]
+  → rewrite_fact_with_prev goal=11 facts=[13,9]
+  → apply_forward_step sin_mono_le_eq goal=12 facts=[3,4,1,2]
     #[14] sin y ≤ sin x ⟷ y ≤ x
-  -> rewrite_fact_with_prev goal=12 facts=[14,10]
+  → rewrite_fact_with_prev goal=12 facts=[14,10]
 qed
 
 theorem cos_mono_lt
@@ -6079,7 +6079,7 @@ proof
     #[2] x ≤ y
     #[3] y ≤ pi
     #[4] cos y ≤ cos x
-  -> rewrite_fact real_le_lt sym=false goal=4 facts=[2]
+  → rewrite_fact real_le_lt sym=false goal=4 facts=[2]
     #[5] x < y ∨ x = y
   ← apply_backward_step disjE goal=4 facts=[5]
     #[6] x < y ⟶ cos y ≤ cos x
@@ -6179,21 +6179,21 @@ proof
     #[6] x = y
   ← rewrite_goal real_le_antisym sym=true goal=6
     #[7] x ≤ y ∧ y ≤ x
-  -> rewrite_fact real_le_antisym sym=true goal=7 facts=[5]
+  → rewrite_fact real_le_antisym sym=true goal=7 facts=[5]
     #[8] cos x ≤ cos y ∧ cos y ≤ cos x
-  -> apply_forward_step conjD1 goal=7 facts=[8]
+  → apply_forward_step conjD1 goal=7 facts=[8]
     #[9] cos x ≤ cos y
-  -> apply_forward_step conjD2 goal=7 facts=[8]
+  → apply_forward_step conjD2 goal=7 facts=[8]
     #[10] cos y ≤ cos x
   ← apply_backward_step conjI goal=7
     #[11] x ≤ y
     #[12] y ≤ x
-  -> apply_forward_step cos_mono_le_eq goal=11 facts=[1,2,3,4]
+  → apply_forward_step cos_mono_le_eq goal=11 facts=[1,2,3,4]
     #[13] cos x ≤ cos y ⟷ y ≤ x
-  -> apply_forward_step cos_mono_le_eq goal=11 facts=[3,4,1,2]
+  → apply_forward_step cos_mono_le_eq goal=11 facts=[3,4,1,2]
     #[14] cos y ≤ cos x ⟷ x ≤ y
-  -> rewrite_fact_with_prev goal=11 facts=[14,10]
-  -> rewrite_fact_with_prev goal=12 facts=[13,9]
+  → rewrite_fact_with_prev goal=11 facts=[14,10]
+  → rewrite_fact_with_prev goal=12 facts=[13,9]
 qed
 
 theorem real_abs_cos_mono_le_eq
@@ -6224,7 +6224,7 @@ proof
   ← apply_backward_step cos_pos_pi_le goal=11
     #[12] -(pi / 2) ≤ x
     #[13] x ≤ pi / 2
-  -> rewrite_fact real_abs_bounds sym=false goal=12 facts=[1]
+  → rewrite_fact real_abs_bounds sym=false goal=12 facts=[1]
     #[14] -(pi / 2) ≤ x ∧ x ≤ pi / 2
   ← apply_backward_step conjD1 goal=12 facts=[14]
     #[15] -(pi / 2) ≤ x
@@ -6237,7 +6237,7 @@ proof
   ← apply_backward_step cos_pos_pi_le goal=18
     #[19] -(pi / 2) ≤ y
     #[20] y ≤ pi / 2
-  -> rewrite_fact real_abs_bounds sym=false goal=19 facts=[2]
+  → rewrite_fact real_abs_bounds sym=false goal=19 facts=[2]
     #[21] -(pi / 2) ≤ y ∧ y ≤ pi / 2
   ← apply_backward_step conjD1 goal=19 facts=[21]
     #[22] -(pi / 2) ≤ y
@@ -6354,11 +6354,11 @@ proof
     #[10] ∀a::real. 0 < a ⟶ ¬(a = 0)
   ← z3 goal=10
     #[11] ∀a::real. 0 < a ⟶ ¬(a = 0)
-  -> apply_fact goal=5 facts=[11,6]
+  → apply_fact goal=5 facts=[11,6]
     #[12] ¬(cos x = 0)
-  -> apply_fact goal=5 facts=[11,8]
+  → apply_fact goal=5 facts=[11,8]
     #[13] ¬(cos y = 0)
-  -> apply_forward_step real_sub_tan goal=5 facts=[13,12]
+  → apply_forward_step real_sub_tan goal=5 facts=[13,12]
     #[14] tan y - tan x = sin (y - x) / (cos y * cos x)
   ← rewrite_goal_with_prev goal=5 facts=[14]
     #[15] 0 < sin (y - x) / (cos y * cos x)
@@ -6394,7 +6394,7 @@ proof
     #[2] x ≤ y
     #[3] y < pi / 2
     #[4] tan x ≤ tan y
-  -> rewrite_fact real_le_lt sym=false goal=4 facts=[2]
+  → rewrite_fact real_le_lt sym=false goal=4 facts=[2]
     #[5] x < y ∨ x = y
   ← apply_backward_step disjE goal=4 facts=[5]
     #[6] x < y ⟶ tan x ≤ tan y
@@ -6501,10 +6501,10 @@ proof
     #[15] 0 < pi
   ← z3 goal=14
     #[16] real_inverse 4 < real_inverse 2
-  -> rewrite_fact real_abs_lt sym=false goal=9 facts=[1]
+  → rewrite_fact real_abs_lt sym=false goal=9 facts=[1]
     #[17] -(pi / 4) < x ∧ x < pi / 4
   ← apply_backward_step conjD1 goal=9 facts=[17]
-  -> apply_forward_step conjD2 goal=10 facts=[17]
+  → apply_forward_step conjD2 goal=10 facts=[17]
     #[18] x < pi / 4
   ← apply_backward_step real_lt_trans goal=10 facts=[18,11]
   ← apply_backward_step tan_mono_lt goal=6
@@ -6568,7 +6568,7 @@ proof
     #[4] sin (a / 6) ≤ 1 / 2
     #[5] 1 / 2 ≤ sin (b / 6)
     #[6] a ≤ pi ∧ pi ≤ b
-  -> apply_forward_step sin_mono_le_eq param_x="a / 6" param_y="pi / 6" goal=6
+  → apply_forward_step sin_mono_le_eq param_x="a / 6" param_y="pi / 6" goal=6
     #[7] -(pi / 2) ≤ a / 6 ⟶ a / 6 ≤ pi / 2 ⟶ -(pi / 2) ≤ pi / 6 ⟶ pi / 6 ≤ pi / 2 ⟶ sin (a / 6) ≤ sin (pi / 6) ⟷ a / 6 ≤ pi / 6
   cut "!p. !x. 0 < p --> 0 <= x --> -(p / 2) ≤ x / 6" goal=6
     #[8] ∀p. ∀x. 0 < p ⟶ 0 ≤ x ⟶ -(p / 2) ≤ x / 6
@@ -6580,7 +6580,7 @@ proof
     #[11] 0 < pi
   ← apply_backward_step pi_pos goal=11
     #[12] 0 < pi
-  -> apply_fact goal=6 facts=[7,10]
+  → apply_fact goal=6 facts=[7,10]
     #[13] a / 6 ≤ pi / 2 ⟶ -(pi / 2) ≤ pi / 6 ⟶ pi / 6 ≤ pi / 2 ⟶ sin (a / 6) ≤ sin (pi / 6) ⟷ a / 6 ≤ pi / 6
   cut "a / 6 ≤ pi / 2" goal=6
     #[14] a / 6 ≤ pi / 2
@@ -6617,7 +6617,7 @@ proof
     #[31] sin (abs (pi / 2)) ≤ abs (pi / 2)
   cut "sin (abs (pi / 2)) = abs (sin (pi / 2))" goal=31
     #[32] sin (abs (pi / 2)) = abs (sin (pi / 2))
-  -> rewrite_fact eq_sym_eq sym=false goal=32 facts=[24]
+  → rewrite_fact eq_sym_eq sym=false goal=32 facts=[24]
     #[33] abs (pi / 2) = pi / 2
   ← rewrite_goal_with_prev goal=32 facts=[33]
     #[34] sin (pi / 2) = abs (sin (pi / 2))
@@ -6633,7 +6633,7 @@ proof
     #[39] a ≤ 4
   ← apply_backward_step real_le_trans goal=39 facts=[2,3]
     #[40] a ≤ 4
-  -> apply_fact goal=6 facts=[13,14]
+  → apply_fact goal=6 facts=[13,14]
     #[41] -(pi / 2) ≤ pi / 6 ⟶ pi / 6 ≤ pi / 2 ⟶ sin (a / 6) ≤ sin (pi / 6) ⟷ a / 6 ≤ pi / 6
   cut "-(pi / 2) ≤ pi / 6" goal=6
     #[42] -(pi / 2) ≤ pi / 6
@@ -6642,7 +6642,7 @@ proof
   ← z3 goal=43
     #[44] ∀p. 0 < p ⟶ -(p / 2) ≤ p / 6
   ← apply_prev goal=42 facts=[44]
-  -> apply_fact goal=6 facts=[41,42]
+  → apply_fact goal=6 facts=[41,42]
     #[45] pi / 6 ≤ pi / 2 ⟶ sin (a / 6) ≤ sin (pi / 6) ⟷ a / 6 ≤ pi / 6
   cut "∀p. 0 < p ⟶ p / 6 ≤ p / 2" goal=6
     #[46] ∀p. 0 < p ⟶ p / 6 ≤ p / 2
@@ -6651,7 +6651,7 @@ proof
   cut "pi / 6 ≤ pi / 2" goal=6
     #[48] pi / 6 ≤ pi / 2
   ← apply_prev goal=48 facts=[47]
-  -> apply_fact goal=6 facts=[45,48]
+  → apply_fact goal=6 facts=[45,48]
     #[49] sin (a / 6) ≤ sin (pi / 6) ⟷ a / 6 ≤ pi / 6
   cut "pi/6 = 1/6 * pi" goal=6
     #[50] pi / 6 = 1 / 6 * pi
@@ -6671,7 +6671,7 @@ proof
     #[58] a / 6 ≤ pi / 6
   ← apply_backward_step real_pos goal=57
     #[59] (0::real) ≤ 6
-  -> rewrite_fact eq_sym_eq sym=false goal=58 facts=[49]
+  → rewrite_fact eq_sym_eq sym=false goal=58 facts=[49]
     #[60] a / 6 ≤ pi / 6 ⟷ sin (a / 6) ≤ sin (pi / 6)
   ← rewrite_goal_with_prev goal=58 facts=[60]
     #[61] sin (a / 6) ≤ sin (pi / 6)
@@ -6682,7 +6682,7 @@ proof
     #[63] 6 * (pi / 6) ≤ 6 * (b / 6)
   ← apply_backward_step real_le_lmul goal=63
     #[64] pi / 6 ≤ b / 6
-  -> apply_forward_step sin_mono_le_eq param_x=pi/6 param_y=b/6 goal=64
+  → apply_forward_step sin_mono_le_eq param_x=pi/6 param_y=b/6 goal=64
     #[65] -(pi / 2) ≤ pi / 6 ⟶ pi / 6 ≤ pi / 2 ⟶ -(pi / 2) ≤ b / 6 ⟶ b / 6 ≤ pi / 2 ⟶ sin (pi / 6) ≤ sin (b / 6) ⟷ pi / 6 ≤ b / 6
   cut "sin (pi / 6) ≤ sin (b / 6) ⟷ pi / 6 ≤ b / 6" goal=64
     #[66] sin (pi / 6) ≤ sin (b / 6) ⟷ pi / 6 ≤ b / 6
@@ -6694,7 +6694,7 @@ proof
   ← apply_backward_step real_le_trans goal=69 facts=[1,2]
     #[70] 0 ≤ b
   ← apply_prev goal=68 facts=[15]
-  -> rewrite_fact eq_sym_eq sym=false goal=64 facts=[66]
+  → rewrite_fact eq_sym_eq sym=false goal=64 facts=[66]
     #[71] pi / 6 ≤ b / 6 ⟷ sin (pi / 6) ≤ sin (b / 6)
   ← rewrite_goal_with_prev goal=64 facts=[71]
     #[72] sin (pi / 6) ≤ sin (b / 6)
@@ -7116,7 +7116,7 @@ proof
     #[2] x < y
     #[3] abs y ≤ 1
     #[4] acs y < acs x
-  -> apply_forward_step acs_mono_lt_eq goal=4 facts=[3,1]
+  → apply_forward_step acs_mono_lt_eq goal=4 facts=[3,1]
     #[5] acs y < acs x ⟷ x < y
   ← rewrite_goal_with_prev goal=4 facts=[5]
 qed
@@ -7131,7 +7131,7 @@ proof
     #[2] x ≤ y
     #[3] abs y ≤ 1
     #[4] acs y ≤ acs x
-  -> apply_forward_step acs_mono_le_eq goal=4 facts=[3,1]
+  → apply_forward_step acs_mono_le_eq goal=4 facts=[3,1]
     #[5] acs y ≤ acs x ⟷ x ≤ y
   ← rewrite_goal_with_prev goal=4 facts=[5]
 qed
@@ -7153,17 +7153,17 @@ proof
   ← apply_backward_step sin_pos_pi_le goal=5
     #[7] 0 ≤ acs x
     #[8] acs x ≤ pi
-  -> apply_forward_step acs_bounds goal=7 facts=[1,2]
+  → apply_forward_step acs_bounds goal=7 facts=[1,2]
     #[9] 0 ≤ acs x ∧ acs x ≤ pi
   ← apply_backward_step conjD1 goal=7 facts=[9]
   ← apply_backward_step conjD2 goal=8 facts=[9]
-  -> apply_forward_step sin_circle param_x="acs x" goal=6
+  → apply_forward_step sin_circle param_x="acs x" goal=6
     #[10] sin (acs x) ^ (2::nat) + cos (acs x) ^ (2::nat) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=6 facts=[10]
+  → rewrite_fact eq_sym_eq sym=false goal=6 facts=[10]
     #[11] 1 = sin (acs x) ^ (2::nat) + cos (acs x) ^ (2::nat)
   ← rewrite_goal_with_prev goal=6 facts=[11]
     #[12] sin (acs x) ^ (2::nat) = sin (acs x) ^ (2::nat) + cos (acs x) ^ (2::nat) - x ^ (2::nat)
-  -> apply_forward_step cos_acs goal=12 facts=[1,2]
+  → apply_forward_step cos_acs goal=12 facts=[1,2]
     #[13] cos (acs x) = x
   ← rewrite_goal_with_prev goal=12 facts=[13]
     #[14] sin (acs x) ^ (2::nat) = sin (acs x) ^ (2::nat) + x ^ (2::nat) - x ^ (2::nat)
@@ -7196,16 +7196,16 @@ proof
   ← apply_backward_step conjI goal=8
     #[9] x ≤ y
     #[10] y ≤ x
-  -> apply_forward_step conjD1 goal=9 facts=[7]
+  → apply_forward_step conjD1 goal=9 facts=[7]
     #[11] acs x ≤ acs y
-  -> apply_forward_step conjD2 goal=9 facts=[7]
+  → apply_forward_step conjD2 goal=9 facts=[7]
     #[12] acs y ≤ acs x
-  -> apply_forward_step acs_mono_le_eq goal=9 facts=[2,1]
+  → apply_forward_step acs_mono_le_eq goal=9 facts=[2,1]
     #[13] acs y ≤ acs x ⟷ x ≤ y
-  -> rewrite_fact_with_prev goal=9 facts=[13,12]
-  -> apply_forward_step acs_mono_le_eq goal=10 facts=[1,2]
+  → rewrite_fact_with_prev goal=9 facts=[13,12]
+  → apply_forward_step acs_mono_le_eq goal=10 facts=[1,2]
     #[14] acs x ≤ acs y ⟷ y ≤ x
-  -> rewrite_fact_with_prev goal=10 facts=[14,11]
+  → rewrite_fact_with_prev goal=10 facts=[14,11]
   ← introduction goal=6
     #[15] x ≤ y ∧ y ≤ x
     #[16] acs x ≤ acs y ∧ acs y ≤ acs x
@@ -7339,9 +7339,9 @@ proof
     #[12] real_sgn (x ^ (2::nat)) * exp (log (abs x) / of_nat 2) ^ (2::nat) = abs x
   ← rewrite_goal real_sgn_pow_2 sym=false goal=12
     #[13] real_sgn (abs x) * exp (log (abs x) / of_nat 2) ^ (2::nat) = abs x
-  -> apply_forward_step real_abs_pos param_x=x goal=13
+  → apply_forward_step real_abs_pos param_x=x goal=13
     #[14] 0 ≤ abs x
-  -> rewrite_fact real_le_lt sym=false goal=13 facts=[14]
+  → rewrite_fact real_le_lt sym=false goal=13 facts=[14]
     #[15] 0 < abs x ∨ 0 = abs x
   ← apply_backward_step disjE goal=13 facts=[15]
     #[16] 0 < abs x ⟶ real_sgn (abs x) * exp (log (abs x) / of_nat 2) ^ (2::nat) = abs x
@@ -7370,7 +7370,7 @@ proof
   ← introduction goal=17
     #[28] 0 = abs x
     #[29] real_sgn (abs x) * exp (log (abs x) / of_nat 2) ^ (2::nat) = abs x
-  -> rewrite_fact eq_sym_eq sym=false goal=29 facts=[28]
+  → rewrite_fact eq_sym_eq sym=false goal=29 facts=[28]
     #[30] abs x = 0
   ← rewrite_goal_with_prev goal=29 facts=[30]
     #[31] real_sgn 0 * exp (log 0 / of_nat 2) ^ (2::nat) = 0
@@ -7447,15 +7447,15 @@ proof
     #[14] ∀x. ∀y. ¬(x = 0) ⟶ x * (y / x) = y
   ← z3 goal=14
     #[15] ∀x. ∀y. ¬(x = 0) ⟶ x * (y / x) = y
-  -> rewrite_fact real_of_nat_eq sym=true goal=13 facts=[9]
+  → rewrite_fact real_of_nat_eq sym=true goal=13 facts=[9]
     #[16] ¬((of_nat::nat ⇒ real) n = of_nat 0)
-  -> rewrite_fact real_zero_def sym=true goal=13 facts=[16]
+  → rewrite_fact real_zero_def sym=true goal=13 facts=[16]
     #[17] ¬(of_nat n = (0::real))
-  -> forall_elim "(of_nat::nat ⇒ real) n" goal=13 facts=[15]
+  → forall_elim "(of_nat::nat ⇒ real) n" goal=13 facts=[15]
     #[18] ∀y. ¬(of_nat n = (0::real)) ⟶ of_nat n * (y / of_nat n) = y
-  -> forall_elim "log (abs x)" goal=13 facts=[18]
+  → forall_elim "log (abs x)" goal=13 facts=[18]
     #[19] ¬(of_nat n = (0::real)) ⟶ of_nat n * (log (abs x) / of_nat n) = log (abs x)
-  -> apply_fact goal=13 facts=[19,17]
+  → apply_fact goal=13 facts=[19,17]
     #[20] of_nat n * (log (abs x) / of_nat n) = log (abs x)
   ← rewrite_goal_with_prev goal=13 facts=[20]
     #[21] real_sgn x ^ n * exp (log (abs x)) = real_sgn x ^ n * abs x
@@ -7497,7 +7497,7 @@ proof
     #[2] root n x ^ n = x
   ← rewrite_goal root_works_2 sym=false goal=2
     #[3] (if n = 0 then 1 else real_sgn x ^ n * abs x) = x
-  -> rewrite_fact odd_exists sym=false goal=3 facts=[1]
+  → rewrite_fact odd_exists sym=false goal=3 facts=[1]
     #[4] ∃m. n = Suc (2 * m)
   exists_elim m goal=3 facts=[4]
     #[5] _VAR m
@@ -7633,7 +7633,7 @@ proof
     #[2] 0 ≤ root n x
   ← rewrite_goal real_le_lt sym=false goal=2
     #[3] 0 < root n x ∨ 0 = root n x
-  -> rewrite_fact real_le_lt sym=false goal=3 facts=[1]
+  → rewrite_fact real_le_lt sym=false goal=3 facts=[1]
     #[4] 0 < x ∨ 0 = x
   ← apply_backward_step disjE goal=3 facts=[4]
     #[5] 0 < x ⟶ 0 < root n x ∨ 0 = root n x
@@ -7650,7 +7650,7 @@ proof
     #[12] 0 < root n x ∨ 0 = root n x
   ← apply_backward_step disjI2 goal=12
     #[13] 0 = root n x
-  -> rewrite_fact eq_sym_eq sym=false goal=13 facts=[11]
+  → rewrite_fact eq_sym_eq sym=false goal=13 facts=[11]
     #[14] x = 0
   ← rewrite_goal_with_prev goal=13 facts=[14]
     #[15] 0 = root n 0
@@ -7671,7 +7671,7 @@ proof
     #[4] 0 < x
   ← rewrite_goal real_less_def sym=false goal=4
     #[5] ¬(x ≤ 0)
-  -> rewrite_fact real_less_def sym=false goal=5 facts=[3]
+  → rewrite_fact real_less_def sym=false goal=5 facts=[3]
     #[6] ¬(root n x ≤ 0)
   ← apply_backward_step contrapositive goal=5 facts=[6]
     #[7] ¬¬(x ≤ 0) ⟶ ¬¬(root n x ≤ 0)
@@ -7680,19 +7680,19 @@ proof
     #[9] ¬¬(root n x ≤ 0)
   ← rewrite_goal double_neg sym=false goal=9
     #[10] root n x ≤ 0
-  -> rewrite_fact double_neg sym=false goal=10 facts=[8]
+  → rewrite_fact double_neg sym=false goal=10 facts=[8]
     #[11] x ≤ 0
   cut "!x::real. x ≤ 0 ⟷ 0 ≤ -x" goal=10
     #[12] ∀x::real. x ≤ 0 ⟷ 0 ≤ -x
   ← z3 goal=12
     #[13] ∀x::real. x ≤ 0 ⟷ 0 ≤ -x
-  -> rewrite_fact_with_prev goal=10 facts=[13,11]
+  → rewrite_fact_with_prev goal=10 facts=[13,11]
     #[14] 0 ≤ -x
   ← rewrite_goal_with_prev goal=10 facts=[13]
     #[15] 0 ≤ -(root n x)
-  -> apply_forward_step root_pos_le param_n=n goal=15 facts=[14]
+  → apply_forward_step root_pos_le param_n=n goal=15 facts=[14]
     #[16] 0 ≤ root n (-x)
-  -> rewrite_fact root_neg sym=false goal=15 facts=[16]
+  → rewrite_fact root_neg sym=false goal=15 facts=[16]
     #[17] 0 ≤ -(root n x)
   ← introduction goal=2
     #[18] 0 < x
@@ -7713,7 +7713,7 @@ proof
     #[4] 0 ≤ x
   ← rewrite_goal real_not_lt sym=true goal=4
     #[5] ¬(x < 0)
-  -> rewrite_fact real_not_lt sym=true goal=5 facts=[3]
+  → rewrite_fact real_not_lt sym=true goal=5 facts=[3]
     #[6] ¬(root n x < 0)
   ← apply_backward_step contrapositive goal=5 facts=[6]
     #[7] ¬¬(x < 0) ⟶ ¬¬(root n x < 0)
@@ -7722,7 +7722,7 @@ proof
     #[9] ¬¬(root n x < 0)
   ← rewrite_goal double_neg sym=false goal=9
     #[10] root n x < 0
-  -> rewrite_fact double_neg sym=false goal=10 facts=[8]
+  → rewrite_fact double_neg sym=false goal=10 facts=[8]
     #[11] x < 0
   cut "∀x::real. x < 0 ⟷ 0 < -x" goal=10
     #[12] ∀x::real. x < 0 ⟷ 0 < -x
@@ -7730,7 +7730,7 @@ proof
     #[13] ∀x::real. x < 0 ⟷ 0 < -x
   ← rewrite_goal_with_prev goal=10 facts=[13]
     #[14] 0 < -(root n x)
-  -> rewrite_fact_with_prev goal=14 facts=[13,11]
+  → rewrite_fact_with_prev goal=14 facts=[13,11]
     #[15] 0 < -x
   ← rewrite_goal root_neg sym=true goal=14
     #[16] 0 < root n (-x)
@@ -7763,12 +7763,12 @@ proof
   ← introduction goal=7
     #[9] real_sgn x = 0
     #[10] x = 0
-  -> rewrite_fact real_sgn_eq_0 sym=false goal=10 facts=[9]
+  → rewrite_fact real_sgn_eq_0 sym=false goal=10 facts=[9]
     #[11] x = 0
   ← introduction goal=8
     #[12] exp (log (abs x) / of_nat n) = 0
     #[13] x = 0
-  -> rewrite_fact double_neg sym=true goal=13 facts=[12]
+  → rewrite_fact double_neg sym=true goal=13 facts=[12]
     #[14] ¬¬(exp (log (abs x) / of_nat n) = 0)
   ← apply_backward_step negE_gen goal=13 facts=[14]
     #[15] ¬(exp (log (abs x) / of_nat n) = 0)
@@ -7831,11 +7831,11 @@ proof
     #[24] ∀x::real. ¬(x = 0) ⟷ 0 < abs x
   ← z3 goal=24
     #[25] ∀x::real. ¬(x = 0) ⟷ 0 < abs x
-  -> rewrite_fact_with_prev goal=23 facts=[25,9]
+  → rewrite_fact_with_prev goal=23 facts=[25,9]
     #[26] 0 < abs x
-  -> rewrite_fact_with_prev goal=23 facts=[25,19]
+  → rewrite_fact_with_prev goal=23 facts=[25,19]
     #[27] 0 < abs y
-  -> apply_forward_step log_mul goal=23 facts=[26,27]
+  → apply_forward_step log_mul goal=23 facts=[26,27]
     #[28] log (abs x * abs y) = log (abs x) + log (abs y)
   ← rewrite_goal_with_prev goal=23 facts=[28]
     #[29] real_sgn x * real_sgn y * exp ((log (abs x) + log (abs y)) / of_nat n) = real_sgn x * exp (log (abs x) / of_nat n) * (real_sgn y * exp (log (abs y) / of_nat n))
@@ -7907,7 +7907,7 @@ proof
     #[1] y ^ n = x
     #[2] odd n ∨ ¬(n = 0) ∧ 0 ≤ y
     #[3] root n x = y
-  -> rewrite_fact eq_sym_eq sym=false goal=3 facts=[1]
+  → rewrite_fact eq_sym_eq sym=false goal=3 facts=[1]
     #[4] x = y ^ n
   ← rewrite_goal_with_prev goal=3 facts=[4]
     #[5] root n (y ^ n) = y
@@ -7960,9 +7960,9 @@ proof
     #[13] real_sgn x * exp (log (abs (real_inverse x)) / of_nat n) = real_sgn x * real_inverse (exp (log (abs x) / of_nat n))
   ← rewrite_goal real_abs_inv sym=false goal=13
     #[14] real_sgn x * exp (log (real_inverse (abs x)) / of_nat n) = real_sgn x * real_inverse (exp (log (abs x) / of_nat n))
-  -> apply_forward_step real_abs_nz goal=14 facts=[12]
+  → apply_forward_step real_abs_nz goal=14 facts=[12]
     #[15] 0 < abs x
-  -> apply_forward_step log_inv goal=14 facts=[15]
+  → apply_forward_step log_inv goal=14 facts=[15]
     #[16] log (real_inverse (abs x)) = -(log (abs x))
   ← rewrite_goal_with_prev goal=14 facts=[16]
     #[17] real_sgn x * exp (-(log (abs x)) / of_nat n) = real_sgn x * real_inverse (exp (log (abs x) / of_nat n))
@@ -8024,7 +8024,7 @@ proof
     #[20] (if 0 < a then 1 else if a < 0 then -1 else 0) ^ n * abs a < (if 0 < b then 1 else if b < 0 then -1 else 0) ^ n * abs b
   ← rewrite_goal if_P sym=false goal=20 facts=[19]
     #[21] 1 ^ n * abs a < (if 0 < b then 1 else if b < 0 then -1 else 0) ^ n * abs b
-  -> apply_forward_step real_lt_trans goal=21 facts=[19,8]
+  → apply_forward_step real_lt_trans goal=21 facts=[19,8]
     #[22] 0 < b
   ← rewrite_goal if_P sym=false goal=21 facts=[22]
     #[23] 1 ^ n * abs a < 1 ^ n * abs b
@@ -8052,7 +8052,7 @@ proof
     #[36] (if a < 0 then -1 else 0) ^ n * abs a < (if 0 < b then 1 else if b < 0 then -1 else 0) ^ n * abs b
   ← rewrite_goal if_not_P sym=false goal=36 facts=[35]
     #[37] 0 ^ n * abs a < (if 0 < b then 1 else if b < 0 then -1 else 0) ^ n * abs b
-  -> apply_forward_step real_let_trans goal=37 facts=[7,8]
+  → apply_forward_step real_let_trans goal=37 facts=[7,8]
     #[38] 0 < b
   ← rewrite_goal if_P sym=false goal=37 facts=[38]
     #[39] 0 ^ n * abs a < 1 ^ n * abs b
@@ -8145,7 +8145,7 @@ proof
     #[18] root n x ≤ root n y
   ← rewrite_goal real_le_lt sym=false goal=18
     #[19] root n x < root n y ∨ root n x = root n y
-  -> rewrite_fact real_le_lt sym=false goal=19 facts=[1]
+  → rewrite_fact real_le_lt sym=false goal=19 facts=[1]
     #[20] x < y ∨ x = y
   ← apply_backward_step disjE goal=19 facts=[20]
     #[21] x < y ⟶ root n x < root n y ∨ root n x = root n y
@@ -8233,9 +8233,9 @@ proof
     #[2] root n x = root n y ⟷ x = y
   ← rewrite_goal real_le_antisym sym=true goal=2
     #[3] root n x ≤ root n y ∧ root n y ≤ root n x ⟷ x ≤ y ∧ y ≤ x
-  -> apply_forward_step root_mono_le_eq param_x=x param_y=y goal=3 facts=[1]
+  → apply_forward_step root_mono_le_eq param_x=x param_y=y goal=3 facts=[1]
     #[4] root n x ≤ root n y ⟷ x ≤ y
-  -> apply_forward_step root_mono_le_eq param_x=y param_y=x goal=3 facts=[1]
+  → apply_forward_step root_mono_le_eq param_x=y param_y=x goal=3 facts=[1]
     #[5] root n y ≤ root n x ⟷ y ≤ x
   ← rewrite_goal_with_prev goal=3 facts=[4]
     #[6] x ≤ y ∧ root n y ≤ root n x ⟷ x ≤ y ∧ y ≤ x
@@ -8251,9 +8251,9 @@ proof
     #[1] ¬(n = 0)
     #[2] 0 ≤ y
     #[3] root n x ≤ y ⟷ x ≤ y ^ n
-  -> apply_forward_step real_root_pow2 goal=3 facts=[1,2]
+  → apply_forward_step real_root_pow2 goal=3 facts=[1,2]
     #[4] root n (y ^ n) = y
-  -> rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
+  → rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
     #[5] y = root n (y ^ n)
   ← apply_backward_step iffI goal=3
     #[6] root n x ≤ y ⟶ x ≤ y ^ n
@@ -8261,11 +8261,11 @@ proof
   ← introduction goal=6
     #[8] root n x ≤ y
     #[9] x ≤ y ^ n
-  -> rewrite_fact_with_prev goal=9 facts=[5,8]
+  → rewrite_fact_with_prev goal=9 facts=[5,8]
     #[10] root n x ≤ root n (y ^ n)
-  -> apply_forward_step root_mono_le_eq param_x=x param_y="y ^ n" goal=9 facts=[1]
+  → apply_forward_step root_mono_le_eq param_x=x param_y="y ^ n" goal=9 facts=[1]
     #[11] root n x ≤ root n (y ^ n) ⟷ x ≤ y ^ n
-  -> rewrite_fact_with_prev goal=9 facts=[11,10]
+  → rewrite_fact_with_prev goal=9 facts=[11,10]
   ← introduction goal=7
     #[12] x ≤ y ^ n
     #[13] root n x ≤ y
@@ -8283,9 +8283,9 @@ proof
     #[1] ¬(n = 0)
     #[2] 0 ≤ x
     #[3] x ≤ root n y ⟷ x ^ n ≤ y
-  -> apply_forward_step real_root_pow2 goal=3 facts=[1,2]
+  → apply_forward_step real_root_pow2 goal=3 facts=[1,2]
     #[4] root n (x ^ n) = x
-  -> rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
+  → rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
     #[5] x = root n (x ^ n)
   ← apply_backward_step iffI goal=3
     #[6] x ≤ root n y ⟶ x ^ n ≤ y
@@ -8293,11 +8293,11 @@ proof
   ← introduction goal=6
     #[8] x ≤ root n y
     #[9] x ^ n ≤ y
-  -> rewrite_fact_with_prev goal=9 facts=[5,8]
+  → rewrite_fact_with_prev goal=9 facts=[5,8]
     #[10] root n (x ^ n) ≤ root n y
-  -> apply_forward_step root_mono_le_eq param_x="x ^ n" param_y=y goal=9 facts=[1]
+  → apply_forward_step root_mono_le_eq param_x="x ^ n" param_y=y goal=9 facts=[1]
     #[11] root n (x ^ n) ≤ root n y ⟷ x ^ n ≤ y
-  -> rewrite_fact_with_prev goal=9 facts=[11,10]
+  → rewrite_fact_with_prev goal=9 facts=[11,10]
   ← introduction goal=7
     #[12] x ^ n ≤ y
     #[13] x ≤ root n y
@@ -8315,23 +8315,23 @@ proof
     #[1] ¬(n = 0)
     #[2] 0 < x
     #[3] log (root n x) = log x / of_nat n
-  -> apply_forward_step le_1_1 goal=3 facts=[1]
+  → apply_forward_step le_1_1 goal=3 facts=[1]
     #[4] 0 < n
-  -> rewrite_fact real_of_nat_lt sym=true goal=3 facts=[4]
+  → rewrite_fact real_of_nat_lt sym=true goal=3 facts=[4]
     #[5] (of_nat::nat ⇒ real) 0 < of_nat n
-  -> rewrite_fact real_zero_def sym=true goal=3 facts=[5]
+  → rewrite_fact real_zero_def sym=true goal=3 facts=[5]
     #[6] (0::real) < of_nat n
-  -> apply_forward_step real_eq_rdiv_eq param_x="log (root n x)" param_y="log x" goal=3 facts=[6]
+  → apply_forward_step real_eq_rdiv_eq param_x="log (root n x)" param_y="log x" goal=3 facts=[6]
     #[7] log (root n x) = log x / of_nat n ⟷ log (root n x) * of_nat n = log x
   ← rewrite_goal_with_prev goal=3 facts=[7]
     #[8] log (root n x) * of_nat n = log x
   ← rewrite_goal real_mult_comm sym=false goal=8
     #[9] of_nat n * log (root n x) = log x
-  -> apply_forward_step root_pos_lt param_n=n goal=9 facts=[2]
+  → apply_forward_step root_pos_lt param_n=n goal=9 facts=[2]
     #[10] 0 < root n x
-  -> apply_forward_step log_pow param_n=n goal=9 facts=[10]
+  → apply_forward_step log_pow param_n=n goal=9 facts=[10]
     #[11] log (root n x ^ n) = of_nat n * log (root n x)
-  -> rewrite_fact eq_sym_eq sym=false goal=9 facts=[11]
+  → rewrite_fact eq_sym_eq sym=false goal=9 facts=[11]
     #[12] of_nat n * log (root n x) = log (root n x ^ n)
   ← rewrite_goal_with_prev goal=9 facts=[12]
     #[13] log (root n x ^ n) = log x
@@ -8360,7 +8360,7 @@ proof
     #[6] (if 0 < x then 1 else if x < 0 then -1 else 0) * exp (log (if 0 ≤ x then x else -x) / of_nat n) = exp (log x / of_nat n)
   ← rewrite_goal if_P sym=false goal=6 facts=[2]
     #[7] 1 * exp (log (if 0 ≤ x then x else -x) / of_nat n) = exp (log x / of_nat n)
-  -> apply_forward_step real_lt_imp_le goal=7 facts=[2]
+  → apply_forward_step real_lt_imp_le goal=7 facts=[2]
     #[8] 0 ≤ x
   ← rewrite_goal if_P sym=false goal=7 facts=[8]
     #[9] 1 * exp (log x / of_nat n) = exp (log x / of_nat n)
@@ -8397,7 +8397,7 @@ proof
     #[6] exp (of_nat n * log x) = x ^ n
   ← rewrite_goal real_exp_n sym=false goal=6
     #[7] exp (log x) ^ n = x ^ n
-  -> apply_forward_step exp_log goal=7 facts=[4]
+  → apply_forward_step exp_log goal=7 facts=[4]
     #[8] exp (log x) = x
   ← rewrite_goal_with_prev goal=7 facts=[8]
   ← introduction goal=3
@@ -8443,13 +8443,13 @@ proof
     #[32] _VAR q
     #[33] odd p ∧ odd q ∧ of_nat n = of_nat p / of_nat q
     #[34] odd n
-  -> apply_forward_step conjD1 goal=34 facts=[33]
+  → apply_forward_step conjD1 goal=34 facts=[33]
     #[35] odd p
-  -> apply_forward_step conjD2 goal=34 facts=[33]
+  → apply_forward_step conjD2 goal=34 facts=[33]
     #[36] odd q ∧ of_nat n = of_nat p / of_nat q
-  -> apply_forward_step conjD1 goal=34 facts=[36]
+  → apply_forward_step conjD1 goal=34 facts=[36]
     #[37] odd q
-  -> apply_forward_step conjD2 goal=34 facts=[36]
+  → apply_forward_step conjD2 goal=34 facts=[36]
     #[38] of_nat n = of_nat p / of_nat q
   ← cases "q=0" goal=34
     #[39] q = 0 ⟶ odd n
@@ -8457,9 +8457,9 @@ proof
   ← introduction goal=39
     #[41] q = 0
     #[42] odd n
-  -> rewrite_fact_with_prev goal=42 facts=[41,37]
+  → rewrite_fact_with_prev goal=42 facts=[41,37]
     #[43] odd 0
-  -> rewrite_fact odd_def_1 sym=false goal=42 facts=[43]
+  → rewrite_fact odd_def_1 sym=false goal=42 facts=[43]
     #[44] false
   ← apply_resolve_step not_false_res goal=42 facts=[44]
     #[45] odd n
@@ -8468,19 +8468,19 @@ proof
     #[47] odd n
   cut "(of_nat::nat⇒real) q * of_nat n = of_nat p" goal=47
     #[48] (of_nat::nat ⇒ real) q * of_nat n = of_nat p
-  -> rewrite_fact real_of_nat_eq sym=true goal=48 facts=[46]
+  → rewrite_fact real_of_nat_eq sym=true goal=48 facts=[46]
     #[49] ¬((of_nat::nat ⇒ real) q = of_nat 0)
   ← z3 goal=48 facts=[49,38]
     #[50] (of_nat::nat ⇒ real) q * of_nat n = of_nat p
-  -> rewrite_fact real_of_nat_mul sym=false goal=47 facts=[50]
+  → rewrite_fact real_of_nat_mul sym=false goal=47 facts=[50]
     #[51] (of_nat::nat ⇒ real) (q * n) = of_nat p
-  -> rewrite_fact real_of_nat_eq sym=false goal=47 facts=[51]
+  → rewrite_fact real_of_nat_eq sym=false goal=47 facts=[51]
     #[52] q * n = p
-  -> rewrite_fact eq_sym_eq sym=false goal=47 facts=[52]
+  → rewrite_fact eq_sym_eq sym=false goal=47 facts=[52]
     #[53] p = q * n
-  -> rewrite_fact_with_prev goal=47 facts=[53,35]
+  → rewrite_fact_with_prev goal=47 facts=[53,35]
     #[54] odd (q * n)
-  -> rewrite_fact odd_mult sym=false goal=47 facts=[54]
+  → rewrite_fact odd_mult sym=false goal=47 facts=[54]
     #[55] odd q ∧ odd n
   ← apply_backward_step conjD2 goal=47 facts=[55]
     #[56] odd n
@@ -8513,7 +8513,7 @@ proof
   cut "0 < -x" goal=70
     #[71] 0 < -x
   ← z3 goal=71 facts=[9,22]
-  -> apply_forward_step exp_log goal=70 facts=[71]
+  → apply_forward_step exp_log goal=70 facts=[71]
     #[72] exp (log (-x)) = -x
   ← cases "odd n" goal=70
     #[73] odd n ⟶ (if odd n then -(exp (of_nat n * log (-x))) else exp (of_nat n * log (-x))) = x ^ n
@@ -9148,7 +9148,7 @@ proof
   ← introduction goal=26
     #[33] x = 0 ∧ ¬(y = 0)
     #[34] exp (y * log x) = 0
-  -> apply_forward_step conjD1 goal=34 facts=[33]
+  → apply_forward_step conjD1 goal=34 facts=[33]
     #[35] x = 0
   ← z3 goal=34 facts=[35,22]
     #[36] exp (y * log x) = 0
@@ -9185,7 +9185,7 @@ proof
     #[54] ¬(exp (y * log (-x)) = 0)
   ← introduction goal=46
     #[55] -(exp (y * log (-x))) = 0
-  -> apply_forward_step conjD1 goal=55 facts=[33]
+  → apply_forward_step conjD1 goal=55 facts=[33]
   ← apply_backward_step negE_gen goal=55 facts=[17,35]
     #[56] -(exp (y * log (-x))) = 0
   ← introduction goal=41
@@ -9206,7 +9206,7 @@ proof
   ← apply_backward_step real_exp_nz goal=65
   ← introduction goal=61
     #[66] exp (y * log (-x)) = 0
-  -> apply_forward_step conjD1 goal=66 facts=[33]
+  → apply_forward_step conjD1 goal=66 facts=[33]
   ← apply_backward_step negE_gen goal=66 facts=[17,35]
     #[67] exp (y * log (-x)) = 0
 qed
@@ -9318,13 +9318,13 @@ proof
     #[57] log (a * b) * c = log a * c + log b * c
   ← rewrite_goal real_add_rdistrib sym=true goal=57
     #[58] log (a * b) * c = (log a + log b) * c
-  -> apply_forward_step log_mul goal=58 facts=[47,49]
+  → apply_forward_step log_mul goal=58 facts=[47,49]
     #[59] log (a * b) = log a + log b
   ← rewrite_goal_with_prev goal=58 facts=[59]
     #[60] log (a * b) * c = (log a + log b) * c
-  -> forall_elim z goal=0 facts=[1]
+  → forall_elim z goal=0 facts=[1]
     #[61] ∀y::real. ∀x. 0 ≤ x ⟶ 0 ≤ y ⟶ (x * y) ^ z = x ^ z * y ^ z
-  -> apply_forward_step real_le_total param_x=x param_y="(0::real)" goal=0
+  → apply_forward_step real_le_total param_x=x param_y="(0::real)" goal=0
     #[62] x ≤ 0 ∨ 0 ≤ x
   ← apply_backward_step disjE goal=0 facts=[62]
     #[63] x ≤ 0 ⟶ (x * y) ^ z = x ^ z * y ^ z
@@ -9335,7 +9335,7 @@ proof
   cut "0 <= -x" goal=66
     #[67] 0 ≤ -x
   ← z3 goal=67 facts=[65]
-  -> apply_forward_step real_le_total param_x=y param_y="(0::real)" goal=66
+  → apply_forward_step real_le_total param_x=y param_y="(0::real)" goal=66
     #[68] y ≤ 0 ∨ 0 ≤ y
   ← apply_backward_step disjE goal=66 facts=[68]
     #[69] y ≤ 0 ⟶ (x * y) ^ z = x ^ z * y ^ z
@@ -9347,9 +9347,9 @@ proof
     #[73] 0 ≤ -y
   ← z3 goal=73 facts=[71]
     #[74] 0 ≤ -y
-  -> apply_fact goal=72 facts=[61,67,74]
+  → apply_fact goal=72 facts=[61,67,74]
     #[75] (-x * -y) ^ z = -x ^ z * -y ^ z
-  -> rewrite_fact rpow_lneg sym=false goal=72 facts=[75]
+  → rewrite_fact rpow_lneg sym=false goal=72 facts=[75]
     #[76] (-x * -y) ^ z = (if ∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n then -(x ^ z) else x ^ z) * (if ∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n then -(y ^ z) else y ^ z)
   ← cases "∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n" goal=72
     #[77] (∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n) ⟶ (x * y) ^ z = x ^ z * y ^ z
@@ -9357,49 +9357,49 @@ proof
   ← introduction goal=77
     #[79] ∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n
     #[80] (x * y) ^ z = x ^ z * y ^ z
-  -> rewrite_fact if_P sym=false goal=80 facts=[76,79]
+  → rewrite_fact if_P sym=false goal=80 facts=[76,79]
     #[81] (-x * -y) ^ z = -(x ^ z) * -(y ^ z)
-  -> rewrite_fact real_mul_lneg sym=false goal=80 facts=[81]
+  → rewrite_fact real_mul_lneg sym=false goal=80 facts=[81]
     #[82] -(x * -y) ^ z = -(x ^ z * -(y ^ z))
-  -> rewrite_fact real_mul_rneg sym=false goal=80 facts=[82]
+  → rewrite_fact real_mul_rneg sym=false goal=80 facts=[82]
     #[83] --(x * y) ^ z = --(x ^ z * y ^ z)
-  -> rewrite_fact real_neg_neg sym=false goal=80 facts=[83]
+  → rewrite_fact real_neg_neg sym=false goal=80 facts=[83]
   ← introduction goal=78
     #[84] ¬(∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n)
     #[85] (x * y) ^ z = x ^ z * y ^ z
-  -> rewrite_fact if_not_P sym=false goal=85 facts=[76,84]
+  → rewrite_fact if_not_P sym=false goal=85 facts=[76,84]
     #[86] (-x * -y) ^ z = x ^ z * y ^ z
-  -> rewrite_fact real_mul_lneg sym=false goal=85 facts=[86]
+  → rewrite_fact real_mul_lneg sym=false goal=85 facts=[86]
     #[87] -(x * -y) ^ z = x ^ z * y ^ z
-  -> rewrite_fact real_mul_rneg sym=false goal=85 facts=[87]
+  → rewrite_fact real_mul_rneg sym=false goal=85 facts=[87]
     #[88] --(x * y) ^ z = x ^ z * y ^ z
-  -> rewrite_fact real_neg_neg sym=false goal=85 facts=[88]
+  → rewrite_fact real_neg_neg sym=false goal=85 facts=[88]
   ← introduction goal=70
     #[89] 0 ≤ y
     #[90] (x * y) ^ z = x ^ z * y ^ z
-  -> apply_fact goal=90 facts=[61,67,89]
+  → apply_fact goal=90 facts=[61,67,89]
     #[91] (-x * y) ^ z = -x ^ z * y ^ z
-  -> rewrite_fact real_mul_lneg sym=false goal=90 facts=[91]
+  → rewrite_fact real_mul_lneg sym=false goal=90 facts=[91]
     #[92] -(x * y) ^ z = -x ^ z * y ^ z
-  -> rewrite_fact rpow_lneg sym=false goal=90 facts=[92]
+  → rewrite_fact rpow_lneg sym=false goal=90 facts=[92]
     #[93] (if ∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n then -((x * y) ^ z) else (x * y) ^ z) = (if ∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n then -(x ^ z) else x ^ z) * y ^ z
   ← cases "∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n" goal=90
     #[94] (∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n) ⟶ (x * y) ^ z = x ^ z * y ^ z
     #[95] ¬(∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n) ⟶ (x * y) ^ z = x ^ z * y ^ z
   ← introduction goal=94
     #[96] (x * y) ^ z = x ^ z * y ^ z
-  -> rewrite_fact if_P sym=false goal=96 facts=[93,79]
+  → rewrite_fact if_P sym=false goal=96 facts=[93,79]
     #[97] -((x * y) ^ z) = -(x ^ z) * y ^ z
-  -> rewrite_fact real_mul_lneg sym=false goal=96 facts=[97]
+  → rewrite_fact real_mul_lneg sym=false goal=96 facts=[97]
     #[98] -((x * y) ^ z) = -(x ^ z * y ^ z)
-  -> rewrite_fact real_eq_neg2 sym=false goal=96 facts=[98]
+  → rewrite_fact real_eq_neg2 sym=false goal=96 facts=[98]
   ← introduction goal=95
     #[99] (x * y) ^ z = x ^ z * y ^ z
-  -> rewrite_fact if_not_P sym=false goal=99 facts=[93,84]
+  → rewrite_fact if_not_P sym=false goal=99 facts=[93,84]
   ← introduction goal=64
     #[100] 0 ≤ x
     #[101] (x * y) ^ z = x ^ z * y ^ z
-  -> apply_forward_step real_le_total param_x=y param_y="(0::real)" goal=101
+  → apply_forward_step real_le_total param_x=y param_y="(0::real)" goal=101
   ← apply_backward_step disjE goal=101 facts=[68]
     #[102] y ≤ 0 ⟶ (x * y) ^ z = x ^ z * y ^ z
     #[103] 0 ≤ y ⟶ (x * y) ^ z = x ^ z * y ^ z
@@ -9408,25 +9408,25 @@ proof
   cut "0 <= -y" goal=104
     #[105] 0 ≤ -y
   ← z3 goal=105 facts=[71]
-  -> apply_fact goal=104 facts=[61,100,74]
+  → apply_fact goal=104 facts=[61,100,74]
     #[106] (x * -y) ^ z = x ^ z * -y ^ z
-  -> rewrite_fact real_mul_rneg sym=false goal=104 facts=[106]
+  → rewrite_fact real_mul_rneg sym=false goal=104 facts=[106]
     #[107] -(x * y) ^ z = x ^ z * -y ^ z
-  -> rewrite_fact rpow_lneg sym=false goal=104 facts=[107]
+  → rewrite_fact rpow_lneg sym=false goal=104 facts=[107]
     #[108] (if ∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n then -((x * y) ^ z) else (x * y) ^ z) = x ^ z * (if ∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n then -(y ^ z) else y ^ z)
   ← cases "∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n" goal=104
     #[109] (∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n) ⟶ (x * y) ^ z = x ^ z * y ^ z
     #[110] ¬(∃m. ∃n. odd m ∧ odd n ∧ abs z = of_nat m / of_nat n) ⟶ (x * y) ^ z = x ^ z * y ^ z
   ← introduction goal=109
     #[111] (x * y) ^ z = x ^ z * y ^ z
-  -> rewrite_fact if_P sym=false goal=111 facts=[108,79]
+  → rewrite_fact if_P sym=false goal=111 facts=[108,79]
     #[112] -((x * y) ^ z) = x ^ z * -(y ^ z)
-  -> rewrite_fact real_mul_rneg sym=false goal=111 facts=[112]
+  → rewrite_fact real_mul_rneg sym=false goal=111 facts=[112]
     #[113] -((x * y) ^ z) = -(x ^ z * y ^ z)
-  -> rewrite_fact real_eq_neg2 sym=false goal=111 facts=[113]
+  → rewrite_fact real_eq_neg2 sym=false goal=111 facts=[113]
   ← introduction goal=110
     #[114] (x * y) ^ z = x ^ z * y ^ z
-  -> rewrite_fact if_not_P sym=false goal=114 facts=[108,84]
+  → rewrite_fact if_not_P sym=false goal=114 facts=[108,84]
   ← introduction goal=103
     #[115] (x * y) ^ z = x ^ z * y ^ z
   ← apply_prev goal=115 facts=[61]
@@ -9447,7 +9447,7 @@ proof
   ← introduction goal=3
     #[5] 0 < x
     #[6] (if 0 < x then exp (y * log (real_inverse x)) else if real_inverse x = 0 then if y = 0 then 1 else 0 else if ∃m. ∃n. odd m ∧ odd n ∧ abs y = of_nat m / of_nat n then -(exp (y * log (-(real_inverse x)))) else exp (y * log (-(real_inverse x)))) = real_inverse (if 0 < x then exp (y * log x) else if x = 0 then if y = 0 then 1 else 0 else if ∃m. ∃n. odd m ∧ odd n ∧ abs y = of_nat m / of_nat n then -(exp (y * log (-x))) else exp (y * log (-x)))
-  -> apply_forward_step log_inv goal=6 facts=[5]
+  → apply_forward_step log_inv goal=6 facts=[5]
     #[7] log (real_inverse x) = -(log x)
   ← rewrite_goal_with_prev goal=6 facts=[7]
     #[8] (if 0 < x then exp (y * -(log x)) else if real_inverse x = 0 then if y = 0 then 1 else 0 else if ∃m. ∃n. odd m ∧ odd n ∧ abs y = of_nat m / of_nat n then -(exp (y * log (-(real_inverse x)))) else exp (y * log (-(real_inverse x)))) = real_inverse (if 0 < x then exp (y * log x) else if x = 0 then if y = 0 then 1 else 0 else if ∃m. ∃n. odd m ∧ odd n ∧ abs y = of_nat m / of_nat n then -(exp (y * log (-x))) else exp (y * log (-x)))
@@ -9496,7 +9496,7 @@ proof
   cut "0 < -x" goal=32
     #[33] 0 < -x
   ← z3 goal=33 facts=[30,11]
-  -> apply_forward_step log_inv goal=32 facts=[33]
+  → apply_forward_step log_inv goal=32 facts=[33]
     #[34] log (real_inverse (-x)) = -(log (-x))
   ← rewrite_goal real_inv_neg sym=true goal=32
     #[35] (if ∃m. ∃n. odd m ∧ odd n ∧ abs y = of_nat m / of_nat n then -(exp (y * log (real_inverse (-x)))) else exp (y * log (real_inverse (-x)))) = real_inverse (if ∃m. ∃n. odd m ∧ odd n ∧ abs y = of_nat m / of_nat n then -(exp (y * log (-x))) else exp (y * log (-x)))
@@ -9575,7 +9575,7 @@ proof
     #[2] x ^ (m - n) = x ^ m / x ^ n
   ← rewrite_goal real_minus_def sym=false goal=2
     #[3] x ^ (m + -n) = x ^ m / x ^ n
-  -> apply_forward_step rpow_add param_m=m param_n=-n goal=3 facts=[1]
+  → apply_forward_step rpow_add param_m=m param_n=-n goal=3 facts=[1]
     #[4] x ^ (m + -n) = x ^ m * x ^ -n
   ← rewrite_goal_with_prev goal=3 facts=[4]
     #[5] x ^ m * x ^ -n = x ^ m / x ^ n
@@ -9600,7 +9600,7 @@ proof
   ← introduction goal=4
     #[6] x = 0
     #[7] x ^ (y + z) = x ^ y * x ^ z
-  -> apply_fact goal=7 facts=[2,6]
+  → apply_fact goal=7 facts=[2,6]
     #[8] y + z = 0 ⟶ y = 0 ∨ z = 0
   ← rewrite_goal_with_prev goal=7 facts=[6]
     #[9] (0::real) ^ (y + z) = 0 ^ y * 0 ^ z
@@ -9624,7 +9624,7 @@ proof
     #[20] (if y + z = 0 then (1::real) else 0) = 0 * (if z = 0 then 1 else 0)
   ← rewrite_goal if_P sym=false goal=20 facts=[19]
     #[21] (1::real) = 0 * (if z = 0 then 1 else 0)
-  -> apply_fact goal=21 facts=[8,19]
+  → apply_fact goal=21 facts=[8,19]
     #[22] y = 0 ∨ z = 0
   ← z3 goal=21 facts=[14,19,22]
     #[23] (1::real) = 0 * (if z = 0 then 1 else 0)
@@ -9689,7 +9689,7 @@ proof
     #[6] a ^ (2::nat) = b ^ (2::nat)
     #[7] a + b = 0 ⟶ a = 0 ∧ b = 0
     #[8] a = b
-  -> rewrite_fact real_pow_2 sym=false goal=8 facts=[6]
+  → rewrite_fact real_pow_2 sym=false goal=8 facts=[6]
     #[9] a * a = b * b
   ← z3 goal=8 facts=[7,9]
     #[10] a = b
@@ -9699,7 +9699,7 @@ proof
   cut "0 <= x" goal=11
     #[13] 0 ≤ x
   ← z3 goal=13 facts=[1]
-  -> apply_forward_step sqrt_pow_2 goal=11 facts=[13]
+  → apply_forward_step sqrt_pow_2 goal=11 facts=[13]
     #[14] sqrt x ^ (2::nat) = x
   ← rewrite_goal_with_prev goal=11 facts=[14]
     #[15] x = x ^ (1 / 2) ^ (2::nat)
@@ -9707,7 +9707,7 @@ proof
     #[16] x = x ^ (1 / 2) ^ (of_nat::nat ⇒ real) 2
   ← rewrite_goal real_of_nat_id sym=false goal=16
     #[17] x = x ^ (1 / 2) ^ (2::real)
-  -> apply_forward_step rpow_rpow param_m=1/2 param_n="(2::real)" goal=17 facts=[13]
+  → apply_forward_step rpow_rpow param_m=1/2 param_n="(2::real)" goal=17 facts=[13]
     #[18] x ^ (1 / 2) ^ (2::real) = x ^ (1 / 2 * 2)
   ← rewrite_goal_with_prev goal=17 facts=[18]
     #[19] x = x ^ (1 / 2 * 2)
@@ -9801,7 +9801,7 @@ proof
     #[6] a ≤ b
   ← rewrite_goal real_not_lt sym=true goal=6
     #[7] ¬(b < a)
-  -> rewrite_fact real_not_lt sym=true goal=7 facts=[5]
+  → rewrite_fact real_not_lt sym=true goal=7 facts=[5]
     #[8] ¬(x ^ b < x ^ a)
   ← apply_backward_step contrapositive goal=7 facts=[8]
     #[9] ¬¬(b < a) ⟶ ¬¬(x ^ b < x ^ a)
@@ -9829,7 +9829,7 @@ proof
     #[2] x ^ a < x ^ b ⟷ a < b
   ← rewrite_goal real_less_def sym=false goal=2
     #[3] ¬(x ^ b ≤ x ^ a) ⟷ ¬(b ≤ a)
-  -> apply_forward_step rpow_mono_le_eq param_a=b param_b=a goal=3 facts=[1]
+  → apply_forward_step rpow_mono_le_eq param_a=b param_b=a goal=3 facts=[1]
     #[4] x ^ b ≤ x ^ a ⟷ b ≤ a
   ← rewrite_goal_with_prev goal=3 facts=[4]
 qed
@@ -9868,22 +9868,22 @@ proof
     #[17] y = z
   ← rewrite_goal real_le_antisym sym=true goal=17
     #[18] y ≤ z ∧ z ≤ y
-  -> rewrite_fact real_le_antisym sym=true goal=18 facts=[5]
+  → rewrite_fact real_le_antisym sym=true goal=18 facts=[5]
     #[19] x ^ y ≤ x ^ z ∧ x ^ z ≤ x ^ y
   ← apply_backward_step conjI goal=18
     #[20] y ≤ z
     #[21] z ≤ y
-  -> apply_forward_step conjD1 goal=20 facts=[19]
+  → apply_forward_step conjD1 goal=20 facts=[19]
     #[22] x ^ y ≤ x ^ z
-  -> apply_forward_step conjD2 goal=20 facts=[19]
+  → apply_forward_step conjD2 goal=20 facts=[19]
     #[23] x ^ z ≤ x ^ y
-  -> apply_forward_step rpow_mono_le_eq param_a=y param_b=z goal=20 facts=[16]
+  → apply_forward_step rpow_mono_le_eq param_a=y param_b=z goal=20 facts=[16]
     #[24] x ^ y ≤ x ^ z ⟷ y ≤ z
-  -> rewrite_fact_with_prev goal=20 facts=[24,22]
+  → rewrite_fact_with_prev goal=20 facts=[24,22]
     #[25] y ≤ z
-  -> apply_forward_step rpow_mono_le_eq param_a=z param_b=y goal=21 facts=[16]
+  → apply_forward_step rpow_mono_le_eq param_a=z param_b=y goal=21 facts=[16]
     #[26] x ^ z ≤ x ^ y ⟷ z ≤ y
-  -> rewrite_fact_with_prev goal=21 facts=[26,23]
+  → rewrite_fact_with_prev goal=21 facts=[26,23]
     #[27] z ≤ y
   ← introduction goal=15
     #[28] ¬(1 < x)
@@ -9892,27 +9892,27 @@ proof
     #[30] 1 < real_inverse x
   ← z3 goal=30 facts=[28,11,1]
     #[31] 1 < real_inverse x
-  -> rewrite_fact real_eq_inv2 sym=true goal=29 facts=[5]
+  → rewrite_fact real_eq_inv2 sym=true goal=29 facts=[5]
     #[32] real_inverse (x ^ y) = real_inverse (x ^ z)
-  -> rewrite_fact rpow_inv sym=true goal=29 facts=[32]
+  → rewrite_fact rpow_inv sym=true goal=29 facts=[32]
     #[33] real_inverse x ^ y = real_inverse x ^ z
-  -> rewrite_fact real_le_antisym sym=true goal=29 facts=[33]
+  → rewrite_fact real_le_antisym sym=true goal=29 facts=[33]
     #[34] real_inverse x ^ y ≤ real_inverse x ^ z ∧ real_inverse x ^ z ≤ real_inverse x ^ y
   ← rewrite_goal real_le_antisym sym=true goal=29
     #[35] y ≤ z ∧ z ≤ y
   ← apply_backward_step conjI goal=35
     #[36] y ≤ z
     #[37] z ≤ y
-  -> apply_forward_step conjD1 goal=36 facts=[34]
+  → apply_forward_step conjD1 goal=36 facts=[34]
     #[38] real_inverse x ^ y ≤ real_inverse x ^ z
-  -> apply_forward_step conjD2 goal=36 facts=[34]
+  → apply_forward_step conjD2 goal=36 facts=[34]
     #[39] real_inverse x ^ z ≤ real_inverse x ^ y
-  -> apply_forward_step rpow_mono_le_eq param_a=y param_b=z goal=36 facts=[31]
+  → apply_forward_step rpow_mono_le_eq param_a=y param_b=z goal=36 facts=[31]
     #[40] real_inverse x ^ y ≤ real_inverse x ^ z ⟷ y ≤ z
-  -> rewrite_fact_with_prev goal=36 facts=[40,38]
-  -> apply_forward_step rpow_mono_le_eq param_a=z param_b=y goal=37 facts=[31]
+  → rewrite_fact_with_prev goal=36 facts=[40,38]
+  → apply_forward_step rpow_mono_le_eq param_a=z param_b=y goal=37 facts=[31]
     #[41] real_inverse x ^ z ≤ real_inverse x ^ y ⟷ z ≤ y
-  -> rewrite_fact_with_prev goal=37 facts=[41,39]
+  → rewrite_fact_with_prev goal=37 facts=[41,39]
   ← introduction goal=4
     #[42] x = 1 ∨ y = z
     #[43] x ^ y = x ^ z
@@ -9941,9 +9941,9 @@ proof
     #[1] 1 ≤ x
     #[2] 0 ≤ y
     #[3] 1 ≤ x ^ y
-  -> apply_forward_step rpow_0 param_x=x goal=3
+  → apply_forward_step rpow_0 param_x=x goal=3
     #[4] x ^ (0::real) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
+  → rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
     #[5] 1 = x ^ (0::real)
   ← rewrite_goal_with_prev goal=3 facts=[5]
     #[6] x ^ (0::real) ≤ x ^ y
@@ -9959,9 +9959,9 @@ proof
     #[1] 1 < x
     #[2] 0 < y
     #[3] 1 < x ^ y
-  -> apply_forward_step rpow_0 param_x=x goal=3
+  → apply_forward_step rpow_0 param_x=x goal=3
     #[4] x ^ (0::real) = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
+  → rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
     #[5] 1 = x ^ (0::real)
   ← rewrite_goal_with_prev goal=3 facts=[5]
     #[6] x ^ (0::real) < x ^ y
@@ -9978,9 +9978,9 @@ proof
     #[2] x ≤ 1
     #[3] b ≤ a
     #[4] x ^ a ≤ x ^ b
-  -> apply_forward_step real_inv_inv param_x=x goal=4
+  → apply_forward_step real_inv_inv param_x=x goal=4
     #[5] real_inverse (real_inverse x) = x
-  -> rewrite_fact eq_sym_eq sym=false goal=4 facts=[5]
+  → rewrite_fact eq_sym_eq sym=false goal=4 facts=[5]
     #[6] x = real_inverse (real_inverse x)
   ← rewrite_goal_with_prev goal=4 facts=[6]
     #[7] real_inverse (real_inverse x) ^ a ≤ real_inverse (real_inverse x) ^ b
@@ -10060,7 +10060,7 @@ proof
     #[20] 0 < x
   ← z3 goal=20 facts=[18,14]
     #[21] 0 < x
-  -> apply_forward_step root_exp_log goal=19 facts=[1,21]
+  → apply_forward_step root_exp_log goal=19 facts=[1,21]
     #[22] root n x = exp (log x / of_nat n)
   ← rewrite_goal_with_prev goal=19 facts=[22]
     #[23] exp (log x / of_nat n) = x ^ real_inverse (of_nat n)
@@ -10153,7 +10153,7 @@ proof
     #[68] -(exp (1 * log (-x))) = x
   ← rewrite_goal real_mul_lid sym=false goal=68
     #[69] -(exp (log (-x))) = x
-  -> apply_forward_step exp_log goal=69 facts=[35]
+  → apply_forward_step exp_log goal=69 facts=[35]
     #[70] exp (log (-x)) = -x
   ← rewrite_goal_with_prev goal=69 facts=[70]
     #[71] --x = x
@@ -10189,11 +10189,11 @@ proof
   cut "x >=0" goal=2
     #[3] x ≥ 0
   ← z3 goal=3 facts=[1]
-  -> apply_forward_step rpow_sqrt goal=2 facts=[3]
+  → apply_forward_step rpow_sqrt goal=2 facts=[3]
     #[4] sqrt x = x ^ (1 / 2)
   ← rewrite_goal_with_prev goal=2 facts=[4]
     #[5] log (x ^ (1 / 2)) = log x / 2
-  -> apply_forward_step log_rpow param_y=1/2 goal=5 facts=[1]
+  → apply_forward_step log_rpow param_y=1/2 goal=5 facts=[1]
     #[6] log (x ^ (1 / 2)) = 1 / 2 * log x
   ← rewrite_goal_with_prev goal=5 facts=[6]
     #[7] 1 / 2 * log x = log x / 2
@@ -10218,7 +10218,7 @@ proof
     #[4] max (x ^ z) (y ^ z) = max x y ^ z
   ← rewrite_goal max_def sym=false goal=4
     #[5] (if x ^ z ≤ y ^ z then y ^ z else x ^ z) = (if x ≤ y then y else x) ^ z
-  -> apply_forward_step real_le_total param_x=x param_y=y goal=5
+  → apply_forward_step real_le_total param_x=x param_y=y goal=5
     #[6] x ≤ y ∨ y ≤ x
   ← apply_backward_step disjE goal=5 facts=[6]
     #[7] x ≤ y ⟶ (if x ^ z ≤ y ^ z then y ^ z else x ^ z) = (if x ≤ y then y else x) ^ z
@@ -10259,7 +10259,7 @@ proof
     #[2] 0 ≤ y
     #[3] 0 ≤ z
     #[4] min (x ^ z) (y ^ z) = min x y ^ z
-  -> apply_forward_step real_le_total param_x=x param_y=y goal=4
+  → apply_forward_step real_le_total param_x=x param_y=y goal=4
     #[5] x ≤ y ∨ y ≤ x
   ← apply_backward_step disjE goal=4 facts=[5]
     #[6] x ≤ y ⟶ min (x ^ z) (y ^ z) = min x y ^ z
@@ -10447,7 +10447,7 @@ proof
   cut "0<= abs x" goal=1
     #[2] 0 ≤ abs x
   ← apply_backward_step real_abs_pos goal=2
-  -> apply_forward_step rpow_rpow param_m="(2::real)" param_n=1/2 goal=1 facts=[2]
+  → apply_forward_step rpow_rpow param_m="(2::real)" param_n=1/2 goal=1 facts=[2]
     #[3] abs x ^ (2::real) ^ (1 / 2) = abs x ^ (2 * (1 / 2))
   ← rewrite_goal rpow_pow sym=true goal=1
     #[4] abs x ^ (of_nat::nat ⇒ real) 2 ^ (1 / 2) = abs x
@@ -10544,7 +10544,7 @@ proof
   ← apply_backward_step cos_pos_pi_le goal=12
     #[15] -(pi / 2) ≤ x + pi / 4
     #[16] x + pi / 4 ≤ pi / 2
-  -> apply_forward_step pi_pos goal=15
+  → apply_forward_step pi_pos goal=15
     #[17] 0 < pi
   cut "!p::real. -3 * p / 4 ≤ x --> x ≤ p / 4 --> 0 < p --> -(p / 2) ≤ x + p / 4" goal=15
     #[18] ∀p. -3 * p / 4 ≤ x ⟶ x ≤ p / 4 ⟶ 0 < p ⟶ -(p / 2) ≤ x + p / 4

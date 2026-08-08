@@ -36,12 +36,12 @@ proof
     #[1] finite s
     #[2] ¬(s = ∅)
     #[3] sup s ∈ s ∧ (∀x. x ∈ s ⟶ x ≤ sup s)
-  -> apply_forward_step sup_finite_lemma goal=3 facts=[1,2]
+  → apply_forward_step sup_finite_lemma goal=3 facts=[1,2]
     #[4] ∃b. b ∈ s ∧ (∀x. x ∈ s ⟶ x ≤ b)
   ← apply_backward_step conjI goal=3
     #[5] sup s ∈ s
     #[6] ∀x. x ∈ s ⟶ x ≤ sup s
-  -> apply_forward_step sup goal=5 facts=[2]
+  → apply_forward_step sup goal=5 facts=[2]
     #[7] (∃b. ∀x. x ∈ s ⟶ x ≤ b) ⟶ (∀x. x ∈ s ⟶ x ≤ sup s) ∧ (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b)
   exists_elim b goal=5 facts=[4]
     #[8] _VAR b
@@ -49,19 +49,19 @@ proof
     #[10] sup s ∈ s
     #[11] ∀x. x ∈ s ⟶ x ≤ sup s
     #[12] sup s ∈ s ∧ (∀x. x ∈ s ⟶ x ≤ sup s)
-  -> apply_forward_step conjD2 goal=10 facts=[9]
+  → apply_forward_step conjD2 goal=10 facts=[9]
     #[13] ∀x. x ∈ s ⟶ x ≤ b
   cut "(∃b. ∀x. x ∈ s ⟶ x ≤ b)" goal=10
     #[14] ∃b. ∀x. x ∈ s ⟶ x ≤ b
   ← apply_backward_step exI goal=14 facts=[13]
     #[15] ∃b. ∀x. x ∈ s ⟶ x ≤ b
-  -> apply_fact goal=10 facts=[7,15]
+  → apply_fact goal=10 facts=[7,15]
     #[16] (∀x. x ∈ s ⟶ x ≤ sup s) ∧ (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b)
-  -> apply_forward_step conjD1 goal=10 facts=[16]
+  → apply_forward_step conjD1 goal=10 facts=[16]
     #[17] ∀x. x ∈ s ⟶ x ≤ sup s
-  -> apply_forward_step conjD2 goal=10 facts=[16]
+  → apply_forward_step conjD2 goal=10 facts=[16]
     #[18] ∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b
-  -> apply_forward_step conjD1 goal=10 facts=[9]
+  → apply_forward_step conjD1 goal=10 facts=[9]
     #[19] b ∈ s
   cut "sup s = b" goal=10
     #[20] sup s = b
@@ -85,7 +85,7 @@ proof
     #[1] finite s
     #[2] ¬(s = ∅)
     #[3] a ≤ sup s ⟷ (∃x. x ∈ s ∧ a ≤ x)
-  -> apply_forward_step sup_finite goal=3 facts=[1,2]
+  → apply_forward_step sup_finite goal=3 facts=[1,2]
     #[4] sup s ∈ s ∧ (∀x. x ∈ s ⟶ x ≤ sup s)
   ← apply_backward_step iffI goal=3
     #[5] a ≤ sup s ⟶ (∃x. x ∈ s ∧ a ≤ x)
@@ -102,17 +102,17 @@ proof
   ← introduction goal=6
     #[12] ∃x. x ∈ s ∧ a ≤ x
     #[13] a ≤ sup s
-  -> apply_forward_step conjD2 goal=13 facts=[4]
+  → apply_forward_step conjD2 goal=13 facts=[4]
     #[14] ∀x. x ∈ s ⟶ x ≤ sup s
   exists_elim a1 goal=13 facts=[12]
     #[15] _VAR a1
     #[16] a1 ∈ s ∧ a ≤ a1
     #[17] a ≤ sup s
-  -> apply_forward_step conjD1 goal=17 facts=[16]
+  → apply_forward_step conjD1 goal=17 facts=[16]
     #[18] a1 ∈ s
-  -> apply_forward_step conjD2 goal=17 facts=[16]
+  → apply_forward_step conjD2 goal=17 facts=[16]
     #[19] a ≤ a1
-  -> apply_fact goal=17 facts=[14,18]
+  → apply_fact goal=17 facts=[14,18]
     #[20] a1 ≤ sup s
   ← apply_backward_step real_le_trans goal=17 facts=[19,20]
     #[21] a ≤ sup s
@@ -127,15 +127,15 @@ proof
     #[1] ¬(s = ∅)
     #[2] ∀x. x ∈ s ⟶ x ≤ b
     #[3] sup s ≤ b
-  -> apply_forward_step sup goal=3 facts=[1]
+  → apply_forward_step sup goal=3 facts=[1]
     #[4] (∃b. ∀x. x ∈ s ⟶ x ≤ b) ⟶ (∀x. x ∈ s ⟶ x ≤ sup s) ∧ (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b)
   cut "(∃b. ∀x. x ∈ s ⟶ x ≤ b)" goal=3
     #[5] ∃b. ∀x. x ∈ s ⟶ x ≤ b
   ← apply_backward_step exI goal=5 facts=[2]
     #[6] ∃b. ∀x. x ∈ s ⟶ x ≤ b
-  -> apply_fact goal=3 facts=[4,6]
+  → apply_fact goal=3 facts=[4,6]
     #[7] (∀x. x ∈ s ⟶ x ≤ sup s) ∧ (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b)
-  -> apply_forward_step conjD2 goal=3 facts=[7]
+  → apply_forward_step conjD2 goal=3 facts=[7]
     #[8] ∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b
   ← apply_prev goal=3 facts=[8,2]
 qed
@@ -150,21 +150,21 @@ proof
     #[2] a ≤ y
     #[3] ∀x. x ∈ s ⟶ x ≤ b
     #[4] a ≤ sup s
-  -> apply_forward_step sup param_s=s goal=4
+  → apply_forward_step sup param_s=s goal=4
     #[5] ¬(s = ∅) ⟶ (∃b. ∀x. x ∈ s ⟶ x ≤ b) ⟶ (∀x. x ∈ s ⟶ x ≤ sup s) ∧ (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b)
   cut "¬(s = ∅)" goal=4 facts=[5]
     #[6] ¬(s = ∅)
   ← z3 goal=6 facts=[1]
     #[7] ¬(s = ∅)
-  -> apply_fact goal=4 facts=[5,7]
+  → apply_fact goal=4 facts=[5,7]
     #[8] (∃b. ∀x. x ∈ s ⟶ x ≤ b) ⟶ (∀x. x ∈ s ⟶ x ≤ sup s) ∧ (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b)
   cut "(∃b. ∀x. x ∈ s ⟶ x ≤ b)" goal=4 facts=[8]
     #[9] ∃b. ∀x. x ∈ s ⟶ x ≤ b
   ← apply_backward_step exI goal=9 facts=[3]
     #[10] ∃b. ∀x. x ∈ s ⟶ x ≤ b
-  -> apply_fact goal=4 facts=[8,10]
+  → apply_fact goal=4 facts=[8,10]
     #[11] (∀x. x ∈ s ⟶ x ≤ sup s) ∧ (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b)
-  -> apply_forward_step conjD1 goal=4 facts=[11]
+  → apply_forward_step conjD1 goal=4 facts=[11]
     #[12] ∀x. x ∈ s ⟶ x ≤ sup s
   ← apply_backward_step real_le_trans goal=4 facts=[2]
     #[13] y ≤ sup s
@@ -207,11 +207,11 @@ proof
   ← introduction goal=6
     #[7] ¬(∃x. x ∈ s ∧ c < x)
     #[8] false
-  -> rewrite_fact not_exists sym=false goal=8 facts=[7]
+  → rewrite_fact not_exists sym=false goal=8 facts=[7]
     #[9] ∀x. ¬(x ∈ s ∧ c < x)
-  -> rewrite_fact de_morgan_thm1 sym=false goal=8 facts=[9]
+  → rewrite_fact de_morgan_thm1 sym=false goal=8 facts=[9]
     #[10] ∀x. ¬(x ∈ s) ∨ ¬(c < x)
-  -> rewrite_fact real_not_lt sym=false goal=8 facts=[10]
+  → rewrite_fact real_not_lt sym=false goal=8 facts=[10]
     #[11] ∀x. ¬(x ∈ s) ∨ x ≤ c
   ← apply_backward_step contrapositive goal=8 facts=[3]
     #[12] ¬false ⟶ ¬(c < sup s)
@@ -220,9 +220,9 @@ proof
     #[14] ¬(c < sup s)
   ← rewrite_goal real_not_lt sym=false goal=14
     #[15] sup s ≤ c
-  -> apply_forward_step sup goal=15 facts=[1,2]
+  → apply_forward_step sup goal=15 facts=[1,2]
     #[16] (∀x. x ∈ s ⟶ x ≤ sup s) ∧ (∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b)
-  -> apply_forward_step conjD2 goal=15 facts=[16]
+  → apply_forward_step conjD2 goal=15 facts=[16]
     #[17] ∀b. (∀x. x ∈ s ⟶ x ≤ b) ⟶ sup s ≤ b
   ← apply_prev goal=15 facts=[17]
     #[18] ∀x. x ∈ s ⟶ x ≤ c
@@ -269,11 +269,11 @@ proof
     #[1] finite s
     #[2] ¬(s = ∅)
     #[3] a ≤ inf s ⟷ (∀x. x ∈ s ⟶ a ≤ x)
-  -> apply_forward_step inf_finite goal=3 facts=[1,2]
+  → apply_forward_step inf_finite goal=3 facts=[1,2]
     #[4] inf s ∈ s ∧ (∀x. x ∈ s ⟶ inf s ≤ x)
-  -> apply_forward_step conjD1 goal=3 facts=[4]
+  → apply_forward_step conjD1 goal=3 facts=[4]
     #[5] inf s ∈ s
-  -> apply_forward_step conjD2 goal=3 facts=[4]
+  → apply_forward_step conjD2 goal=3 facts=[4]
     #[6] ∀x. x ∈ s ⟶ inf s ≤ x
   ← apply_backward_step iffI goal=3
     #[7] a ≤ inf s ⟶ (∀x. x ∈ s ⟶ a ≤ x)
@@ -285,7 +285,7 @@ proof
     #[11] _VAR x
     #[12] x ∈ s
     #[13] a ≤ x
-  -> apply_fact goal=13 facts=[6,12]
+  → apply_fact goal=13 facts=[6,12]
     #[14] inf s ≤ x
   ← apply_backward_step real_le_trans goal=13 facts=[9,14]
   ← introduction goal=8
@@ -303,11 +303,11 @@ proof
     #[1] finite s
     #[2] ¬(s = ∅)
     #[3] inf s ≤ a ⟷ (∃x. x ∈ s ∧ x ≤ a)
-  -> apply_forward_step inf_finite goal=3 facts=[1,2]
+  → apply_forward_step inf_finite goal=3 facts=[1,2]
     #[4] inf s ∈ s ∧ (∀x. x ∈ s ⟶ inf s ≤ x)
-  -> apply_forward_step conjD1 goal=3 facts=[4]
+  → apply_forward_step conjD1 goal=3 facts=[4]
     #[5] inf s ∈ s
-  -> apply_forward_step conjD2 goal=3 facts=[4]
+  → apply_forward_step conjD2 goal=3 facts=[4]
     #[6] ∀x. x ∈ s ⟶ inf s ≤ x
   ← apply_backward_step iffI goal=3
     #[7] inf s ≤ a ⟶ (∃x. x ∈ s ∧ x ≤ a)
@@ -346,21 +346,21 @@ proof
     #[2] y ≤ b
     #[3] ∀x. x ∈ s ⟶ a ≤ x
     #[4] inf s ≤ b
-  -> apply_forward_step inf param_s=s goal=4
+  → apply_forward_step inf param_s=s goal=4
     #[5] ¬(s = ∅) ⟶ (∃b. ∀x. x ∈ s ⟶ b ≤ x) ⟶ (∀x. x ∈ s ⟶ inf s ≤ x) ∧ (∀b. (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ inf s)
   cut "¬(s = ∅)" goal=4
     #[6] ¬(s = ∅)
   ← z3 goal=6 facts=[1]
     #[7] ¬(s = ∅)
-  -> apply_fact goal=4 facts=[5,7]
+  → apply_fact goal=4 facts=[5,7]
     #[8] (∃b. ∀x. x ∈ s ⟶ b ≤ x) ⟶ (∀x. x ∈ s ⟶ inf s ≤ x) ∧ (∀b. (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ inf s)
   cut "(∃b. ∀x. x ∈ s ⟶ b ≤ x)" goal=4 facts=[8]
     #[9] ∃b. ∀x. x ∈ s ⟶ b ≤ x
   ← apply_backward_step exI goal=9 facts=[3]
     #[10] ∃b. ∀x. x ∈ s ⟶ b ≤ x
-  -> apply_fact goal=4 facts=[8,10]
+  → apply_fact goal=4 facts=[8,10]
     #[11] (∀x. x ∈ s ⟶ inf s ≤ x) ∧ (∀b. (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ inf s)
-  -> apply_forward_step conjD1 goal=4 facts=[11]
+  → apply_forward_step conjD1 goal=4 facts=[11]
     #[12] ∀x. x ∈ s ⟶ inf s ≤ x
   ← apply_backward_step real_le_trans param_y=y goal=4
     #[13] inf s ≤ y
@@ -376,15 +376,15 @@ proof
     #[1] ¬(s = ∅)
     #[2] ∀x. x ∈ s ⟶ b ≤ x
     #[3] b ≤ inf s
-  -> apply_forward_step inf goal=3 facts=[1]
+  → apply_forward_step inf goal=3 facts=[1]
     #[4] (∃b. ∀x. x ∈ s ⟶ b ≤ x) ⟶ (∀x. x ∈ s ⟶ inf s ≤ x) ∧ (∀b. (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ inf s)
   cut "(∃b. ∀x. x ∈ s ⟶ b ≤ x)" goal=3
     #[5] ∃b. ∀x. x ∈ s ⟶ b ≤ x
   ← apply_backward_step exI goal=5 facts=[2]
     #[6] ∃b. ∀x. x ∈ s ⟶ b ≤ x
-  -> apply_fact goal=3 facts=[4,6]
+  → apply_fact goal=3 facts=[4,6]
     #[7] (∀x. x ∈ s ⟶ inf s ≤ x) ∧ (∀b. (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ inf s)
-  -> apply_forward_step conjD2 goal=3 facts=[7]
+  → apply_forward_step conjD2 goal=3 facts=[7]
     #[8] ∀b. (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ inf s
   ← apply_prev goal=3 facts=[8]
 qed
@@ -418,7 +418,7 @@ proof
     #[2] ∃b. ∀x. x ∈ s ⟶ b ≤ x
     #[3] inf s < c
     #[4] ∃x. x ∈ s ∧ x < c
-  -> rewrite_fact real_less_def sym=false goal=4 facts=[3]
+  → rewrite_fact real_less_def sym=false goal=4 facts=[3]
     #[5] ¬(c ≤ inf s)
   ← apply_backward_step contrapositive goal=4 facts=[5]
     #[6] ¬(∃x. x ∈ s ∧ x < c) ⟶ ¬¬(c ≤ inf s)
@@ -427,15 +427,15 @@ proof
   ← introduction goal=7
     #[8] ¬(∃x. x ∈ s ∧ x < c)
     #[9] c ≤ inf s
-  -> rewrite_fact not_exists sym=false goal=9 facts=[8]
+  → rewrite_fact not_exists sym=false goal=9 facts=[8]
     #[10] ∀x. ¬(x ∈ s ∧ x < c)
-  -> rewrite_fact de_morgan_thm1 sym=false goal=9 facts=[10]
+  → rewrite_fact de_morgan_thm1 sym=false goal=9 facts=[10]
     #[11] ∀x. ¬(x ∈ s) ∨ ¬(x < c)
-  -> rewrite_fact real_not_lt sym=false goal=9 facts=[11]
+  → rewrite_fact real_not_lt sym=false goal=9 facts=[11]
     #[12] ∀x. ¬(x ∈ s) ∨ c ≤ x
-  -> apply_forward_step inf goal=9 facts=[1,2]
+  → apply_forward_step inf goal=9 facts=[1,2]
     #[13] (∀x. x ∈ s ⟶ inf s ≤ x) ∧ (∀b. (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ inf s)
-  -> apply_forward_step conjD2 goal=9 facts=[13]
+  → apply_forward_step conjD2 goal=9 facts=[13]
     #[14] ∀b. (∀x. x ∈ s ⟶ b ≤ x) ⟶ b ≤ inf s
   ← apply_prev goal=9 facts=[14]
     #[15] ∀x. x ∈ s ⟶ c ≤ x
@@ -456,9 +456,9 @@ proof
     #[1] has_inf s b
     #[2] x ∈ s
     #[3] b ≤ x
-  -> rewrite_fact has_inf_def sym=false goal=3 facts=[1]
+  → rewrite_fact has_inf_def sym=false goal=3 facts=[1]
     #[4] ∀c. (∀x. x ∈ s ⟶ c ≤ x) ⟷ c ≤ b
-  -> forall_elim b goal=3 facts=[4]
+  → forall_elim b goal=3 facts=[4]
     #[5] (∀x. x ∈ s ⟶ b ≤ x) ⟷ b ≤ b
   cut "(∀x. x ∈ s ⟶ b ≤ x)" goal=3 facts=[5]
     #[6] ∀x. x ∈ s ⟶ b ≤ x
@@ -476,9 +476,9 @@ proof
     #[1] has_sup s b
     #[2] x ∈ s
     #[3] x ≤ b
-  -> rewrite_fact has_sup_def sym=false goal=3 facts=[1]
+  → rewrite_fact has_sup_def sym=false goal=3 facts=[1]
     #[4] ∀c. (∀x. x ∈ s ⟶ x ≤ c) ⟷ b ≤ c
-  -> forall_elim b goal=3 facts=[4]
+  → forall_elim b goal=3 facts=[4]
     #[5] (∀x. x ∈ s ⟶ x ≤ b) ⟷ b ≤ b
   cut "(∀x. x ∈ s ⟶ x ≤ b)" goal=3 facts=[5]
     #[6] ∀x. x ∈ s ⟶ x ≤ b
@@ -516,16 +516,16 @@ proof
     #[6] _VAR l
     #[7] ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x) ∧ inf s = l
     #[8] ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x)
-  -> rewrite_fact conj_assoc sym=false goal=8 facts=[7]
+  → rewrite_fact conj_assoc sym=false goal=8 facts=[7]
     #[9] (¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x)) ∧ inf s = l
   ← apply_backward_step conjD1 goal=8 facts=[9]
     #[10] ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x)
   ← introduction goal=3
     #[11] ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x)
     #[12] ∃l. ¬(s = ∅) ∧ (∃b. ∀x. x ∈ s ⟶ b ≤ x) ∧ inf s = l
-  -> apply_forward_step conjD1 goal=12 facts=[11]
+  → apply_forward_step conjD1 goal=12 facts=[11]
     #[13] ¬(s = ∅)
-  -> apply_forward_step conjD2 goal=12 facts=[11]
+  → apply_forward_step conjD2 goal=12 facts=[11]
     #[14] ∃b. ∀x. x ∈ s ⟶ b ≤ x
   exists_elim b goal=12 facts=[14]
     #[15] _VAR b

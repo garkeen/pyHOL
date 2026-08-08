@@ -55,9 +55,9 @@ proof
     #[4] is_realinterval (s ∪ t)
   ← rewrite_goal is_realinterval_def sym=false goal=4
     #[5] ∀a. ∀b. ∀c. a ∈ s ∪ t ⟶ b ∈ s ∪ t ⟶ a ≤ c ⟶ c ≤ b ⟶ c ∈ s ∪ t
-  -> rewrite_fact is_realinterval_def sym=false goal=5 facts=[1]
+  → rewrite_fact is_realinterval_def sym=false goal=5 facts=[1]
     #[6] ∀a. ∀b. ∀c. a ∈ s ⟶ b ∈ s ⟶ a ≤ c ⟶ c ≤ b ⟶ c ∈ s
-  -> rewrite_fact is_realinterval_def sym=false goal=5 facts=[2]
+  → rewrite_fact is_realinterval_def sym=false goal=5 facts=[2]
     #[7] ∀a. ∀b. ∀c. a ∈ t ⟶ b ∈ t ⟶ a ≤ c ⟶ c ≤ b ⟶ c ∈ t
   ← z3 goal=5 facts=[6,7,3]
 qed
@@ -337,13 +337,13 @@ proof
   ← introduction goal=5
     #[9] ∀m. ∀n. m ≤ n ⟶ s n ≤ s m
     #[10] ∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e)
-  -> apply_forward_step convergent_bounded_increasing param_b=b param_s="(%n. -s n)" goal=10
+  → apply_forward_step convergent_bounded_increasing param_b=b param_s="(%n. -s n)" goal=10
     #[11] (∀m. ∀n. m ≤ n ⟶ -(s m) ≤ -(s n)) ⟶ (∀n. abs (-(s n)) ≤ b) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (-(s n) - l) < e))
-  -> rewrite_fact real_le_lneg2 sym=false goal=10 facts=[11]
+  → rewrite_fact real_le_lneg2 sym=false goal=10 facts=[11]
     #[12] (∀m. ∀n. m ≤ n ⟶ s n ≤ s m) ⟶ (∀n. abs (-(s n)) ≤ b) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (-(s n) - l) < e))
-  -> rewrite_fact real_abs_neg sym=false goal=10 facts=[12]
+  → rewrite_fact real_abs_neg sym=false goal=10 facts=[12]
     #[13] (∀m. ∀n. m ≤ n ⟶ s n ≤ s m) ⟶ (∀n. abs (s n) ≤ b) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (-(s n) - l) < e))
-  -> apply_fact goal=10 facts=[13,9,1]
+  → apply_fact goal=10 facts=[13,9,1]
     #[14] ∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (-(s n) - l) < e)
   exists_elim l goal=10 facts=[14]
     #[15] _VAR l
@@ -355,7 +355,7 @@ proof
     #[19] ∀n. abs (-(s n) - l) = abs (s n - -l)
   ← z3 goal=19
     #[20] ∀n. abs (-(s n) - l) = abs (s n - -l)
-  -> rewrite_fact_with_prev goal=18 facts=[20,16]
+  → rewrite_fact_with_prev goal=18 facts=[20,16]
     #[21] ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - -l) < e)
 qed
 

@@ -221,11 +221,11 @@ proof
   ← introduction goal=1
     #[3] ¬(x ∈ set (y # ys))
     #[4] ¬(x = y) ∧ ¬(x ∈ set ys)
-  -> rewrite_fact set_def_2 sym=false goal=4 facts=[3]
+  → rewrite_fact set_def_2 sym=false goal=4 facts=[3]
     #[5] ¬(x ∈ insert y (set ys))
-  -> rewrite_fact member_insert sym=false goal=4 facts=[5]
+  → rewrite_fact member_insert sym=false goal=4 facts=[5]
     #[6] ¬(x = y ∨ x ∈ set ys)
-  -> rewrite_fact de_morgan_thm2 sym=false goal=4 facts=[6]
+  → rewrite_fact de_morgan_thm2 sym=false goal=4 facts=[6]
   ← introduction goal=2
     #[7] ¬(x = y) ∧ ¬(x ∈ set ys)
     #[8] ¬(x ∈ set (y # ys))

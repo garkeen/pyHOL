@@ -38,7 +38,7 @@ proof
     #[7] reached s q q
   ← apply_backward_step r_self goal=7
     #[8] reached s q q
-  -> apply_forward_step negE goal=5 facts=[1,6]
+  → apply_forward_step negE goal=5 facts=[1,6]
 qed
 
 theorem reached_next_neq
@@ -54,9 +54,9 @@ proof
   ← introduction goal=4
     #[5] reached s (s p) q
     #[6] false
-  -> apply_forward_step r_step goal=6 facts=[1,5]
+  → apply_forward_step r_step goal=6 facts=[1,5]
     #[7] reached s p q
-  -> apply_forward_step negE goal=6 facts=[2,7]
+  → apply_forward_step negE goal=6 facts=[2,7]
 qed
 
 theorem ll_update_unreached
@@ -81,13 +81,13 @@ proof
     #[12] ll p ((s)(q := v))
   ← apply_backward_step ll_step goal=12
     #[13] ll ((s)(q := v) p) ((s)(q := v))
-  -> apply_forward_step reached_self_neq goal=13 facts=[11]
+  → apply_forward_step reached_self_neq goal=13 facts=[11]
     #[14] ¬(p = q)
   ← rewrite_goal fun_upd_other goal=13 facts=[14]
     #[15] ll (s p) ((s)(q := v))
-  -> apply_forward_step reached_next_neq goal=15 facts=[8,11]
+  → apply_forward_step reached_next_neq goal=15 facts=[8,11]
     #[16] ¬(reached s (s p) q)
-  -> apply_fact goal=15 facts=[10,16]
+  → apply_fact goal=15 facts=[10,16]
     #[17] ll (s p) ((s)(q := v))
   ← apply_prev goal=15 facts=[17]
 qed

@@ -57,7 +57,7 @@ proof
     #[5] -x ≤ -a
   ← rewrite_goal real_le_lneg2 sym=false goal=4
     #[6] x ≤ b
-  -> rewrite_fact in_real_closed_interval sym=false goal=6 facts=[1]
+  → rewrite_fact in_real_closed_interval sym=false goal=6 facts=[1]
     #[7] a ≤ x ∧ x ≤ b
   ← apply_backward_step conjD2 goal=6 facts=[7]
   ← rewrite_goal real_le_lneg2 sym=false goal=5

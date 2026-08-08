@@ -77,9 +77,9 @@ proof
   ← introduction goal=0
     #[1] m ≤ Suc n
     #[2] {m..Suc n} = insert (Suc n) ({m..n})
-  -> apply_forward_step natseg_rrec goal=2 facts=[1]
+  → apply_forward_step natseg_rrec goal=2 facts=[1]
     #[3] insert (Suc n) ({m..Suc n - 1}) = {m..Suc n}
-  -> rewrite_fact suc_sub1 sym=false goal=2 facts=[3]
+  → rewrite_fact suc_sub1 sym=false goal=2 facts=[3]
     #[4] insert (Suc n) ({m..n}) = {m..Suc n}
   ← rewrite_goal_with_prev goal=2 facts=[4]
 qed
@@ -214,7 +214,7 @@ proof
     #[9] {m..0} = (if m = 0 then {0} else ∅)
   ← rewrite_goal if_not_P sym=false goal=9 facts=[8]
     #[10] {m..0} = ∅
-  -> apply_forward_step le_1_1 goal=10 facts=[8]
+  → apply_forward_step le_1_1 goal=10 facts=[8]
     #[11] 0 < m
   ← apply_backward_step natseg_emptyI goal=10 facts=[11]
 qed
@@ -238,17 +238,17 @@ proof
     #[7] {m..Suc n} = (if m ≤ Suc n then insert (Suc n) ({m..n}) else {m..n})
   ← rewrite_goal if_not_P sym=false goal=7 facts=[6]
     #[8] {m..Suc n} = {m..n}
-  -> rewrite_fact not_le sym=false goal=8 facts=[6]
+  → rewrite_fact not_le sym=false goal=8 facts=[6]
     #[9] Suc n < m
   cut "{m..n} = {}" goal=8
     #[10] {m..n} = ∅
   ← rewrite_goal natseg_empty sym=false goal=10
     #[11] n < m
-  -> rewrite_fact nat_less_eq_def_2 sym=false goal=11 facts=[6]
+  → rewrite_fact nat_less_eq_def_2 sym=false goal=11 facts=[6]
     #[12] ¬(m = Suc n ∨ m ≤ n)
-  -> rewrite_fact de_morgan_thm2 sym=false goal=11 facts=[12]
+  → rewrite_fact de_morgan_thm2 sym=false goal=11 facts=[12]
     #[13] ¬(m = Suc n) ∧ ¬(m ≤ n)
-  -> rewrite_fact not_le sym=false goal=11 facts=[13]
+  → rewrite_fact not_le sym=false goal=11 facts=[13]
     #[14] ¬(m = Suc n) ∧ n < m
   ← apply_backward_step conjD2 goal=11 facts=[14]
   ← rewrite_goal_with_prev goal=8 facts=[10]
@@ -540,7 +540,7 @@ proof
     #[15] iterate op (support op f ∅) (λx. if x = a then f x else neutral op) = f a
   ← rewrite_goal support_empty sym=false goal=15
     #[16] iterate op ∅ (λx. if x = a then f x else neutral op) = f a
-  -> apply_forward_step iterate_empty param_f="(λx. if x = a then f x else neutral op)" goal=16 facts=[1]
+  → apply_forward_step iterate_empty param_f="(λx. if x = a then f x else neutral op)" goal=16 facts=[1]
     #[17] iterate op ∅ (λx. if x = a then f x else neutral op) = neutral op
   ← rewrite_goal_with_prev goal=16 facts=[17]
     #[18] neutral op = f a
@@ -553,13 +553,13 @@ proof
     #[22] iterate op (insert a (support op f ∅)) (λx. if x = a then f x else neutral op) = f a
   ← rewrite_goal support_empty sym=false goal=22
     #[23] iterate op ({a}) (λx. if x = a then f x else neutral op) = f a
-  -> apply_forward_step iterate_sing param_f="(λx. if x = a then f x else neutral op)" param_x=a goal=23 facts=[1]
+  → apply_forward_step iterate_sing param_f="(λx. if x = a then f x else neutral op)" param_x=a goal=23 facts=[1]
     #[24] iterate op ({a}) (λx. if x = a then f x else neutral op) = (if a = a then f a else neutral op)
   cut "a = a" goal=23
     #[25] a = a
   ← apply_backward_step eq_refl goal=25
     #[26] a = a
-  -> rewrite_fact if_P sym=false goal=23 facts=[24,26]
+  → rewrite_fact if_P sym=false goal=23 facts=[24,26]
     #[27] iterate op ({a}) (λx. if x = a then f x else neutral op) = f a
   ← introduction goal=6
     #[28] ¬(a ∈ s)
@@ -614,9 +614,9 @@ proof
     #[12] _VAR x
     #[13] (x ∈ s ∧ P x) ∧ ¬(f x = neutral op)
     #[14] f x = (if P x then f x else neutral op)
-  -> apply_forward_step conjD1 goal=14 facts=[13]
+  → apply_forward_step conjD1 goal=14 facts=[13]
     #[15] x ∈ s ∧ P x
-  -> apply_forward_step conjD2 goal=14 facts=[15]
+  → apply_forward_step conjD2 goal=14 facts=[15]
     #[16] P x
   ← rewrite_goal if_P sym=false goal=14 facts=[16]
     #[17] f x = (if P x then f x else neutral op)
@@ -644,7 +644,7 @@ proof
     #[7] _VAR y
     #[8] y ∈ t
     #[9] ∃!x. x ∈ s ∧ h x = y
-  -> apply_fact goal=9 facts=[2,8]
+  → apply_fact goal=9 facts=[2,8]
     #[10] k y ∈ s ∧ h (k y) = y
   ← rewrite_goal exists1_def sym="" goal=9
     #[11] ∃x. (x ∈ s ∧ h x = y) ∧ (∀y1. y1 ∈ s ∧ h y1 = y ⟶ y1 = x)
@@ -656,28 +656,28 @@ proof
     #[14] _VAR y1
     #[15] y1 ∈ s ∧ h y1 = y
     #[16] y1 = k y
-  -> apply_forward_step conjD1 goal=16 facts=[15]
+  → apply_forward_step conjD1 goal=16 facts=[15]
     #[17] y1 ∈ s
-  -> apply_forward_step conjD2 goal=16 facts=[15]
+  → apply_forward_step conjD2 goal=16 facts=[15]
     #[18] h y1 = y
-  -> apply_fact goal=16 facts=[3,17]
+  → apply_fact goal=16 facts=[3,17]
     #[19] h y1 ∈ t ∧ k (h y1) = y1 ∧ g (h y1) = f y1
-  -> apply_forward_step conjD1 goal=16 facts=[19]
+  → apply_forward_step conjD1 goal=16 facts=[19]
     #[20] h y1 ∈ t
-  -> apply_fact goal=16 facts=[2,20]
+  → apply_fact goal=16 facts=[2,20]
     #[21] k (h y1) ∈ s ∧ h (k (h y1)) = h y1
-  -> apply_forward_step conjD2 goal=16 facts=[21]
+  → apply_forward_step conjD2 goal=16 facts=[21]
     #[22] h (k (h y1)) = h y1
-  -> apply_forward_step conjD2 goal=16 facts=[15]
-  -> rewrite_fact_with_prev goal=16 facts=[18,22]
+  → apply_forward_step conjD2 goal=16 facts=[15]
+  → rewrite_fact_with_prev goal=16 facts=[18,22]
     #[23] h (k y) = y
-  -> rewrite_fact eq_sym_eq sym=false goal=16 facts=[18]
+  → rewrite_fact eq_sym_eq sym=false goal=16 facts=[18]
     #[24] y = h y1
   ← rewrite_goal_with_prev goal=16 facts=[24]
     #[25] y1 = k (h y1)
-  -> apply_forward_step conjD2 goal=25 facts=[19]
+  → apply_forward_step conjD2 goal=25 facts=[19]
     #[26] k (h y1) = y1 ∧ g (h y1) = f y1
-  -> apply_forward_step conjD1 goal=25 facts=[26]
+  → apply_forward_step conjD1 goal=25 facts=[26]
     #[27] k (h y1) = y1
   ← rewrite_goal_with_prev goal=25 facts=[27]
     #[28] y1 = k (h y1)
@@ -685,13 +685,13 @@ proof
     #[29] _VAR x
     #[30] x ∈ s
     #[31] h x ∈ t ∧ g (h x) = f x
-  -> apply_fact goal=31 facts=[3,30]
+  → apply_fact goal=31 facts=[3,30]
     #[32] h x ∈ t ∧ k (h x) = x ∧ g (h x) = f x
-  -> apply_forward_step conjD1 goal=31 facts=[32]
+  → apply_forward_step conjD1 goal=31 facts=[32]
     #[33] h x ∈ t
-  -> apply_forward_step conjD2 goal=31 facts=[32]
+  → apply_forward_step conjD2 goal=31 facts=[32]
     #[34] k (h x) = x ∧ g (h x) = f x
-  -> apply_forward_step conjD2 goal=31 facts=[34]
+  → apply_forward_step conjD2 goal=31 facts=[34]
     #[35] g (h x) = f x
   ← apply_backward_step conjI goal=31
 qed
@@ -725,7 +725,7 @@ proof
     #[1] monoidal op
     #[2] support op f univ ⊆ s
     #[3] iterate op s f = iterate op univ f
-  -> rewrite_fact support_def sym=false goal=3 facts=[2]
+  → rewrite_fact support_def sym=false goal=3 facts=[2]
     #[4] {x. x ∈ univ ∧ ¬(f x = neutral op)} ⊆ s
   ← rewrite_goal eq_sym_eq sym=false goal=3
     #[5] iterate op univ f = iterate op s f
@@ -739,9 +739,9 @@ proof
     #[10] x ∈ univ
     #[11] ¬(x ∈ s)
     #[12] f x = neutral op
-  -> apply_forward_step subsetE param_x=x goal=12 facts=[4]
+  → apply_forward_step subsetE param_x=x goal=12 facts=[4]
     #[13] x ∈ {x1. x1 ∈ univ ∧ ¬(f x1 = neutral op)} ⟶ x ∈ s
-  -> rewrite_fact member_collect sym=false goal=12 facts=[13]
+  → rewrite_fact member_collect sym=false goal=12 facts=[13]
     #[14] x ∈ univ ∧ ¬(f x = neutral op) ⟶ x ∈ s
   ← apply_backward_step contrapositive goal=12 facts=[11]
     #[15] ¬(f x = neutral op) ⟶ ¬¬(x ∈ s)

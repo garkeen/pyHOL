@@ -99,11 +99,11 @@ proof
     #[7] P s
     #[8] Sem c s s2
     #[9] R s2
-  -> rewrite_fact Entail_def goal=9 facts=[1]
+  → rewrite_fact Entail_def goal=9 facts=[1]
     #[10] ∀s. P s ⟶ Q s
-  -> rewrite_fact Valid_def goal=9 facts=[2]
+  → rewrite_fact Valid_def goal=9 facts=[2]
     #[11] ∀s. ∀s2. Q s ⟶ Sem c s s2 ⟶ R s2
-  -> apply_fact goal=9 facts=[10,7]
+  → apply_fact goal=9 facts=[10,7]
     #[12] Q s
   ← apply_prev goal=9 facts=[11,12]
 qed
@@ -128,7 +128,7 @@ proof
     #[7] P s
     #[8] Sem (Seq c1 c2) s s2
     #[9] R s2
-  -> apply_forward_step Sem_Seq_elim goal=9 facts=[8]
+  → apply_forward_step Sem_Seq_elim goal=9 facts=[8]
     #[10] ∃s3. Sem c1 s s3 ∧ Sem c2 s3 s2
   ← apply_backward_step exE goal=9 facts=[10]
     #[11] ∀s3. Sem c1 s s3 ∧ Sem c2 s3 s2 ⟶ R s2
@@ -136,15 +136,15 @@ proof
     #[12] _VAR s3
     #[13] Sem c1 s s3 ∧ Sem c2 s3 s2
     #[14] R s2
-  -> apply_forward_step conjD1 goal=14 facts=[13]
+  → apply_forward_step conjD1 goal=14 facts=[13]
     #[15] Sem c1 s s3
-  -> apply_forward_step conjD2 goal=14 facts=[13]
+  → apply_forward_step conjD2 goal=14 facts=[13]
     #[16] Sem c2 s3 s2
-  -> rewrite_fact Valid_def goal=14 facts=[1]
+  → rewrite_fact Valid_def goal=14 facts=[1]
     #[17] ∀s. ∀s2. P s ⟶ Sem c1 s s2 ⟶ Q s2
-  -> rewrite_fact Valid_def goal=14 facts=[2]
+  → rewrite_fact Valid_def goal=14 facts=[2]
     #[18] ∀s. ∀s2. Q s ⟶ Sem c2 s s2 ⟶ R s2
-  -> apply_fact goal=14 facts=[17,7,15]
+  → apply_fact goal=14 facts=[17,7,15]
     #[19] Q s3
   ← apply_prev goal=14 facts=[18,19,16]
     #[20] R s2
@@ -180,7 +180,7 @@ proof
     #[19] s = s1
     #[20] s2 = f s1
     #[21] R s2
-  -> rewrite_fact eq_sym_eq sym=false goal=21 facts=[18]
+  → rewrite_fact eq_sym_eq sym=false goal=21 facts=[18]
     #[22] Basic f = Cond b c1 c2
   ← apply_resolve_step com_Basic_Cond_neq goal=21 facts=[22]
     #[23] R s2
@@ -194,7 +194,7 @@ proof
     #[30] Sem c11 s1 s3
     #[31] Sem c21 s3 s21
     #[32] R s2
-  -> rewrite_fact eq_sym_eq sym=false goal=32 facts=[28]
+  → rewrite_fact eq_sym_eq sym=false goal=32 facts=[28]
     #[33] Seq c11 c21 = Cond b c1 c2
   ← apply_resolve_step com_Seq_Cond_neq goal=32 facts=[33]
     #[34] R s2
@@ -204,39 +204,39 @@ proof
     #[37] b1 s1
     #[38] Sem c11 s1 s21
     #[39] R s2
-  -> apply_forward_step com_Cond_inject goal=39 facts=[36]
+  → apply_forward_step com_Cond_inject goal=39 facts=[36]
     #[40] b = b1 ∧ c1 = c11 ∧ c2 = c21
-  -> apply_forward_step conjD1 goal=39 facts=[40]
+  → apply_forward_step conjD1 goal=39 facts=[40]
     #[41] b = b1
-  -> apply_forward_step conjD2 goal=39 facts=[40]
+  → apply_forward_step conjD2 goal=39 facts=[40]
     #[42] c1 = c11 ∧ c2 = c21
-  -> apply_forward_step conjD1 goal=39 facts=[42]
+  → apply_forward_step conjD1 goal=39 facts=[42]
     #[43] c1 = c11
-  -> apply_forward_step conjD2 goal=39 facts=[42]
+  → apply_forward_step conjD2 goal=39 facts=[42]
     #[44] c2 = c21
-  -> rewrite_fact eq_sym_eq sym=false goal=39 facts=[41]
+  → rewrite_fact eq_sym_eq sym=false goal=39 facts=[41]
     #[45] b1 = b
-  -> rewrite_fact eq_sym_eq sym=false goal=39 facts=[19]
+  → rewrite_fact eq_sym_eq sym=false goal=39 facts=[19]
     #[46] s1 = s
-  -> rewrite_fact eq_sym_eq sym=false goal=39 facts=[43]
+  → rewrite_fact eq_sym_eq sym=false goal=39 facts=[43]
     #[47] c11 = c1
-  -> rewrite_fact eq_sym_eq sym=false goal=39 facts=[29]
+  → rewrite_fact eq_sym_eq sym=false goal=39 facts=[29]
     #[48] s21 = s2
-  -> rewrite_fact eq_sym_eq sym=false goal=39 facts=[44]
+  → rewrite_fact eq_sym_eq sym=false goal=39 facts=[44]
     #[49] c21 = c2
-  -> rewrite_fact_with_prev goal=39 facts=[47,38]
+  → rewrite_fact_with_prev goal=39 facts=[47,38]
     #[50] Sem c1 s1 s21
-  -> rewrite_fact_with_prev goal=39 facts=[46,50]
+  → rewrite_fact_with_prev goal=39 facts=[46,50]
     #[51] Sem c1 s s21
-  -> rewrite_fact_with_prev goal=39 facts=[48,51]
+  → rewrite_fact_with_prev goal=39 facts=[48,51]
     #[52] Sem c1 s s2
-  -> rewrite_fact_with_prev goal=39 facts=[45,37]
+  → rewrite_fact_with_prev goal=39 facts=[45,37]
     #[53] b s1
-  -> rewrite_fact_with_prev goal=39 facts=[46,53]
+  → rewrite_fact_with_prev goal=39 facts=[46,53]
     #[54] b s
-  -> rewrite_fact if_P sym=false goal=39 facts=[7,54]
+  → rewrite_fact if_P sym=false goal=39 facts=[7,54]
     #[55] P s
-  -> rewrite_fact Valid_def goal=39 facts=[1]
+  → rewrite_fact Valid_def goal=39 facts=[1]
     #[56] ∀s. ∀s2. P s ⟶ Sem c1 s s2 ⟶ R s2
   ← apply_prev goal=39 facts=[56,55,52]
     #[57] R s2
@@ -244,29 +244,29 @@ proof
     #[58] ¬(b1 s1)
     #[59] Sem c21 s1 s21
     #[60] R s2
-  -> apply_forward_step com_Cond_inject goal=60 facts=[36]
-  -> apply_forward_step conjD1 goal=60 facts=[40]
-  -> apply_forward_step conjD2 goal=60 facts=[40]
-  -> apply_forward_step conjD1 goal=60 facts=[42]
-  -> apply_forward_step conjD2 goal=60 facts=[42]
-  -> rewrite_fact eq_sym_eq sym=false goal=60 facts=[41]
-  -> rewrite_fact eq_sym_eq sym=false goal=60 facts=[19]
-  -> rewrite_fact eq_sym_eq sym=false goal=60 facts=[43]
-  -> rewrite_fact eq_sym_eq sym=false goal=60 facts=[29]
-  -> rewrite_fact eq_sym_eq sym=false goal=60 facts=[44]
-  -> rewrite_fact_with_prev goal=60 facts=[49,59]
+  → apply_forward_step com_Cond_inject goal=60 facts=[36]
+  → apply_forward_step conjD1 goal=60 facts=[40]
+  → apply_forward_step conjD2 goal=60 facts=[40]
+  → apply_forward_step conjD1 goal=60 facts=[42]
+  → apply_forward_step conjD2 goal=60 facts=[42]
+  → rewrite_fact eq_sym_eq sym=false goal=60 facts=[41]
+  → rewrite_fact eq_sym_eq sym=false goal=60 facts=[19]
+  → rewrite_fact eq_sym_eq sym=false goal=60 facts=[43]
+  → rewrite_fact eq_sym_eq sym=false goal=60 facts=[29]
+  → rewrite_fact eq_sym_eq sym=false goal=60 facts=[44]
+  → rewrite_fact_with_prev goal=60 facts=[49,59]
     #[61] Sem c2 s1 s21
-  -> rewrite_fact_with_prev goal=60 facts=[46,61]
+  → rewrite_fact_with_prev goal=60 facts=[46,61]
     #[62] Sem c2 s s21
-  -> rewrite_fact_with_prev goal=60 facts=[48,62]
+  → rewrite_fact_with_prev goal=60 facts=[48,62]
     #[63] Sem c2 s s2
-  -> rewrite_fact_with_prev goal=60 facts=[45,58]
+  → rewrite_fact_with_prev goal=60 facts=[45,58]
     #[64] ¬(b s1)
-  -> rewrite_fact_with_prev goal=60 facts=[46,64]
+  → rewrite_fact_with_prev goal=60 facts=[46,64]
     #[65] ¬(b s)
-  -> rewrite_fact if_not_P sym=false goal=60 facts=[7,65]
+  → rewrite_fact if_not_P sym=false goal=60 facts=[7,65]
     #[66] Q s
-  -> rewrite_fact Valid_def goal=60 facts=[2]
+  → rewrite_fact Valid_def goal=60 facts=[2]
     #[67] ∀s. ∀s2. Q s ⟶ Sem c2 s s2 ⟶ R s2
   ← apply_prev goal=60 facts=[67,66,63]
     #[68] R s2
@@ -347,42 +347,42 @@ proof
     #[38] _VAR I1
     #[39] While b1 I1 c1 = While b I c
     #[40] Q s
-  -> apply_forward_step com_While_inject goal=40 facts=[39]
+  → apply_forward_step com_While_inject goal=40 facts=[39]
     #[41] b1 = b ∧ I1 = I ∧ c1 = c
-  -> apply_forward_step conjD1 goal=40 facts=[41]
+  → apply_forward_step conjD1 goal=40 facts=[41]
     #[42] b1 = b
-  -> rewrite_fact_with_prev goal=40 facts=[42,34]
+  → rewrite_fact_with_prev goal=40 facts=[42,34]
     #[43] ¬(b s)
-  -> apply_forward_step conjI goal=40 facts=[13,43]
+  → apply_forward_step conjI goal=40 facts=[13,43]
     #[44] I s ∧ ¬(b s)
-  -> rewrite_fact Entail_def goal=40 facts=[1]
+  → rewrite_fact Entail_def goal=40 facts=[1]
     #[45] ∀s. I s ∧ ¬(b s) ⟶ Q s
-  -> apply_fact goal=40 facts=[45,44]
+  → apply_fact goal=40 facts=[45,44]
     #[46] Q s
   ← apply_prev goal=40 facts=[46]
   ← introduction b1,s,c1,s3,I1,s2 goal=9
     #[47] Sem (While b1 I1 c1) s3 s2
     #[48] While b1 I1 c1 = While b I c ⟶ I s3 ⟶ Q s2
     #[49] Q s2
-  -> apply_forward_step com_While_inject goal=49 facts=[39]
-  -> apply_forward_step conjD1 goal=49 facts=[41]
-  -> apply_forward_step conjD2 goal=49 facts=[41]
+  → apply_forward_step com_While_inject goal=49 facts=[39]
+  → apply_forward_step conjD1 goal=49 facts=[41]
+  → apply_forward_step conjD2 goal=49 facts=[41]
     #[50] I1 = I ∧ c1 = c
-  -> apply_forward_step conjD1 goal=49 facts=[50]
+  → apply_forward_step conjD1 goal=49 facts=[50]
     #[51] I1 = I
-  -> apply_forward_step conjD2 goal=49 facts=[50]
+  → apply_forward_step conjD2 goal=49 facts=[50]
     #[52] c1 = c
-  -> rewrite_fact_with_prev goal=49 facts=[52,20]
+  → rewrite_fact_with_prev goal=49 facts=[52,20]
     #[53] Sem c s s3
-  -> rewrite_fact_with_prev goal=49 facts=[42,28]
+  → rewrite_fact_with_prev goal=49 facts=[42,28]
     #[54] b s
-  -> apply_forward_step conjI goal=49 facts=[13,54]
+  → apply_forward_step conjI goal=49 facts=[13,54]
     #[55] I s ∧ b s
-  -> rewrite_fact Valid_def goal=49 facts=[2]
+  → rewrite_fact Valid_def goal=49 facts=[2]
     #[56] ∀s. ∀s2. I s ∧ b s ⟶ Sem c s s2 ⟶ I s2
-  -> apply_fact goal=49 facts=[56,55,53]
+  → apply_fact goal=49 facts=[56,55,53]
     #[57] I s3
-  -> apply_fact goal=49 facts=[48,39,57]
+  → apply_fact goal=49 facts=[48,39,57]
     #[58] Q s2
   ← apply_prev goal=49 facts=[58]
 qed
@@ -403,17 +403,17 @@ proof
     #[7] I s
     #[8] Sem (While b I c) s s2
     #[9] Q s2
-  -> apply_forward_step Sem_while_inv goal=9 facts=[1,2]
+  → apply_forward_step Sem_while_inv goal=9 facts=[1,2]
     #[10] ∀d. ∀x. ∀y. Sem d x y ⟶ d = While b I c ⟶ I x ⟶ Q y
-  -> forall_elim "While b I c" goal=9 facts=[10]
+  → forall_elim "While b I c" goal=9 facts=[10]
     #[11] ∀x. ∀y. Sem (While b I c) x y ⟶ While b I c = While b I c ⟶ I x ⟶ Q y
-  -> forall_elim s goal=9 facts=[11]
+  → forall_elim s goal=9 facts=[11]
     #[12] ∀y. Sem (While b I c) s y ⟶ While b I c = While b I c ⟶ I s ⟶ Q y
-  -> forall_elim s2 goal=9 facts=[12]
+  → forall_elim s2 goal=9 facts=[12]
     #[13] Sem (While b I c) s s2 ⟶ While b I c = While b I c ⟶ I s ⟶ Q s2
-  -> apply_fact goal=9 facts=[13,8]
+  → apply_fact goal=9 facts=[13,8]
     #[14] While b I c = While b I c ⟶ I s ⟶ Q s2
-  -> apply_forward_step While_eq_refl param_I=I param_b=b param_c=c goal=9
+  → apply_forward_step While_eq_refl param_I=I param_b=b param_c=c goal=9
     #[15] While b I c = While b I c
   ← apply_prev goal=9 facts=[14,15,7]
 qed

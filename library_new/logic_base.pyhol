@@ -179,7 +179,7 @@ proof
     #[1] A ⟶ C
     #[2] ¬A ⟶ C
     #[3] C
-  -> apply_forward_step classical param_A=A goal=3
+  → apply_forward_step classical param_A=A goal=3
     #[4] A ∨ ¬A
   ← apply_backward_step disjE goal=3 facts=[4]
 qed
@@ -223,7 +223,7 @@ proof
   ← introduction goal=5
     #[6] ¬Q
     #[7] Q
-  -> apply_fact goal=7 facts=[2,6]
+  → apply_fact goal=7 facts=[2,6]
     #[8] ¬P
   ← apply_backward_step negE_gen goal=7 facts=[8]
 qed
@@ -253,7 +253,7 @@ proof
   ← introduction goal=3
     #[4] y = x
     #[5] false
-  -> rewrite_fact_with_prev goal=5 facts=[4,1]
+  → rewrite_fact_with_prev goal=5 facts=[4,1]
     #[6] ¬(x = x)
   ← apply_backward_step negE goal=5 facts=[6]
     #[7] x = x
@@ -286,7 +286,7 @@ proof
   ← introduction goal=0
     #[1] P x
     #[2] P (SOME x1. P x1)
-  -> apply_forward_step some_AX goal=2 facts=[1]
+  → apply_forward_step some_AX goal=2 facts=[1]
     #[3] P (Some P)
   cut "(Some P) = (SOME x1. P x1)" goal=2 facts=[3]
     #[4] (Some P) = (SOME x1. P x1)
@@ -294,7 +294,7 @@ proof
     #[5] (SOME x1. P x1) = (Some P)
   ← rewrite_goal eta_conversion sym=false goal=5
     #[6] (SOME x1. P x1) = (Some P)
-  -> rewrite_fact_with_prev goal=2 facts=[4,3]
+  → rewrite_fact_with_prev goal=2 facts=[4,3]
 qed
 
 theorem exists_thm
@@ -351,7 +351,7 @@ proof
   ← introduction goal=0
     #[1] ∀y. P y ⟷ y = x
     #[2] (Some P) = x
-  -> apply_forward_step extension goal=2 facts=[1]
+  → apply_forward_step extension goal=2 facts=[1]
     #[3] P = (λx1. x1 = x)
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] (SOME x1. x1 = x) = x
@@ -385,7 +385,7 @@ proof
   ← apply_backward_step the_equality goal=3
     #[4] P (SOME x. P x)
     #[5] ∀x. P x ⟶ x = (SOME x1. P x1)
-  -> apply_forward_step some_AX goal=4 facts=[1]
+  → apply_forward_step some_AX goal=4 facts=[1]
     #[6] P (Some P)
   cut "(Some P) = (SOME x. P x)" goal=4 facts=[2]
     #[7] (Some P) = (SOME x. P x)
@@ -393,8 +393,8 @@ proof
     #[8] (SOME x. P x) = (Some P)
   ← rewrite_goal eta_conversion sym=false goal=8
     #[9] (SOME x. P x) = (Some P)
-  -> rewrite_fact_with_prev goal=4 facts=[7,6]
-  -> apply_fact goal=5 facts=[2,4]
+  → rewrite_fact_with_prev goal=4 facts=[7,6]
+  → apply_fact goal=5 facts=[2,4]
     #[10] (SOME x. P x) = a
   ← rewrite_goal_with_prev goal=5 facts=[10]
 qed
@@ -406,7 +406,7 @@ proof
   ← introduction goal=0
     #[1] ∃!x. P x
     #[2] P (THE x. P x)
-  -> rewrite_fact exists1_def sym="" goal=2 facts=[1]
+  → rewrite_fact exists1_def sym="" goal=2 facts=[1]
     #[3] ∃x. P x ∧ (∀y. P y ⟶ y = x)
   exists_elim a goal=2 facts=[3]
     #[4] _VAR a
@@ -595,7 +595,7 @@ proof
     #[8] if P then B else D
   ← rewrite_goal if_P sym=false goal=8 facts=[7]
     #[9] B
-  -> rewrite_fact if_P sym=false goal=9 facts=[3,7]
+  → rewrite_fact if_P sym=false goal=9 facts=[3,7]
     #[10] A
   ← apply_prev goal=9 facts=[1,10]
     #[11] B
@@ -604,7 +604,7 @@ proof
     #[13] if P then B else D
   ← rewrite_goal if_not_P sym=false goal=13 facts=[12]
     #[14] D
-  -> rewrite_fact if_not_P sym=false goal=14 facts=[3,12]
+  → rewrite_fact if_not_P sym=false goal=14 facts=[3,12]
     #[15] C
   ← apply_prev goal=14 facts=[2,15]
     #[16] D
@@ -629,17 +629,17 @@ proof
   ← introduction goal=6
     #[8] c
     #[9] P x
-  -> rewrite_fact if_P sym=false goal=9 facts=[4,8]
+  → rewrite_fact if_P sym=false goal=9 facts=[4,8]
   ← introduction goal=7
     #[10] ¬c
     #[11] P y
-  -> rewrite_fact if_not_P sym=false goal=11 facts=[4,10]
+  → rewrite_fact if_not_P sym=false goal=11 facts=[4,10]
   ← introduction goal=3
     #[12] (c ⟶ P x) ∧ (¬c ⟶ P y)
     #[13] if c then P x else P y
-  -> apply_forward_step conjD1 goal=13 facts=[12]
+  → apply_forward_step conjD1 goal=13 facts=[12]
     #[14] c ⟶ P x
-  -> apply_forward_step conjD2 goal=13 facts=[12]
+  → apply_forward_step conjD2 goal=13 facts=[12]
     #[15] ¬c ⟶ P y
   ← apply_backward_step mono_cond goal=13 facts=[14,15]
     #[16] if c then c else ¬c
@@ -704,14 +704,14 @@ proof
   ← introduction goal=4
     #[6] A
     #[7] B ∨ C
-  -> apply_forward_step resolution_right goal=7 facts=[6,2]
+  → apply_forward_step resolution_right goal=7 facts=[6,2]
     #[8] C
   ← apply_backward_step disjI2 goal=7 facts=[8]
     #[9] B ∨ C
   ← introduction goal=5
     #[10] ¬A
     #[11] B ∨ C
-  -> apply_forward_step resolution_left goal=11 facts=[1,10]
+  → apply_forward_step resolution_left goal=11 facts=[1,10]
     #[12] B
   ← apply_backward_step disjI1 goal=11 facts=[12]
     #[13] B ∨ C
@@ -725,11 +725,11 @@ proof
     #[1] A ∧ B
     #[2] A ⟶ B ⟶ C
     #[3] C
-  -> apply_forward_step conjD1 goal=3 facts=[1]
+  → apply_forward_step conjD1 goal=3 facts=[1]
     #[4] A
-  -> apply_forward_step conjD2 goal=3 facts=[1]
+  → apply_forward_step conjD2 goal=3 facts=[1]
     #[5] B
-  -> apply_fact goal=3 facts=[2,4]
+  → apply_fact goal=3 facts=[2,4]
     #[6] B ⟶ C
   ← apply_prev goal=3 facts=[6,5]
 qed

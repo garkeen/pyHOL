@@ -52,9 +52,9 @@ proof
     #[4] _VAR x
     #[5] x ∈ s
     #[6] real_differentiable gamma (within (atreal x) s)
-  -> apply_forward_step subsetE param_x=x goal=6 facts=[1]
+  → apply_forward_step subsetE param_x=x goal=6 facts=[1]
     #[7] x ∈ s ⟶ x ∈ {x1. ∀n. ¬(x1 + of_nat n = 0)}
-  -> rewrite_fact member_collect sym=false goal=6 facts=[7]
+  → rewrite_fact member_collect sym=false goal=6 facts=[7]
     #[8] x ∈ s ⟶ (∀n. ¬(x + of_nat n = 0))
   ← apply_backward_step real_differentiable_within_gamma goal=6
     #[9] ∀n. ¬(x + of_nat n = 0)
@@ -95,9 +95,9 @@ proof
     #[6] real_continuous gamma (within (atreal x) s)
   ← apply_backward_step real_continuous_within_gamma goal=6
     #[7] ∀n. ¬(x + of_nat n = 0)
-  -> apply_forward_step subsetE param_x=x goal=7 facts=[1]
+  → apply_forward_step subsetE param_x=x goal=7 facts=[1]
     #[8] x ∈ s ⟶ x ∈ {x1. ∀n. ¬(x1 + of_nat n = 0)}
-  -> rewrite_fact member_collect sym=false goal=7 facts=[8]
+  → rewrite_fact member_collect sym=false goal=7 facts=[8]
     #[9] x ∈ s ⟶ (∀n. ¬(x + of_nat n = 0))
   ← apply_prev goal=7 facts=[9]
 qed

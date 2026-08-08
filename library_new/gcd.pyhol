@@ -16,7 +16,7 @@ proof
     #[3] ∀m::nat. ∀n. m ≤ m * n ∨ m * n = 0
   ← z3 goal=3
     #[4] ∀m::nat. ∀n. m ≤ m * n ∨ m * n = 0
-  -> rewrite_fact divides_def sym=false goal=2 facts=[1]
+  → rewrite_fact divides_def sym=false goal=2 facts=[1]
     #[5] ∃k. n = m * k
   exists_elim k goal=2 facts=[5]
     #[6] _VAR k
@@ -37,9 +37,9 @@ proof
   ← introduction goal=0
     #[1] divides m n
     #[2] 1 ≤ m ∧ m ≤ n ∨ n = 0
-  -> apply_forward_step divides_le goal=2 facts=[1]
+  → apply_forward_step divides_le goal=2 facts=[1]
     #[3] m ≤ n ∨ n = 0
-  -> rewrite_fact divides_def sym=false goal=2 facts=[1]
+  → rewrite_fact divides_def sym=false goal=2 facts=[1]
     #[4] ∃k. n = m * k
   ← cases "m=0" goal=2
     #[5] m = 0 ⟶ 1 ≤ m ∧ m ≤ n ∨ n = 0
@@ -54,9 +54,9 @@ proof
     #[11] n = m * k
     #[12] n = 0
     #[13] 1 ≤ m ∧ m ≤ n ∨ n = 0
-  -> rewrite_fact_with_prev goal=12 facts=[7,11]
+  → rewrite_fact_with_prev goal=12 facts=[7,11]
     #[14] n = 0 * k
-  -> rewrite_fact nat_times_def_1 sym=false goal=12 facts=[14]
+  → rewrite_fact nat_times_def_1 sym=false goal=12 facts=[14]
     #[15] n = 0
   ← introduction goal=6
     #[16] ¬(m = 0)
@@ -87,7 +87,7 @@ proof
     #[1] divides m n
     #[2] n = 0 ⟶ m = 0
     #[3] m ≤ n
-  -> apply_forward_step divides_le goal=3 facts=[1]
+  → apply_forward_step divides_le goal=3 facts=[1]
     #[4] m ≤ n ∨ n = 0
   ← apply_backward_step disjE goal=3 facts=[4]
     #[5] m ≤ n ⟶ m ≤ n
@@ -95,7 +95,7 @@ proof
   ← introduction goal=6
     #[7] n = 0
     #[8] m ≤ n
-  -> apply_fact goal=8 facts=[2,7]
+  → apply_fact goal=8 facts=[2,7]
     #[9] m = 0
   ← rewrite_goal_with_prev goal=8 facts=[7]
     #[10] m ≤ 0
@@ -115,19 +115,19 @@ proof
     #[2] ¬(n = 0)
     #[3] ¬(m = n)
     #[4] 2 * m ≤ n
-  -> rewrite_fact divides_def sym=false goal=4 facts=[1]
+  → rewrite_fact divides_def sym=false goal=4 facts=[1]
     #[5] ∃k. n = m * k
   exists_elim d goal=4 facts=[5]
     #[6] _VAR d
     #[7] n = m * d
     #[8] 2 * m ≤ n
-  -> rewrite_fact_with_prev goal=8 facts=[7,3]
+  → rewrite_fact_with_prev goal=8 facts=[7,3]
     #[9] ¬(m = m * d)
   cut "~(m = m * d) <--> ~(m = 0) & ~(d = 1)" goal=8
     #[10] ¬(m = m * d) ⟷ ¬(m = 0) ∧ ¬(d = 1)
   ← z3 goal=10
     #[11] ¬(m = m * d) ⟷ ¬(m = 0) ∧ ¬(d = 1)
-  -> rewrite_fact_with_prev goal=8 facts=[11,9]
+  → rewrite_fact_with_prev goal=8 facts=[11,9]
     #[12] ¬(m = 0) ∧ ¬(d = 1)
   ← rewrite_goal mult_comm sym=false goal=8
     #[13] m * 2 ≤ n
@@ -152,9 +152,9 @@ proof
     #[6] _VAR k
     #[7] 1 = n * k
     #[8] n = 1
-  -> rewrite_fact eq_sym_eq sym=false goal=8 facts=[7]
+  → rewrite_fact eq_sym_eq sym=false goal=8 facts=[7]
     #[9] n * k = 1
-  -> rewrite_fact mult_eq_1 sym=false goal=8 facts=[9]
+  → rewrite_fact mult_eq_1 sym=false goal=8 facts=[9]
     #[10] n = 1 ∧ k = 1
   ← apply_backward_step conjD1 goal=8 facts=[10]
     #[11] n = 1
@@ -186,7 +186,7 @@ proof
     #[6] _VAR k
     #[7] x = 0 * k
     #[8] x = 0
-  -> rewrite_fact nat_times_def_1 sym=false goal=8 facts=[7]
+  → rewrite_fact nat_times_def_1 sym=false goal=8 facts=[7]
     #[9] x = 0
   ← introduction goal=3
     #[10] x = 0
@@ -231,7 +231,7 @@ proof
   ← introduction goal=4
     #[10] ¬(d = 0)
     #[11] (a + b) DIV d = a DIV d + b DIV d
-  -> rewrite_fact divides_def sym=false goal=11 facts=[1]
+  → rewrite_fact divides_def sym=false goal=11 facts=[1]
     #[12] (∃k. a = d * k) ∨ (∃k. b = d * k)
   ← apply_backward_step disjE goal=11 facts=[12]
     #[13] (∃k. a = d * k) ⟶ (a + b) DIV d = a DIV d + b DIV d
@@ -245,9 +245,9 @@ proof
     #[19] (a + b) DIV d = a DIV d + b DIV d
   ← rewrite_goal_with_prev goal=19 facts=[18]
     #[20] (d * k + b) DIV d = d * k DIV d + b DIV d
-  -> apply_forward_step div_mult_add2 param_a=k param_b=b goal=20 facts=[10]
+  → apply_forward_step div_mult_add2 param_a=k param_b=b goal=20 facts=[10]
     #[21] (d * k + b) DIV d = k + b DIV d
-  -> apply_forward_step div_mult param_n=k goal=20 facts=[10]
+  → apply_forward_step div_mult param_n=k goal=20 facts=[10]
     #[22] d * k DIV d = k
   ← rewrite_goal_with_prev goal=20 facts=[21]
     #[23] k + b DIV d = d * k DIV d + b DIV d
@@ -261,8 +261,8 @@ proof
     #[28] (a + b) DIV d = a DIV d + b DIV d
   ← rewrite_goal_with_prev goal=28 facts=[27]
     #[29] (a + d * k) DIV d = a DIV d + d * k DIV d
-  -> apply_forward_step div_mult param_n=k goal=29 facts=[10]
-  -> apply_forward_step div_mult_add4 param_a=k param_b=a goal=29 facts=[10]
+  → apply_forward_step div_mult param_n=k goal=29 facts=[10]
+  → apply_forward_step div_mult_add4 param_a=k param_b=a goal=29 facts=[10]
     #[30] (a + d * k) DIV d = a DIV d + k
   ← rewrite_goal_with_prev goal=29 facts=[30]
     #[31] a DIV d + k = a DIV d + d * k DIV d
@@ -314,7 +314,7 @@ proof
   ← introduction goal=11
     #[16] ¬(m = 0)
     #[17] m * k DIV m * m = m * k
-  -> apply_forward_step div_mult param_n=k goal=17 facts=[16]
+  → apply_forward_step div_mult param_n=k goal=17 facts=[16]
     #[18] m * k DIV m = k
   ← rewrite_goal_with_prev goal=17 facts=[18]
     #[19] k * m = m * k
@@ -323,7 +323,7 @@ proof
   ← introduction goal=3
     #[21] n DIV m * m = n
     #[22] ∃k. n = m * k
-  -> rewrite_fact eq_sym_eq sym=false goal=22 facts=[21]
+  → rewrite_fact eq_sym_eq sym=false goal=22 facts=[21]
     #[23] n = n DIV m * m
   ← rewrite_goal_with_prev goal=22 facts=[23]
     #[24] ∃k. n DIV m * m = m * k
@@ -342,9 +342,9 @@ proof
     #[1] ¬(n = 0)
     #[2] divides m n
     #[3] n DIV (n DIV m) = m
-  -> rewrite_fact divides_div_mult sym=false goal=3 facts=[2]
+  → rewrite_fact divides_div_mult sym=false goal=3 facts=[2]
     #[4] n DIV m * m = n
-  -> rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
+  → rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
     #[5] n = n DIV m * m
   ← rewrite_goal_with_prev goal=3 facts=[5]
     #[6] n DIV m * m DIV (n DIV m * m DIV m) = m
@@ -356,7 +356,7 @@ proof
     #[9] n DIV m * m DIV (n DIV m) = m
   ← apply_backward_step div_mult goal=9
     #[10] ¬(n DIV m = 0)
-  -> rewrite_fact divides_def sym=false goal=10 facts=[2]
+  → rewrite_fact divides_def sym=false goal=10 facts=[2]
     #[11] ∃k. n = m * k
   exists_elim k goal=10 facts=[11]
     #[12] _VAR k
@@ -371,16 +371,16 @@ proof
   ← introduction goal=18
     #[20] m = 0
     #[21] ¬(n DIV m = 0)
-  -> rewrite_fact_with_prev goal=21 facts=[20,13]
+  → rewrite_fact_with_prev goal=21 facts=[20,13]
     #[22] n = 0 * k
-  -> rewrite_fact nat_times_def_1 sym=false goal=21 facts=[22]
+  → rewrite_fact nat_times_def_1 sym=false goal=21 facts=[22]
     #[23] n = 0
   ← apply_backward_step negE_gen goal=21 facts=[1,23]
     #[24] ¬(n DIV m = 0)
   ← introduction goal=19
     #[25] ¬(m = 0)
     #[26] ¬(n DIV m = 0)
-  -> apply_forward_step div_eq_0 param_m=n goal=26 facts=[25]
+  → apply_forward_step div_eq_0 param_m=n goal=26 facts=[25]
     #[27] n DIV m = 0 ⟷ n < m
   ← rewrite_goal_with_prev goal=26 facts=[27]
     #[28] ¬(n < m)
@@ -388,13 +388,13 @@ proof
     #[29] m ≤ n
   ← rewrite_goal_with_prev goal=29 facts=[13]
     #[30] m ≤ m * k
-  -> rewrite_fact_with_prev goal=30 facts=[13,1]
+  → rewrite_fact_with_prev goal=30 facts=[13,1]
     #[31] ¬(m * k = 0)
-  -> rewrite_fact mult_eq_0 sym=false goal=30 facts=[31]
+  → rewrite_fact mult_eq_0 sym=false goal=30 facts=[31]
     #[32] ¬(m = 0 ∨ k = 0)
-  -> rewrite_fact de_morgan_thm2 sym=false goal=30 facts=[32]
+  → rewrite_fact de_morgan_thm2 sym=false goal=30 facts=[32]
     #[33] ¬(m = 0) ∧ ¬(k = 0)
-  -> apply_forward_step conjD2 goal=30 facts=[33]
+  → apply_forward_step conjD2 goal=30 facts=[33]
     #[34] ¬(k = 0)
   ← z3 goal=30 facts=[34]
     #[35] m ≤ m * k
@@ -421,9 +421,9 @@ proof
     #[1] divides k m
     #[2] divides m n
     #[3] divides k n
-  -> rewrite_fact divides_def sym=false goal=3 facts=[1]
+  → rewrite_fact divides_def sym=false goal=3 facts=[1]
     #[4] ∃k1. m = k * k1
-  -> rewrite_fact divides_def sym=false goal=3 facts=[2]
+  → rewrite_fact divides_def sym=false goal=3 facts=[2]
     #[5] ∃k. n = m * k
   exists_elim p goal=3 facts=[4]
     #[6] _VAR p
@@ -453,9 +453,9 @@ proof
     #[1] divides m n
     #[2] divides n m
     #[3] m = n
-  -> rewrite_fact divides_def sym=false goal=3 facts=[1]
+  → rewrite_fact divides_def sym=false goal=3 facts=[1]
     #[4] ∃k. n = m * k
-  -> rewrite_fact divides_def sym=false goal=3 facts=[2]
+  → rewrite_fact divides_def sym=false goal=3 facts=[2]
     #[5] ∃k. m = n * k
   exists_elim p goal=3 facts=[4]
     #[6] _VAR p
@@ -469,13 +469,13 @@ proof
     #[12] m = m * 1
   ← rewrite_goal mult_1_right sym=false goal=12
     #[13] m = m * 1
-  -> rewrite_fact_with_prev goal=11 facts=[13,10]
+  → rewrite_fact_with_prev goal=11 facts=[13,10]
     #[14] m * 1 = n * q
-  -> rewrite_fact_with_prev goal=11 facts=[7,14]
+  → rewrite_fact_with_prev goal=11 facts=[7,14]
     #[15] m * 1 = m * p * q
-  -> rewrite_fact mult_assoc sym=false goal=11 facts=[15]
+  → rewrite_fact mult_assoc sym=false goal=11 facts=[15]
     #[16] m * 1 = m * (p * q)
-  -> rewrite_fact eq_mult_lcancel sym=false goal=11 facts=[16]
+  → rewrite_fact eq_mult_lcancel sym=false goal=11 facts=[16]
     #[17] m = 0 ∨ 1 = p * q
   ← apply_backward_step disjE goal=11 facts=[17]
     #[18] m = 0 ⟶ m = n
@@ -483,9 +483,9 @@ proof
   ← introduction goal=18
     #[20] m = 0
     #[21] m = n
-  -> rewrite_fact_with_prev goal=21 facts=[20,7]
+  → rewrite_fact_with_prev goal=21 facts=[20,7]
     #[22] n = 0 * p
-  -> rewrite_fact nat_times_def_1 sym=false goal=21 facts=[22]
+  → rewrite_fact nat_times_def_1 sym=false goal=21 facts=[22]
     #[23] n = 0
   ← rewrite_goal_with_prev goal=21 facts=[20]
     #[24] 0 = n
@@ -494,15 +494,15 @@ proof
   ← introduction goal=19
     #[26] 1 = p * q
     #[27] m = n
-  -> rewrite_fact eq_sym_eq sym=false goal=27 facts=[26]
+  → rewrite_fact eq_sym_eq sym=false goal=27 facts=[26]
     #[28] p * q = 1
-  -> rewrite_fact mult_eq_1 sym=false goal=27 facts=[28]
+  → rewrite_fact mult_eq_1 sym=false goal=27 facts=[28]
     #[29] p = 1 ∧ q = 1
-  -> apply_forward_step conjD1 goal=27 facts=[29]
+  → apply_forward_step conjD1 goal=27 facts=[29]
     #[30] p = 1
-  -> rewrite_fact_with_prev goal=27 facts=[30,7]
+  → rewrite_fact_with_prev goal=27 facts=[30,7]
     #[31] n = m * 1
-  -> rewrite_fact mult_1_right sym=false goal=27 facts=[31]
+  → rewrite_fact mult_1_right sym=false goal=27 facts=[31]
     #[32] n = m
   ← rewrite_goal eq_sym_eq sym=false goal=27
 qed
@@ -528,9 +528,9 @@ proof
     #[1] divides d n
     #[2] n = 0 ⟶ e = 0
     #[3] divides (n DIV d) e ⟷ divides n (d * e)
-  -> rewrite_fact divides_div_mult sym=false goal=3 facts=[1]
+  → rewrite_fact divides_div_mult sym=false goal=3 facts=[1]
     #[4] n DIV d * d = n
-  -> rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
+  → rewrite_fact eq_sym_eq sym=false goal=3 facts=[4]
     #[5] n = n DIV d * d
   ← apply_backward_step iffI goal=3
     #[6] divides (n DIV d) e ⟶ divides n (d * e)
@@ -582,7 +582,7 @@ proof
     #[34] ¬¬(divides (n DIV d) e)
   ← rewrite_goal double_neg sym=false goal=34
     #[35] divides (n DIV d) e
-  -> rewrite_fact divides_def sym=false goal=35 facts=[21]
+  → rewrite_fact divides_def sym=false goal=35 facts=[21]
     #[36] ∃k. d * e = n * k
   ← rewrite_goal divides_def sym=false goal=35
     #[37] ∃k. e = n DIV d * k
@@ -592,17 +592,17 @@ proof
     #[40] ∃k. e = n DIV d * k
     #[41] divides (n DIV d) e
     #[42] ¬¬(divides (n DIV d) e)
-  -> rewrite_fact_with_prev goal=40 facts=[5,39]
+  → rewrite_fact_with_prev goal=40 facts=[5,39]
     #[43] d * e = n DIV d * d * k
   cut "n DIV d * d * k = d * (n DIV d) * k" goal=40
     #[44] n DIV d * d * k = d * (n DIV d) * k
   nat_norm goal=44
     #[45] n DIV d * d * k = d * (n DIV d) * k
-  -> rewrite_fact_with_prev goal=40 facts=[45,43]
+  → rewrite_fact_with_prev goal=40 facts=[45,43]
     #[46] d * e = d * (n DIV d) * k
-  -> rewrite_fact mult_assoc sym=false goal=40 facts=[46]
+  → rewrite_fact mult_assoc sym=false goal=40 facts=[46]
     #[47] d * e = d * (n DIV d * k)
-  -> rewrite_fact eq_mult_lcancel sym=false goal=40 facts=[47]
+  → rewrite_fact eq_mult_lcancel sym=false goal=40 facts=[47]
     #[48] d = 0 ∨ e = n DIV d * k
   ← apply_backward_step disjE goal=40 facts=[48]
     #[49] d = 0 ⟶ (∃k. e = n DIV d * k)
@@ -610,9 +610,9 @@ proof
   ← introduction goal=49
     #[51] d = 0
     #[52] ∃k. e = n DIV d * k
-  -> rewrite_fact_with_prev goal=52 facts=[51,1]
+  → rewrite_fact_with_prev goal=52 facts=[51,1]
     #[53] divides 0 n
-  -> rewrite_fact divides_0 sym=false goal=52 facts=[53]
+  → rewrite_fact divides_0 sym=false goal=52 facts=[53]
     #[54] n = 0
   ← apply_backward_step negE_gen goal=52 facts=[33,54]
     #[55] ∃k. e = n DIV d * k
@@ -630,7 +630,7 @@ proof
   ← introduction goal=0
     #[1] divides d n
     #[2] divides (n DIV d) n
-  -> rewrite_fact divides_div_mult sym=false goal=2 facts=[1]
+  → rewrite_fact divides_div_mult sym=false goal=2 facts=[1]
     #[3] n DIV d * d = n
   ← rewrite_goal divides_def sym=false goal=2
     #[4] ∃k. n = n DIV d * k
@@ -648,9 +648,9 @@ proof
     #[1] divides k m
     #[2] divides k n
     #[3] divides k (m + n)
-  -> rewrite_fact divides_def sym=false goal=3 facts=[1]
+  → rewrite_fact divides_def sym=false goal=3 facts=[1]
     #[4] ∃k1. m = k * k1
-  -> rewrite_fact divides_def sym=false goal=3 facts=[2]
+  → rewrite_fact divides_def sym=false goal=3 facts=[2]
     #[5] ∃k1. n = k * k1
   exists_elim p goal=3 facts=[4]
     #[6] _VAR p
@@ -681,9 +681,9 @@ proof
     #[1] divides k m
     #[2] divides k n
     #[3] divides k (m - n)
-  -> rewrite_fact divides_def sym=false goal=3 facts=[1]
+  → rewrite_fact divides_def sym=false goal=3 facts=[1]
     #[4] ∃k1. m = k * k1
-  -> rewrite_fact divides_def sym=false goal=3 facts=[2]
+  → rewrite_fact divides_def sym=false goal=3 facts=[2]
     #[5] ∃k1. n = k * k1
   ← rewrite_goal divides_def sym=false goal=3
     #[6] ∃k1. m - n = k * k1
@@ -733,7 +733,7 @@ proof
   ← introduction goal=0
     #[1] divides d a
     #[2] divides d (x * a)
-  -> rewrite_fact divides_def sym=false goal=2 facts=[1]
+  → rewrite_fact divides_def sym=false goal=2 facts=[1]
     #[3] ∃k. a = d * k
   ← rewrite_goal divides_def sym=false goal=2
     #[4] ∃k. x * a = d * k
@@ -771,7 +771,7 @@ proof
   ← introduction goal=0
     #[1] divides (x * d) a
     #[2] divides d a
-  -> rewrite_fact divides_def sym=false goal=2 facts=[1]
+  → rewrite_fact divides_def sym=false goal=2 facts=[1]
     #[3] ∃k. a = x * d * k
   ← rewrite_goal divides_def sym=false goal=2
     #[4] ∃k. a = d * k
@@ -796,7 +796,7 @@ proof
   ← introduction goal=0
     #[1] divides (d * x) a
     #[2] divides d a
-  -> rewrite_fact mult_comm sym=false goal=2 facts=[1]
+  → rewrite_fact mult_comm sym=false goal=2 facts=[1]
     #[3] divides (x * d) a
   ← apply_backward_step divides_lmul2 param_x=x goal=2
 qed
@@ -809,7 +809,7 @@ proof
   ← introduction goal=0
     #[1] divides m n
     #[2] divides (k * m) (k * n)
-  -> rewrite_fact divides_def sym=false goal=2 facts=[1]
+  → rewrite_fact divides_def sym=false goal=2 facts=[1]
     #[3] ∃k. n = m * k
   exists_elim p goal=2 facts=[3]
     #[4] _VAR p
@@ -833,7 +833,7 @@ proof
   ← introduction goal=0
     #[1] divides m n
     #[2] divides (m * k) (n * k)
-  -> rewrite_fact divides_def sym=false goal=2 facts=[1]
+  → rewrite_fact divides_def sym=false goal=2 facts=[1]
     #[3] ∃k. n = m * k
   exists_elim p goal=2 facts=[3]
     #[4] _VAR p
@@ -858,7 +858,7 @@ proof
     #[1] divides (c * a) (c * b)
     #[2] ¬(c = 0)
     #[3] divides a b
-  -> rewrite_fact divides_def sym=false goal=3 facts=[1]
+  → rewrite_fact divides_def sym=false goal=3 facts=[1]
     #[4] ∃k. c * b = c * a * k
   ← rewrite_goal divides_def sym=false goal=3
     #[5] ∃k. b = a * k
@@ -867,9 +867,9 @@ proof
     #[7] c * b = c * a * k
     #[8] ∃k. b = a * k
     #[9] divides a b
-  -> rewrite_fact mult_assoc sym=false goal=8 facts=[7]
+  → rewrite_fact mult_assoc sym=false goal=8 facts=[7]
     #[10] c * b = c * (a * k)
-  -> rewrite_fact eq_mult_lcancel sym=false goal=8 facts=[10]
+  → rewrite_fact eq_mult_lcancel sym=false goal=8 facts=[10]
     #[11] c = 0 ∨ b = a * k
   ← apply_backward_step disjE goal=8 facts=[11]
     #[12] c = 0 ⟶ (∃k. b = a * k)
@@ -928,9 +928,9 @@ proof
   ← introduction goal=0
     #[1] divides d n
     #[2] divides e (n DIV d) ⟷ divides (d * e) n
-  -> rewrite_fact divides_div_mult sym=false goal=2 facts=[1]
+  → rewrite_fact divides_div_mult sym=false goal=2 facts=[1]
     #[3] n DIV d * d = n
-  -> rewrite_fact eq_sym_eq sym=false goal=2 facts=[3]
+  → rewrite_fact eq_sym_eq sym=false goal=2 facts=[3]
     #[4] n = n DIV d * d
   ← apply_backward_step iffI goal=2
     #[5] divides e (n DIV d) ⟶ divides (d * e) n
@@ -985,13 +985,13 @@ proof
   ← introduction goal=1
     #[3] divides d n ∧ divides e (n DIV d)
     #[4] divides (d * e) n
-  -> apply_forward_step conjD1 goal=4 facts=[3]
+  → apply_forward_step conjD1 goal=4 facts=[3]
     #[5] divides d n
-  -> apply_forward_step conjD2 goal=4 facts=[3]
+  → apply_forward_step conjD2 goal=4 facts=[3]
     #[6] divides e (n DIV d)
-  -> apply_forward_step divides_divides_div param_e=e goal=4 facts=[5]
+  → apply_forward_step divides_divides_div param_e=e goal=4 facts=[5]
     #[7] divides e (n DIV d) ⟷ divides (d * e) n
-  -> rewrite_fact_with_prev goal=4 facts=[7,6]
+  → rewrite_fact_with_prev goal=4 facts=[7,6]
   ← introduction goal=2
     #[8] divides (d * e) n
     #[9] divides d n ∧ divides e (n DIV d)
@@ -999,7 +999,7 @@ proof
     #[10] divides d n
     #[11] divides e (n DIV d)
   ← apply_backward_step divides_rmul2 param_x=e goal=10
-  -> apply_forward_step divides_divides_div param_e=e goal=11 facts=[10]
+  → apply_forward_step divides_divides_div param_e=e goal=11 facts=[10]
     #[12] divides e (n DIV d) ⟷ divides (d * e) n
   ← rewrite_goal_with_prev goal=11 facts=[12]
 qed
@@ -1018,7 +1018,7 @@ proof
     #[4] m = n ∨ 2 * n ≤ m ⟷ m = n * 1 ∨ n * 2 ≤ m
   ← rewrite_goal_with_prev goal=2 facts=[4]
     #[5] m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  -> rewrite_fact divides_def sym=false goal=5 facts=[1]
+  → rewrite_fact divides_def sym=false goal=5 facts=[1]
     #[6] ∃k. m = n * k
   exists_elim k goal=5 facts=[6]
     #[7] _VAR k
@@ -1043,7 +1043,7 @@ proof
     #[19] m = n * k ⟶ m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
     #[20] m = n * Suc k
     #[21] m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  -> rewrite_fact mult_Suc_right sym=false goal=21 facts=[20]
+  → rewrite_fact mult_Suc_right sym=false goal=21 facts=[20]
     #[22] m = n + n * k
   ← cases "k=0" goal=21 facts=[22]
     #[23] k = 0 ⟶ m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
@@ -1051,11 +1051,11 @@ proof
   ← introduction goal=23
     #[25] k = 0
     #[26] m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  -> rewrite_fact_with_prev goal=26 facts=[25,22]
+  → rewrite_fact_with_prev goal=26 facts=[25,22]
     #[27] m = n + n * 0
-  -> rewrite_fact mult_0_right sym=false goal=26 facts=[27]
+  → rewrite_fact mult_0_right sym=false goal=26 facts=[27]
     #[28] m = n + 0
-  -> rewrite_fact add_0_right sym=false goal=26 facts=[28]
+  → rewrite_fact add_0_right sym=false goal=26 facts=[28]
     #[29] m = n
   ← apply_backward_step disjI2 goal=26
     #[30] m = n * 1 ∨ n * 2 ≤ m
@@ -1065,7 +1065,7 @@ proof
   ← introduction goal=24
     #[32] ¬(k = 0)
     #[33] m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  -> apply_forward_step le_1_2 goal=33 facts=[32]
+  → apply_forward_step le_1_2 goal=33 facts=[32]
     #[34] 1 ≤ k
   ← apply_backward_step disjI2 goal=33
     #[35] m = n * 1 ∨ n * 2 ≤ m
@@ -1100,18 +1100,18 @@ proof
     #[4] ¬(divides n x)
   ← rewrite_goal_with_prev goal=4 facts=[1]
     #[5] ¬(divides n (q * n + r))
-  -> apply_forward_step divides_self param_n=n goal=5
+  → apply_forward_step divides_self param_n=n goal=5
     #[6] divides n n
-  -> apply_forward_step divides_lmul param_x=q goal=5 facts=[6]
+  → apply_forward_step divides_lmul param_x=q goal=5 facts=[6]
     #[7] divides n (q * n)
   ← apply_backward_step negI goal=5
     #[8] divides n (q * n + r) ⟶ false
   ← introduction goal=8
     #[9] divides n (q * n + r)
     #[10] false
-  -> apply_forward_step divides_sum2 goal=10 facts=[9,7]
+  → apply_forward_step divides_sum2 goal=10 facts=[9,7]
     #[11] divides n r
-  -> apply_forward_step divides_le goal=10 facts=[11]
+  → apply_forward_step divides_le goal=10 facts=[11]
     #[12] n ≤ r ∨ r = 0
   ← apply_backward_step contrapositive goal=10 facts=[12]
     #[13] ¬false ⟶ ¬(n ≤ r ∨ r = 0)
@@ -1129,7 +1129,7 @@ proof
   ← introduction goal=19
     #[20] ¬¬(r = 0)
     #[21] ¬(0 < r)
-  -> rewrite_fact double_neg sym=false goal=21 facts=[20]
+  → rewrite_fact double_neg sym=false goal=21 facts=[20]
     #[22] r = 0
   ← rewrite_goal_with_prev goal=21 facts=[22]
     #[23] ¬((0::nat) < 0)
@@ -1145,9 +1145,9 @@ proof
     #[1] divides a b
     #[2] divides c d
     #[3] divides (a * c) (b * d)
-  -> rewrite_fact divides_def sym=false goal=3 facts=[1]
+  → rewrite_fact divides_def sym=false goal=3 facts=[1]
     #[4] ∃k. b = a * k
-  -> rewrite_fact divides_def sym=false goal=3 facts=[2]
+  → rewrite_fact divides_def sym=false goal=3 facts=[2]
     #[5] ∃k. d = c * k
   exists_elim k1 goal=3 facts=[4]
     #[6] _VAR k1
@@ -1177,7 +1177,7 @@ proof
   ← introduction goal=0
     #[1] divides x y
     #[2] divides (x ^ n) (y ^ n)
-  -> rewrite_fact divides_def sym=false goal=2 facts=[1]
+  → rewrite_fact divides_def sym=false goal=2 facts=[1]
     #[3] ∃k. y = x * k
   exists_elim k goal=2 facts=[3]
     #[4] _VAR k
@@ -1212,9 +1212,9 @@ proof
     #[7] ¬((0::nat) = 0)
     #[8] divides (x ^ (0::nat)) y
     #[9] divides x y
-  -> apply_forward_step le_1_1 goal=9 facts=[7]
+  → apply_forward_step le_1_1 goal=9 facts=[7]
     #[10] (0::nat) < 0
-  -> rewrite_fact nat_less_def_1 sym=false goal=9 facts=[10]
+  → rewrite_fact nat_less_def_1 sym=false goal=9 facts=[10]
     #[11] false
   ← apply_resolve_step not_false_res goal=9 facts=[11]
     #[12] divides x y
@@ -1224,7 +1224,7 @@ proof
     #[15] ¬(Suc n = 0)
     #[16] divides (x ^ Suc n) y
     #[17] divides x y
-  -> rewrite_fact nat_nat_power_def_2 sym=false goal=17 facts=[16]
+  → rewrite_fact nat_nat_power_def_2 sym=false goal=17 facts=[16]
     #[18] divides (x * x ^ n) y
   ← apply_backward_step divides_rmul2 goal=17 facts=[18]
     #[19] divides x y
@@ -1238,7 +1238,7 @@ proof
   ← introduction goal=0
     #[1] m ≤ n
     #[2] divides (p ^ m) (p ^ n)
-  -> rewrite_fact less_eq_exist sym=false goal=2 facts=[1]
+  → rewrite_fact less_eq_exist sym=false goal=2 facts=[1]
     #[3] ∃p. n = m + p
   exists_elim d goal=2 facts=[3]
     #[4] _VAR d
@@ -1270,7 +1270,7 @@ proof
   ← introduction goal=3
     #[5] divides (p ^ m) (p ^ n)
     #[6] m ≤ n
-  -> apply_forward_step divides_le goal=6 facts=[5]
+  → apply_forward_step divides_le goal=6 facts=[5]
     #[7] p ^ m ≤ p ^ n ∨ p ^ n = 0
   ← apply_backward_step disjE goal=6 facts=[7]
     #[8] p ^ m ≤ p ^ n ⟶ m ≤ n
@@ -1285,7 +1285,7 @@ proof
     #[14] ¬(p ^ m ≤ p ^ n)
   ← rewrite_goal not_le sym=false goal=14
     #[15] p ^ n < p ^ m
-  -> rewrite_fact not_le sym=false goal=15 facts=[13]
+  → rewrite_fact not_le sym=false goal=15 facts=[13]
     #[16] n < m
   ← rewrite_goal lt_exp sym=false goal=15
     #[17] 2 ≤ p ∧ n < m ∨ p = 0 ∧ ¬(n = 0) ∧ m = 0
@@ -1295,9 +1295,9 @@ proof
   ← introduction goal=9
     #[19] p ^ n = 0
     #[20] m ≤ n
-  -> rewrite_fact exp_eq_0 sym=false goal=20 facts=[19]
+  → rewrite_fact exp_eq_0 sym=false goal=20 facts=[19]
     #[21] p = 0 ∧ ¬(n = 0)
-  -> apply_forward_step conjD1 goal=20 facts=[21]
+  → apply_forward_step conjD1 goal=20 facts=[21]
     #[22] p = 0
   ← z3 goal=20 facts=[1,22]
     #[23] m ≤ n
@@ -1322,7 +1322,7 @@ proof
   ← introduction goal=4
     #[5] divides (p ^ n) n
     #[6] false
-  -> apply_forward_step divides_le goal=6 facts=[5]
+  → apply_forward_step divides_le goal=6 facts=[5]
     #[7] p ^ n ≤ n ∨ n = 0
   ← apply_backward_step contrapositive goal=6 facts=[7]
     #[8] ¬false ⟶ ¬(p ^ n ≤ n ∨ n = 0)
@@ -1340,7 +1340,7 @@ proof
     #[15] 2 ^ n ≤ p ^ n
   ← apply_backward_step lt_pow2_refl goal=14
     #[16] n < 2 ^ n
-  -> apply_forward_step le_1_2 goal=15 facts=[1]
+  → apply_forward_step le_1_2 goal=15 facts=[1]
     #[17] 1 ≤ n
   ← apply_backward_step exp_mono_le_imp goal=15
 qed
@@ -1379,7 +1379,7 @@ proof
     #[15] _VAR x
     #[16] divides (p ^ x) n
     #[17] x ≤ n
-  -> apply_forward_step divides_le goal=17 facts=[16]
+  → apply_forward_step divides_le goal=17 facts=[16]
     #[18] p ^ x ≤ n ∨ n = 0
   ← apply_backward_step disjE goal=17 facts=[18]
     #[19] p ^ x ≤ n ⟶ x ≤ n
@@ -1421,9 +1421,9 @@ proof
   ← introduction goal=5
     #[7] p ≤ 0
     #[8] divides p (fact 0)
-  -> rewrite_fact nat_less_eq_def_1 sym=false goal=8 facts=[7]
+  → rewrite_fact nat_less_eq_def_1 sym=false goal=8 facts=[7]
     #[9] p = 0
-  -> rewrite_fact_with_prev goal=8 facts=[9,1]
+  → rewrite_fact_with_prev goal=8 facts=[9,1]
     #[10] (1::nat) ≤ 0
   ← apply_backward_step contrapositive goal=8 facts=[10]
     #[11] ¬(divides p (fact 0)) ⟶ ¬((1::nat) ≤ 0)
@@ -1441,7 +1441,7 @@ proof
     #[18] p ≤ n ⟶ divides p (fact n)
     #[19] p ≤ Suc n
     #[20] divides p (fact (Suc n))
-  -> rewrite_fact nat_less_eq_def_2 sym=false goal=20 facts=[19]
+  → rewrite_fact nat_less_eq_def_2 sym=false goal=20 facts=[19]
     #[21] p = Suc n ∨ p ≤ n
   ← rewrite_goal fact_def_2 sym=false goal=20
     #[22] divides p (Suc n * fact n)
@@ -1547,7 +1547,7 @@ proof
   ← apply_backward_step divides_antisym goal=8
     #[9] divides m n
     #[10] divides n m
-  -> rewrite_fact eq_sym_eq sym=false goal=9 facts=[7]
+  → rewrite_fact eq_sym_eq sym=false goal=9 facts=[7]
     #[11] ∀d. divides d n ⟷ divides d m
   ← rewrite_goal_with_prev goal=9 facts=[11]
     #[12] divides m m
@@ -1583,7 +1583,7 @@ proof
     #[11] divides n n
   ← apply_backward_step divides_self goal=11
     #[12] divides n n
-  -> rewrite_fact eq_sym_eq sym=false goal=10 facts=[7]
+  → rewrite_fact eq_sym_eq sym=false goal=10 facts=[7]
     #[13] ∀d. divides n d ⟷ divides m d
   ← rewrite_goal_with_prev goal=10 facts=[13]
     #[14] divides m m
@@ -1614,7 +1614,7 @@ proof
     #[11] _VAR b
     #[12] a + b = n
     #[13] P a b
-  -> apply_forward_step lt_cases param_m=a param_n=b goal=13
+  → apply_forward_step lt_cases param_m=a param_n=b goal=13
     #[14] a < b ∨ b < a ∨ a = b
   ← apply_backward_step disjE goal=13 facts=[14]
     #[15] a < b ⟶ P a b
@@ -1622,11 +1622,11 @@ proof
   ← introduction goal=15
     #[17] a < b
     #[18] P a b
-  -> apply_forward_step lt_imp_le goal=18 facts=[17]
+  → apply_forward_step lt_imp_le goal=18 facts=[17]
     #[19] a ≤ b
-  -> apply_forward_step sub_add goal=18 facts=[19]
+  → apply_forward_step sub_add goal=18 facts=[19]
     #[20] b - a + a = b
-  -> rewrite_fact eq_sym_eq sym=false goal=18 facts=[20]
+  → rewrite_fact eq_sym_eq sym=false goal=18 facts=[20]
     #[21] b = b - a + a
   ← rewrite_goal_with_prev goal=18 facts=[21]
     #[22] P a (b - a + a)
@@ -1634,7 +1634,7 @@ proof
     #[23] a < b ⟶ a = 0 ∨ a + (b - a) < a + b
   ← z3 goal=23
     #[24] a < b ⟶ a = 0 ∨ a + (b - a) < a + b
-  -> apply_fact goal=22 facts=[24,17]
+  → apply_fact goal=22 facts=[24,17]
     #[25] a = 0 ∨ a + (b - a) < a + b
   ← apply_backward_step disjE goal=22 facts=[25]
     #[26] a = 0 ⟶ P a (b - a + a)
@@ -1655,9 +1655,9 @@ proof
     #[35] P a (a + (b - a))
   ← apply_prev goal=35 facts=[3]
     #[36] P a (b - a)
-  -> rewrite_fact_with_prev goal=36 facts=[12,33]
+  → rewrite_fact_with_prev goal=36 facts=[12,33]
     #[37] a + (b - a) < n
-  -> apply_fact goal=36 facts=[8,37]
+  → apply_fact goal=36 facts=[8,37]
     #[38] ∀a1. ∀b1. a1 + b1 = a + (b - a) ⟶ P a1 b1
   ← apply_prev goal=36 facts=[38]
     #[39] a + (b - a) = a + (b - a)
@@ -1672,11 +1672,11 @@ proof
   ← introduction goal=43
     #[45] b < a
     #[46] P a b
-  -> apply_forward_step lt_imp_le goal=46 facts=[45]
+  → apply_forward_step lt_imp_le goal=46 facts=[45]
     #[47] b ≤ a
-  -> apply_forward_step sub_add goal=46 facts=[47]
+  → apply_forward_step sub_add goal=46 facts=[47]
     #[48] a - b + b = a
-  -> rewrite_fact eq_sym_eq sym=false goal=46 facts=[48]
+  → rewrite_fact eq_sym_eq sym=false goal=46 facts=[48]
     #[49] a = a - b + b
   ← rewrite_goal_with_prev goal=46 facts=[49]
     #[50] P (a - b + b) b
@@ -1684,7 +1684,7 @@ proof
     #[51] b < a ⟶ b = 0 ∨ b + (a - b) < b + a
   ← z3 goal=51
     #[52] b < a ⟶ b = 0 ∨ b + (a - b) < b + a
-  -> apply_fact goal=50 facts=[52,45]
+  → apply_fact goal=50 facts=[52,45]
     #[53] b = 0 ∨ b + (a - b) < b + a
   ← apply_backward_step disjE goal=50 facts=[53]
     #[54] b = 0 ⟶ P (a - b + b) b
@@ -1701,18 +1701,18 @@ proof
     #[61] P (a - b + b) b
   ← rewrite_goal add_comm sym=false goal=61
     #[62] P (b + (a - b)) b
-  -> rewrite_fact add_comm sym=false goal=62 facts=[60]
+  → rewrite_fact add_comm sym=false goal=62 facts=[60]
     #[63] a - b + b < a + b
-  -> rewrite_fact_with_prev goal=62 facts=[12,63]
+  → rewrite_fact_with_prev goal=62 facts=[12,63]
     #[64] a - b + b < n
   ← rewrite_goal add_comm sym=false goal=62
-  -> rewrite_fact add_comm sym=false goal=61 facts=[3]
+  → rewrite_fact add_comm sym=false goal=61 facts=[3]
     #[65] ∀a. ∀b. P a b ⟶ P a (b + a)
   ← rewrite_goal_with_prev goal=61 facts=[1]
     #[66] P b (a - b + b)
   ← apply_prev goal=66 facts=[65]
     #[67] P b (a - b)
-  -> apply_fact goal=67 facts=[8,64]
+  → apply_fact goal=67 facts=[8,64]
     #[68] ∀a1. ∀b1. a1 + b1 = a - b + b ⟶ P a1 b1
   ← apply_prev goal=67 facts=[68]
     #[69] b + (a - b) = a - b + b
@@ -1755,13 +1755,13 @@ proof
     #[5] _VAR y
     #[6] (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)
     #[7] ∃d. ∃x. ∃y. (divides d a ∧ divides d (a + b)) ∧ (a * x = (a + b) * y + d ∨ (a + b) * x = a * y + d)
-  -> apply_forward_step conjD1 goal=7 facts=[6]
+  → apply_forward_step conjD1 goal=7 facts=[6]
     #[8] divides d a ∧ divides d b
-  -> apply_forward_step conjD2 goal=7 facts=[6]
+  → apply_forward_step conjD2 goal=7 facts=[6]
     #[9] a * x = b * y + d ∨ b * x = a * y + d
-  -> apply_forward_step conjD1 goal=7 facts=[8]
+  → apply_forward_step conjD1 goal=7 facts=[8]
     #[10] divides d a
-  -> apply_forward_step conjD2 goal=7 facts=[8]
+  → apply_forward_step conjD2 goal=7 facts=[8]
     #[11] divides d b
   ← inst_exists_goal d goal=7
     #[12] ∃x. ∃y. (divides d a ∧ divides d (a + b)) ∧ (a * x = (a + b) * y + d ∨ (a + b) * x = a * y + d)
@@ -1817,7 +1817,7 @@ theorem bezout_add
   prop ?d. ?x. ?y. (divides d a & divides d b) & (a * x = b * y + d | b * x = a * y + d)
   [hint_backward]
 proof
-  -> apply_forward_step ind_euclid param_P="(%a. %b. (∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)))" goal=0
+  → apply_forward_step ind_euclid param_P="(%a. %b. (∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)))" goal=0
     #[1] (∀a. ∀b. (∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)) ⟷ (∃d. ∃x. ∃y. (divides d b ∧ divides d a) ∧ (b * x = a * y + d ∨ a * x = b * y + d))) ⟶ (∀a. ∃d. ∃x. ∃y. (divides d a ∧ divides d 0) ∧ (a * x = 0 * y + d ∨ 0 * x = a * y + d)) ⟶ (∀a. ∀b. (∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)) ⟶ (∃d. ∃x. ∃y. (divides d a ∧ divides d (a + b)) ∧ (a * x = (a + b) * y + d ∨ (a + b) * x = a * y + d))) ⟶ (∀a. ∀b. ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d))
   cut "!a. !b. ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)" goal=0
     #[2] ∀a. ∀b. ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)
@@ -1847,13 +1847,13 @@ proof
     #[19] ∃y. (divides d b ∧ divides d a) ∧ (b * x = a * y + d ∨ a * x = b * y + d)
   ← inst_exists_goal y goal=19
     #[20] (divides d b ∧ divides d a) ∧ (b * x = a * y + d ∨ a * x = b * y + d)
-  -> apply_forward_step conjD1 goal=20 facts=[16]
+  → apply_forward_step conjD1 goal=20 facts=[16]
     #[21] divides d a ∧ divides d b
-  -> apply_forward_step conjD2 goal=20 facts=[16]
+  → apply_forward_step conjD2 goal=20 facts=[16]
     #[22] a * x = b * y + d ∨ b * x = a * y + d
-  -> apply_forward_step conjD1 goal=20 facts=[21]
+  → apply_forward_step conjD1 goal=20 facts=[21]
     #[23] divides d a
-  -> apply_forward_step conjD2 goal=20 facts=[21]
+  → apply_forward_step conjD2 goal=20 facts=[21]
     #[24] divides d b
   ← apply_backward_step conjI goal=20
     #[25] divides d b ∧ divides d a
@@ -1872,13 +1872,13 @@ proof
     #[32] ∃y. (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)
   ← inst_exists_goal y goal=32
     #[33] (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)
-  -> apply_forward_step conjD1 goal=33 facts=[29]
+  → apply_forward_step conjD1 goal=33 facts=[29]
     #[34] divides d b ∧ divides d a
-  -> apply_forward_step conjD1 goal=33 facts=[34]
+  → apply_forward_step conjD1 goal=33 facts=[34]
     #[35] divides d b
-  -> apply_forward_step conjD2 goal=33 facts=[34]
+  → apply_forward_step conjD2 goal=33 facts=[34]
     #[36] divides d a
-  -> apply_forward_step conjD2 goal=33 facts=[29]
+  → apply_forward_step conjD2 goal=33 facts=[29]
     #[37] b * x = a * y + d ∨ a * x = b * y + d
   ← apply_backward_step conjI goal=33
     #[38] divides d a ∧ divides d b
@@ -1916,7 +1916,7 @@ theorem bezout
   prop ?d. ?x. ?y. (divides d a & divides d b) & (a * x - b * y = d | b * x - a * y = d)
   [hint_backward]
 proof
-  -> apply_forward_step bezout_add param_a=a param_b=b goal=0
+  → apply_forward_step bezout_add param_a=a param_b=b goal=0
     #[1] ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)
   exists_elim d,x,y goal=0 facts=[1]
     #[2] _VAR d
@@ -1930,13 +1930,13 @@ proof
     #[8] ∃y. (divides d a ∧ divides d b) ∧ (a * x - b * y = d ∨ b * x - a * y = d)
   ← inst_exists_goal y goal=8
     #[9] (divides d a ∧ divides d b) ∧ (a * x - b * y = d ∨ b * x - a * y = d)
-  -> apply_forward_step conjD1 goal=9 facts=[5]
+  → apply_forward_step conjD1 goal=9 facts=[5]
     #[10] divides d a ∧ divides d b
-  -> apply_forward_step conjD1 goal=9 facts=[10]
+  → apply_forward_step conjD1 goal=9 facts=[10]
     #[11] divides d a
-  -> apply_forward_step conjD2 goal=9 facts=[10]
+  → apply_forward_step conjD2 goal=9 facts=[10]
     #[12] divides d b
-  -> apply_forward_step conjD2 goal=9 facts=[5]
+  → apply_forward_step conjD2 goal=9 facts=[5]
     #[13] a * x = b * y + d ∨ b * x = a * y + d
   ← apply_backward_step conjI goal=9
     #[14] a * x - b * y = d ∨ b * x - a * y = d
@@ -1971,7 +1971,7 @@ proof
   ← introduction goal=0
     #[1] ¬(a = 0)
     #[2] ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ a * x = b * y + d
-  -> apply_forward_step bezout_add param_a=a param_b=b goal=2
+  → apply_forward_step bezout_add param_a=a param_b=b goal=2
     #[3] ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)
   exists_elim d,x,y goal=2 facts=[3]
     #[4] _VAR d
@@ -1979,13 +1979,13 @@ proof
     #[6] _VAR y
     #[7] (divides d a ∧ divides d b) ∧ (a * x = b * y + d ∨ b * x = a * y + d)
     #[8] ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ a * x = b * y + d
-  -> apply_forward_step conjD1 goal=8 facts=[7]
+  → apply_forward_step conjD1 goal=8 facts=[7]
     #[9] divides d a ∧ divides d b
-  -> apply_forward_step conjD1 goal=8 facts=[9]
+  → apply_forward_step conjD1 goal=8 facts=[9]
     #[10] divides d a
-  -> apply_forward_step conjD2 goal=8 facts=[9]
+  → apply_forward_step conjD2 goal=8 facts=[9]
     #[11] divides d b
-  -> apply_forward_step conjD2 goal=8 facts=[7]
+  → apply_forward_step conjD2 goal=8 facts=[7]
     #[12] a * x = b * y + d ∨ b * x = a * y + d
   ← apply_backward_step disjE goal=8 facts=[12]
     #[13] a * x = b * y + d ⟶ (∃d1. ∃x1. ∃y1. (divides d1 a ∧ divides d1 b) ∧ a * x1 = b * y1 + d1)
@@ -2017,17 +2017,17 @@ proof
     #[28] (divides d a ∧ divides d b) ∧ a * y = b * x + d
   ← apply_backward_step conjI goal=28
     #[29] a * y = b * x + d
-  -> rewrite_fact_with_prev goal=29 facts=[24,20]
+  → rewrite_fact_with_prev goal=29 facts=[24,20]
     #[30] 0 * x = a * y + d
-  -> rewrite_fact nat_times_def_1 sym=false goal=29 facts=[30]
+  → rewrite_fact nat_times_def_1 sym=false goal=29 facts=[30]
     #[31] 0 = a * y + d
-  -> rewrite_fact eq_sym_eq sym=false goal=29 facts=[31]
+  → rewrite_fact eq_sym_eq sym=false goal=29 facts=[31]
     #[32] a * y + d = 0
-  -> apply_forward_step add_is_zero goal=29 facts=[32]
+  → apply_forward_step add_is_zero goal=29 facts=[32]
     #[33] a * y = 0 ∧ d = 0
-  -> apply_forward_step conjD1 goal=29 facts=[33]
+  → apply_forward_step conjD1 goal=29 facts=[33]
     #[34] a * y = 0
-  -> apply_forward_step conjD2 goal=29 facts=[33]
+  → apply_forward_step conjD2 goal=29 facts=[33]
     #[35] d = 0
   ← rewrite_goal_with_prev goal=29 facts=[24]
     #[36] a * y = 0 * x + d
@@ -2040,14 +2040,14 @@ proof
   ← introduction goal=23
     #[40] ¬(b = 0)
     #[41] ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ a * x = b * y + d
-  -> apply_forward_step divides_le goal=41 facts=[11]
+  → apply_forward_step divides_le goal=41 facts=[11]
     #[42] d ≤ b ∨ b = 0
   ← apply_backward_step disjE goal=41 facts=[42]
     #[43] d ≤ b ⟶ (∃d1. ∃x. ∃y. (divides d1 a ∧ divides d1 b) ∧ a * x = b * y + d1)
   ← introduction goal=43
     #[44] d ≤ b
     #[45] ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ a * x = b * y + d
-  -> rewrite_fact le_lt sym=false goal=45 facts=[44]
+  → rewrite_fact le_lt sym=false goal=45 facts=[44]
     #[46] d < b ∨ d = b
   ← apply_backward_step disjE goal=45 facts=[46]
     #[47] d < b ⟶ (∃d1. ∃x. ∃y. (divides d1 a ∧ divides d1 b) ∧ a * x = b * y + d1)
@@ -2061,13 +2061,13 @@ proof
   ← introduction goal=51
     #[53] x = 0
     #[54] ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ a * x = b * y + d
-  -> rewrite_fact_with_prev goal=54 facts=[53,20]
+  → rewrite_fact_with_prev goal=54 facts=[53,20]
     #[55] b * 0 = a * y + d
-  -> rewrite_fact mult_0_right sym=false goal=54 facts=[55]
+  → rewrite_fact mult_0_right sym=false goal=54 facts=[55]
     #[56] 0 = a * y + d
-  -> rewrite_fact eq_sym_eq sym=false goal=54 facts=[56]
+  → rewrite_fact eq_sym_eq sym=false goal=54 facts=[56]
     #[57] a * y + d = 0
-  -> apply_forward_step add_is_zero goal=54 facts=[57]
+  → apply_forward_step add_is_zero goal=54 facts=[57]
     #[58] a * y = 0 ∧ d = 0
   ← inst_exists_goal d goal=54
     #[59] ∃x. ∃y. (divides d a ∧ divides d b) ∧ a * x = b * y + d
@@ -2077,13 +2077,13 @@ proof
     #[61] (divides d a ∧ divides d b) ∧ a * y = b * x + d
   ← apply_backward_step conjI goal=61
     #[62] a * y = b * x + d
-  -> apply_forward_step conjD2 goal=62 facts=[58]
+  → apply_forward_step conjD2 goal=62 facts=[58]
     #[63] d = 0
   ← rewrite_goal_with_prev goal=62 facts=[63]
     #[64] a * y = b * x + 0
-  -> rewrite_fact_with_prev goal=64 facts=[63,20]
+  → rewrite_fact_with_prev goal=64 facts=[63,20]
     #[65] b * x = a * y + 0
-  -> rewrite_fact add_0_right sym=false goal=64 facts=[65]
+  → rewrite_fact add_0_right sym=false goal=64 facts=[65]
     #[66] b * x = a * y
   ← rewrite_goal add_0_right sym=false goal=64
     #[67] a * y = b * x
@@ -2095,23 +2095,23 @@ proof
     #[70] ∀m. ∀n. m = n ⟶ (b - 1) * m + d = (b - 1) * n + d
   ← z3 goal=70
     #[71] ∀m. ∀n. m = n ⟶ (b - 1) * m + d = (b - 1) * n + d
-  -> apply_fact goal=69 facts=[71,20]
+  → apply_fact goal=69 facts=[71,20]
     #[72] (b - 1) * (b * x) + d = (b - 1) * (a * y + d) + d
-  -> rewrite_fact distrib_l sym=false goal=69 facts=[72]
+  → rewrite_fact distrib_l sym=false goal=69 facts=[72]
     #[73] (b - 1) * (b * x) + d = (b - 1) * (a * y) + (b - 1) * d + d
-  -> rewrite_fact add_assoc sym=false goal=69 facts=[73]
+  → rewrite_fact add_assoc sym=false goal=69 facts=[73]
     #[74] (b - 1) * (b * x) + d = (b - 1) * (a * y) + ((b - 1) * d + d)
   cut "((b - 1) * d + d) = (b-1+1)*d" goal=69
     #[75] (b - 1) * d + d = (b - 1 + 1) * d
   nat_norm goal=75
     #[76] (b - 1) * d + d = (b - 1 + 1) * d
-  -> rewrite_fact_with_prev goal=69 facts=[76,74]
+  → rewrite_fact_with_prev goal=69 facts=[76,74]
     #[77] (b - 1) * (b * x) + d = (b - 1) * (a * y) + (b - 1 + 1) * d
   cut "(b - 1 + 1) = b" goal=69
     #[78] b - 1 + 1 = b
   ← z3 goal=78 facts=[40]
     #[79] b - 1 + 1 = b
-  -> rewrite_fact_with_prev goal=69 facts=[79,77]
+  → rewrite_fact_with_prev goal=69 facts=[79,77]
     #[80] (b - 1) * (b * x) + d = (b - 1) * (a * y) + b * d
   ← inst_exists_goal d goal=69
     #[81] ∃x. ∃y. (divides d a ∧ divides d b) ∧ a * x = b * y + d
@@ -2125,13 +2125,13 @@ proof
     #[85] ∀a::nat. ∀b. ∀c. ∀d. a + b = c + d ⟶ d ≤ a ⟶ c = a - d + b
   ← z3 goal=85
     #[86] ∀a::nat. ∀b. ∀c. ∀d. a + b = c + d ⟶ d ≤ a ⟶ c = a - d + b
-  -> apply_fact goal=84 facts=[86,80]
+  → apply_fact goal=84 facts=[86,80]
     #[87] b * d ≤ (b - 1) * (b * x) ⟶ (b - 1) * (a * y) = (b - 1) * (b * x) - b * d + d
   cut " (b - 1) * (b * x) =  b * (b - 1) * x" goal=84
     #[88] (b - 1) * (b * x) = b * (b - 1) * x
   ← z3 goal=88
     #[89] (b - 1) * (b * x) = b * (b - 1) * x
-  -> rewrite_fact_with_prev goal=84 facts=[89,87]
+  → rewrite_fact_with_prev goal=84 facts=[89,87]
     #[90] b * d ≤ b * (b - 1) * x ⟶ (b - 1) * (a * y) = b * (b - 1) * x - b * d + d
   cut "b * d ≤ b * (b - 1) * x" goal=84 facts=[90]
     #[91] b * d ≤ b * (b - 1) * x
@@ -2155,13 +2155,13 @@ proof
     #[101] d ≤ b - 1
   ← apply_backward_step le_1_2 goal=100 facts=[68]
     #[102] 1 ≤ x
-  -> apply_fact goal=84 facts=[90,91]
+  → apply_fact goal=84 facts=[90,91]
     #[103] (b - 1) * (a * y) = b * (b - 1) * x - b * d + d
   cut "(b - 1) * (a * y) = a * (y * (b - 1))" goal=84 facts=[103]
     #[104] (b - 1) * (a * y) = a * (y * (b - 1))
   nat_norm goal=104
     #[105] (b - 1) * (a * y) = a * (y * (b - 1))
-  -> rewrite_fact_with_prev goal=84 facts=[105,103]
+  → rewrite_fact_with_prev goal=84 facts=[105,103]
     #[106] a * (y * (b - 1)) = b * (b - 1) * x - b * d + d
   ← rewrite_goal_with_prev goal=84 facts=[106]
     #[107] b * (b - 1) * x - b * d + d = b * ((b - 1) * x - d) + d
@@ -2182,7 +2182,7 @@ proof
   ← apply_backward_step conjI goal=114
     #[116] divides b a
     #[117] divides b b
-  -> rewrite_fact_with_prev goal=116 facts=[109,10]
+  → rewrite_fact_with_prev goal=116 facts=[109,10]
     #[118] divides b a
   ← apply_backward_step divides_self goal=117
     #[119] divides b b
@@ -2197,7 +2197,7 @@ theorem gcd
   prop divides (gcd m n) m & divides (gcd m n) n & (!a. divides a m --> divides a n --> divides a (gcd m n))
   [hint_backward]
 proof
-  -> apply_forward_step bezout param_a=m param_b=n goal=0
+  → apply_forward_step bezout param_a=m param_b=n goal=0
     #[1] ∃d. ∃x. ∃y. (divides d m ∧ divides d n) ∧ (m * x - n * y = d ∨ n * x - m * y = d)
   exists_elim d,x,y goal=0 facts=[1]
     #[2] _VAR d
@@ -2205,13 +2205,13 @@ proof
     #[4] _VAR y
     #[5] (divides d m ∧ divides d n) ∧ (m * x - n * y = d ∨ n * x - m * y = d)
     #[6] divides (gcd m n) m ∧ divides (gcd m n) n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a (gcd m n))
-  -> apply_forward_step conjD1 goal=6 facts=[5]
+  → apply_forward_step conjD1 goal=6 facts=[5]
     #[7] divides d m ∧ divides d n
-  -> apply_forward_step conjD2 goal=6 facts=[5]
+  → apply_forward_step conjD2 goal=6 facts=[5]
     #[8] m * x - n * y = d ∨ n * x - m * y = d
   ← rewrite_goal gcd_def sym=false goal=6
     #[9] divides (SOME k. divides k m ∧ divides k n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a k)) m ∧ divides (SOME k. divides k m ∧ divides k n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a k)) n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a (SOME k. divides k m ∧ divides k n ∧ (∀a1. divides a1 m ⟶ divides a1 n ⟶ divides a1 k)))
-  -> apply_forward_step someI param_P="(%d. divides d m ∧ divides d n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a d))" param_x=d goal=9
+  → apply_forward_step someI param_P="(%d. divides d m ∧ divides d n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a d))" param_x=d goal=9
     #[10] divides d m ∧ divides d n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a d) ⟶ divides (SOME x1. divides x1 m ∧ divides x1 n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a x1)) m ∧ divides (SOME x1. divides x1 m ∧ divides x1 n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a x1)) n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a (SOME x1. divides x1 m ∧ divides x1 n ∧ (∀a1. divides a1 m ⟶ divides a1 n ⟶ divides a1 x1)))
   ← apply_prev goal=9 facts=[10]
     #[11] divides d m ∧ divides d n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a d)
@@ -2224,7 +2224,7 @@ proof
     #[15] divides a m
     #[16] divides a n
     #[17] divides a d
-  -> rewrite_fact eq_sym_eq sym=false goal=17 facts=[8]
+  → rewrite_fact eq_sym_eq sym=false goal=17 facts=[8]
     #[18] d = m * x - n * y ∨ d = n * x - m * y
   ← apply_backward_step disjE goal=17 facts=[18]
     #[19] d = m * x - n * y ⟶ divides a d
@@ -2256,7 +2256,7 @@ theorem gcd_divide1
   prop divides (gcd m n) m
   [hint_backward]
 proof
-  -> apply_forward_step gcd param_m=m param_n=n goal=0
+  → apply_forward_step gcd param_m=m param_n=n goal=0
     #[1] divides (gcd m n) m ∧ divides (gcd m n) n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a (gcd m n))
   ← apply_backward_step conjD1 goal=0 facts=[1]
 qed
@@ -2266,9 +2266,9 @@ theorem gcd_divides2
   prop divides (gcd m n) n
   [hint_backward]
 proof
-  -> apply_forward_step gcd param_m=m param_n=n goal=0
+  → apply_forward_step gcd param_m=m param_n=n goal=0
     #[1] divides (gcd m n) m ∧ divides (gcd m n) n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a (gcd m n))
-  -> apply_forward_step conjD2 goal=0 facts=[1]
+  → apply_forward_step conjD2 goal=0 facts=[1]
     #[2] divides (gcd m n) n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a (gcd m n))
   ← apply_backward_step conjD1 goal=0 facts=[2]
 qed
@@ -2282,11 +2282,11 @@ proof
     #[1] divides a m
     #[2] divides a n
     #[3] divides a (gcd m n)
-  -> apply_forward_step gcd param_m=m param_n=n goal=3
+  → apply_forward_step gcd param_m=m param_n=n goal=3
     #[4] divides (gcd m n) m ∧ divides (gcd m n) n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a (gcd m n))
-  -> apply_forward_step conjD2 goal=3 facts=[4]
+  → apply_forward_step conjD2 goal=3 facts=[4]
     #[5] divides (gcd m n) n ∧ (∀a. divides a m ⟶ divides a n ⟶ divides a (gcd m n))
-  -> apply_forward_step conjD2 goal=3 facts=[5]
+  → apply_forward_step conjD2 goal=3 facts=[5]
     #[6] ∀a. divides a m ⟶ divides a n ⟶ divides a (gcd m n)
   ← apply_prev goal=3 facts=[6]
 qed
@@ -2334,11 +2334,11 @@ proof
   ← introduction goal=1
     #[3] (divides d a ∧ divides d b) ∧ (∀e. divides e a ⟶ divides e b ⟶ divides e d)
     #[4] d = gcd a b
-  -> apply_forward_step conjD1 goal=4 facts=[3]
+  → apply_forward_step conjD1 goal=4 facts=[3]
     #[5] divides d a ∧ divides d b
-  -> apply_forward_step conjD2 goal=4 facts=[3]
+  → apply_forward_step conjD2 goal=4 facts=[3]
     #[6] ∀e. divides e a ⟶ divides e b ⟶ divides e d
-  -> rewrite_fact divides_gcd sym=true goal=4 facts=[5]
+  → rewrite_fact divides_gcd sym=true goal=4 facts=[5]
     #[7] divides d (gcd a b)
   ← apply_backward_step divides_antisym goal=4
     #[8] divides (gcd a b) d
@@ -2402,7 +2402,7 @@ proof
     #[4] divides (gcd u v) (gcd x y)
   ← rewrite_goal divides_gcd sym=false goal=3
     #[5] divides (gcd x y) u ∧ divides (gcd x y) v
-  -> rewrite_fact eq_sym_eq sym=false goal=5 facts=[1]
+  → rewrite_fact eq_sym_eq sym=false goal=5 facts=[1]
     #[6] ∀d. divides d u ∧ divides d v ⟷ divides d x ∧ divides d y
   ← rewrite_goal_with_prev goal=5 facts=[6]
     #[7] divides (gcd x y) x ∧ divides (gcd x y) y
@@ -2482,22 +2482,22 @@ proof
   ← apply_backward_step conjI goal=4
     #[5] m = 0
     #[6] n = 0
-  -> apply_forward_step gcd_divide1 param_m=m param_n=n goal=5
+  → apply_forward_step gcd_divide1 param_m=m param_n=n goal=5
     #[7] divides (gcd m n) m
-  -> rewrite_fact_with_prev goal=5 facts=[3,7]
+  → rewrite_fact_with_prev goal=5 facts=[3,7]
     #[8] divides 0 m
-  -> rewrite_fact divides_0 sym=false goal=5 facts=[8]
-  -> apply_forward_step gcd_divides2 param_m=m param_n=n goal=6
+  → rewrite_fact divides_0 sym=false goal=5 facts=[8]
+  → apply_forward_step gcd_divides2 param_m=m param_n=n goal=6
     #[9] divides (gcd m n) n
-  -> rewrite_fact_with_prev goal=6 facts=[3,9]
+  → rewrite_fact_with_prev goal=6 facts=[3,9]
     #[10] divides 0 n
-  -> rewrite_fact divides_0 sym=false goal=6 facts=[10]
+  → rewrite_fact divides_0 sym=false goal=6 facts=[10]
   ← introduction goal=2
     #[11] m = 0 ∧ n = 0
     #[12] gcd m n = 0
-  -> apply_forward_step conjD1 goal=12 facts=[11]
+  → apply_forward_step conjD1 goal=12 facts=[11]
     #[13] m = 0
-  -> apply_forward_step conjD2 goal=12 facts=[11]
+  → apply_forward_step conjD2 goal=12 facts=[11]
     #[14] n = 0
   ← rewrite_goal_with_prev goal=12 facts=[13]
     #[15] gcd 0 n = 0
@@ -2600,7 +2600,7 @@ proof
   ← introduction goal=0
     #[1] a * x + b * y = d
     #[2] divides (gcd a b) d
-  -> rewrite_fact eq_sym_eq sym=false goal=2 facts=[1]
+  → rewrite_fact eq_sym_eq sym=false goal=2 facts=[1]
     #[3] d = a * x + b * y
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] divides (gcd a b) (a * x + b * y)
@@ -2622,7 +2622,7 @@ theorem bezout_gcd
   prop ?x. ?y. a * x - b * y = gcd a b | b * x - a * y = gcd a b
   [hint_backward]
 proof
-  -> apply_forward_step bezout param_a=a param_b=b goal=0
+  → apply_forward_step bezout param_a=a param_b=b goal=0
     #[1] ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ (a * x - b * y = d ∨ b * x - a * y = d)
   exists_elim "d, x, y" goal=0 facts=[1]
     #[2] _VAR d
@@ -2630,13 +2630,13 @@ proof
     #[4] _VAR y
     #[5] (divides d a ∧ divides d b) ∧ (a * x - b * y = d ∨ b * x - a * y = d)
     #[6] ∃x. ∃y. a * x - b * y = gcd a b ∨ b * x - a * y = gcd a b
-  -> apply_forward_step conjD1 goal=6 facts=[5]
+  → apply_forward_step conjD1 goal=6 facts=[5]
     #[7] divides d a ∧ divides d b
-  -> apply_forward_step conjD2 goal=6 facts=[5]
+  → apply_forward_step conjD2 goal=6 facts=[5]
     #[8] a * x - b * y = d ∨ b * x - a * y = d
-  -> rewrite_fact divides_gcd sym=true goal=6 facts=[7]
+  → rewrite_fact divides_gcd sym=true goal=6 facts=[7]
     #[9] divides d (gcd a b)
-  -> rewrite_fact divides_def sym=false goal=6 facts=[9]
+  → rewrite_fact divides_def sym=false goal=6 facts=[9]
     #[10] ∃k. gcd a b = d * k
   exists_elim k goal=6 facts=[10]
     #[11] _VAR k
@@ -2656,7 +2656,7 @@ proof
     #[20] a * (x * k) - b * (y * k) = d * k ∨ b * (x * k) - a * (y * k) = d * k
   ← apply_backward_step disjI1 goal=20
     #[21] a * (x * k) - b * (y * k) = d * k
-  -> rewrite_fact eq_sym_eq sym=false goal=21 facts=[19]
+  → rewrite_fact eq_sym_eq sym=false goal=21 facts=[19]
     #[22] d = a * x - b * y
   ← rewrite_goal_with_prev goal=21 facts=[22]
     #[23] a * (x * k) - b * (y * k) = (a * x - b * y) * k
@@ -2671,7 +2671,7 @@ proof
     #[28] a * (x * k) - b * (y * k) = d * k ∨ b * (x * k) - a * (y * k) = d * k
   ← apply_backward_step disjI2 goal=28
     #[29] b * (x * k) - a * (y * k) = d * k
-  -> rewrite_fact eq_sym_eq sym=false goal=29 facts=[27]
+  → rewrite_fact eq_sym_eq sym=false goal=29 facts=[27]
     #[30] d = b * x - a * y
   ← rewrite_goal_with_prev goal=29 facts=[30]
     #[31] b * (x * k) - a * (y * k) = (b * x - a * y) * k
@@ -2691,7 +2691,7 @@ proof
   ← introduction goal=0
     #[1] ¬(a = 0)
     #[2] ∃x. ∃y. a * x = b * y + gcd a b
-  -> apply_forward_step bezout_add_strong param_b=b goal=2 facts=[1]
+  → apply_forward_step bezout_add_strong param_b=b goal=2 facts=[1]
     #[3] ∃d. ∃x. ∃y. (divides d a ∧ divides d b) ∧ a * x = b * y + d
   exists_elim d,x,y goal=2 facts=[3]
     #[4] _VAR d
@@ -2699,13 +2699,13 @@ proof
     #[6] _VAR y
     #[7] (divides d a ∧ divides d b) ∧ a * x = b * y + d
     #[8] ∃x. ∃y. a * x = b * y + gcd a b
-  -> apply_forward_step conjD1 goal=8 facts=[7]
+  → apply_forward_step conjD1 goal=8 facts=[7]
     #[9] divides d a ∧ divides d b
-  -> apply_forward_step conjD2 goal=8 facts=[7]
+  → apply_forward_step conjD2 goal=8 facts=[7]
     #[10] a * x = b * y + d
-  -> rewrite_fact divides_gcd sym=true goal=8 facts=[9]
+  → rewrite_fact divides_gcd sym=true goal=8 facts=[9]
     #[11] divides d (gcd a b)
-  -> rewrite_fact divides_def sym=false goal=8 facts=[11]
+  → rewrite_fact divides_def sym=false goal=8 facts=[11]
     #[12] ∃k. gcd a b = d * k
   exists_elim k goal=8 facts=[12]
     #[13] _VAR k
@@ -2747,7 +2747,7 @@ proof
   ← introduction goal=9
     #[11] a * x - b * y = d
     #[12] divides (gcd a b) d
-  -> rewrite_fact eq_sym_eq sym=false goal=12 facts=[11]
+  → rewrite_fact eq_sym_eq sym=false goal=12 facts=[11]
     #[13] d = a * x - b * y
   ← rewrite_goal_with_prev goal=12 facts=[13]
     #[14] divides (gcd a b) (a * x - b * y)
@@ -2765,7 +2765,7 @@ proof
   ← introduction goal=10
     #[21] b * x - a * y = d
     #[22] divides (gcd a b) d
-  -> rewrite_fact eq_sym_eq sym=false goal=22 facts=[21]
+  → rewrite_fact eq_sym_eq sym=false goal=22 facts=[21]
     #[23] d = b * x - a * y
   ← rewrite_goal_with_prev goal=22 facts=[23]
     #[24] divides (gcd a b) (b * x - a * y)
@@ -2781,13 +2781,13 @@ proof
   ← introduction goal=2
     #[29] divides (gcd a b) d
     #[30] ∃x. ∃y. a * x - b * y = d ∨ b * x - a * y = d
-  -> rewrite_fact divides_def sym=false goal=30 facts=[29]
+  → rewrite_fact divides_def sym=false goal=30 facts=[29]
     #[31] ∃k. d = gcd a b * k
   exists_elim k goal=30 facts=[31]
     #[32] _VAR k
     #[33] d = gcd a b * k
     #[34] ∃x. ∃y. a * x - b * y = d ∨ b * x - a * y = d
-  -> apply_forward_step bezout_gcd param_a=a param_b=b goal=34
+  → apply_forward_step bezout_gcd param_a=a param_b=b goal=34
     #[35] ∃x. ∃y. a * x - b * y = gcd a b ∨ b * x - a * y = gcd a b
   exists_elim x,y goal=34 facts=[35]
     #[36] a * x - b * y = gcd a b ∨ b * x - a * y = gcd a b
@@ -2873,7 +2873,7 @@ proof
     #[2] divides (k * gcd m n) (gcd (k * m) (k * n))
   ← rewrite_goal gcd_bezout sym=true goal=1
     #[3] ∃x. ∃y. k * m * x - k * n * y = k * gcd m n ∨ k * n * x - k * m * y = k * gcd m n
-  -> apply_forward_step bezout_gcd param_a=m param_b=n goal=3
+  → apply_forward_step bezout_gcd param_a=m param_b=n goal=3
     #[4] ∃x. ∃y. m * x - n * y = gcd m n ∨ n * x - m * y = gcd m n
   exists_elim x,y goal=3 facts=[4]
     #[5] _VAR x
@@ -2959,7 +2959,7 @@ proof
     #[8] divides b (gcd m n)
   ← apply_backward_step gcd_is_max goal=8
     #[9] divides b n
-  -> apply_forward_step divides_sum2 goal=9 facts=[7,6]
+  → apply_forward_step divides_sum2 goal=9 facts=[7,6]
 qed
 
 theorem gcd_add_right
@@ -2982,13 +2982,13 @@ proof
   ← introduction goal=0
     #[1] b ≤ a
     #[2] gcd (a - b) b = gcd a b
-  -> apply_forward_step sub_add goal=2 facts=[1]
+  → apply_forward_step sub_add goal=2 facts=[1]
     #[3] a - b + b = a
-  -> apply_forward_step gcd_add_left param_m=b param_n=a-b goal=2
+  → apply_forward_step gcd_add_left param_m=b param_n=a-b goal=2
     #[4] gcd b (b + (a - b)) = gcd b (a - b)
-  -> rewrite_fact add_comm sym=false goal=2 facts=[4]
+  → rewrite_fact add_comm sym=false goal=2 facts=[4]
     #[5] gcd b (a - b + b) = gcd b (a - b)
-  -> rewrite_fact_with_prev goal=2 facts=[3,5]
+  → rewrite_fact_with_prev goal=2 facts=[3,5]
     #[6] gcd b a = gcd b (a - b)
   ← rewrite_goal gcd_comm sym=false goal=2
     #[7] gcd b (a - b) = gcd b a
@@ -3023,7 +3023,7 @@ proof
   ← introduction goal=2
     #[5] gcd m n = m
     #[6] divides m n
-  -> rewrite_fact eq_sym_eq sym=false goal=6 facts=[5]
+  → rewrite_fact eq_sym_eq sym=false goal=6 facts=[5]
     #[7] m = gcd m n
   ← rewrite_goal_with_prev goal=6 facts=[7]
     #[8] divides (gcd m n) n
@@ -3056,9 +3056,9 @@ proof
   ← introduction goal=3
     #[5] divides d (gcd (d * b) (a * b))
     #[6] divides d (b * a)
-  -> rewrite_fact divides_gcd sym=false goal=6 facts=[5]
+  → rewrite_fact divides_gcd sym=false goal=6 facts=[5]
     #[7] divides d (d * b) ∧ divides d (a * b)
-  -> apply_forward_step conjD2 goal=6 facts=[7]
+  → apply_forward_step conjD2 goal=6 facts=[7]
     #[8] divides d (a * b)
   ← rewrite_goal mult_comm sym=false goal=6
   ← introduction goal=4
@@ -3255,7 +3255,7 @@ proof
   ← introduction goal=45
     #[48] (0::nat) = 0 ⟷ n = 0
     #[49] n = 0
-  -> rewrite_fact eq_sym_eq sym=false goal=49 facts=[48]
+  → rewrite_fact eq_sym_eq sym=false goal=49 facts=[48]
     #[50] n = 0 ⟷ (0::nat) = 0
   ← rewrite_goal_with_prev goal=49 facts=[50]
     #[51] n = 0

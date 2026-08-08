@@ -44,6 +44,17 @@ theorem real_bounded_subset
   fixes s :: real set, t :: real set
   prop real_bounded t --> s Sub t --> real_bounded s
   [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_bounded t
+    #[2] s ⊆ t
+    #[3] real_bounded s
+  ← rewrite_goal real_bounded_def sym=false goal=3
+    #[4] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
+  → rewrite_fact real_bounded_def sym=false goal=4 facts=[1]
+    #[5] ∃B. ∀x. x ∈ t ⟶ abs x ≤ B
+  ← z3 goal=4 facts=[2,5]
+qed
 
 theorem real_bounded_union
   fixes s :: real set, t :: real set
@@ -82,9 +93,9 @@ proof
   ← introduction goal=3
     #[19] (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ∧ (∃B. ∀x. x ∈ t ⟶ abs x ≤ B)
     #[20] ∃B. ∀x. x ∈ s ∪ t ⟶ abs x ≤ B
-  -> apply_forward_step conjD1 goal=20 facts=[19]
+  → apply_forward_step conjD1 goal=20 facts=[19]
     #[21] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
-  -> apply_forward_step conjD2 goal=20 facts=[19]
+  → apply_forward_step conjD2 goal=20 facts=[19]
     #[22] ∃B. ∀x. x ∈ t ⟶ abs x ≤ B
   exists_elim B1 goal=20 facts=[21]
     #[23] _VAR B1
@@ -111,7 +122,7 @@ proof
   ← introduction goal=0
     #[1] real_bounded s
     #[2] ∃a. ∃b. s ⊆ real_open_interval a b
-  -> apply_forward_step real_bounded_subset_open_interval_symetric goal=2 facts=[1]
+  → apply_forward_step real_bounded_subset_open_interval_symetric goal=2 facts=[1]
     #[3] ∃a. s ⊆ real_open_interval (-a) a
   exists_elim a goal=2 facts=[3]
     #[4] _VAR a
@@ -130,7 +141,7 @@ proof
   ← introduction goal=0
     #[1] real_bounded s
     #[2] ∃a. s ⊆ real_closed_interval (-a) a
-  -> apply_forward_step real_bounded_subset_open_interval_symetric goal=2 facts=[1]
+  → apply_forward_step real_bounded_subset_open_interval_symetric goal=2 facts=[1]
     #[3] ∃a. s ⊆ real_open_interval (-a) a
   exists_elim a goal=2 facts=[3]
     #[4] _VAR a
@@ -151,7 +162,7 @@ proof
   ← introduction goal=0
     #[1] real_bounded s
     #[2] ∃a. ∃b. s ⊆ real_closed_interval a b
-  -> apply_forward_step real_bounded_subset_open_interval goal=2 facts=[1]
+  → apply_forward_step real_bounded_subset_open_interval goal=2 facts=[1]
     #[3] ∃a. ∃b. s ⊆ real_open_interval a b
   exists_elim a,b goal=2 facts=[3]
     #[4] _VAR a
@@ -199,9 +210,9 @@ proof
     #[2] tendsto_real f l1 net
     #[3] tendsto_real f l2 net
     #[4] l1 = l2
-  -> rewrite_fact tendsto_real_def sym=false goal=4 facts=[2]
+  → rewrite_fact tendsto_real_def sym=false goal=4 facts=[2]
     #[5] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l1) < e) net
-  -> rewrite_fact tendsto_real_def sym=false goal=4 facts=[3]
+  → rewrite_fact tendsto_real_def sym=false goal=4 facts=[3]
     #[6] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l2) < e) net
   ← apply_backward_step contrapositive goal=4 facts=[1]
     #[7] ¬(l1 = l2) ⟶ ¬¬(trivial_limit net)
@@ -214,13 +225,13 @@ proof
     #[11] 0 < abs (l1 - l2)
   ← z3 goal=11 facts=[9]
     #[12] 0 < abs (l1 - l2)
-  -> apply_fact goal=10 facts=[5,12]
+  → apply_fact goal=10 facts=[5,12]
     #[13] eventually (λx. abs (f x - l1) < abs (l1 - l2)) net
-  -> apply_fact goal=10 facts=[6,12]
+  → apply_fact goal=10 facts=[6,12]
     #[14] eventually (λx. abs (f x - l2) < abs (l1 - l2)) net
-  -> apply_forward_step eventually_happens goal=10 facts=[13]
+  → apply_forward_step eventually_happens goal=10 facts=[13]
     #[15] trivial_limit net ∨ (∃x. abs (f x - l1) < abs (l1 - l2))
-  -> apply_forward_step eventually_happens goal=10 facts=[14]
+  → apply_forward_step eventually_happens goal=10 facts=[14]
     #[16] trivial_limit net ∨ (∃x. abs (f x - l2) < abs (l1 - l2))
   ← apply_backward_step disjE goal=10 facts=[15]
     #[17] trivial_limit net ⟶ trivial_limit net
@@ -284,9 +295,9 @@ proof
     #[16] 0 < e / abs c
   ← z3 goal=16 facts=[14,10]
     #[17] 0 < e / abs c
-  -> rewrite_fact tendsto_real_def sym=false goal=15 facts=[1]
+  → rewrite_fact tendsto_real_def sym=false goal=15 facts=[1]
     #[18] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
-  -> apply_fact goal=15 facts=[18,17]
+  → apply_fact goal=15 facts=[18,17]
     #[19] eventually (λx. abs (f x - l) < e / abs c) net
   ← apply_backward_step eventually_mono param_P="(λx. abs (f x - l) < e / abs c)" goal=15
     #[20] ∀x. abs (f x - l) < e / abs c ⟶ abs (c * f x - c * l) < e
@@ -321,17 +332,17 @@ proof
   ← introduction goal=3
     #[5] tendsto_real (λx. c * f x) (c * l) net
     #[6] tendsto_real f l net
-  -> apply_forward_step reallim_lmul param_c="real_inverse c" goal=6 facts=[5]
+  → apply_forward_step reallim_lmul param_c="real_inverse c" goal=6 facts=[5]
     #[7] tendsto_real (λx. real_inverse c * (c * f x)) (real_inverse c * (c * l)) net
-  -> rewrite_fact real_mult_assoc sym=false goal=6 facts=[7]
+  → rewrite_fact real_mult_assoc sym=false goal=6 facts=[7]
     #[8] tendsto_real (λx. real_inverse c * c * f x) (real_inverse c * c * l) net
-  -> apply_forward_step real_mul_linv goal=6 facts=[1]
+  → apply_forward_step real_mul_linv goal=6 facts=[1]
     #[9] real_inverse c * c = 1
-  -> rewrite_fact_with_prev goal=6 facts=[9,8]
+  → rewrite_fact_with_prev goal=6 facts=[9,8]
     #[10] tendsto_real (λx. 1 * f x) (1 * l) net
-  -> rewrite_fact real_mul_lid sym=false goal=6 facts=[10]
+  → rewrite_fact real_mul_lid sym=false goal=6 facts=[10]
     #[11] tendsto_real (λx. f x) l net
-  -> rewrite_fact eta_conversion sym=false goal=6 facts=[11]
+  → rewrite_fact eta_conversion sym=false goal=6 facts=[11]
   ← introduction goal=4
     #[12] tendsto_real f l net
     #[13] tendsto_real (λx. c * f x) (c * l) net
@@ -371,9 +382,9 @@ proof
     #[1] tendsto_real f l net
     #[2] tendsto_real g m net
     #[3] tendsto_real (λx. f x + g x) (l + m) net
-  -> rewrite_fact tendsto_real_def sym=false goal=3 facts=[1]
+  → rewrite_fact tendsto_real_def sym=false goal=3 facts=[1]
     #[4] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
-  -> rewrite_fact tendsto_real_def sym=false goal=3 facts=[2]
+  → rewrite_fact tendsto_real_def sym=false goal=3 facts=[2]
     #[5] ∀e. 0 < e ⟶ eventually (λx. abs (g x - m) < e) net
   ← rewrite_goal tendsto_real_def sym=false goal=3
     #[6] ∀e. 0 < e ⟶ eventually (λx. abs (f x + g x - (l + m)) < e) net
@@ -385,13 +396,13 @@ proof
     #[10] 0 < e / 2
   ← z3 goal=10 facts=[8]
     #[11] 0 < e / 2
-  -> apply_fact goal=9 facts=[4,11]
+  → apply_fact goal=9 facts=[4,11]
     #[12] eventually (λx. abs (f x - l) < e / 2) net
-  -> apply_fact goal=9 facts=[5,11]
+  → apply_fact goal=9 facts=[5,11]
     #[13] eventually (λx. abs (g x - m) < e / 2) net
-  -> apply_forward_step conjI goal=9 facts=[12,13]
+  → apply_forward_step conjI goal=9 facts=[12,13]
     #[14] eventually (λx. abs (f x - l) < e / 2) net ∧ eventually (λx. abs (g x - m) < e / 2) net
-  -> rewrite_fact eventually_and sym=true goal=9 facts=[14]
+  → rewrite_fact eventually_and sym=true goal=9 facts=[14]
     #[15] eventually (λx. abs (f x - l) < e / 2 ∧ abs (g x - m) < e / 2) net
   ← apply_backward_step eventually_mono param_P="λx. abs (f x - l) < e / 2 ∧ abs (g x - m) < e / 2" goal=9
     #[16] ∀x. abs (f x - l) < e / 2 ∧ abs (g x - m) < e / 2 ⟶ abs (f x + g x - (l + m)) < e
@@ -453,13 +464,13 @@ proof
     #[2] tendsto_real (λx. abs (f x)) (abs l) net
   ← rewrite_goal tendsto_real_def sym=false goal=2
     #[3] ∀e. 0 < e ⟶ eventually (λx. abs (abs (f x) - abs l) < e) net
-  -> rewrite_fact tendsto_real_def sym=false goal=3 facts=[1]
+  → rewrite_fact tendsto_real_def sym=false goal=3 facts=[1]
     #[4] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
   ← introduction e goal=3
     #[5] _VAR e
     #[6] 0 < e
     #[7] eventually (λx. abs (abs (f x) - abs l) < e) net
-  -> apply_fact goal=7 facts=[4,6]
+  → apply_fact goal=7 facts=[4,6]
     #[8] eventually (λx. abs (f x - l) < e) net
   ← apply_backward_step eventually_mono param_P=" (λx. abs (f x - l) < e)" goal=7
     #[9] ∀x. abs (f x - l) < e ⟶ abs (abs (f x) - abs l) < e
@@ -547,13 +558,13 @@ proof
     #[2] tendsto_real (λx. f x - l) 0 net
   ← rewrite_goal tendsto_real_def sym=false goal=2
     #[3] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l - 0) < e) net
-  -> rewrite_fact tendsto_real_def sym=false goal=3 facts=[1]
+  → rewrite_fact tendsto_real_def sym=false goal=3 facts=[1]
     #[4] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
   ← introduction e goal=3
     #[5] _VAR e
     #[6] 0 < e
     #[7] eventually (λx. abs (f x - l - 0) < e) net
-  -> apply_fact goal=7 facts=[4,6]
+  → apply_fact goal=7 facts=[4,6]
     #[8] eventually (λx. abs (f x - l) < e) net
   ← rewrite_goal real_sub_rzero sym=false goal=7
 qed
@@ -567,10 +578,10 @@ proof
     #[1] tendsto_real f 0 net
     #[2] tendsto_real g 0 net
     #[3] tendsto_real (λx. f x + g x) 0 net
-  -> apply_forward_step reallim_add goal=3 facts=[1,2]
+  → apply_forward_step reallim_add goal=3 facts=[1,2]
     #[4] tendsto_real (λx. f x + g x) (0 + 0) net
-  -> rewrite_fact real_add_lid sym=false goal=3 facts=[4]
-  -> apply_forward_step reallim_add goal=4 facts=[2,1]
+  → rewrite_fact real_add_lid sym=false goal=3 facts=[4]
+  → apply_forward_step reallim_add goal=4 facts=[2,1]
     #[5] tendsto_real (λx. g x + f x) (0 + 0) net
 qed
 
@@ -582,9 +593,9 @@ proof
   ← introduction goal=0
     #[1] tendsto_real f 0 net
     #[2] tendsto_real (λx. c * f x) 0 net
-  -> apply_forward_step reallim_lmul param_c=c goal=2 facts=[1]
+  → apply_forward_step reallim_lmul param_c=c goal=2 facts=[1]
     #[3] tendsto_real (λx. c * f x) (c * 0) net
-  -> rewrite_fact real_mul_rzero sym=false goal=2 facts=[3]
+  → rewrite_fact real_mul_rzero sym=false goal=2 facts=[3]
 qed
 
 theorem reallim_null_rmul
@@ -608,11 +619,11 @@ proof
     #[1] tendsto_real f 0 net
     #[2] ¬(n = 0)
     #[3] tendsto_real (λx. f x ^ n) 0 net
-  -> apply_forward_step reallim_pow param_n=n goal=3 facts=[1]
+  → apply_forward_step reallim_pow param_n=n goal=3 facts=[1]
     #[4] tendsto_real (λx. f x ^ n) (0 ^ n) net
-  -> rewrite_fact real_pow_zero sym=false goal=3 facts=[4]
+  → rewrite_fact real_pow_zero sym=false goal=3 facts=[4]
     #[5] tendsto_real (λx. f x ^ n) (if n = 0 then 1 else 0) net
-  -> rewrite_fact if_not_P sym=false goal=3 facts=[5,2]
+  → rewrite_fact if_not_P sym=false goal=3 facts=[5,2]
 qed
 
 theorem reallim_null_lmul_eq
@@ -623,9 +634,9 @@ proof
   ← introduction goal=0
     #[1] ¬(c = 0)
     #[2] tendsto_real (λx. c * f x) 0 net ⟷ tendsto_real f 0 net
-  -> apply_forward_step reallim_lmul_eq param_f=f param_l="(0::real)" param_net=net goal=2 facts=[1]
+  → apply_forward_step reallim_lmul_eq param_f=f param_l="(0::real)" param_net=net goal=2 facts=[1]
     #[3] tendsto_real (λx. c * f x) (c * 0) net ⟷ tendsto_real f 0 net
-  -> rewrite_fact real_mul_rzero sym=false goal=2 facts=[3]
+  → rewrite_fact real_mul_rzero sym=false goal=2 facts=[3]
 qed
 
 theorem reallim_null_rmul_eq
@@ -656,9 +667,9 @@ proof
   ← introduction goal=2
     #[6] tendsto_real f 0 net
     #[7] tendsto_real (λx. -(f x)) 0 net
-  -> rewrite_fact reallim_neg_eq sym=true goal=7 facts=[6]
+  → rewrite_fact reallim_neg_eq sym=true goal=7 facts=[6]
     #[8] tendsto_real (λx. -(f x)) (-0) net
-  -> rewrite_fact real_neg_0 sym=false goal=7 facts=[8]
+  → rewrite_fact real_neg_0 sym=false goal=7 facts=[8]
 qed
 
 theorem reallim_null_sub
@@ -670,9 +681,9 @@ proof
     #[1] tendsto_real f 0 net
     #[2] tendsto_real g 0 net
     #[3] tendsto_real (λx. f x - g x) 0 net
-  -> apply_forward_step reallim_sub goal=3 facts=[1,2]
+  → apply_forward_step reallim_sub goal=3 facts=[1,2]
     #[4] tendsto_real (λx. f x - g x) (0 - 0) net
-  -> rewrite_fact real_sub_rzero sym=false goal=3 facts=[4]
+  → rewrite_fact real_sub_rzero sym=false goal=3 facts=[4]
 qed
 
 theorem reallim_transform_eventually
@@ -684,7 +695,7 @@ proof
     #[1] eventually (λx. f x = g x) net
     #[2] tendsto_real f l net
     #[3] tendsto_real g l net
-  -> rewrite_fact tendsto_real_def sym=false goal=3 facts=[2]
+  → rewrite_fact tendsto_real_def sym=false goal=3 facts=[2]
     #[4] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
   ← rewrite_goal tendsto_real_def sym=false goal=3
     #[5] ∀e. 0 < e ⟶ eventually (λx. abs (g x - l) < e) net
@@ -692,11 +703,11 @@ proof
     #[6] _VAR e
     #[7] 0 < e
     #[8] eventually (λx. abs (g x - l) < e) net
-  -> apply_fact goal=8 facts=[4,7]
+  → apply_fact goal=8 facts=[4,7]
     #[9] eventually (λx. abs (f x - l) < e) net
-  -> apply_forward_step conjI goal=8 facts=[1,9]
+  → apply_forward_step conjI goal=8 facts=[1,9]
     #[10] eventually (λx. f x = g x) net ∧ eventually (λx. abs (f x - l) < e) net
-  -> rewrite_fact eventually_and sym=true goal=8 facts=[10]
+  → rewrite_fact eventually_and sym=true goal=8 facts=[10]
     #[11] eventually (λx. f x = g x ∧ abs (f x - l) < e) net
   ← apply_backward_step eventually_mono param_P="(λx. f x = g x ∧ abs (f x - l) < e)" goal=8
     #[12] ∀x. f x = g x ∧ abs (f x - l) < e ⟶ abs (g x - l) < e
@@ -713,9 +724,9 @@ proof
     #[1] tendsto_real (λx. f x - g x) 0 net
     #[2] tendsto_real f l net
     #[3] tendsto_real g l net
-  -> apply_forward_step reallim_sub goal=3 facts=[2,1]
+  → apply_forward_step reallim_sub goal=3 facts=[2,1]
     #[4] tendsto_real (λx. f x - (f x - g x)) (l - 0) net
-  -> rewrite_fact real_sub_rzero sym=false goal=3 facts=[4]
+  → rewrite_fact real_sub_rzero sym=false goal=3 facts=[4]
     #[5] tendsto_real (λx. f x - (f x - g x)) l net
   cut "(λx. f x - (f x - g x)) = g" goal=3
     #[6] (λx. f x - (f x - g x)) = g
@@ -723,7 +734,7 @@ proof
     #[7] ∀x. f x - (f x - g x) = g x
   ← z3 goal=7
     #[8] ∀x. f x - (f x - g x) = g x
-  -> rewrite_fact_with_prev goal=3 facts=[6,5]
+  → rewrite_fact_with_prev goal=3 facts=[6,5]
 qed
 
 theorem reallim_transform_eq
@@ -857,11 +868,11 @@ proof
     #[3] ¬(trivial_limit net)
     #[4] eventually (λx. f x ≤ g x) net
     #[5] l ≤ m
-  -> apply_forward_step reallim_sub goal=5 facts=[2,1]
+  → apply_forward_step reallim_sub goal=5 facts=[2,1]
     #[6] tendsto_real (λx. g x - f x) (m - l) net
   ← rewrite_goal real_sub_le sym=true goal=5
     #[7] 0 ≤ m - l
-  -> rewrite_fact real_sub_le sym=true goal=7 facts=[4]
+  → rewrite_fact real_sub_le sym=true goal=7 facts=[4]
     #[8] eventually (λx. 0 ≤ g x - f x) net
   ← apply_backward_step reallim_lbound goal=7 facts=[6,3,8]
 qed
@@ -889,7 +900,7 @@ proof
     #[10] trivial_limit net ∨ c = d
   ← apply_backward_step disjI2 goal=10
     #[11] c = d
-  -> apply_forward_step reallim_unique param_l2=c goal=11 facts=[9,3]
+  → apply_forward_step reallim_unique param_l2=c goal=11 facts=[9,3]
     #[12] tendsto_real (λx. c) c net ⟶ d = c
   ← rewrite_goal eq_sym_eq sym=false goal=11
     #[13] d = c

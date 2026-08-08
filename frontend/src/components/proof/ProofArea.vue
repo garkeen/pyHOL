@@ -11,7 +11,7 @@
     <!-- Proof lines (scrollable) -->
     <div class="proof-lines-scroll">
       <div v-if="proof !== undefined" class="proof-lines">
-        <div v-for="(line, idx) in proof" :key="line.id || idx"
+        <div v-for="(line, idx) in proof" :key="line.sid || idx"
              class="proof-line-row" :class="{'line-goal': goal === idx, 'line-fact': facts.includes(idx)}">
           <ProofLine :line="line" :is_last_id="is_last_id(idx)" :is_goal="goal === idx"
                      :is_fact="facts.includes(idx)" :can_select="can_select(goal, idx)"
@@ -25,12 +25,12 @@
     <!-- Selection bar -->
     <div class="selection-bar">
       <template v-if="goal !== -1 && proof && proof[goal]">
-        <span class="sel-goal">Goal: {{ proof[goal].id }} ({{ formatProofLine(proof[goal]) }})</span>
+        <span class="sel-goal">Goal: {{ proof[goal].sid }} ({{ formatProofLine(proof[goal]) }})</span>
         <button class="btn btn-sm btn-outline-secondary sel-clear" @click="goal = -1; match_thm()">✕</button>
       </template>
       <span v-else class="sel-goal">Goal: (none)</span>
       <template v-if="facts.length > 0 && proof">
-        <span class="sel-facts">Facts: <span v-for="fi in facts" :key="fi" class="sel-fact" @click="mark_fact(fi)">{{ proof[fi]?.id }}✕ </span></span>
+        <span class="sel-facts">Facts: <span v-for="fi in facts" :key="fi" class="sel-fact" @click="mark_fact(fi)">{{ proof[fi]?.sid }}✕ </span></span>
       </template>
     </div>
 
@@ -324,55 +324,21 @@ const formatProofLine = (line) => {
 
 const is_last_id = (idx) => {
   if (!proof.value) return false
-  if (idx === proof.value.length - 1) return true
-  return proof.value[idx + 1] && proof.value[idx + 1].rule === 'intros'
+  return idx === proof.value.length - 1
 }
 
 const can_select = (current_goal, idx) => {
   if (!proof.value) return false
-  const this_id = proof.value[idx].id.split('.').map(Number)
-
-  if (current_goal !== -1) {
-    // With goal: fact must be in goal's context chain and before goal
-    const goal_id = proof.value[current_goal].id.split('.').map(Number)
-    const len = this_id.length
-    if (len > goal_id.length) return false
-    for (let i = 0; i < len - 1; i++) {
-      if (this_id[i] !== goal_id[i]) return false
-    }
-    return Number(this_id[len - 1]) < Number(goal_id[len - 1])
-  }
-
-  // No goal: check against first selected fact
-  if (facts.value.length === 0) return true  // first fact determines context
-  const first_id = proof.value[facts.value[0]].id.split('.').map(Number)
-
-  if (this_id.length === first_id.length) {
-    // Same depth: same prefix (siblings, any order)
-    for (let i = 0; i < this_id.length - 1; i++) {
-      if (this_id[i] !== first_id[i]) return false
-    }
-    return true
-  }
-
-  if (this_id.length < first_id.length) {
-    // Shallower: must be in outer context and before current branch
-    // This is equivalent to can_depend_on(first_id, this_id)
-    const l = this_id.length
-    for (let i = 0; i < l - 1; i++) {
-      if (this_id[i] !== first_id[i]) return false
-    }
-    return this_id[l - 1] < first_id[l - 1]
-  }
-
-  // Deeper: not allowed
-  return false
+  // Scope checking is handled by the server (stable ID layer).
+  // Frontend just prevents selecting the same line as both goal and fact.
+  if (current_goal === idx) return false
+  return true
 }
 
 const mark_fact = (line_no) => {
   if (!proof.value) return
   const line = proof.value[line_no]
-  if (!line || line.rule === 'intros' || line.rule === 'variable') return
+  if (!line) return
   
   let i = facts.value.indexOf(line_no)
   if (i !== -1) {
@@ -414,8 +380,8 @@ const mark_goal = (line_no) => {
 
 const current_state = () => {
   if (goal.value === -1 && facts.value.length === 0) return undefined
-  const fact_ids = facts.value.map(i => proof.value[i].id)
-  const goal_id = goal.value !== -1 ? proof.value[goal.value].id : null
+  const fact_arr = facts.value.map(i => proof.value[i].sid)
+  const goal_val = goal.value !== -1 ? proof.value[goal.value].sid : null
   return {
     theory_name: props.theory_name,
     thm_name: props.thm_name,
@@ -423,7 +389,7 @@ const current_state = () => {
     prop: props.prop,
     steps: steps.value,
     index: index.value,
-    step: { goal_id: goal_id, fact_ids: fact_ids },
+    step: { goal: goal_val, facts: fact_arr },
   }
 }
 
@@ -432,7 +398,7 @@ const match_thm = async () => {
   if (input === undefined) {
     search_res.value = []
     fuzzy_res.value = []
-    const og = proof.value ? proof.value.filter(l => l.rule === 'sorry').map(l => l.id) : []
+    const og = proof.value ? proof.value.filter(l => l.is_goal).map(l => l.sid) : []
     emit('set-context', { ctxt: {}, history: history.value, history_idx: -1, open_goals: og })
     return
   }
@@ -454,7 +420,7 @@ const match_thm = async () => {
     const response = await api.post(endpoint, input)
     search_res.value = response.data[resultsKey] || []
     fuzzy_res.value = response.data.fuzzy || []
-    const og2 = proof.value ? proof.value.filter(l => l.rule === 'sorry').map(l => l.id) : []
+    const og2 = proof.value ? proof.value.filter(l => l.is_goal).map(l => l.sid) : []
     emit('set-context', {
       ctxt: response.data.ctxt || {},
       history: history.value,
@@ -475,7 +441,7 @@ const apply_suggestion = (res) => {
   if (res.theorem) args.theorem = res.theorem
   if (res.sym) args.sym = res.sym
   if (res.var) args.var = res.var
-  if (res.fact_ids) args.fact_ids = res.fact_ids
+  if (res.facts) args.facts = res.facts
   // Context shown in the parameter query dialog
   const desc = { thm: res._thm || '', result: '' }
   if (res._goal) desc.result = '⇒ ' + (res._goal.length === 0 ? 'closes' : res._goal.length + ' subgoals')
@@ -497,9 +463,9 @@ const apply_method = async (method_name, args) => {
     // Only use search result's goal_id if user explicitly selected a goal
     // Otherwise keep null so backend inserts after last fact
     if (goal.value !== -1) {
-      input.step.goal_id = args.goal_id || input.step.goal_id
+      input.step.goal = args.goal || input.step.goal
     }
-    if (args.fact_ids !== undefined) input.step.fact_ids = args.fact_ids
+    if (args.facts !== undefined) input.step.facts = args.facts
   } else { args = {} }
   const sigList = []
   for (let i = 0; i < sigs.length; i++) {
@@ -539,7 +505,7 @@ const apply_auto = (method_name) => {
 const apply_method_ajax = async (input, desc = null) => {
   emit('set-status', { status: 'Running' })
   try {
-    const result = await api.post('/apply-method', input)
+    const result = await api.post('/v2/apply-method', input)
     if ('query' in result.data) {
       let qTitle = 'Parameters for ' + input.step.method_name
       if (input.step.theorem) qTitle += ': ' + input.step.theorem
@@ -557,9 +523,11 @@ const apply_method_ajax = async (input, desc = null) => {
     } else if ('error' in result.data) {
       emit('set-message', { type: 'error', data: result.data.error.err_type + ': ' + result.data.error.err_str })
     } else {
-      // Use the step returned by backend (has correct goal_id)
-      if (result.data.step) { input.step = result.data.step }
-      if (input.step.fact_ids && input.step.fact_ids.length === 0) { delete input.step.fact_ids }
+      // Record new_ids from backend response
+      if (result.data.new_items) {
+        input.step.new_ids = result.data.new_items.map(ni => ni.sid)
+      }
+      if (input.step.facts && input.step.facts.length === 0) { delete input.step.facts }
       // Truncate + push (branch and discard)
       steps.value = steps.value.slice(0, index.value)
       steps.value.push(input.step)
@@ -587,7 +555,7 @@ const gotoStep = async (new_index, set_selected, update_history = false) => {
     vars: props.vars, prop: props.prop, steps: steps.value, index: index.value
   }
   try {
-    const response = await api.post('/init-saved-proof', data)
+    const response = await api.post('/v2/init-saved-proof', data)
     if (response.data.error) {
       emit('set-message', { type: 'error', data: response.data.error })
       return
@@ -600,7 +568,7 @@ const gotoStep = async (new_index, set_selected, update_history = false) => {
     method_list_params.value = state.method_list_params || {}
     proof.value = state.proof
     // Emit open_goals immediately (don't wait for match_thm)
-    const og = state.proof ? state.proof.filter(l => l.rule === 'sorry').map(l => l.id) : []
+    const og = state.proof ? state.proof.filter(l => l.is_goal).map(l => l.sid) : []
     emit('set-context', {
       ctxt: {},
       history: history.value,
@@ -611,11 +579,11 @@ const gotoStep = async (new_index, set_selected, update_history = false) => {
     if (index.value >= history.value.length) {
       goal.value = compute_new_goal(0)
     } else {
-      goal.value = get_line_no_from_id(history.value[index.value].goal_id)
-      const fact_ids = history.value[index.value].fact_ids
-      if (fact_ids !== undefined) {
-        for (let i = 0; i < fact_ids.length; i++) {
-          const fact_no = get_line_no_from_id(fact_ids[i])
+      goal.value = get_line_no_from_sid(history.value[index.value].goal)
+      const hist_facts = history.value[index.value].facts
+      if (hist_facts !== undefined) {
+        for (let i = 0; i < hist_facts.length; i++) {
+          const fact_no = get_line_no_from_sid(hist_facts[i])
           if (can_select(goal.value, fact_no)) { facts.value.push(fact_no) }
         }
       }
@@ -627,15 +595,15 @@ const gotoStep = async (new_index, set_selected, update_history = false) => {
 const compute_new_goal = (start) => {
   if (!proof.value) return -1
   for (let i = start; i < proof.value.length; i++) {
-    if (proof.value[i].rule === 'sorry') return i
+    if (proof.value[i].is_goal) return i
   }
   return -1
 }
 
-const get_line_no_from_id = (id) => {
+const get_line_no_from_sid = (id) => {
   if (!proof.value) return -1
   for (let i = 0; i < proof.value.length; i++) {
-    if (proof.value[i].id === id) return i
+    if (proof.value[i].sid === id) return i
   }
   return -1
 }

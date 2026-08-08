@@ -13,7 +13,7 @@ proof
     #[1] has_limit f x
     #[2] 0 < e
     #[3] ∃N. ∀n. N ≤ n ⟶ abs (f n - x) < e
-  -> rewrite_fact has_limit_def goal=3 facts=[1]
+  → rewrite_fact has_limit_def goal=3 facts=[1]
     #[4] ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (f n - x) < e)
   ← apply_prev goal=3 facts=[4,2]
 qed
@@ -39,7 +39,7 @@ proof
   ← introduction goal=5
     #[8] y < x
     #[9] false
-  -> apply_forward_step has_limit_D2 param_e="y - x" goal=7 facts=[1]
+  → apply_forward_step has_limit_D2 param_e="y - x" goal=7 facts=[1]
     #[10] 0 < y - x ⟶ (∃n. abs (f n - x) < y - x)
 qed
 

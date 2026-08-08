@@ -12,13 +12,13 @@ proof
     #[2] sum ({0..n}) (λk. real_inverse (of_nat (fact k)) * x ^ k) ≤ exp x
   ← rewrite_goal exp_infsum sym=true goal=2
     #[3] sum ({0..n}) (λk. real_inverse (of_nat (fact k)) * x ^ k) ≤ real_infsum (from 0) (λk. 1 / of_nat (fact k) * x ^ k)
-  -> apply_forward_step real_infsum_offset param_f="(λk. 1 / of_nat (fact k) * x ^ k)" param_k=n param_m="(0::nat)" goal=3
+  → apply_forward_step real_infsum_offset param_f="(λk. 1 / of_nat (fact k) * x ^ k)" param_k=n param_m="(0::nat)" goal=3
     #[4] real_summable (from 0) (λk. 1 / of_nat (fact k) * x ^ k) ⟶ 0 ≤ n ⟶ real_infsum (from 0) (λk. 1 / of_nat (fact k) * x ^ k) = sum ({0..n}) (λk. 1 / of_nat (fact k) * x ^ k) + real_infsum (from (n + 1)) (λk. 1 / of_nat (fact k) * x ^ k)
   cut "real_summable (from 0) (λk. 1 / of_nat (fact k) * x ^ k)" goal=3 facts=[4]
     #[5] real_summable (from 0) (λk. 1 / of_nat (fact k) * x ^ k)
-  -> apply_forward_step exp_series param_x=x goal=5
+  → apply_forward_step exp_series param_x=x goal=5
     #[6] real_sums (λk. 1 / of_nat (fact k) * x ^ k) (exp x) univ
-  -> rewrite_fact from_0 sym=true goal=5 facts=[6]
+  → rewrite_fact from_0 sym=true goal=5 facts=[6]
     #[7] real_sums (λk. 1 / of_nat (fact k) * x ^ k) (exp x) (from 0)
   ← rewrite_goal real_summable_def sym=false goal=5
     #[8] ∃l. real_sums (λk. 1 / of_nat (fact k) * x ^ k) l (from 0)
@@ -28,7 +28,7 @@ proof
     #[10] 0 ≤ n
   ← apply_backward_step le_0 goal=10
     #[11] 0 ≤ n
-  -> apply_fact goal=3 facts=[4,5,11]
+  → apply_fact goal=3 facts=[4,5,11]
     #[12] real_infsum (from 0) (λk. 1 / of_nat (fact k) * x ^ k) = sum ({0..n}) (λk. 1 / of_nat (fact k) * x ^ k) + real_infsum (from (n + 1)) (λk. 1 / of_nat (fact k) * x ^ k)
   ← rewrite_goal_with_prev goal=3 facts=[12]
     #[13] sum ({0..n}) (λk. real_inverse (of_nat (fact k)) * x ^ k) ≤ sum ({0..n}) (λk. 1 / of_nat (fact k) * x ^ k) + real_infsum (from (n + 1)) (λk. 1 / of_nat (fact k) * x ^ k)
@@ -76,21 +76,21 @@ proof
   ← introduction goal=0
     #[1] 0 ≤ x
     #[2] 1 ≤ exp x
-  -> apply_forward_step exp_pos_poly_lower_bound param_n="(0::nat)" param_x=x goal=2
+  → apply_forward_step exp_pos_poly_lower_bound param_n="(0::nat)" param_x=x goal=2
     #[3] 0 ≤ x ⟶ sum ({0..0}) (λk. real_inverse (of_nat (fact k)) * x ^ k) ≤ exp x
-  -> apply_fact goal=2 facts=[3,1]
+  → apply_fact goal=2 facts=[3,1]
     #[4] sum ({0..0}) (λk. real_inverse (of_nat (fact k)) * x ^ k) ≤ exp x
-  -> rewrite_fact sum_sing_natseg sym=false goal=2 facts=[4]
+  → rewrite_fact sum_sing_natseg sym=false goal=2 facts=[4]
     #[5] real_inverse (of_nat (fact 0)) * x ^ (0::nat) ≤ exp x
-  -> rewrite_fact fact_def_1 sym=false goal=2 facts=[5]
+  → rewrite_fact fact_def_1 sym=false goal=2 facts=[5]
     #[6] real_inverse of_nat 1 * x ^ (0::nat) ≤ exp x
-  -> rewrite_fact real_nat_power_def_1 sym=false goal=2 facts=[6]
+  → rewrite_fact real_nat_power_def_1 sym=false goal=2 facts=[6]
     #[7] real_inverse of_nat 1 * 1 ≤ exp x
-  -> rewrite_fact real_one_def sym=true goal=2 facts=[7]
+  → rewrite_fact real_one_def sym=true goal=2 facts=[7]
     #[8] real_inverse 1 * 1 ≤ exp x
-  -> rewrite_fact real_mul_rid sym=false goal=2 facts=[8]
+  → rewrite_fact real_mul_rid sym=false goal=2 facts=[8]
     #[9] real_inverse 1 ≤ exp x
-  -> rewrite_fact real_inv_1 sym=false goal=2 facts=[9]
+  → rewrite_fact real_inv_1 sym=false goal=2 facts=[9]
 qed
 
 theorem neg_exp_le1
@@ -113,7 +113,7 @@ theorem neg_exp_series
   prop real_sums (%k. -1 ^ k / of_nat (fact k) * x ^ k) (exp (-x)) (from 0)
   [hint_backward]
 proof
-  -> apply_forward_step exp_series param_x=-x goal=0
+  → apply_forward_step exp_series param_x=-x goal=0
     #[1] real_sums (λk. 1 / of_nat (fact k) * -x ^ k) (exp (-x)) univ
   cut "!k. 1 / of_nat (fact k) * -x ^ k = -1 ^ k / of_nat (fact k) * x ^ k" goal=0
     #[2] ∀k. 1 / of_nat (fact k) * -x ^ k = -1 ^ k / of_nat (fact k) * x ^ k
@@ -130,7 +130,7 @@ proof
   ← rewrite_goal real_divide_def sym=false goal=7
     #[8] 1 * real_inverse (of_nat (fact k)) * (-1 ^ k * x ^ k) = -1 ^ k * real_inverse (of_nat (fact k)) * x ^ k
   real_norm goal=8
-  -> rewrite_fact_with_prev goal=0 facts=[2,1]
+  → rewrite_fact_with_prev goal=0 facts=[2,1]
     #[9] real_sums (λk. -1 ^ k / of_nat (fact k) * x ^ k) (exp (-x)) univ
   ← rewrite_goal from_0 sym=false goal=0
 qed
@@ -384,7 +384,7 @@ proof
     #[2] x ≤ 1
     #[3] even n
     #[4] exp (-x) ≤ sum ({0..n}) (λk. -1 ^ k / of_nat (fact k) * x ^ k)
-  -> rewrite_fact even_exists sym=false goal=4 facts=[3]
+  → rewrite_fact even_exists sym=false goal=4 facts=[3]
     #[5] ∃m. n = 2 * m
   exists_elim m goal=4 facts=[5]
     #[6] _VAR m
@@ -414,23 +414,23 @@ proof
   ← introduction goal=10
     #[20] ¬(n = 0)
     #[21] exp (-x) ≤ sum ({0..n}) (λk. -1 ^ k / of_nat (fact k) * x ^ k)
-  -> apply_forward_step alt_sign_upper_bound param_f="(λk. -1 ^ k / of_nat (fact k) * x ^ k)" param_k=n param_m="(0::nat)" goal=21
+  → apply_forward_step alt_sign_upper_bound param_f="(λk. -1 ^ k / of_nat (fact k) * x ^ k)" param_k=n param_m="(0::nat)" goal=21
     #[22] (∀n1. abs (-1 ^ (n1 + 1) / of_nat (fact (n1 + 1)) * x ^ (n1 + 1)) ≤ abs (-1 ^ n1 / of_nat (fact n1) * x ^ n1) ∧ -1 ^ (n1 + 1) / of_nat (fact (n1 + 1)) * x ^ (n1 + 1) * (-1 ^ n1 / of_nat (fact n1) * x ^ n1) ≤ 0) ⟶ tendsto_real (λk. -1 ^ k / of_nat (fact k) * x ^ k) 0 sequentially ⟶ 0 < n ⟶ real_infsum (from 0) (λk. -1 ^ k / of_nat (fact k) * x ^ k) ≤ sum ({0..n - 1}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) + abs (-1 ^ n / of_nat (fact n) * x ^ n)
-  -> apply_forward_step le_1_1 goal=21 facts=[20]
+  → apply_forward_step le_1_1 goal=21 facts=[20]
     #[23] 0 < n
-  -> apply_forward_step exp_alt_sign_lemma goal=21 facts=[1,2]
+  → apply_forward_step exp_alt_sign_lemma goal=21 facts=[1,2]
     #[24] (∀k. abs (-1 ^ (k + 1) / of_nat (fact (k + 1)) * x ^ (k + 1)) ≤ abs (-1 ^ k / of_nat (fact k) * x ^ k) ∧ -1 ^ (k + 1) / of_nat (fact (k + 1)) * x ^ (k + 1) * (-1 ^ k / of_nat (fact k) * x ^ k) ≤ 0) ∧ tendsto_real (λk. -1 ^ k / of_nat (fact k) * x ^ k) 0 sequentially
-  -> apply_forward_step conjD1 goal=21 facts=[24]
+  → apply_forward_step conjD1 goal=21 facts=[24]
     #[25] ∀k. abs (-1 ^ (k + 1) / of_nat (fact (k + 1)) * x ^ (k + 1)) ≤ abs (-1 ^ k / of_nat (fact k) * x ^ k) ∧ -1 ^ (k + 1) / of_nat (fact (k + 1)) * x ^ (k + 1) * (-1 ^ k / of_nat (fact k) * x ^ k) ≤ 0
-  -> apply_forward_step conjD2 goal=21 facts=[24]
+  → apply_forward_step conjD2 goal=21 facts=[24]
     #[26] tendsto_real (λk. -1 ^ k / of_nat (fact k) * x ^ k) 0 sequentially
-  -> apply_fact goal=21 facts=[22,25,26,23]
+  → apply_fact goal=21 facts=[22,25,26,23]
     #[27] real_infsum (from 0) (λk. -1 ^ k / of_nat (fact k) * x ^ k) ≤ sum ({0..n - 1}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) + abs (-1 ^ n / of_nat (fact n) * x ^ n)
-  -> rewrite_fact neg_exp_infsum sym=false goal=21 facts=[27]
+  → rewrite_fact neg_exp_infsum sym=false goal=21 facts=[27]
     #[28] exp (-x) ≤ sum ({0..n - 1}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) + abs (-1 ^ n / of_nat (fact n) * x ^ n)
   ← rewrite_goal_with_prev goal=21 facts=[7]
     #[29] exp (-x) ≤ sum ({0..2 * m}) (λk. -1 ^ k / of_nat (fact k) * x ^ k)
-  -> rewrite_fact_with_prev goal=29 facts=[7,28]
+  → rewrite_fact_with_prev goal=29 facts=[7,28]
     #[30] exp (-x) ≤ sum ({0..2 * m - 1}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) + abs (-1 ^ (2 * m) / of_nat (fact (2 * m)) * x ^ (2 * m))
   cut "Suc (2 * m - 1) = 2 * m" goal=29
     #[31] Suc (2 * m - 1) = 2 * m
@@ -440,9 +440,9 @@ proof
     #[33] 1 ≤ 2 * m
   ← apply_backward_step le_1_2 goal=33
     #[34] ¬(2 * m = 0)
-  -> rewrite_fact_with_prev goal=34 facts=[7,20]
+  → rewrite_fact_with_prev goal=34 facts=[7,20]
     #[35] ¬(2 * m = 0)
-  -> rewrite_fact eq_sym_eq sym=false goal=29 facts=[31]
+  → rewrite_fact eq_sym_eq sym=false goal=29 facts=[31]
     #[36] 2 * m = Suc (2 * m - 1)
   ← rewrite_goal_with_prev goal=29 facts=[36]
     #[37] exp (-x) ≤ sum ({0..Suc (2 * m - 1)}) (λk. -1 ^ k / of_nat (fact k) * x ^ k)
@@ -487,7 +487,7 @@ proof
   ← apply_backward_step fact_lt goal=57
     #[58] 0 < fact (2 * m)
   ← apply_backward_step real_pow_le goal=47
-  -> rewrite_fact_with_prev goal=42 facts=[43,30]
+  → rewrite_fact_with_prev goal=42 facts=[43,30]
 qed
 
 theorem exp_neg_poly_lower_bound
@@ -500,13 +500,13 @@ proof
     #[2] x ≤ 1
     #[3] odd n
     #[4] sum ({0..n}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) ≤ exp (-x)
-  -> apply_forward_step alt_sign_lower_bound param_f="(λk. -1 ^ k / of_nat (fact k) * x ^ k)" param_k=n param_m="(0::nat)" goal=4
+  → apply_forward_step alt_sign_lower_bound param_f="(λk. -1 ^ k / of_nat (fact k) * x ^ k)" param_k=n param_m="(0::nat)" goal=4
     #[5] (∀n1. abs (-1 ^ (n1 + 1) / of_nat (fact (n1 + 1)) * x ^ (n1 + 1)) ≤ abs (-1 ^ n1 / of_nat (fact n1) * x ^ n1) ∧ -1 ^ (n1 + 1) / of_nat (fact (n1 + 1)) * x ^ (n1 + 1) * (-1 ^ n1 / of_nat (fact n1) * x ^ n1) ≤ 0) ⟶ tendsto_real (λk. -1 ^ k / of_nat (fact k) * x ^ k) 0 sequentially ⟶ 0 < n ⟶ sum ({0..n - 1}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) - abs (-1 ^ n / of_nat (fact n) * x ^ n) ≤ real_infsum (from 0) (λk. -1 ^ k / of_nat (fact k) * x ^ k)
-  -> apply_forward_step exp_alt_sign_lemma goal=4 facts=[1,2]
+  → apply_forward_step exp_alt_sign_lemma goal=4 facts=[1,2]
     #[6] (∀k. abs (-1 ^ (k + 1) / of_nat (fact (k + 1)) * x ^ (k + 1)) ≤ abs (-1 ^ k / of_nat (fact k) * x ^ k) ∧ -1 ^ (k + 1) / of_nat (fact (k + 1)) * x ^ (k + 1) * (-1 ^ k / of_nat (fact k) * x ^ k) ≤ 0) ∧ tendsto_real (λk. -1 ^ k / of_nat (fact k) * x ^ k) 0 sequentially
   cut "0 < n" goal=4
     #[7] 0 < n
-  -> rewrite_fact odd_exists sym=false goal=7 facts=[3]
+  → rewrite_fact odd_exists sym=false goal=7 facts=[3]
     #[8] ∃m. n = Suc (2 * m)
   exists_elim m goal=7 facts=[8]
     #[9] _VAR m
@@ -519,13 +519,13 @@ proof
     #[14] 0 ≤ 2 * m
   ← apply_backward_step le_0 goal=14
     #[15] 0 ≤ 2 * m
-  -> apply_forward_step conjD1 goal=12 facts=[6]
+  → apply_forward_step conjD1 goal=12 facts=[6]
     #[16] ∀k. abs (-1 ^ (k + 1) / of_nat (fact (k + 1)) * x ^ (k + 1)) ≤ abs (-1 ^ k / of_nat (fact k) * x ^ k) ∧ -1 ^ (k + 1) / of_nat (fact (k + 1)) * x ^ (k + 1) * (-1 ^ k / of_nat (fact k) * x ^ k) ≤ 0
-  -> apply_forward_step conjD2 goal=12 facts=[6]
+  → apply_forward_step conjD2 goal=12 facts=[6]
     #[17] tendsto_real (λk. -1 ^ k / of_nat (fact k) * x ^ k) 0 sequentially
-  -> apply_fact goal=12 facts=[5,16,17,11]
+  → apply_fact goal=12 facts=[5,16,17,11]
     #[18] sum ({0..n - 1}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) - abs (-1 ^ n / of_nat (fact n) * x ^ n) ≤ real_infsum (from 0) (λk. -1 ^ k / of_nat (fact k) * x ^ k)
-  -> rewrite_fact neg_exp_infsum sym=false goal=12 facts=[18]
+  → rewrite_fact neg_exp_infsum sym=false goal=12 facts=[18]
     #[19] sum ({0..n - 1}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) - abs (-1 ^ n / of_nat (fact n) * x ^ n) ≤ exp (-x)
   cut "Suc (n - 1) = n" goal=12
     #[20] Suc (n - 1) = n
@@ -534,7 +534,7 @@ proof
   ← apply_backward_step sub_add goal=21
     #[22] 1 ≤ n
   ← z3 goal=22 facts=[11]
-  -> rewrite_fact eq_sym_eq sym=false goal=12 facts=[20]
+  → rewrite_fact eq_sym_eq sym=false goal=12 facts=[20]
     #[23] n = Suc (n - 1)
   ← rewrite_goal_with_prev goal=12 facts=[23]
     #[24] sum ({0..Suc (n - 1)}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) ≤ exp (-x)
@@ -546,7 +546,7 @@ proof
     #[27] 0 ≤ Suc (n - 1)
   ← rewrite_goal if_P sym=false goal=25 facts=[27]
     #[28] sum ({0..n - 1}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) + -1 ^ Suc (n - 1) / of_nat (fact (Suc (n - 1))) * x ^ Suc (n - 1) ≤ exp (-x)
-  -> rewrite_fact real_minus_def sym=false goal=28 facts=[19]
+  → rewrite_fact real_minus_def sym=false goal=28 facts=[19]
     #[29] sum ({0..n - 1}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) + -(abs (-1 ^ n / of_nat (fact n) * x ^ n)) ≤ exp (-x)
   ← rewrite_goal_with_prev goal=28 facts=[20]
     #[30] sum ({0..n - 1}) (λk. -1 ^ k / of_nat (fact k) * x ^ k) + -1 ^ n / of_nat (fact n) * x ^ n ≤ exp (-x)
@@ -560,7 +560,7 @@ proof
     #[34] -1 ^ n / of_nat (fact n) * x ^ n ≤ 0
   ← rewrite_goal real_pow_neg sym=false goal=34
     #[35] (if even n then 1 ^ n else -(1 ^ n)) / of_nat (fact n) * x ^ n ≤ 0
-  -> rewrite_fact not_even sym=true goal=35 facts=[3]
+  → rewrite_fact not_even sym=true goal=35 facts=[3]
     #[36] ¬(even n)
   ← rewrite_goal if_not_P sym=false goal=35 facts=[36]
     #[37] -(1 ^ n) / of_nat (fact n) * x ^ n ≤ 0
@@ -594,7 +594,7 @@ proof
   ← apply_backward_step fact_lt goal=51
     #[52] 0 < fact n
   ← apply_backward_step real_pow_le goal=47
-  -> rewrite_fact_with_prev goal=30 facts=[31,29]
+  → rewrite_fact_with_prev goal=30 facts=[31,29]
 qed
 
 theorem exp_reduce
@@ -622,7 +622,7 @@ proof
   ← rewrite_goal real_of_nat_eq sym=false goal=9
     #[10] ¬(k = 0)
   ← z3 goal=10 facts=[1]
-  -> apply_forward_step real_div_refl goal=7 facts=[8]
+  → apply_forward_step real_div_refl goal=7 facts=[8]
     #[11] of_nat k / of_nat k = 1
   ← rewrite_goal_with_prev goal=7 facts=[11]
     #[12] exp (x * 1) = exp x
@@ -638,7 +638,7 @@ proof
   ← introduction goal=0
     #[1] 0 < k
     #[2] real_inverse (exp (-x / of_nat k) ^ k) = exp x
-  -> apply_forward_step exp_reduce param_x=x goal=2 facts=[1]
+  → apply_forward_step exp_reduce param_x=x goal=2 facts=[1]
     #[3] exp (x / of_nat k) ^ k = exp x
   ← rewrite_goal real_pow_inv sym=true goal=2
     #[4] real_inverse (exp (-x / of_nat k)) ^ k = exp x
@@ -650,7 +650,7 @@ proof
     #[7] exp (--(x * real_inverse (of_nat k))) ^ k = exp x
   ← rewrite_goal real_neg_neg sym=false goal=7
     #[8] exp (x * real_inverse (of_nat k)) ^ k = exp x
-  -> rewrite_fact real_divide_def sym=false goal=8 facts=[3]
+  → rewrite_fact real_divide_def sym=false goal=8 facts=[3]
 qed
 
 theorem log_alt_sign_lemma
@@ -733,7 +733,7 @@ proof
     #[43] abs x ^ (2::nat) ≤ abs x
   ← rewrite_goal real_pow_2 sym=false goal=43
     #[44] abs x * abs x ≤ abs x
-  -> apply_forward_step real_le_trans goal=44 facts=[1,2]
+  → apply_forward_step real_le_trans goal=44 facts=[1,2]
     #[45] (0::real) ≤ 1
   ← z3 goal=44 facts=[2,1]
   cut " ∀a. ∀b. ∀c. ∀d. ∀r. ∀t. a / b * r * (c / d * t) ≤ 0 ⟷ 0 ≤ -1 ^ (1::nat) * a * c * (r * t) / b / d" goal=10
@@ -906,31 +906,31 @@ proof
   ← rewrite_goal_with_prev goal=10 facts=[11]
   ← rewrite_goal_with_prev goal=5 facts=[6]
     #[17] log (1 + x) ≤ sum ({0..n}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1))
-  -> apply_forward_step alt_sign_upper_bound param_f="(λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1))" param_k=n param_m="(0::nat)" goal=17
+  → apply_forward_step alt_sign_upper_bound param_f="(λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1))" param_k=n param_m="(0::nat)" goal=17
     #[18] (∀n1. abs (-1 ^ (n1 + 1) / of_nat (n1 + 1 + 1) * x ^ (n1 + 1 + 1)) ≤ abs (-1 ^ n1 / of_nat (n1 + 1) * x ^ (n1 + 1)) ∧ -1 ^ (n1 + 1) / of_nat (n1 + 1 + 1) * x ^ (n1 + 1 + 1) * (-1 ^ n1 / of_nat (n1 + 1) * x ^ (n1 + 1)) ≤ 0) ⟶ tendsto_real (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) 0 sequentially ⟶ 0 < n ⟶ real_infsum (from 0) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ≤ sum ({0..n - 1}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) + abs (-1 ^ n / of_nat (n + 1) * x ^ (n + 1))
-  -> apply_forward_step real_lt_imp_le goal=17 facts=[2]
+  → apply_forward_step real_lt_imp_le goal=17 facts=[2]
     #[19] x ≤ 1
-  -> apply_forward_step log_alt_sign_lemma goal=17 facts=[1,19]
+  → apply_forward_step log_alt_sign_lemma goal=17 facts=[1,19]
     #[20] (∀k. abs (-1 ^ (k + 1) / of_nat (k + 2) * x ^ (k + 2)) ≤ abs (-1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ∧ -1 ^ (k + 1) / of_nat (k + 2) * x ^ (k + 2) * (-1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ≤ 0) ∧ tendsto_real (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) 0 sequentially
-  -> apply_forward_step conjD1 goal=17 facts=[20]
+  → apply_forward_step conjD1 goal=17 facts=[20]
     #[21] ∀k. abs (-1 ^ (k + 1) / of_nat (k + 2) * x ^ (k + 2)) ≤ abs (-1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ∧ -1 ^ (k + 1) / of_nat (k + 2) * x ^ (k + 2) * (-1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ≤ 0
-  -> apply_forward_step conjD2 goal=17 facts=[20]
+  → apply_forward_step conjD2 goal=17 facts=[20]
     #[22] tendsto_real (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) 0 sequentially
   cut "!k::nat. k+1+1= k+2" goal=17
     #[23] ∀k::nat. k + 1 + 1 = k + 2
   ← z3 goal=23
     #[24] ∀k::nat. k + 1 + 1 = k + 2
-  -> rewrite_fact_with_prev goal=17 facts=[24,18]
+  → rewrite_fact_with_prev goal=17 facts=[24,18]
     #[25] (∀n1. abs (-1 ^ (n1 + 1) / of_nat (n1 + 2) * x ^ (n1 + 2)) ≤ abs (-1 ^ n1 / of_nat (n1 + 1) * x ^ (n1 + 1)) ∧ -1 ^ (n1 + 1) / of_nat (n1 + 2) * x ^ (n1 + 2) * (-1 ^ n1 / of_nat (n1 + 1) * x ^ (n1 + 1)) ≤ 0) ⟶ tendsto_real (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) 0 sequentially ⟶ 0 < n ⟶ real_infsum (from 0) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ≤ sum ({0..n - 1}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) + abs (-1 ^ n / of_nat (n + 1) * x ^ (n + 1))
-  -> apply_fact goal=17 facts=[25,21,22,4]
+  → apply_fact goal=17 facts=[25,21,22,4]
     #[26] real_infsum (from 0) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ≤ sum ({0..n - 1}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) + abs (-1 ^ n / of_nat (n + 1) * x ^ (n + 1))
   cut "abs x < 1" goal=17
     #[27] abs x < 1
   ← z3 goal=27 facts=[2,1]
     #[28] abs x < 1
-  -> apply_forward_step log_infsum goal=17 facts=[28]
+  → apply_forward_step log_infsum goal=17 facts=[28]
     #[29] real_infsum (from 0) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) = log (1 + x)
-  -> rewrite_fact_with_prev goal=17 facts=[29,26]
+  → rewrite_fact_with_prev goal=17 facts=[29,26]
     #[30] log (1 + x) ≤ sum ({0..n - 1}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) + abs (-1 ^ n / of_nat (n + 1) * x ^ (n + 1))
   cut "Suc (n-1) = n" goal=17
     #[31] Suc (n - 1) = n
@@ -940,7 +940,7 @@ proof
     #[33] 1 ≤ n
   ← z3 goal=33 facts=[4]
     #[34] 1 ≤ n
-  -> rewrite_fact eq_sym_eq sym=false goal=17 facts=[31]
+  → rewrite_fact eq_sym_eq sym=false goal=17 facts=[31]
     #[35] n = Suc (n - 1)
   ← rewrite_goal_with_prev goal=17 facts=[35]
     #[36] log (1 + x) ≤ sum ({0..Suc (n - 1)}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1))
@@ -987,7 +987,7 @@ proof
   ← z3 goal=57
     #[58] 0 < n + 1
   ← apply_backward_step real_pow_le goal=46
-  -> rewrite_fact_with_prev goal=41 facts=[42,30]
+  → rewrite_fact_with_prev goal=41 facts=[42,30]
 qed
 
 theorem log_poly_lower_bound
@@ -1000,7 +1000,7 @@ proof
     #[2] x < 1
     #[3] odd n
     #[4] x * sum ({0..n}) (λk. -1 ^ k / of_nat (k + 1) * x ^ k) ≤ log (1 + x)
-  -> rewrite_fact odd_exists sym=false goal=4 facts=[3]
+  → rewrite_fact odd_exists sym=false goal=4 facts=[3]
     #[5] ∃m. n = Suc (2 * m)
   exists_elim m goal=4 facts=[5]
     #[6] _VAR m
@@ -1022,7 +1022,7 @@ proof
     #[15] sum ({0..n}) (λx1. -1 ^ x1 / of_nat (x1 + 1) * (x ^ x1 * x)) = sum ({0..n}) (λk. -1 ^ k / of_nat (k + 1) * (x ^ k * x ^ (1::nat)))
   ← rewrite_goal_with_prev goal=8 facts=[9]
     #[16] sum ({0..n}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ≤ log (1 + x)
-  -> apply_forward_step alt_sign_lower_bound param_f="(λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1))" param_k=n param_m="(0::nat)" goal=16
+  → apply_forward_step alt_sign_lower_bound param_f="(λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1))" param_k=n param_m="(0::nat)" goal=16
     #[17] (∀n1. abs (-1 ^ (n1 + 1) / of_nat (n1 + 1 + 1) * x ^ (n1 + 1 + 1)) ≤ abs (-1 ^ n1 / of_nat (n1 + 1) * x ^ (n1 + 1)) ∧ -1 ^ (n1 + 1) / of_nat (n1 + 1 + 1) * x ^ (n1 + 1 + 1) * (-1 ^ n1 / of_nat (n1 + 1) * x ^ (n1 + 1)) ≤ 0) ⟶ tendsto_real (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) 0 sequentially ⟶ 0 < n ⟶ sum ({0..n - 1}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) - abs (-1 ^ n / of_nat (n + 1) * x ^ (n + 1)) ≤ real_infsum (from 0) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1))
   cut "0 < n" goal=16
     #[18] 0 < n
@@ -1032,36 +1032,36 @@ proof
     #[20] 0 < 2 * m + 1
   ← z3 goal=20
     #[21] 0 < 2 * m + 1
-  -> apply_forward_step real_lt_imp_le goal=16 facts=[2]
+  → apply_forward_step real_lt_imp_le goal=16 facts=[2]
     #[22] x ≤ 1
-  -> apply_forward_step log_alt_sign_lemma goal=16 facts=[1,22]
+  → apply_forward_step log_alt_sign_lemma goal=16 facts=[1,22]
     #[23] (∀k. abs (-1 ^ (k + 1) / of_nat (k + 2) * x ^ (k + 2)) ≤ abs (-1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ∧ -1 ^ (k + 1) / of_nat (k + 2) * x ^ (k + 2) * (-1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ≤ 0) ∧ tendsto_real (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) 0 sequentially
-  -> apply_forward_step conjD1 goal=16 facts=[23]
+  → apply_forward_step conjD1 goal=16 facts=[23]
     #[24] ∀k. abs (-1 ^ (k + 1) / of_nat (k + 2) * x ^ (k + 2)) ≤ abs (-1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ∧ -1 ^ (k + 1) / of_nat (k + 2) * x ^ (k + 2) * (-1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ≤ 0
-  -> apply_forward_step conjD2 goal=16 facts=[23]
+  → apply_forward_step conjD2 goal=16 facts=[23]
     #[25] tendsto_real (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) 0 sequentially
   cut "!k::nat. k+1+1=k+2" goal=16
     #[26] ∀k::nat. k + 1 + 1 = k + 2
   ← z3 goal=26
     #[27] ∀k::nat. k + 1 + 1 = k + 2
-  -> rewrite_fact_with_prev goal=16 facts=[27,17]
+  → rewrite_fact_with_prev goal=16 facts=[27,17]
     #[28] (∀n1. abs (-1 ^ (n1 + 1) / of_nat (n1 + 2) * x ^ (n1 + 2)) ≤ abs (-1 ^ n1 / of_nat (n1 + 1) * x ^ (n1 + 1)) ∧ -1 ^ (n1 + 1) / of_nat (n1 + 2) * x ^ (n1 + 2) * (-1 ^ n1 / of_nat (n1 + 1) * x ^ (n1 + 1)) ≤ 0) ⟶ tendsto_real (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) 0 sequentially ⟶ 0 < n ⟶ sum ({0..n - 1}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) - abs (-1 ^ n / of_nat (n + 1) * x ^ (n + 1)) ≤ real_infsum (from 0) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1))
-  -> apply_fact goal=16 facts=[28,24,25,18]
+  → apply_fact goal=16 facts=[28,24,25,18]
     #[29] sum ({0..n - 1}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) - abs (-1 ^ n / of_nat (n + 1) * x ^ (n + 1)) ≤ real_infsum (from 0) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1))
   cut "abs x < 1" goal=16
     #[30] abs x < 1
   ← z3 goal=30 facts=[1,2]
     #[31] abs x < 1
-  -> apply_forward_step log_infsum goal=16 facts=[31]
+  → apply_forward_step log_infsum goal=16 facts=[31]
     #[32] real_infsum (from 0) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) = log (1 + x)
-  -> rewrite_fact_with_prev goal=16 facts=[32,29]
+  → rewrite_fact_with_prev goal=16 facts=[32,29]
     #[33] sum ({0..n - 1}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) - abs (-1 ^ n / of_nat (n + 1) * x ^ (n + 1)) ≤ log (1 + x)
   cut "Suc (n-1) = n" goal=16
     #[34] Suc (n - 1) = n
   ← rewrite_goal add_1_right sym=true goal=34
     #[35] n - 1 + 1 = n
   ← z3 goal=35 facts=[18]
-  -> rewrite_fact eq_sym_eq sym=false goal=16 facts=[34]
+  → rewrite_fact eq_sym_eq sym=false goal=16 facts=[34]
     #[36] n = Suc (n - 1)
   ← rewrite_goal_with_prev goal=16 facts=[36]
     #[37] sum ({0..Suc (n - 1)}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) ≤ log (1 + x)
@@ -1097,7 +1097,7 @@ proof
     #[53] 0 ≤ real_inverse (of_nat (n + 1))
   ← rewrite_goal real_pow_neg sym=false goal=52
     #[54] (0::real) ≤ -(if even n then 1 ^ n else -(1 ^ n))
-  -> rewrite_fact not_even sym=true goal=54 facts=[3]
+  → rewrite_fact not_even sym=true goal=54 facts=[3]
     #[55] ¬(even n)
   ← rewrite_goal if_not_P sym=false goal=54 facts=[55]
     #[56] (0::real) ≤ --(1 ^ n)
@@ -1118,11 +1118,11 @@ proof
   ← z3 goal=63
     #[64] 0 < n + 1
   ← apply_backward_step real_pow_le goal=49
-  -> rewrite_fact_with_prev goal=42 facts=[43,33]
+  → rewrite_fact_with_prev goal=42 facts=[43,33]
     #[65] sum ({0..n - 1}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) - -(-1 ^ n / of_nat (n + 1) * x ^ (n + 1)) ≤ log (1 + x)
-  -> rewrite_fact real_minus_def sym=false goal=42 facts=[65]
+  → rewrite_fact real_minus_def sym=false goal=42 facts=[65]
     #[66] sum ({0..n - 1}) (λk. -1 ^ k / of_nat (k + 1) * x ^ (k + 1)) + --(-1 ^ n / of_nat (n + 1) * x ^ (n + 1)) ≤ log (1 + x)
-  -> rewrite_fact real_neg_neg sym=false goal=42 facts=[66]
+  → rewrite_fact real_neg_neg sym=false goal=42 facts=[66]
 qed
 
 theorem log_reduce_pos_pow
@@ -1133,9 +1133,9 @@ proof
   ← introduction goal=0
     #[1] 0 < y
     #[2] log (2 ^ k * y) = of_nat k * log 2 + log y
-  -> apply_forward_step real_lt_pow2 param_n=k goal=2
+  → apply_forward_step real_lt_pow2 param_n=k goal=2
     #[3] (0::real) < 2 ^ k
-  -> apply_forward_step log_mul goal=2 facts=[3,1]
+  → apply_forward_step log_mul goal=2 facts=[3,1]
     #[4] log (2 ^ k * y) = log (2 ^ k) + log y
   ← rewrite_goal_with_prev goal=2 facts=[4]
     #[5] log (2 ^ k) + log y = of_nat k * log 2 + log y
@@ -1155,9 +1155,9 @@ proof
   ← introduction goal=0
     #[1] 0 < y
     #[2] log (y / 2 ^ k) = log y - of_nat k * log 2
-  -> apply_forward_step real_lt_pow2 param_n=k goal=2
+  → apply_forward_step real_lt_pow2 param_n=k goal=2
     #[3] (0::real) < 2 ^ k
-  -> apply_forward_step log_div goal=2 facts=[1,3]
+  → apply_forward_step log_div goal=2 facts=[1,3]
     #[4] log (y / 2 ^ k) = log y - log (2 ^ k)
   ← rewrite_goal_with_prev goal=2 facts=[4]
     #[5] log y - log (2 ^ k) = log y - of_nat k * log 2

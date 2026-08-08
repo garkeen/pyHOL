@@ -456,17 +456,17 @@ proof
   ← introduction goal=7
     #[9] x ∈ f x
     #[10] false
-  -> rewrite_fact_with_prev goal=10 facts=[5,9]
+  → rewrite_fact_with_prev goal=10 facts=[5,9]
     #[11] x ∈ {x1. ¬(x1 ∈ f x1)}
-  -> rewrite_fact member_collect sym=false goal=10 facts=[11]
+  → rewrite_fact member_collect sym=false goal=10 facts=[11]
     #[12] ¬(x ∈ f x)
   ← apply_backward_step negE goal=10 facts=[12,9]
   ← introduction goal=8
     #[13] ¬(x ∈ f x)
     #[14] false
-  -> rewrite_fact_with_prev goal=14 facts=[5,13]
+  → rewrite_fact_with_prev goal=14 facts=[5,13]
     #[15] ¬(x ∈ {x1. ¬(x1 ∈ f x1)})
-  -> rewrite_fact member_collect sym=false goal=14 facts=[15]
+  → rewrite_fact member_collect sym=false goal=14 facts=[15]
     #[16] ¬¬(x ∈ f x)
   ← apply_backward_step negE goal=14 facts=[16,13]
 qed
@@ -494,12 +494,12 @@ proof
   ← introduction goal=7
     #[9] x ∈ A
     #[10] x ∈ B
-  -> apply_forward_step subsetE goal=10 facts=[1,9]
+  → apply_forward_step subsetE goal=10 facts=[1,9]
     #[11] x ∈ B
   ← introduction goal=8
     #[12] x ∈ B
     #[13] x ∈ A
-  -> apply_forward_step subsetE goal=13 facts=[2,12]
+  → apply_forward_step subsetE goal=13 facts=[2,12]
     #[14] x ∈ A
 qed
 

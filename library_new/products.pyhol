@@ -10,17 +10,17 @@ theorem neutral_nat_mul
 proof
   ← rewrite_goal neutral_def sym=false goal=0
     #[1] (THE x::nat. ∀y. x * y = y ∧ y * x = y) = 1
-  -> apply_forward_step theI param_P="(%x::nat. ∀y. x * y = y ∧ y * x = y)" param_a="(1::nat)" goal=1
+  → apply_forward_step theI param_P="(%x::nat. ∀y. x * y = y ∧ y * x = y)" param_a="(1::nat)" goal=1
     #[2] (∀y::nat. 1 * y = y ∧ y * 1 = y) ⟶ (∀x::nat. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1) ⟶ (∀y::nat. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y)
   cut "(∀y::nat. 1 * y = y ∧ y * 1 = y)" goal=1 facts=[2]
     #[3] ∀y::nat. 1 * y = y ∧ y * 1 = y
   ← z3 goal=3
-  -> apply_fact goal=1 facts=[2,3]
+  → apply_fact goal=1 facts=[2,3]
     #[4] (∀x::nat. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1) ⟶ (∀y::nat. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y)
   cut "(∀x::nat. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1)" goal=1 facts=[4]
     #[5] ∀x::nat. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1
   ← z3 goal=5
-  -> apply_fact goal=1 facts=[4,5]
+  → apply_fact goal=1 facts=[4,5]
     #[6] ∀y::nat. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y
   ← apply_prev goal=1 facts=[5]
 qed
@@ -129,7 +129,7 @@ proof
   ← introduction goal=0
     #[1] m ≤ n + 1
     #[2] nproduct ({m..n + p}) f = nproduct ({m..n}) f * nproduct ({n + 1..n + p}) f
-  -> apply_forward_step natseg_add_split param_p=p goal=2 facts=[1]
+  → apply_forward_step natseg_add_split param_p=p goal=2 facts=[1]
     #[3] {m..n + p} = {m..n} ∪ {n + 1..n + p}
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] nproduct ({m..n} ∪ {n + 1..n + p}) f = nproduct ({m..n}) f * nproduct ({n + 1..n + p}) f
@@ -171,11 +171,11 @@ proof
     #[6] _VAR x
     #[7] x ∈ {m..n}
     #[8] 0 < f x
-  -> rewrite_fact member_natseg sym=false goal=8 facts=[7]
+  → rewrite_fact member_natseg sym=false goal=8 facts=[7]
     #[9] m ≤ x ∧ x ≤ n
-  -> apply_forward_step conjD1 goal=8 facts=[9]
+  → apply_forward_step conjD1 goal=8 facts=[9]
     #[10] m ≤ x
-  -> apply_forward_step conjD2 goal=8 facts=[9]
+  → apply_forward_step conjD2 goal=8 facts=[9]
     #[11] x ≤ n
   ← apply_prev goal=8 facts=[1]
 qed
@@ -245,7 +245,7 @@ proof
     #[7] finite ({m..n})
   ← apply_backward_step finite_natseg goal=7
     #[8] finite ({m..n})
-  -> apply_forward_step nproduct_insert param_f=f param_x="Suc n" goal=6 facts=[8]
+  → apply_forward_step nproduct_insert param_f=f param_x="Suc n" goal=6 facts=[8]
     #[9] nproduct (insert (Suc n) ({m..n})) f = (if Suc n ∈ {m..n} then nproduct ({m..n}) f else f (Suc n) * nproduct ({m..n}) f)
   cut "~(Suc n ∈ {m..n})" goal=6
     #[10] ¬(Suc n ∈ {m..n})
@@ -261,7 +261,7 @@ proof
     #[15] n ≤ n
   ← apply_backward_step less_eq_refl goal=15
     #[16] n ≤ n
-  -> rewrite_fact if_not_P sym=false goal=6 facts=[9,10]
+  → rewrite_fact if_not_P sym=false goal=6 facts=[9,10]
     #[17] nproduct (insert (Suc n) ({m..n})) f = f (Suc n) * nproduct ({m..n}) f
   ← rewrite_goal_with_prev goal=6 facts=[17]
     #[18] f (Suc n) * nproduct ({m..n}) f = nproduct ({m..n}) f * f (Suc n)
@@ -303,7 +303,7 @@ proof
     #[4] _VAR i
     #[5] i ∈ {m..n}
     #[6] f i = g i
-  -> rewrite_fact member_natseg sym=false goal=6 facts=[5]
+  → rewrite_fact member_natseg sym=false goal=6 facts=[5]
     #[7] m ≤ i ∧ i ≤ n
   ← apply_prev goal=6 facts=[1]
     #[8] m ≤ i
@@ -324,9 +324,9 @@ theorem nproduct_eq_0_natseg
   prop nproduct ({m..n}) f = 0 <--> (?x. m <= x & x <= n & f x = 0)
   [hint_rewrite]
 proof
-  -> apply_forward_step nproduct_eq_0 param_f=f param_s={m..n} goal=0
+  → apply_forward_step nproduct_eq_0 param_f=f param_s={m..n} goal=0
     #[1] finite ({m..n}) ⟶ nproduct ({m..n}) f = 0 ⟷ (∃x. x ∈ {m..n} ∧ f x = 0)
-  -> rewrite_fact member_natseg sym=false goal=0 facts=[1]
+  → rewrite_fact member_natseg sym=false goal=0 facts=[1]
     #[2] finite ({m..n}) ⟶ nproduct ({m..n}) f = 0 ⟷ (∃x. (m ≤ x ∧ x ≤ n) ∧ f x = 0)
   ← rewrite_goal conj_assoc sym=false goal=0
     #[3] nproduct ({m..n}) f = 0 ⟷ (∃x. (m ≤ x ∧ x ≤ n) ∧ f x = 0)
@@ -389,7 +389,7 @@ proof
     #[6] _VAR i
     #[7] i ∈ {m..n}
     #[8] f i ≤ g i
-  -> rewrite_fact member_natseg sym=false goal=8 facts=[7]
+  → rewrite_fact member_natseg sym=false goal=8 facts=[7]
     #[9] m ≤ i ∧ i ≤ n
   ← apply_prev goal=8 facts=[1]
     #[10] m ≤ i
@@ -437,7 +437,7 @@ proof
   ← apply_prev goal=6 facts=[1]
     #[7] m ≤ i
     #[8] i ≤ n
-  -> rewrite_fact member_natseg sym=false goal=7 facts=[5]
+  → rewrite_fact member_natseg sym=false goal=7 facts=[5]
     #[9] m ≤ i ∧ i ≤ n
   ← apply_backward_step conjD1 goal=7 facts=[9]
     #[10] m ≤ i
@@ -564,7 +564,7 @@ proof
     #[5] R (nproduct s f) (nproduct s g)
   ← rewrite_goal nproduct_def sym=false goal=5
     #[6] R (iterate times s f) (iterate times s g)
-  -> apply_forward_step iterate_related param_R=R param_f=f param_g=g param_op="(times::nat⇒nat⇒nat)" param_s=s goal=6
+  → apply_forward_step iterate_related param_R=R param_f=f param_g=g param_op="(times::nat⇒nat⇒nat)" param_s=s goal=6
     #[7] monoidal (times::nat ⇒ nat ⇒ nat) ⟶ R (neutral times) (neutral times) ⟶ (∀x1. ∀y1. ∀x2. ∀y2. R x1 x2 ⟶ R y1 y2 ⟶ R (x1 * y1) (x2 * y2)) ⟶ finite s ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (iterate times s f) (iterate times s g)
   ← apply_prev goal=6 facts=[7]
     #[8] monoidal (times::nat ⇒ nat ⇒ nat)
@@ -616,7 +616,7 @@ proof
     #[5] R (nproduct s f) (nproduct s g)
   ← rewrite_goal nproduct_def sym=false goal=5
     #[6] R (iterate times s f) (iterate times s g)
-  -> apply_forward_step iterate_related_nonempty param_R=R param_f=f param_g=g param_op="(times::nat⇒nat⇒nat)" param_s=s goal=6
+  → apply_forward_step iterate_related_nonempty param_R=R param_f=f param_g=g param_op="(times::nat⇒nat⇒nat)" param_s=s goal=6
     #[7] monoidal (times::nat ⇒ nat ⇒ nat) ⟶ (∀x1. ∀y1. ∀x2. ∀y2. R x1 x2 ⟶ R y1 y2 ⟶ R (x1 * y1) (x2 * y2)) ⟶ finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (iterate times s f) (iterate times s g)
   ← apply_prev goal=6 facts=[7]
     #[8] monoidal (times::nat ⇒ nat ⇒ nat)
@@ -642,17 +642,17 @@ proof
   ← introduction goal=0
     #[1] m ≤ n
     #[2] nproduct ({m..n}) f = f m * nproduct ({m + 1..n}) f
-  -> apply_forward_step natseg_lrec goal=2 facts=[1]
+  → apply_forward_step natseg_lrec goal=2 facts=[1]
     #[3] {m..n} = insert m ({m + 1..n})
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] nproduct (insert m ({m + 1..n})) f = f m * nproduct ({m + 1..n}) f
-  -> apply_forward_step nproduct_insert param_f=f param_s="{m + 1..n}" param_x=m goal=4
+  → apply_forward_step nproduct_insert param_f=f param_s="{m + 1..n}" param_x=m goal=4
     #[5] finite ({m + 1..n}) ⟶ nproduct (insert m ({m + 1..n})) f = (if m ∈ {m + 1..n} then nproduct ({m + 1..n}) f else f m * nproduct ({m + 1..n}) f)
   cut "finite ({m + 1..n})" goal=4
     #[6] finite ({m + 1..n})
   ← apply_backward_step finite_natseg goal=6
     #[7] finite ({m + 1..n})
-  -> apply_fact goal=4 facts=[5,7]
+  → apply_fact goal=4 facts=[5,7]
     #[8] nproduct (insert m ({m + 1..n})) f = (if m ∈ {m + 1..n} then nproduct ({m + 1..n}) f else f m * nproduct ({m + 1..n}) f)
   cut "~(m ∈ {m + 1..n})" goal=4
     #[9] ¬(m ∈ {m + 1..n})
@@ -664,7 +664,7 @@ proof
     #[12] ¬(m + 1 ≤ m)
   ← z3 goal=12
     #[13] ¬(m + 1 ≤ m)
-  -> rewrite_fact if_not_P sym=false goal=4 facts=[8,9]
+  → rewrite_fact if_not_P sym=false goal=4 facts=[8,9]
 qed
 
 theorem nproduct_clauses_right
@@ -839,17 +839,17 @@ theorem neutral_int_mul
 proof
   ← rewrite_goal neutral_def sym=false goal=0
     #[1] (THE x::int. ∀y. x * y = y ∧ y * x = y) = 1
-  -> apply_forward_step theI param_P="(%x::int. ∀y. x * y = y ∧ y * x = y)" param_a="(1::int)" goal=1
+  → apply_forward_step theI param_P="(%x::int. ∀y. x * y = y ∧ y * x = y)" param_a="(1::int)" goal=1
     #[2] (∀y::int. 1 * y = y ∧ y * 1 = y) ⟶ (∀x::int. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1) ⟶ (∀y::int. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y)
   cut "(∀y::int. 1 * y = y ∧ y * 1 = y)" goal=1
     #[3] ∀y::int. 1 * y = y ∧ y * 1 = y
   ← z3 goal=3
-  -> apply_fact goal=1 facts=[2,3]
+  → apply_fact goal=1 facts=[2,3]
     #[4] (∀x::int. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1) ⟶ (∀y::int. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y)
   cut "(∀x::int. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1)" goal=1
     #[5] ∀x::int. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1
   ← z3 goal=5
-  -> apply_fact goal=1 facts=[4,5]
+  → apply_fact goal=1 facts=[4,5]
     #[6] ∀y::int. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y
   ← apply_prev goal=1 facts=[5]
 qed
@@ -981,7 +981,7 @@ proof
   ← introduction goal=0
     #[1] m ≤ n + 1
     #[2] product ({m..n + p}) f = product ({m..n}) f * product ({n + 1..n + p}) f
-  -> apply_forward_step natseg_add_split param_p=p goal=2 facts=[1]
+  → apply_forward_step natseg_add_split param_p=p goal=2 facts=[1]
     #[3] {m..n + p} = {m..n} ∪ {n + 1..n + p}
   ← rewrite_goal_with_prev goal=2 facts=[3]
     #[4] product ({m..n} ∪ {n + 1..n + p}) f = product ({m..n}) f * product ({n + 1..n + p}) f

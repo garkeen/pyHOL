@@ -32,9 +32,9 @@ theorem sum_pair_from_0
   prop sum ({0..2 * n + 1}) f = sum ({0..n}) (%i. f (2 * i) + f (2 * i + 1))
   [hint_rewrite]
 proof
-  -> apply_forward_step sum_pair param_f=f param_m="(0::nat)" param_n=n goal=0
+  → apply_forward_step sum_pair param_f=f param_m="(0::nat)" param_n=n goal=0
     #[1] sum ({2 * 0..2 * n + 1}) f = sum ({0..n}) (λi. f (2 * i) + f (2 * i + 1))
-  -> rewrite_fact mult_0_right sym=false goal=0 facts=[1]
+  → rewrite_fact mult_0_right sym=false goal=0 facts=[1]
 qed
 
 theorem taylor_cos
@@ -42,9 +42,9 @@ theorem taylor_cos
   prop abs (cos x - sum ({0..n}) (%i. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) <= abs x ^ (2 * n + 2) / of_nat (fact (2 * n + 2))
   [hint_backward]
 proof
-  -> apply_forward_step taylor_cos_raw param_n="2 * n + 1" param_x=x goal=0
+  → apply_forward_step taylor_cos_raw param_n="2 * n + 1" param_x=x goal=0
     #[1] abs (cos x - sum ({0..2 * n + 1}) (λk. if even k then -1 ^ (k DIV 2) * x ^ k / of_nat (fact k) else 0)) ≤ abs x ^ (2 * n + 1 + 1) / of_nat (fact (2 * n + 1 + 1))
-  -> rewrite_fact sum_pair_from_0 sym=false goal=0 facts=[1]
+  → rewrite_fact sum_pair_from_0 sym=false goal=0 facts=[1]
     #[2] abs (cos x - sum ({0..n}) (λi. (if even (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if even (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0))) ≤ abs x ^ (2 * n + 1 + 1) / of_nat (fact (2 * n + 1 + 1))
   cut "!i. (if even (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if even (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)" goal=0
     #[3] ∀i. (if even (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if even (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)
@@ -77,12 +77,12 @@ proof
   ← rewrite_goal real_divide_def sym=false goal=15
     #[16] -1 ^ i * x ^ (2 * i) * real_inverse (of_nat (fact (2 * i))) = -1 ^ i * real_inverse (of_nat (fact (2 * i))) * x ^ (2 * i)
   real_norm goal=16
-  -> rewrite_fact_with_prev goal=0 facts=[3,2]
+  → rewrite_fact_with_prev goal=0 facts=[3,2]
     #[17] abs (cos x - sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ abs x ^ (2 * n + 1 + 1) / of_nat (fact (2 * n + 1 + 1))
   cut "2 * n + 1 + 1 = 2 * n + 2" goal=0 facts=[17]
     #[18] 2 * n + 1 + 1 = 2 * n + 2
   nat_norm goal=18
-  -> rewrite_fact_with_prev goal=0 facts=[18,17]
+  → rewrite_fact_with_prev goal=0 facts=[18,17]
 qed
 
 theorem cos_poly_upper_bound
@@ -120,15 +120,15 @@ proof
   ← introduction goal=4
     #[16] ¬(n = 0)
     #[17] cos x ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))
-  -> apply_forward_step le_1_1 goal=17 facts=[16]
+  → apply_forward_step le_1_1 goal=17 facts=[16]
     #[18] 0 < n
-  -> apply_forward_step lt_imp_le goal=17 facts=[18]
+  → apply_forward_step lt_imp_le goal=17 facts=[18]
     #[19] 0 ≤ n
-  -> apply_forward_step sum_clauses_right param_f="" goal=17 facts=[18,19]
+  → apply_forward_step sum_clauses_right param_f="" goal=17 facts=[18,19]
     #[20] ∀f. sum ({0..n}) f = sum ({0..n - 1}) f + f n
   ← rewrite_goal_with_prev goal=17 facts=[20]
     #[21] cos x ≤ sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) + -1 ^ n / of_nat (fact (2 * n)) * x ^ (2 * n)
-  -> apply_forward_step taylor_cos param_n=n-1 param_x=x goal=21
+  → apply_forward_step taylor_cos param_n=n-1 param_x=x goal=21
     #[22] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ abs x ^ (2 * (n - 1) + 2) / of_nat (fact (2 * (n - 1) + 2))
   cut "-1 ^ n = (1::real)" goal=21
     #[23] -(1::real) ^ n = 1
@@ -156,7 +156,7 @@ proof
     #[35] 2 * (n - 1) + 2 = 2 * n
   ← z3 goal=35 facts=[16]
     #[36] 2 * (n - 1) + 2 = 2 * n
-  -> rewrite_fact_with_prev goal=34 facts=[36,22]
+  → rewrite_fact_with_prev goal=34 facts=[36,22]
     #[37] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ abs x ^ (2 * n) / of_nat (fact (2 * n))
   cut "abs x ^ (2 * n) = x ^ (2 * n)" goal=34
     #[38] abs x ^ (2 * n) = x ^ (2 * n)
@@ -172,7 +172,7 @@ proof
     #[43] abs (abs x) = abs x
   ← rewrite_goal real_abs_abs sym=false goal=43
     #[44] abs (abs x) = abs x
-  -> rewrite_fact_with_prev goal=34 facts=[38,37]
+  → rewrite_fact_with_prev goal=34 facts=[38,37]
     #[45] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ x ^ (2 * n) / of_nat (fact (2 * n))
   cut "!x::real. !y. !z. abs (x-y) <= z --> x <= y + z" goal=34
     #[46] ∀x::real. ∀y. ∀z. abs (x - y) ≤ z ⟶ x ≤ y + z
@@ -189,7 +189,7 @@ proof
   ← introduction goal=0
     #[1] odd n
     #[2] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) ≤ cos x
-  -> rewrite_fact not_even sym=true goal=2 facts=[1]
+  → rewrite_fact not_even sym=true goal=2 facts=[1]
     #[3] ¬(even n)
   cut "~(n=0)" goal=2
     #[4] ¬(n = 0)
@@ -206,15 +206,15 @@ proof
     #[10] true
   ← apply_backward_step trueI goal=10
     #[11] true
-  -> apply_forward_step le_1_1 goal=2 facts=[4]
+  → apply_forward_step le_1_1 goal=2 facts=[4]
     #[12] 0 < n
-  -> apply_forward_step lt_imp_le goal=2 facts=[12]
+  → apply_forward_step lt_imp_le goal=2 facts=[12]
     #[13] 0 ≤ n
-  -> apply_forward_step sum_clauses_right param_f="(λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))" goal=2 facts=[12,13]
+  → apply_forward_step sum_clauses_right param_f="(λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))" goal=2 facts=[12,13]
     #[14] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) = sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) + -1 ^ n / of_nat (fact (2 * n)) * x ^ (2 * n)
   ← rewrite_goal_with_prev goal=2 facts=[14]
     #[15] sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) + -1 ^ n / of_nat (fact (2 * n)) * x ^ (2 * n) ≤ cos x
-  -> apply_forward_step taylor_cos param_n=n-1 param_x=x goal=15
+  → apply_forward_step taylor_cos param_n=n-1 param_x=x goal=15
     #[16] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ abs x ^ (2 * (n - 1) + 2) / of_nat (fact (2 * (n - 1) + 2))
   cut "-(1::real) ^ n = -1" goal=15
     #[17] -(1::real) ^ n = -1
@@ -229,7 +229,7 @@ proof
   cut "2 * (n - 1) + 2 = 2 * n" goal=21 facts=[16]
     #[22] 2 * (n - 1) + 2 = 2 * n
   ← z3 goal=22 facts=[12]
-  -> rewrite_fact_with_prev goal=21 facts=[22,16]
+  → rewrite_fact_with_prev goal=21 facts=[22,16]
     #[23] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ abs x ^ (2 * n) / of_nat (fact (2 * n))
   cut "∀a. ∀b. -1 / a * b = -(b / a)" goal=21
     #[24] ∀a. ∀b. -1 / a * b = -(b / a)
@@ -257,7 +257,7 @@ proof
     #[36] abs (abs x) = abs x
   ← rewrite_goal real_abs_abs sym=false goal=36
     #[37] abs (abs x) = abs x
-  -> rewrite_fact_with_prev goal=30 facts=[31,23]
+  → rewrite_fact_with_prev goal=30 facts=[31,23]
     #[38] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ x ^ (2 * n) / of_nat (fact (2 * n))
   cut "∀x::real. ∀y. ∀z. abs (x - y) ≤ z ⟶ y + -z ≤ x" goal=30
     #[39] ∀x::real. ∀y. ∀z. abs (x - y) ≤ z ⟶ y + -z ≤ x
@@ -296,7 +296,7 @@ theorem taylor_sin
   prop abs (sin x - sum ({0..n}) (%i. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) <= abs x ^ (2 * n + 3) / of_nat (fact (2 * n + 3))
   [hint_backward]
 proof
-  -> apply_forward_step taylor_sin_raw param_n=2*n+2 param_x=x goal=0
+  → apply_forward_step taylor_sin_raw param_n=2*n+2 param_x=x goal=0
     #[1] abs (sin x - sum ({0..2 * n + 2}) (λk. if odd k then -1 ^ (k DIV 2) * x ^ k / of_nat (fact k) else 0)) ≤ abs x ^ (2 * n + 2 + 1) / of_nat (fact (2 * n + 2 + 1))
   cut "!f. sum ({0..2 * n + 2}) (λk. if odd k then f k else 0) = sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)" goal=0
     #[2] ∀f. sum ({0..2 * n + 2}) (λk. if odd k then f k else 0) = sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)
@@ -331,9 +331,9 @@ proof
   ← rewrite_goal if_not_P sym=false goal=10 facts=[11]
     #[16] sum ({0..2 * n + 1}) (λk. if odd k then f k else 0) + 0 = sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)
   ← rewrite_goal real_add_rid sym=false goal=16
-  -> rewrite_fact_with_prev goal=0 facts=[2,1]
+  → rewrite_fact_with_prev goal=0 facts=[2,1]
     #[17] abs (sin x - sum ({0..2 * n + 1}) (λk. if odd k then -1 ^ (k DIV 2) * x ^ k / of_nat (fact k) else 0)) ≤ abs x ^ (2 * n + 2 + 1) / of_nat (fact (2 * n + 2 + 1))
-  -> rewrite_fact sum_pair_from_0 sym=false goal=0 facts=[17]
+  → rewrite_fact sum_pair_from_0 sym=false goal=0 facts=[17]
     #[18] abs (sin x - sum ({0..n}) (λi. (if odd (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if odd (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0))) ≤ abs x ^ (2 * n + 2 + 1) / of_nat (fact (2 * n + 2 + 1))
   cut "!i. (if odd (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if odd (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)" goal=0
     #[19] ∀i. (if odd (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if odd (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)
@@ -375,12 +375,12 @@ proof
   ← apply_prev goal=33 facts=[34]
     #[36] ∀b. ∀c. -1 ^ i * b / c = -1 ^ i / c * b
     #[37] ∀c. -1 ^ i * x ^ (2 * i + 1) / c = -1 ^ i / c * x ^ (2 * i + 1)
-  -> rewrite_fact_with_prev goal=0 facts=[19,18]
+  → rewrite_fact_with_prev goal=0 facts=[19,18]
     #[38] abs (sin x - sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) ≤ abs x ^ (2 * n + 2 + 1) / of_nat (fact (2 * n + 2 + 1))
   cut "2 * n + 2 + 1 = 2 * n + 3" goal=0 facts=[38]
     #[39] 2 * n + 2 + 1 = 2 * n + 3
   nat_norm goal=39
-  -> rewrite_fact_with_prev goal=0 facts=[39,38]
+  → rewrite_fact_with_prev goal=0 facts=[39,38]
 qed
 
 theorem sin_pos_poly_upper_bound
@@ -397,7 +397,7 @@ proof
     #[1] 0 ≤ x
     #[2] odd n
     #[3] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) ≤ sin x
-  -> rewrite_fact not_even sym=true goal=3 facts=[2]
+  → rewrite_fact not_even sym=true goal=3 facts=[2]
     #[4] ¬(even n)
   cut "~(n=0)" goal=3
     #[5] ¬(n = 0)
@@ -414,13 +414,13 @@ proof
     #[11] true
   ← apply_backward_step trueI goal=11
     #[12] true
-  -> apply_forward_step le_1_1 goal=3 facts=[5]
+  → apply_forward_step le_1_1 goal=3 facts=[5]
     #[13] 0 < n
-  -> apply_forward_step lt_imp_le goal=3 facts=[13]
+  → apply_forward_step lt_imp_le goal=3 facts=[13]
     #[14] 0 ≤ n
-  -> apply_forward_step sum_clauses_right param_f="(λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))" goal=3 facts=[13,14]
+  → apply_forward_step sum_clauses_right param_f="(λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))" goal=3 facts=[13,14]
     #[15] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) = sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) + -1 ^ n / of_nat (fact (2 * n + 1)) * x ^ (2 * n + 1)
-  -> apply_forward_step taylor_sin param_n=n-1 param_x=x goal=3
+  → apply_forward_step taylor_sin param_n=n-1 param_x=x goal=3
     #[16] abs (sin x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) ≤ abs x ^ (2 * (n - 1) + 3) / of_nat (fact (2 * (n - 1) + 3))
   ← rewrite_goal_with_prev goal=3 facts=[15]
     #[17] sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) + -1 ^ n / of_nat (fact (2 * n + 1)) * x ^ (2 * n + 1) ≤ sin x
@@ -437,7 +437,7 @@ proof
   cut "2 * (n - 1) + 3 = 2 * n + 1" goal=22
     #[23] 2 * (n - 1) + 3 = 2 * n + 1
   ← z3 goal=23 facts=[13]
-  -> rewrite_fact_with_prev goal=22 facts=[23,16]
+  → rewrite_fact_with_prev goal=22 facts=[23,16]
     #[24] abs (sin x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) ≤ abs x ^ (2 * n + 1) / of_nat (fact (2 * n + 1))
   cut "abs x ^ (2 * n + 1) = x ^ (2 * n + 1)" goal=22
     #[25] abs x ^ (2 * n + 1) = x ^ (2 * n + 1)
@@ -459,7 +459,7 @@ proof
     #[33] (if 0 ≤ x then x else -x) = x
   ← rewrite_goal if_P sym=false goal=33 facts=[1]
     #[34] (if 0 ≤ x then x else -x) = x
-  -> rewrite_fact_with_prev goal=22 facts=[25,24]
+  → rewrite_fact_with_prev goal=22 facts=[25,24]
     #[35] abs (sin x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) ≤ x ^ (2 * n + 1) / of_nat (fact (2 * n + 1))
   cut "∀a. ∀b. ∀c. ∀d. ~(d = 0) --> abs (a - b) ≤ c / d ⟶ b + -1 / d * c ≤ a" goal=22
     #[36] ∀a. ∀b. ∀c. ∀d. ¬(d = 0) ⟶ abs (a - b) ≤ c / d ⟶ b + -1 / d * c ≤ a
@@ -488,9 +488,9 @@ proof
     #[4] 0 ≤ -x
   ← z3 goal=4 facts=[1]
     #[5] 0 ≤ -x
-  -> apply_forward_step sin_pos_poly_lower_bound goal=3 facts=[5,2]
+  → apply_forward_step sin_pos_poly_lower_bound goal=3 facts=[5,2]
     #[6] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -x ^ (2 * i + 1)) ≤ sin (-x)
-  -> rewrite_fact sin_neg sym=false goal=3 facts=[6]
+  → rewrite_fact sin_neg sym=false goal=3 facts=[6]
     #[7] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -x ^ (2 * i + 1)) ≤ -(sin x)
   cut "!i::nat. -x ^ (2 * i + 1) = -(x ^ (2 * i + 1))" goal=3
     #[8] ∀i::nat. -x ^ (2 * i + 1) = -(x ^ (2 * i + 1))
@@ -510,13 +510,13 @@ proof
   ← apply_backward_step even_double goal=15
     #[16] even (2 * i)
   ← rewrite_goal if_not_P sym=false goal=11 facts=[12]
-  -> rewrite_fact_with_prev goal=3 facts=[8,7]
+  → rewrite_fact_with_prev goal=3 facts=[8,7]
     #[17] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -(x ^ (2 * i + 1))) ≤ -(sin x)
-  -> rewrite_fact real_mul_rneg sym=false goal=3 facts=[17]
+  → rewrite_fact real_mul_rneg sym=false goal=3 facts=[17]
     #[18] sum ({0..n}) (λi. -(-1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) ≤ -(sin x)
-  -> rewrite_fact sum_neg sym=false goal=3 facts=[18]
+  → rewrite_fact sum_neg sym=false goal=3 facts=[18]
     #[19] -(sum ({0..n}) (λx1. -1 ^ x1 / of_nat (fact (2 * x1 + 1)) * x ^ (2 * x1 + 1))) ≤ -(sin x)
-  -> rewrite_fact real_le_lneg2 sym=false goal=3 facts=[19]
+  → rewrite_fact real_le_lneg2 sym=false goal=3 facts=[19]
 qed
 
 theorem sin_neg_poly_lower_bound
@@ -532,9 +532,9 @@ proof
     #[4] 0 ≤ -x
   ← z3 goal=4 facts=[1]
     #[5] 0 ≤ -x
-  -> apply_forward_step sin_pos_poly_upper_bound goal=3 facts=[5,2]
+  → apply_forward_step sin_pos_poly_upper_bound goal=3 facts=[5,2]
     #[6] sin (-x) ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -x ^ (2 * i + 1))
-  -> rewrite_fact sin_neg sym=false goal=3 facts=[6]
+  → rewrite_fact sin_neg sym=false goal=3 facts=[6]
     #[7] -(sin x) ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -x ^ (2 * i + 1))
   cut "!i::nat. -x ^ (2 * i + 1) = -(x ^ (2 * i + 1))" goal=3
     #[8] ∀i::nat. -x ^ (2 * i + 1) = -(x ^ (2 * i + 1))
@@ -554,12 +554,12 @@ proof
   ← apply_backward_step even_double goal=15
     #[16] even (2 * i)
   ← rewrite_goal if_not_P sym=false goal=11 facts=[12]
-  -> rewrite_fact_with_prev goal=3 facts=[8,7]
+  → rewrite_fact_with_prev goal=3 facts=[8,7]
     #[17] -(sin x) ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -(x ^ (2 * i + 1)))
-  -> rewrite_fact real_mul_rneg sym=false goal=3 facts=[17]
+  → rewrite_fact real_mul_rneg sym=false goal=3 facts=[17]
     #[18] -(sin x) ≤ sum ({0..n}) (λi. -(-1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)))
-  -> rewrite_fact sum_neg sym=false goal=3 facts=[18]
+  → rewrite_fact sum_neg sym=false goal=3 facts=[18]
     #[19] -(sin x) ≤ -(sum ({0..n}) (λx1. -1 ^ x1 / of_nat (fact (2 * x1 + 1)) * x ^ (2 * x1 + 1)))
-  -> rewrite_fact real_le_lneg2 sym=false goal=3 facts=[19]
+  → rewrite_fact real_le_lneg2 sym=false goal=3 facts=[19]
 qed
 

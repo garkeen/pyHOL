@@ -4,7 +4,7 @@
        :style="styleObject" 
        @mouseenter="hover = can_select"
        @mouseleave="hover = false">
-    <span style="display:inline-block;width:40px">{{line.id}}</span>
+    <span style="display:inline-block;width:40px">#{{line.sid}}</span>
     <span class="dir-mark" :class="dirClass">{{dirMark}}</span>
     <span class="item-text" v-html="indent"/>
     <span v-if="line.rule === 'assume'">
@@ -97,11 +97,9 @@ const dirClass = computed(() => {
 
 const indent = computed(() => {
   let result = ''
-  if (props.line && props.line.id) {
-    for (let i = 0; i < props.line.id.length; i++) {
-      if (props.line.id[i] === '.') {
-        result += '&nbsp;&nbsp;'
-      }
+  if (props.line && props.line.indent !== undefined) {
+    for (let i = 0; i < props.line.indent; i++) {
+      result += '&nbsp;&nbsp;'
     }
   }
   return result
