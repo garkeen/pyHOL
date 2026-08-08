@@ -318,29 +318,7 @@ def _export_theorem(item):
 
     return lines
 
-
-def _export_step(step):
-    """Export a step dict to a single .pyhol line.
-    
-    Format: <goal_id>: <method_shorthand> [<positional>] [key=value ...]
-    """
-    method = step['method_name']
-    goal_id = step.get('goal_id', '0')
-
-    # Determine shorthand and positional args
-    positional, named = _step_to_args(method, step)
-
-    parts = ['%s:' % goal_id, method]
-    if positional:
-        parts.extend(positional)
-    for k, v in sorted(named.items()):
-        parts.append('%s=%s' % (k, _quote_if_needed(v)))
-
-    return ' '.join(parts)
-
-
-# Method → (positional_keys, remaining_keys are named)
-# positional_keys are extracted in order and placed as bare args
+# Method -> (positional_keys, remaining_keys are named)
 _METHOD_POSITIONAL = {
     'induction': ['var', 'theorem'],
     'rewrite_goal': ['theorem'],
@@ -349,12 +327,12 @@ _METHOD_POSITIONAL = {
     'apply_forward_step': ['theorem'],
     'apply_resolve_step': ['theorem'],
     'introduction': ['names'],
-    'apply_prev': [],  # fact_ids handled specially
+    'apply_prev': [],
     'rewrite_goal_with_prev': [],
     'rewrite_fact_with_prev': [],
     'apply_fact': [],
     'revert_intro': [],
-    'cut': ['goal'],
+    'cut': ['cut_goal'],
     'cases': ['case'],
     'forall_elim': ['s'],
     'exists_elim': ['names'],
@@ -374,8 +352,27 @@ _METHOD_POSITIONAL = {
 # Keys to skip (goal_id and method_name are handled separately)
 _SKIP_KEYS = {'method_name', 'goal_id'}
 
-# Keys that are fact_ids arrays → format as comma-separated
+# Keys that are fact_ids arrays -> format as comma-separated
 _FACT_KEYS = {'fact_ids'}
+
+
+def _export_step(step):
+    """Export a step dict to a single .pyhol line.
+    
+    Format: <goal_id>: <method_shorthand> [<positional>] [key=value ...]
+    """
+    method = step['method_name']
+    goal_id = step.get('goal_id', '0')
+
+    positional, named = _step_to_args(method, step)
+
+    parts = ['%s:' % goal_id, method]
+    if positional:
+        parts.extend(positional)
+    for k, v in sorted(named.items()):
+        parts.append('%s=%s' % (k, _quote_if_needed(v)))
+
+    return ' '.join(parts)
 
 
 def _step_to_args(method, step):
@@ -868,7 +865,7 @@ def _parse_thm_body(lines, i, result):
             if attrs_str:
                 result['attributes'] = [a.strip() for a in attrs_str.split(',')]
             i += 1
-        elif line == '  proof':
+        elif line.strip() == 'proof':
             # Start of proof block
             i += 1
             steps, i = _parse_proof_block(lines, i)
@@ -887,8 +884,9 @@ def _parse_thm_body(lines, i, result):
 
 
 def _parse_proof_block(lines, i):
-    """Parse a proof block until 'qed'."""
+    """Parse a proof block until 'qed'. Supports new #[N] format."""
     steps = []
+    current_step = None
     while i < len(lines):
         line = lines[i].rstrip()
         if not line or line.startswith('--'):
@@ -896,48 +894,79 @@ def _parse_proof_block(lines, i):
             continue
         if line.strip() == 'qed':
             return steps, i + 1
-        if line.startswith('    '):
-            step_line = line.strip()
-            step = _parse_step_line(step_line)
+        stripped = line.strip()
+        # #[N] annotation line
+        m_ann = re.match(r'^#\[(\d+)\]\s*(.*)$', stripped)
+        if m_ann and current_step is not None:
+            current_step.setdefault('new_ids', []).append(int(m_ann.group(1)))
+            i += 1
+            continue
+        # Method call line (indented)
+        if line.startswith('    ') or line.startswith('  '):
+            step = _parse_step_line(stripped)
             if step:
                 steps.append(step)
+                current_step = step
             i += 1
         else:
-            # End of proof block without qed
             break
     return steps, i
 
 
 def _parse_step_line(line):
-    """Parse a step line: goal_id: method [args] [key=value ...]
-    
-    Examples:
-        0: induction x nat_induct
-        0: rewrite nat_plus_def_1 sym=false
-        1.2: rewrite_with_prev @1.1
-        0: cut "A & B --> B & A"
-        0: call rule conjI
-    """
-    # Split goal_id: from the rest
-    m = re.match(r'^(\S+):\s+(.+)$', line)
-    if not m:
-        return None
-    goal_id = m.group(1)
-    rest = m.group(2).strip()
+    """Parse a new-format step line.
 
-    # Tokenize the rest (handle quoted strings)
-    tokens = _tokenize_step(rest)
+    Format: [← |-> ] method_name [positional_args] [key=value ...] goal=N [facts=[N,...]]
+    """
+    # Strip direction prefix
+    direction = ''
+    if line.startswith('← '):
+        direction = '←'
+        line = line[2:]
+    elif line.startswith('→ '):
+        direction = '→'
+        line = line[2:]
+    
+    # Tokenize
+    tokens = _tokenize_step(line.strip())
     if not tokens:
         return None
 
     method_name = tokens[0]
-    args = tokens[1:]
+    rest_tokens = tokens[1:]
 
-    # Build step dict
-    step = {'method_name': method_name, 'goal_id': goal_id}
+    step = {'method_name': method_name}
 
-    # Parse args based on method
-    _apply_step_args(method_name, args, step)
+    # Extract goal=N and facts=[N,...]
+    remaining = []
+    for tok in rest_tokens:
+        m_goal = re.match(r'^goal=(\d+)$', tok)
+        if m_goal:
+            step['goal'] = int(m_goal.group(1))
+            continue
+        m_facts = re.match(r'^facts=\[([\d,\s]*)\]$', tok)
+        if m_facts:
+            fact_str = m_facts.group(1).strip()
+            step['facts'] = [int(f.strip()) for f in fact_str.split(',')] if fact_str else []
+            continue
+        remaining.append(tok)
+
+    # Parse remaining as positional + named args
+    pos_keys = _METHOD_POSITIONAL.get(method_name, [])
+    for i, tok in enumerate(remaining):
+        if '=' in tok and not tok.startswith('"'):
+            k, v = tok.split('=', 1)
+            if v.startswith('"') and v.endswith('"'):
+                v = v[1:-1]
+            step[k] = v
+        elif i < len(pos_keys):
+            val = tok
+            if val.startswith('"') and val.endswith('"'):
+                val = val[1:-1]
+            step[pos_keys[i]] = val
+        else:
+            # Extra positional arg
+            pass
 
     return step
 

@@ -19,25 +19,23 @@ from syntax import parser
 
 def testSteps(self, thy_name, thm_name, *, no_gaps=True, print_proof=False, \
               print_steps=False):
-    """Test list of steps for the given theorem."""
+    """Test list of steps for the given theorem using stable-ID pipeline."""
+    from server.stable_state import StableProofState
     def test_val(val):
-        context.set_context(None, vars=val['vars'])
-        state = server.parse_init_state(val['prop'])
-        goal = state.prf.items[-1].th
+        context.set_context(None, vars=val.get('vars', {}))
+        sps = StableProofState.create(val['prop'], val.get('vars', {}))
         if 'steps' not in val:
             print("%20s %s" % (val['name'], "No steps found"))
             return
 
         for i, step in enumerate(val['steps']):
-            if print_steps:
-                if 'fact_ids' not in step:
-                    step['fact_ids'] = []
-                print(method.output_step(state, step))
-            method.apply_method(state, step)
-        self.assertEqual(state.check_proof(no_gaps=no_gaps), goal)
+            ok = sps.apply_method_dict(step)
+            if not ok:
+                self.fail("replay failed at step %d: %s" % (i, step.get('method_name', '?')))
+        sps.check_proof(no_gaps=no_gaps)
         if print_proof:
             print("Final state:")
-            print(state.prf)
+            print(sps.state.prf)
         
     basic.load_theory(thy_name, limit=('thm', thm_name))
     from syntax import pyhol

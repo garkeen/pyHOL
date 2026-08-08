@@ -5,126 +5,167 @@ description "Real gamma functions and Euler_Mascheroni const. Refer to gamma.ml 
 def euler_mascheroni :: real = euler_mascheroni = reallim sequentially (λn. sum ({1..n}) (λk. real_inverse (of_nat k)) - log (of_nat n)) [hint_rewrite]
 
 theorem euler_mascheroni
-  prop tendsto_real (λn. sum ({1..n}) (λk. real_inverse (of_nat k)) - log (of_nat n)) euler_mascheroni sequentially
+  prop tendsto_real (%n. sum ({1..n}) (%k. real_inverse (of_nat k)) - log (of_nat n)) euler_mascheroni sequentially
   [hint_backward]
 
 def gamma :: real ⇒ real = gamma x = reallim sequentially (λn. of_nat n ^ x * of_nat (fact n) / product ({0..n}) (λm. x + of_nat m)) [hint_rewrite]
 
 theorem gamma
   fixes x :: real
-  prop tendsto_real (λn. of_nat n ^ x * of_nat (fact n) / product ({0..n}) (λm. x + of_nat m)) (gamma x) sequentially
+  prop tendsto_real (%n. of_nat n ^ x * of_nat (fact n) / product ({0..n}) (%m. x + of_nat m)) (gamma x) sequentially
   [hint_backward]
 
 theorem gamma_eq_0
   fixes x :: real
-  prop gamma x = 0 ⟷ (∃n. x + of_nat n = 0)
+  prop gamma x = 0 <--> (?n. x + of_nat n = 0)
   [hint_rewrite]
 
 theorem real_differentiable_at_gamma
   fixes x :: real
-  prop (∀n. ¬(x + of_nat n = 0)) ⟶ real_differentiable gamma (atreal x)
+  prop (!n. ~(x + of_nat n = 0)) --> real_differentiable gamma (atreal x)
   [hint_backward]
 
 theorem real_differentiable_within_gamma
   fixes s :: real set, x :: real
-  prop (∀n. ¬(x + of_nat n = 0)) ⟶ real_differentiable gamma (within (atreal x) s)
+  prop (!n. ~(x + of_nat n = 0)) --> real_differentiable gamma (within (atreal x) s)
   [hint_backward]
-  proof
-    1: apply_backward_step real_differentiable_atreal_within
-    1: apply_backward_step real_differentiable_at_gamma
-  qed
+proof
+  ← introduction goal=0
+    #[1] ∀n. ¬(x + of_nat n = 0)
+    #[2] real_differentiable gamma (within (atreal x) s)
+  ← apply_backward_step real_differentiable_atreal_within goal=2
+    #[3] real_differentiable gamma (atreal x)
+  ← apply_backward_step real_differentiable_at_gamma goal=3
+qed
 
 theorem real_differentiable_on_gamma
   fixes s :: real set
-  prop s ⊆ {x. ∀n. ¬(x + of_nat n = 0)} ⟶ real_differentiable_on gamma s
+  prop s Sub {x. !n. ~(x + of_nat n = 0)} --> real_differentiable_on gamma s
   [hint_backward]
-  proof
-    1: rewrite_goal real_differentiable_on_differentiable sym=false
-    1: introduction x
-    1.2: apply_forward_step subsetE @0 param_x=x
-    1.3: rewrite_fact member_collect @1.2 sym=false
-    1.4: apply_backward_step real_differentiable_within_gamma
-    1.4: apply_prev @1.3
-  qed
+proof
+  ← introduction goal=0
+    #[1] s ⊆ {x. ∀n. ¬(x + of_nat n = 0)}
+    #[2] real_differentiable_on gamma s
+  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=2
+    #[3] ∀x. x ∈ s ⟶ real_differentiable gamma (within (atreal x) s)
+  ← introduction x goal=3
+    #[4] _VAR x
+    #[5] x ∈ s
+    #[6] real_differentiable gamma (within (atreal x) s)
+  → apply_forward_step subsetE param_x=x goal=6 facts=[1]
+    #[7] x ∈ s ⟶ x ∈ {x1. ∀n. ¬(x1 + of_nat n = 0)}
+  → rewrite_fact member_collect sym=false goal=6 facts=[7]
+    #[8] x ∈ s ⟶ (∀n. ¬(x + of_nat n = 0))
+  ← apply_backward_step real_differentiable_within_gamma goal=6
+    #[9] ∀n. ¬(x + of_nat n = 0)
+  ← apply_prev goal=9 facts=[8]
+qed
 
 theorem real_continuous_atreal_gamma
   fixes x :: real
-  prop (∀n. ¬(x + of_nat n = 0)) ⟶ real_continuous gamma (atreal x)
+  prop (!n. ~(x + of_nat n = 0)) --> real_continuous gamma (atreal x)
   [hint_backward]
 
 theorem real_continuous_within_gamma
   fixes s :: real set, x :: real
-  prop (∀n. ¬(x + of_nat n = 0)) ⟶ real_continuous gamma (within (atreal x) s)
+  prop (!n. ~(x + of_nat n = 0)) --> real_continuous gamma (within (atreal x) s)
   [hint_backward]
-  proof
-    1: apply_backward_step real_continuous_atreal_withinreal
-    1: apply_backward_step real_continuous_atreal_gamma
-  qed
+proof
+  ← introduction goal=0
+    #[1] ∀n. ¬(x + of_nat n = 0)
+    #[2] real_continuous gamma (within (atreal x) s)
+  ← apply_backward_step real_continuous_atreal_withinreal goal=2
+    #[3] real_continuous gamma (atreal x)
+  ← apply_backward_step real_continuous_atreal_gamma goal=3
+qed
 
 theorem real_continuous_on_gamma
   fixes s :: real set
-  prop s ⊆ {x. ∀n. ¬(x + of_nat n = 0)} ⟶ real_continuous_on gamma s
+  prop s Sub {x. !n. ~(x + of_nat n = 0)} --> real_continuous_on gamma s
   [hint_backward]
-  proof
-    1: rewrite_goal real_continuous_on_eq_continuous_within sym=false
-    1: introduction x
-    1.2: apply_backward_step real_continuous_within_gamma
-    1.2: apply_forward_step subsetE @0 param_x=x
-    1.3: rewrite_fact member_collect @1.2 sym=false
-    1.4: apply_prev @1.3
-  qed
+proof
+  ← introduction goal=0
+    #[1] s ⊆ {x. ∀n. ¬(x + of_nat n = 0)}
+    #[2] real_continuous_on gamma s
+  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=2
+    #[3] ∀x. x ∈ s ⟶ real_continuous gamma (within (atreal x) s)
+  ← introduction x goal=3
+    #[4] _VAR x
+    #[5] x ∈ s
+    #[6] real_continuous gamma (within (atreal x) s)
+  ← apply_backward_step real_continuous_within_gamma goal=6
+    #[7] ∀n. ¬(x + of_nat n = 0)
+  → apply_forward_step subsetE param_x=x goal=7 facts=[1]
+    #[8] x ∈ s ⟶ x ∈ {x1. ∀n. ¬(x1 + of_nat n = 0)}
+  → rewrite_fact member_collect sym=false goal=7 facts=[8]
+    #[9] x ∈ s ⟶ (∀n. ¬(x + of_nat n = 0))
+  ← apply_prev goal=7 facts=[9]
+qed
 
 theorem real_differentiable_atreal_recip_gamma
   fixes x :: real
-  prop real_differentiable (real_inverse ∘ gamma) (atreal x)
+  prop real_differentiable (real_inverse O gamma) (atreal x)
   [hint_backward]
 
 theorem real_differentiable_within_recip_gamma
   fixes s :: real set, x :: real
-  prop real_differentiable (real_inverse ∘ gamma) (within (atreal x) s)
+  prop real_differentiable (real_inverse O gamma) (within (atreal x) s)
   [hint_backward]
-  proof
-    0: apply_backward_step real_differentiable_atreal_within
-    0: apply_backward_step real_differentiable_atreal_recip_gamma
-  qed
+proof
+  ← apply_backward_step real_differentiable_atreal_within goal=0
+    #[1] real_differentiable (real_inverse ∘ gamma) (atreal x)
+  ← apply_backward_step real_differentiable_atreal_recip_gamma goal=1
+qed
 
 theorem real_differentiable_on_recip_gamma
   fixes s :: real set
-  prop real_differentiable_on (real_inverse ∘ gamma) s
+  prop real_differentiable_on (real_inverse O gamma) s
   [hint_backward]
-  proof
-    0: rewrite_goal real_differentiable_on_differentiable sym=false
-    0: introduction x
-    0.2: apply_backward_step real_differentiable_within_recip_gamma
-  qed
+proof
+  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=0
+    #[1] ∀x. x ∈ s ⟶ real_differentiable (real_inverse ∘ gamma) (within (atreal x) s)
+  ← introduction x goal=1
+    #[2] _VAR x
+    #[3] x ∈ s
+    #[4] real_differentiable (real_inverse ∘ gamma) (within (atreal x) s)
+  ← apply_backward_step real_differentiable_within_recip_gamma goal=4
+    #[5] real_differentiable (real_inverse ∘ gamma) (within (atreal x) s)
+qed
 
 theorem real_continuous_atreal_recip_gamma:
   fixes x :: real
-  prop real_continuous (real_inverse ∘ gamma) (atreal x)
+  prop real_continuous (real_inverse O gamma) (atreal x)
   [hint_backward]
-  proof
-    0: apply_backward_step real_differentiable_imp_continuous_atreal
-    0: apply_backward_step real_differentiable_atreal_recip_gamma
-  qed
+proof
+  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=0
+    #[1] real_differentiable (real_inverse ∘ gamma) (atreal x)
+  ← apply_backward_step real_differentiable_atreal_recip_gamma goal=1
+qed
 
 theorem real_continuous_withinreal_recip_gamm
   fixes s :: real set, x :: real
-  prop real_continuous (real_inverse ∘ gamma) (within (atreal x) s)
+  prop real_continuous (real_inverse O gamma) (within (atreal x) s)
   [hint_backward]
-  proof
-    0: apply_backward_step real_continuous_atreal_withinreal
-    0: apply_backward_step real_continuous_atreal_recip_gamma:
-  qed
+proof
+  ← apply_backward_step real_continuous_atreal_withinreal goal=0
+    #[1] real_continuous (real_inverse ∘ gamma) (atreal x)
+  ← apply_backward_step real_continuous_atreal_recip_gamma: goal=1
+qed
 
 theorem real_continuous_on_recip_gamm
   fixes s :: real set
-  prop real_continuous_on (real_inverse ∘ gamma) s
+  prop real_continuous_on (real_inverse O gamma) s
   [hint_backward]
-  proof
-    0: rewrite_goal real_continuous_on_eq_continuous_within sym=false
-    0: introduction x
-    0.2: apply_backward_step real_continuous_withinreal_recip_gamm
-  qed
+proof
+  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=0
+    #[1] ∀x. x ∈ s ⟶ real_continuous (real_inverse ∘ gamma) (within (atreal x) s)
+  ← introduction x goal=1
+    #[2] _VAR x
+    #[3] x ∈ s
+    #[4] real_continuous (real_inverse ∘ gamma) (within (atreal x) s)
+  ← apply_backward_step real_continuous_withinreal_recip_gamm goal=4
+    #[5] real_continuous (real_inverse ∘ gamma) (within (atreal x) s)
+qed
 
 theorem gamma_recurrence_alt
   fixes x :: real
@@ -152,28 +193,18 @@ theorem gamma_poles
 
 theorem gamma_simple_poles
   fixes n :: nat
-  prop tendsto_real (λx. (x + of_nat n) * gamma x) (-1 ^ n / of_nat (fact n)) (atreal (-(of_nat n)))
+  prop tendsto_real (%x. (x + of_nat n) * gamma x) (-1 ^ n / of_nat (fact n)) (atreal (-(of_nat n)))
   [hint_backward]
 
 theorem gamma_pos_le
   fixes x :: real
-  prop 0 ≤ x ⟶ 0 ≤ gamma x
+  prop 0 <= x --> 0 <= gamma x
   [hint_backward]
 
 theorem gamma_pos_lt
   fixes x :: real
-  prop 0 < x ⟶ 0 < gamma x
+  prop 0 < x --> 0 < gamma x
   [hint_backward]
-  proof
-    1: rewrite_goal real_lt_le sym=false
-    1: rewrite_fact real_lt_le @0 sym=false
-    2: apply_backward_step conjI
-    2: apply_backward_step " gamma_pos_le"
-    2: apply_backward_step conjD1 @1
-    4: rewrite_goal eq_sym_eq sym=false
-    4: rewrite_goal gamma_eq_0 sym=false
-    4: z3 @0
-  qed
 
 theorem gamma_legendre_lt
   fixes x :: real
@@ -194,119 +225,89 @@ theorem gamma_legendre
   fixes x :: real
   prop gamma x * gamma (x + 1 / 2) = 2 ^ (1 - 2 * x) * sqrt pi * gamma (2 * x)
   [hint_rewrite]
-  proof
-    0: rewrite_goal gamma_legendre_lt sym=false
-    0: rewrite_goal gamma_half sym=false
-  qed
+proof
+  ← rewrite_goal gamma_legendre_lt sym=false goal=0
+    #[1] 2 ^ (1 - 2 * x) * gamma (1 / 2) * gamma (2 * x) = 2 ^ (1 - 2 * x) * sqrt pi * gamma (2 * x)
+  ← rewrite_goal gamma_half sym=false goal=1
+qed
 
 theorem gamma_weierstrass
   fixes x :: real
-  prop tendsto_real (λn. exp (-euler_mascheroni * x) / x * product ({1..n}) (λk. exp (x / of_nat k) / (1 + x / of_nat k))) (gamma x) sequentially
+  prop tendsto_real (%n. exp (-euler_mascheroni * x) / x * product ({1..n}) (%k. exp (x / of_nat k) / (1 + x / of_nat k))) (gamma x) sequentially
   [hint_backward]
 
 theorem real_log_convex_gamma
   fixes s :: real set
-  prop (∀x. x ∈ s ⟶ 0 < x) ⟶ real_log_convex_on gamma s
+  prop (!x. x Mem s --> 0 < x) --> real_log_convex_on gamma s
   [hint_backward]
 
 theorem gamma_real_log_convex_unique
-  fixes f :: real ⇒ real
-  prop f 1 = 1 ⟶ (∀x. 0 < x ⟶ f (x + 1) = x * f x) ⟶ (∀x. 0 < x ⟶ 0 < f x) ⟶ real_log_convex_on f ({x. 0 < x}) ⟶ (∀x. 0 < x ⟶ f x = gamma x)
+  fixes f :: real => real
+  prop f 1 = 1 --> (!x. 0 < x --> f (x + 1) = x * f x) --> (!x. 0 < x --> 0 < f x) --> real_log_convex_on f ({x. 0 < x}) --> (!x. 0 < x --> f x = gamma x)
   [hint_backward,hint_backward1]
 
 theorem euler_has_real_integral_gamma
   fixes x :: real
-  prop 0 < x ⟶ has_real_integral (λt. t ^ (x - 1) / exp t) (gamma x) ({t. 0 ≤ t})
+  prop 0 < x --> has_real_integral (%t. t ^ (x - 1) / exp t) (gamma x) ({t. 0 <= t})
   [hint_backward]
 
 theorem euler_real_integral
   fixes x :: real
-  prop 0 < x ⟶ real_integral ({t. 0 ≤ t}) (λt. t ^ (x - 1) / exp t) = gamma x
+  prop 0 < x --> real_integral ({t. 0 <= t}) (%t. t ^ (x - 1) / exp t) = gamma x
   [hint_backward]
-  proof
-    1: apply_backward_step real_integral_unique
-    1: apply_backward_step euler_has_real_integral_gamma
-  qed
+proof
+  ← introduction goal=0
+    #[1] 0 < x
+    #[2] real_integral ({t. 0 ≤ t}) (λt. t ^ (x - 1) / exp t) = gamma x
+  ← apply_backward_step real_integral_unique goal=2
+    #[3] has_real_integral (λt. t ^ (x - 1) / exp t) (gamma x) ({t. 0 ≤ t})
+  ← apply_backward_step euler_has_real_integral_gamma goal=3
+qed
 
 theorem euler_real_integrable
   fixes x :: real
-  prop 0 < x ⟶ real_integrable_on (λt. t ^ (x - 1) / exp t) ({t. 0 ≤ t})
+  prop 0 < x --> real_integrable_on (%t. t ^ (x - 1) / exp t) ({t. 0 <= t})
   [hint_backward]
-  proof
-    1: rewrite_goal real_integrable_on_def sym=false
-    1: inst_exists_goal "gamma x"
-    1: apply_backward_step euler_has_real_integral_gamma @0
-  qed
+proof
+  ← introduction goal=0
+    #[1] 0 < x
+    #[2] real_integrable_on (λt. t ^ (x - 1) / exp t) ({t. 0 ≤ t})
+  ← rewrite_goal real_integrable_on_def sym=false goal=2
+    #[3] ∃y. has_real_integral (λt. t ^ (x - 1) / exp t) y ({t. 0 ≤ t})
+  ← inst_exists_goal "gamma x" goal=3
+    #[4] has_real_integral (λt. t ^ (x - 1) / exp t) (gamma x) ({t. 0 ≤ t})
+  ← apply_backward_step euler_has_real_integral_gamma goal=4 facts=[1]
+qed
 
 theorem euler_original_real_integrable
   fixes x :: real
-  prop 0 < x ⟶ real_integrable_on (λt. -(log t) ^ (x - 1)) (real_closed_interval 0 1)
+  prop 0 < x --> real_integrable_on (%t. -(log t) ^ (x - 1)) (real_closed_interval 0 1)
   [hint_backward]
 
 theorem euler_original_has_real_integral_gamma
   fixes x :: real
-  prop 0 < x ⟶ has_real_integral (λt. -(log t) ^ (x - 1)) (gamma x) (real_closed_interval 0 1)
+  prop 0 < x --> has_real_integral (%t. -(log t) ^ (x - 1)) (gamma x) (real_closed_interval 0 1)
   [hint_backward]
 
 theorem euler_original_real_integral
   fixes x :: real
-  prop 0 < x ⟶ real_integral (real_closed_interval 0 1) (λt. -(log t) ^ (x - 1)) = gamma x
+  prop 0 < x --> real_integral (real_closed_interval 0 1) (%t. -(log t) ^ (x - 1)) = gamma x
   [hint_backward]
 
 theorem sin_product
   fixes x :: real
-  prop tendsto_real (λn. x * product ({1..n}) (λm. 1 - (x / (pi * of_nat m)) ^ (2::nat))) (sin x) sequentially
+  prop tendsto_real (%n. x * product ({1..n}) (%m. 1 - (x / (pi * of_nat m)) ^ (2::nat))) (sin x) sequentially
   [hint_backward]
 
 theorem wallis_alt
-  prop tendsto_real (λn. product ({1..n}) (λk. 2 * of_nat k / (2 * of_nat k - 1) * (2 * of_nat k) / (2 * of_nat k + 1))) (pi / 2) sequentially
+  prop tendsto_real (%n. product ({1..n}) (%k. 2 * of_nat k / (2 * of_nat k - 1) * (2 * of_nat k) / (2 * of_nat k + 1))) (pi / 2) sequentially
   [hint_backward]
 
 theorem wallis
-  prop tendsto_real (λn. (2 ^ n * of_nat (fact n)) ^ (4::nat) / (of_nat (fact (2 * n)) * of_nat (fact (2 * n + 1)))) (pi / 2) sequentially
+  prop tendsto_real (%n. (2 ^ n * of_nat (fact n)) ^ (4::nat) / (of_nat (fact (2 * n)) * of_nat (fact (2 * n + 1)))) (pi / 2) sequentially
   [hint_backward]
 
 theorem gaussian_has_real_integral
-  prop has_real_integral (λx. exp (-(x ^ (2::nat)))) (sqrt pi) univ
+  prop has_real_integral (%x. exp (-(x ^ (2::nat)))) (sqrt pi) univ
   [hint_backward]
-  proof
-    0: cut "has_real_integral (λx. exp (-(x ^ (2::nat)))) (gamma(1/2)/2) {x. 0 <= x}"
-    0: apply_forward_step euler_has_real_integral_gamma param_x="(1::real)/2"
-    1: cut "0 < 1 / 2"
-    1: z3
-    2: apply_fact @0,1
-    3: cut "1 / 2 - 1 = -(1 / 2)"
-    3: real_norm
-    4: rewrite_fact_with_prev @3,2
-    5: apply_forward_step has_real_integral_rmul @4 param_c="real_inverse 2"
-    6: rewrite_fact real_divide_def @5 sym=true
-    7: rewrite_goal has_real_integral_alt sym=false
-    7: apply_backward_step conjI
-    7: rewrite_goal real_integrable_restrict_inter sym=false
-    7: rewrite_fact has_real_integral_alt @6 sym=false
-    8: apply_forward_step conjD1 @7
-    9: apply_forward_step conjD2 @7
-    10: rewrite_fact real_integrable_restrict_inter @8 sym=false
-    11: rewrite_goal inter_def sym=""
-    11: rewrite_fact inter_def @10 sym=""
-    12: rewrite_goal real_closed_interval_def sym=false
-    12: rewrite_fact real_closed_interval_def @11 sym=false
-    13: rewrite_goal member_collect sym=false
-    13: rewrite_fact member_collect @12 sym=false
-    14: cut "!a::real. !b. !x. 0 ≤ x ∧ a ≤ x ∧ x ≤ b <--> max 0 a <= x & x <= b "
-    14: z3
-    15: rewrite_goal_with_prev @14
-    15: rewrite_fact_with_prev @14,13
-    16: rewrite_goal real_closed_interval_def sym=true
-    16: rewrite_fact real_closed_interval_def @15 sym=true
-    17: cut "!P. (!a::real. P (max 0 a)) <--> (!a::real. 0 <= a --> P a)"
-    17: z3
-    18: forall_elim "(%y. (∀b. real_integrable_on (λx. exp (-(x ^ (2::nat)))) (real_closed_interval y b)))" @17
-    19: rewrite_goal_with_prev @18
-    19: cut "!a. !b. 0 <= a --> a <= b\n          --> has_real_integral (%x. exp(-(x ^ (2::nat)))) \n               (real_integral (real_closed_interval (a ^ (2::nat)) (b ^ (2::nat)))\n                             (%t. t ^ (- (1 / 2)) / exp t / 2))\n              (real_closed_interval a b)"
-    19: introduction a,b
-    19.4: apply_forward_step has_real_integral_substitution_strong param_a=a param_b=b param_c="a ^ (2::nat)" param_d="b ^ (2::nat)" param_f="(%t. t ^ (1/2-1)/exp t /2)" param_g="(%x::real. x ^ (2::nat))" param_g1="(%x::real. 2 * x)" param_k="{(0::real)}"
-    19.5: cut "has_real_integral (λx. x ^ (2::nat) ^ (1 / 2 - 1) / exp (x ^ (2::nat)) / 2 * (2 * x)) (real_integral (real_closed_interval (a ^ (2::nat)) (b ^ (2::nat))) (λt. t ^ (1 / 2 - 1) / exp t / 2)) (real_closed_interval a b)"
-    19.5: apply_prev @19.4
-    19.5: apply_backward_step countable_sing
-  qed
+

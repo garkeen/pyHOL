@@ -69,6 +69,22 @@ def _load_theory_for_proof(theory_name, thm_name, vars):
         })
 
 
+
+def _create_proof_state(prop, steps, index=None):
+    """Create proof state and replay steps using stable-ID pipeline."""
+    from server.stable_state import StableProofState
+    vars_dict = {nm: T for nm, T in context.ctxt.vars.items()}
+    sps = StableProofState.create(prop, vars_dict)
+    replay = steps[:index] if index is not None else steps
+    history = []
+    for step in replay:
+        ok = sps.apply_method_dict(step)
+        entry = {'goal': step.get('goal', 0), 'facts': step.get('facts', [])}
+        if not ok:
+            entry['error'] = {'err_type': 'ReplayError', 'err_str': 'failed at %s' % step.get('method_name', '?')}
+        history.append(entry)
+    return sps.state, history
+
 @app.route('/api/find-files', methods=['POST'])
 def find_files():
     """Return list of theory files.

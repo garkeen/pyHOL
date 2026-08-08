@@ -4,634 +4,958 @@ description "Some analytic concepts for real."
 
 theorem real_bounded_pos_lt
   fixes s :: real set
-  prop real_bounded s ⟷ (∃b. 0 < b ∧ (∀x. x ∈ s ⟶ abs x < b))
+  prop real_bounded s <--> (?b. 0 < b & (!x. x Mem s --> abs x < b))
   [hint_rewrite]
-  proof
-    0: rewrite_goal real_bounded_def sym=false
-    0: apply_backward_step iffI
-    0: introduction
-    0.1: exists_elim y @0.0
-    0.3: inst_exists_goal "1 + abs y"
-    0.3: apply_backward_step conjI
-    0.3: z3
-    0.4: z3 @0.2
-    1: introduction
-    1.1: exists_elim y @1.0
-    1.3: inst_exists_goal y
-    1.3: z3 @1.2
-  qed
+proof
+  ← rewrite_goal real_bounded_def sym=false goal=0
+    #[1] (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ⟷ (∃b. 0 < b ∧ (∀x. x ∈ s ⟶ abs x < b))
+  ← apply_backward_step iffI goal=1
+    #[2] (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ⟶ (∃b. 0 < b ∧ (∀x. x ∈ s ⟶ abs x < b))
+    #[3] (∃b. 0 < b ∧ (∀x. x ∈ s ⟶ abs x < b)) ⟶ (∃B. ∀x. x ∈ s ⟶ abs x ≤ B)
+  ← introduction goal=2
+    #[4] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
+    #[5] ∃b. 0 < b ∧ (∀x. x ∈ s ⟶ abs x < b)
+  exists_elim y goal=5 facts=[4]
+    #[6] _VAR y
+    #[7] ∀x. x ∈ s ⟶ abs x ≤ y
+    #[8] ∃b. 0 < b ∧ (∀x. x ∈ s ⟶ abs x < b)
+  ← inst_exists_goal "1 + abs y" goal=8
+    #[9] 0 < 1 + abs y ∧ (∀x. x ∈ s ⟶ abs x < 1 + abs y)
+  ← apply_backward_step conjI goal=9
+    #[10] 0 < 1 + abs y
+    #[11] ∀x. x ∈ s ⟶ abs x < 1 + abs y
+  ← z3 goal=10
+    #[12] 0 < 1 + abs y
+  ← z3 goal=11 facts=[7]
+    #[13] ∀x. x ∈ s ⟶ abs x < 1 + abs y
+  ← introduction goal=3
+    #[14] ∃b. 0 < b ∧ (∀x. x ∈ s ⟶ abs x < b)
+    #[15] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
+  exists_elim y goal=15 facts=[14]
+    #[16] 0 < y ∧ (∀x. x ∈ s ⟶ abs x < y)
+    #[17] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
+  ← inst_exists_goal y goal=17
+    #[18] ∀x. x ∈ s ⟶ abs x ≤ y
+  ← z3 goal=18 facts=[16]
+    #[19] ∀x. x ∈ s ⟶ abs x ≤ y
+qed
 
 theorem real_bounded_subset
   fixes s :: real set, t :: real set
-  prop real_bounded t ⟶ s ⊆ t ⟶ real_bounded s
+  prop real_bounded t --> s Sub t --> real_bounded s
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    2: rewrite_goal real_bounded_def sym=false
-    2: rewrite_fact real_bounded_def @0 sym=false
-    3: z3 @1,2
-  qed
+proof
+  ← introduction goal=0
+    #[1] real_bounded t
+    #[2] s ⊆ t
+    #[3] real_bounded s
+  ← rewrite_goal real_bounded_def sym=false goal=3
+    #[4] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
+  → rewrite_fact real_bounded_def sym=false goal=4 facts=[1]
+    #[5] ∃B. ∀x. x ∈ t ⟶ abs x ≤ B
+  ← z3 goal=4 facts=[2,5]
+qed
 
 theorem real_bounded_union
   fixes s :: real set, t :: real set
-  prop real_bounded (s ∪ t) ⟷ real_bounded s ∧ real_bounded t
+  prop real_bounded (s Un t) <--> real_bounded s & real_bounded t
   [hint_rewrite]
-  proof
-    0: rewrite_goal real_bounded_def sym=false
-    0: apply_backward_step iffI
-    0: introduction
-    0.1: exists_elim B @0.0
-    0.3: apply_backward_step ex_conj_distrib
-    0.3: inst_exists_goal B
-    0.3: apply_backward_step conjI
-    0.3: introduction x
-    0.3.2: apply_prev @0.2
-    0.3.2: z3 @0.3.1
-    0.4: z3 @0.2
-    1: introduction
-    1.1: apply_forward_step conjD1 @1.0
-    1.2: apply_forward_step conjD2 @1.0
-    1.3: exists_elim B1 @1.1
-    1.5: exists_elim B2 @1.2
-    1.7: inst_exists_goal "max B1 B2"
-    1.7: z3 @1.6,1.4
-  qed
+proof
+  ← rewrite_goal real_bounded_def sym=false goal=0
+    #[1] (∃B. ∀x. x ∈ s ∪ t ⟶ abs x ≤ B) ⟷ (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ∧ (∃B. ∀x. x ∈ t ⟶ abs x ≤ B)
+  ← apply_backward_step iffI goal=1
+    #[2] (∃B. ∀x. x ∈ s ∪ t ⟶ abs x ≤ B) ⟶ (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ∧ (∃B. ∀x. x ∈ t ⟶ abs x ≤ B)
+    #[3] (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ∧ (∃B. ∀x. x ∈ t ⟶ abs x ≤ B) ⟶ (∃B. ∀x. x ∈ s ∪ t ⟶ abs x ≤ B)
+  ← introduction goal=2
+    #[4] ∃B. ∀x. x ∈ s ∪ t ⟶ abs x ≤ B
+    #[5] (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ∧ (∃B. ∀x. x ∈ t ⟶ abs x ≤ B)
+  exists_elim B goal=5 facts=[4]
+    #[6] _VAR B
+    #[7] ∀x. x ∈ s ∪ t ⟶ abs x ≤ B
+    #[8] (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ∧ (∃B. ∀x. x ∈ t ⟶ abs x ≤ B)
+  ← apply_backward_step ex_conj_distrib goal=8
+    #[9] ∃B. (∀x. x ∈ s ⟶ abs x ≤ B) ∧ (∀x. x ∈ t ⟶ abs x ≤ B)
+  ← inst_exists_goal B goal=9
+    #[10] (∀x. x ∈ s ⟶ abs x ≤ B) ∧ (∀x. x ∈ t ⟶ abs x ≤ B)
+  ← apply_backward_step conjI goal=10
+    #[11] ∀x. x ∈ s ⟶ abs x ≤ B
+    #[12] ∀x. x ∈ t ⟶ abs x ≤ B
+  ← introduction x goal=11
+    #[13] _VAR x
+    #[14] x ∈ s
+    #[15] abs x ≤ B
+  ← apply_prev goal=15 facts=[7]
+    #[16] x ∈ s ∪ t
+  ← z3 goal=16 facts=[14]
+    #[17] x ∈ s ∪ t
+  ← z3 goal=12 facts=[7]
+    #[18] ∀x. x ∈ t ⟶ abs x ≤ B
+  ← introduction goal=3
+    #[19] (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ∧ (∃B. ∀x. x ∈ t ⟶ abs x ≤ B)
+    #[20] ∃B. ∀x. x ∈ s ∪ t ⟶ abs x ≤ B
+  → apply_forward_step conjD1 goal=20 facts=[19]
+    #[21] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
+  → apply_forward_step conjD2 goal=20 facts=[19]
+    #[22] ∃B. ∀x. x ∈ t ⟶ abs x ≤ B
+  exists_elim B1 goal=20 facts=[21]
+    #[23] _VAR B1
+    #[24] ∀x. x ∈ s ⟶ abs x ≤ B1
+    #[25] ∃B. ∀x. x ∈ s ∪ t ⟶ abs x ≤ B
+  exists_elim B2 goal=25 facts=[22]
+    #[26] _VAR B2
+    #[27] ∀x. x ∈ t ⟶ abs x ≤ B2
+    #[28] ∃B. ∀x. x ∈ s ∪ t ⟶ abs x ≤ B
+  ← inst_exists_goal "max B1 B2" goal=28
+    #[29] ∀x. x ∈ s ∪ t ⟶ abs x ≤ max B1 B2
+  ← z3 goal=29 facts=[27,24]
+    #[30] ∀x. x ∈ s ∪ t ⟶ abs x ≤ max B1 B2
+qed
 
 theorem real_bounded_subset_open_interval_symetric
   fixes s :: real set
-  prop real_bounded s ⟶ (∃a. s ⊆ real_open_interval (-a) a)
-  proof
-    1: rewrite_fact real_bounded_pos @0 sym=false
-    2: exists_elim B @1
-    4: apply_forward_step conjD1 @3
-    5: apply_forward_step conjD2 @3
-    6: inst_exists_goal B+1
-    6: apply_backward_step subsetI
-    6: rewrite_goal real_open_interval_def sym=false
-    6: rewrite_goal member_collect sym=false
-    6: z3 @5
-  qed
+  prop real_bounded s --> (?a. s Sub real_open_interval (-a) a)
 
 theorem real_bounded_subset_open_interval
   fixes s :: real set
-  prop real_bounded s ⟶ (∃a. ∃b. s ⊆ real_open_interval a b)
-  proof
-    1: apply_forward_step real_bounded_subset_open_interval_symetric @0
-    2: exists_elim a @1
-    4: inst_exists_goal -a
-    4: apply_backward_step exI @3
-  qed
+  prop real_bounded s --> (?a. ?b. s Sub real_open_interval a b)
+proof
+  ← introduction goal=0
+    #[1] real_bounded s
+    #[2] ∃a. ∃b. s ⊆ real_open_interval a b
+  → apply_forward_step real_bounded_subset_open_interval_symetric goal=2 facts=[1]
+    #[3] ∃a. s ⊆ real_open_interval (-a) a
+  exists_elim a goal=2 facts=[3]
+    #[4] _VAR a
+    #[5] s ⊆ real_open_interval (-a) a
+    #[6] ∃a. ∃b. s ⊆ real_open_interval a b
+  ← inst_exists_goal -a goal=6
+    #[7] ∃b. s ⊆ real_open_interval (-a) b
+  ← apply_backward_step exI goal=7 facts=[5]
+    #[8] ∃b. s ⊆ real_open_interval (-a) b
+qed
 
 theorem real_bounded_subset_closed_interval_symetric
   fixes s :: real set
-  prop real_bounded s ⟶ (∃a. s ⊆ real_closed_interval (-a) a)
-  proof
-    1: apply_forward_step real_bounded_subset_open_interval_symetric @0
-    2: exists_elim a @1
-    4: inst_exists_goal a
-    4: apply_backward_step subset_trans @3
-    4: apply_backward_step real_interval_open_subset_closed
-  qed
+  prop real_bounded s --> (?a. s Sub real_closed_interval (-a) a)
+proof
+  ← introduction goal=0
+    #[1] real_bounded s
+    #[2] ∃a. s ⊆ real_closed_interval (-a) a
+  → apply_forward_step real_bounded_subset_open_interval_symetric goal=2 facts=[1]
+    #[3] ∃a. s ⊆ real_open_interval (-a) a
+  exists_elim a goal=2 facts=[3]
+    #[4] _VAR a
+    #[5] s ⊆ real_open_interval (-a) a
+    #[6] ∃a. s ⊆ real_closed_interval (-a) a
+  ← inst_exists_goal a goal=6
+    #[7] s ⊆ real_closed_interval (-a) a
+  ← apply_backward_step subset_trans goal=7 facts=[5]
+    #[8] real_open_interval (-a) a ⊆ real_closed_interval (-a) a
+  ← apply_backward_step real_interval_open_subset_closed goal=8
+    #[9] real_open_interval (-a) a ⊆ real_closed_interval (-a) a
+qed
 
 theorem real_bounded_subset_closed_interval
   fixes s :: real set
-  prop real_bounded s ⟶ (∃a. ∃b. s ⊆ real_closed_interval a b)
-  proof
-    1: apply_forward_step real_bounded_subset_open_interval @0
-    2: exists_elim a,b @1
-    5: inst_exists_goal a
-    5: inst_exists_goal b
-    5: apply_backward_step subset_trans @4
-    5: apply_backward_step real_interval_open_subset_closed
-  qed
+  prop real_bounded s --> (?a. ?b. s Sub real_closed_interval a b)
+proof
+  ← introduction goal=0
+    #[1] real_bounded s
+    #[2] ∃a. ∃b. s ⊆ real_closed_interval a b
+  → apply_forward_step real_bounded_subset_open_interval goal=2 facts=[1]
+    #[3] ∃a. ∃b. s ⊆ real_open_interval a b
+  exists_elim a,b goal=2 facts=[3]
+    #[4] _VAR a
+    #[5] _VAR b
+    #[6] s ⊆ real_open_interval a b
+    #[7] ∃a. ∃b. s ⊆ real_closed_interval a b
+  ← inst_exists_goal a goal=7
+    #[8] ∃b. s ⊆ real_closed_interval a b
+  ← inst_exists_goal b goal=8
+    #[9] s ⊆ real_closed_interval a b
+  ← apply_backward_step subset_trans goal=9 facts=[6]
+    #[10] real_open_interval a b ⊆ real_closed_interval a b
+  ← apply_backward_step real_interval_open_subset_closed goal=10
+    #[11] real_open_interval a b ⊆ real_closed_interval a b
+qed
 
 def tendsto_real :: ('a ⇒ real) ⇒ real ⇒ 'a net ⇒ bool = tendsto_real f l net ⟷ (∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net) [hint_rewrite]
 
 def reallim :: 'a net ⇒ ('a ⇒ real) ⇒ real = reallim net f = (THE l. tendsto_real f l net) [hint_rewrite]
 
 theorem reallim_trivial
-  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop trivial_limit net ⟶ tendsto_real f l net
+  fixes f :: 'a => real, l :: real, net :: 'a net
+  prop trivial_limit net --> tendsto_real f l net
   [hint_backward,hint_forward]
-  proof
-    1: rewrite_goal tendsto_real_def sym=false
-    1: introduction e
-    1.2: apply_backward_step eventually_trivial
-  qed
+proof
+  ← introduction goal=0
+    #[1] trivial_limit net
+    #[2] tendsto_real f l net
+  ← rewrite_goal tendsto_real_def sym=false goal=2
+    #[3] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
+  ← introduction e goal=3
+    #[4] _VAR e
+    #[5] 0 < e
+    #[6] eventually (λx. abs (f x - l) < e) net
+  ← apply_backward_step eventually_trivial goal=6
+qed
 
 theorem reallim_unique
-  fixes f :: 'a ⇒ real, l1 :: real, l2 :: real, net :: 'a net
-  prop ¬(trivial_limit net) ⟶ tendsto_real f l1 net ⟶ tendsto_real f l2 net ⟶ l1 = l2
+  fixes f :: 'a => real, l1 :: real, l2 :: real, net :: 'a net
+  prop ~(trivial_limit net) --> tendsto_real f l1 net --> tendsto_real f l2 net --> l1 = l2
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    3: rewrite_fact tendsto_real_def @1 sym=false
-    4: rewrite_fact tendsto_real_def @2 sym=false
-    5: apply_backward_step contrapositive @0
-    5: rewrite_goal double_neg sym=false
-    5: introduction
-    5.1: cut "0 < abs (l1-l2)"
-    5.1: z3 @5.0
-    5.2: apply_fact @3,5.1
-    5.3: apply_fact @4,5.1
-    5.4: apply_forward_step eventually_happens @5.2
-    5.5: apply_forward_step eventually_happens @5.3
-    5.6: apply_backward_step disjE @5.4
-    5.7: introduction
-    5.7.1: apply_backward_step disjE @5.5
-  qed
+proof
+  ← introduction goal=0
+    #[1] ¬(trivial_limit net)
+    #[2] tendsto_real f l1 net
+    #[3] tendsto_real f l2 net
+    #[4] l1 = l2
+  → rewrite_fact tendsto_real_def sym=false goal=4 facts=[2]
+    #[5] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l1) < e) net
+  → rewrite_fact tendsto_real_def sym=false goal=4 facts=[3]
+    #[6] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l2) < e) net
+  ← apply_backward_step contrapositive goal=4 facts=[1]
+    #[7] ¬(l1 = l2) ⟶ ¬¬(trivial_limit net)
+  ← rewrite_goal double_neg sym=false goal=7
+    #[8] ¬(l1 = l2) ⟶ trivial_limit net
+  ← introduction goal=8
+    #[9] ¬(l1 = l2)
+    #[10] trivial_limit net
+  cut "0 < abs (l1-l2)" goal=10
+    #[11] 0 < abs (l1 - l2)
+  ← z3 goal=11 facts=[9]
+    #[12] 0 < abs (l1 - l2)
+  → apply_fact goal=10 facts=[5,12]
+    #[13] eventually (λx. abs (f x - l1) < abs (l1 - l2)) net
+  → apply_fact goal=10 facts=[6,12]
+    #[14] eventually (λx. abs (f x - l2) < abs (l1 - l2)) net
+  → apply_forward_step eventually_happens goal=10 facts=[13]
+    #[15] trivial_limit net ∨ (∃x. abs (f x - l1) < abs (l1 - l2))
+  → apply_forward_step eventually_happens goal=10 facts=[14]
+    #[16] trivial_limit net ∨ (∃x. abs (f x - l2) < abs (l1 - l2))
+  ← apply_backward_step disjE goal=10 facts=[15]
+    #[17] trivial_limit net ⟶ trivial_limit net
+    #[18] (∃x. abs (f x - l1) < abs (l1 - l2)) ⟶ trivial_limit net
+  ← introduction goal=18
+    #[19] ∃x. abs (f x - l1) < abs (l1 - l2)
+    #[20] trivial_limit net
+  ← apply_backward_step disjE goal=20 facts=[16]
+qed
 
 theorem reallim_const
   fixes a :: real, net :: 'a net
-  prop tendsto_real (λx. a) a net
+  prop tendsto_real (%x. a) a net
   [hint_backward]
-  proof
-    0: rewrite_goal tendsto_real_def sym=false
-    0: introduction e
-    0.2: rewrite_goal real_sub_refl sym=false
-    0.2: apply_backward_step always_eventually
-    0.2: rewrite_goal real_abs_0 sym=false
-    0.2: z3 @0.1
-  qed
+proof
+  ← rewrite_goal tendsto_real_def sym=false goal=0
+    #[1] ∀e. 0 < e ⟶ eventually (λx. abs (a - a) < e) net
+  ← introduction e goal=1
+    #[2] _VAR e
+    #[3] 0 < e
+    #[4] eventually (λx. abs (a - a) < e) net
+  ← rewrite_goal real_sub_refl sym=false goal=4
+    #[5] eventually (λx. abs 0 < e) net
+  ← apply_backward_step always_eventually goal=5
+    #[6] ∀x::'a. abs 0 < e
+  ← rewrite_goal real_abs_0 sym=false goal=6
+    #[7] ∀x::'a. 0 < e
+  ← z3 goal=7 facts=[3]
+qed
 
 theorem reallim_lmul
-  fixes c :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real (λx. c * f x) (c * l) net
+  fixes c :: real, f :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real (%x. c * f x) (c * l) net
   [hint_backward,hint_forward]
-  proof
-    1: cases "c=0"
-    1: introduction
-    1.1: rewrite_goal_with_prev @1.0
-    1.1: rewrite_goal real_mul_lzero sym=false
-    1.1: apply_backward_step reallim_const
-    2: introduction
-    2.1: rewrite_goal tendsto_real_def sym=false
-    2.1: introduction e
-    2.1.2: cut "0 < e / abs c"
-    2.1.2: z3 @2.1.1,2.0
-    2.1.3: rewrite_fact tendsto_real_def @0 sym=false
-    2.1.4: apply_fact @2.1.3,2.1.2
-    2.1.5: apply_backward_step eventually_mono param_P="(λx. abs (f x - l) < e / abs c)"
-    2.1.5: z3 @2.0
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real (λx. c * f x) (c * l) net
+  ← cases "c=0" goal=2
+    #[3] c = 0 ⟶ tendsto_real (λx. c * f x) (c * l) net
+    #[4] ¬(c = 0) ⟶ tendsto_real (λx. c * f x) (c * l) net
+  ← introduction goal=3
+    #[5] c = 0
+    #[6] tendsto_real (λx. c * f x) (c * l) net
+  ← rewrite_goal_with_prev goal=6 facts=[5]
+    #[7] tendsto_real (λx. 0 * f x) (0 * l) net
+  ← rewrite_goal real_mul_lzero sym=false goal=7
+    #[8] tendsto_real (λx. 0) 0 net
+  ← apply_backward_step reallim_const goal=8
+    #[9] tendsto_real (λx. 0) 0 net
+  ← introduction goal=4
+    #[10] ¬(c = 0)
+    #[11] tendsto_real (λx. c * f x) (c * l) net
+  ← rewrite_goal tendsto_real_def sym=false goal=11
+    #[12] ∀e. 0 < e ⟶ eventually (λx. abs (c * f x - c * l) < e) net
+  ← introduction e goal=12
+    #[13] _VAR e
+    #[14] 0 < e
+    #[15] eventually (λx. abs (c * f x - c * l) < e) net
+  cut "0 < e / abs c" goal=15
+    #[16] 0 < e / abs c
+  ← z3 goal=16 facts=[14,10]
+    #[17] 0 < e / abs c
+  → rewrite_fact tendsto_real_def sym=false goal=15 facts=[1]
+    #[18] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
+  → apply_fact goal=15 facts=[18,17]
+    #[19] eventually (λx. abs (f x - l) < e / abs c) net
+  ← apply_backward_step eventually_mono param_P="(λx. abs (f x - l) < e / abs c)" goal=15
+    #[20] ∀x. abs (f x - l) < e / abs c ⟶ abs (c * f x - c * l) < e
+  ← z3 goal=20 facts=[10]
+    #[21] ∀x. abs (f x - l) < e / abs c ⟶ abs (c * f x - c * l) < e
+qed
 
 theorem reallim_rmul
-  fixes c :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real (λx. f x * c) (l * c) net
+  fixes c :: real, f :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real (%x. f x * c) (l * c) net
   [hint_backward,hint_forward]
-  proof
-    1: rewrite_goal real_mult_comm sym=false
-    1: apply_backward_step reallim_lmul
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real (λx. f x * c) (l * c) net
+  ← rewrite_goal real_mult_comm sym=false goal=2
+    #[3] tendsto_real (λx. c * f x) (c * l) net
+  ← apply_backward_step reallim_lmul goal=3
+qed
 
 theorem reallim_lmul_eq
-  fixes c :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop ¬(c = 0) ⟶ tendsto_real (λx. c * f x) (c * l) net ⟷ tendsto_real f l net
+  fixes c :: real, f :: 'a => real, l :: real, net :: 'a net
+  prop ~(c = 0) --> tendsto_real (%x. c * f x) (c * l) net <--> tendsto_real f l net
   [hint_backward,hint_forward]
-  proof
-    1: apply_backward_step iffI
-    1: introduction
-    1.1: apply_forward_step reallim_lmul @1.0 param_c="real_inverse c"
-    1.2: rewrite_fact real_mult_assoc @1.1 sym=false
-    1.3: apply_forward_step real_mul_linv @0
-    1.4: rewrite_fact_with_prev @1.3,1.2
-    1.5: rewrite_fact real_mul_lid @1.4 sym=false
-    1.6: rewrite_fact eta_conversion @1.5 sym=false
-    2: introduction
-    2.1: apply_backward_step reallim_lmul
-  qed
+proof
+  ← introduction goal=0
+    #[1] ¬(c = 0)
+    #[2] tendsto_real (λx. c * f x) (c * l) net ⟷ tendsto_real f l net
+  ← apply_backward_step iffI goal=2
+    #[3] tendsto_real (λx. c * f x) (c * l) net ⟶ tendsto_real f l net
+    #[4] tendsto_real f l net ⟶ tendsto_real (λx. c * f x) (c * l) net
+  ← introduction goal=3
+    #[5] tendsto_real (λx. c * f x) (c * l) net
+    #[6] tendsto_real f l net
+  → apply_forward_step reallim_lmul param_c="real_inverse c" goal=6 facts=[5]
+    #[7] tendsto_real (λx. real_inverse c * (c * f x)) (real_inverse c * (c * l)) net
+  → rewrite_fact real_mult_assoc sym=false goal=6 facts=[7]
+    #[8] tendsto_real (λx. real_inverse c * c * f x) (real_inverse c * c * l) net
+  → apply_forward_step real_mul_linv goal=6 facts=[1]
+    #[9] real_inverse c * c = 1
+  → rewrite_fact_with_prev goal=6 facts=[9,8]
+    #[10] tendsto_real (λx. 1 * f x) (1 * l) net
+  → rewrite_fact real_mul_lid sym=false goal=6 facts=[10]
+    #[11] tendsto_real (λx. f x) l net
+  → rewrite_fact eta_conversion sym=false goal=6 facts=[11]
+  ← introduction goal=4
+    #[12] tendsto_real f l net
+    #[13] tendsto_real (λx. c * f x) (c * l) net
+  ← apply_backward_step reallim_lmul goal=13
+qed
 
 theorem reallim_rmul_eq
-  fixes c :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop ¬(c = 0) ⟶ tendsto_real (λx. f x * c) (l * c) net ⟷ tendsto_real f l net
-  proof
-    1: rewrite_goal real_mult_comm sym=false
-    1: apply_backward_step reallim_lmul_eq @0
-  qed
+  fixes c :: real, f :: 'a => real, l :: real, net :: 'a net
+  prop ~(c = 0) --> tendsto_real (%x. f x * c) (l * c) net <--> tendsto_real f l net
+proof
+  ← introduction goal=0
+    #[1] ¬(c = 0)
+    #[2] tendsto_real (λx. f x * c) (l * c) net ⟷ tendsto_real f l net
+  ← rewrite_goal real_mult_comm sym=false goal=2
+    #[3] tendsto_real (λx. c * f x) (c * l) net ⟷ tendsto_real f l net
+  ← apply_backward_step reallim_lmul_eq goal=3 facts=[1]
+qed
 
 theorem reallim_neg_eq
-  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real (λx. -(f x)) (-l) net ⟷ tendsto_real f l net
+  fixes f :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real (%x. -(f x)) (-l) net <--> tendsto_real f l net
   [hint_rewrite]
-  proof
-    0: rewrite_goal real_poly_neg1 sym=false
-    0: apply_backward_step reallim_lmul_eq
-    0: z3
-  qed
+proof
+  ← rewrite_goal real_poly_neg1 sym=false goal=0
+    #[1] tendsto_real (λx. -1 * f x) (-1 * l) net ⟷ tendsto_real f l net
+  ← apply_backward_step reallim_lmul_eq goal=1
+    #[2] ¬(-(1::real) = 0)
+  ← z3 goal=2
+qed
 
 theorem reallim_add
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, m :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real g m net ⟶ tendsto_real (λx. f x + g x) (l + m) net
+  fixes f :: 'a => real, g :: 'a => real, l :: real, m :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real g m net --> tendsto_real (%x. f x + g x) (l + m) net
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    2: rewrite_fact tendsto_real_def @0 sym=false
-    3: rewrite_fact tendsto_real_def @1 sym=false
-    4: rewrite_goal tendsto_real_def sym=false
-    4: introduction e
-    4.2: cut "0 < e/2"
-    4.2: z3 @4.1
-    4.3: apply_fact @2,4.2
-    4.4: apply_fact @3,4.2
-    4.5: apply_forward_step conjI @4.3,4.4
-    4.6: rewrite_fact eventually_and @4.5 sym=true
-    4.7: apply_backward_step eventually_mono param_P="λx. abs (f x - l) < e / 2 ∧ abs (g x - m) < e / 2"
-    4.7: z3
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real g m net
+    #[3] tendsto_real (λx. f x + g x) (l + m) net
+  → rewrite_fact tendsto_real_def sym=false goal=3 facts=[1]
+    #[4] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
+  → rewrite_fact tendsto_real_def sym=false goal=3 facts=[2]
+    #[5] ∀e. 0 < e ⟶ eventually (λx. abs (g x - m) < e) net
+  ← rewrite_goal tendsto_real_def sym=false goal=3
+    #[6] ∀e. 0 < e ⟶ eventually (λx. abs (f x + g x - (l + m)) < e) net
+  ← introduction e goal=6
+    #[7] _VAR e
+    #[8] 0 < e
+    #[9] eventually (λx. abs (f x + g x - (l + m)) < e) net
+  cut "0 < e/2" goal=9
+    #[10] 0 < e / 2
+  ← z3 goal=10 facts=[8]
+    #[11] 0 < e / 2
+  → apply_fact goal=9 facts=[4,11]
+    #[12] eventually (λx. abs (f x - l) < e / 2) net
+  → apply_fact goal=9 facts=[5,11]
+    #[13] eventually (λx. abs (g x - m) < e / 2) net
+  → apply_forward_step conjI goal=9 facts=[12,13]
+    #[14] eventually (λx. abs (f x - l) < e / 2) net ∧ eventually (λx. abs (g x - m) < e / 2) net
+  → rewrite_fact eventually_and sym=true goal=9 facts=[14]
+    #[15] eventually (λx. abs (f x - l) < e / 2 ∧ abs (g x - m) < e / 2) net
+  ← apply_backward_step eventually_mono param_P="λx. abs (f x - l) < e / 2 ∧ abs (g x - m) < e / 2" goal=9
+    #[16] ∀x. abs (f x - l) < e / 2 ∧ abs (g x - m) < e / 2 ⟶ abs (f x + g x - (l + m)) < e
+  ← z3 goal=16
+    #[17] ∀x. abs (f x - l) < e / 2 ∧ abs (g x - m) < e / 2 ⟶ abs (f x + g x - (l + m)) < e
+qed
 
 theorem reallim_sub
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, m :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real g m net ⟶ tendsto_real (λx. f x - g x) (l - m) net
+  fixes f :: 'a => real, g :: 'a => real, l :: real, m :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real g m net --> tendsto_real (%x. f x - g x) (l - m) net
   [hint_backward,hint_forward,hint_backward1]
-  proof
-    2: rewrite_goal real_minus_def sym=false
-    2: apply_backward_step reallim_add @0
-    2: rewrite_goal reallim_neg_eq sym=false
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real g m net
+    #[3] tendsto_real (λx. f x - g x) (l - m) net
+  ← rewrite_goal real_minus_def sym=false goal=3
+    #[4] tendsto_real (λx. f x + -(g x)) (l + -m) net
+  ← apply_backward_step reallim_add goal=4 facts=[1]
+    #[5] tendsto_real (λx. -(g x)) (-m) net
+  ← rewrite_goal reallim_neg_eq sym=false goal=5
+qed
 
 theorem reallim_mul
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, m :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real g m net ⟶ tendsto_real (λx. f x * g x) (l * m) net
+  fixes f :: 'a => real, g :: 'a => real, l :: real, m :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real g m net --> tendsto_real (%x. f x * g x) (l * m) net
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    2: rewrite_fact tendsto_real_def @0 sym=false
-    3: rewrite_fact tendsto_real_def @1 sym=false
-    4: rewrite_goal tendsto_real_def sym=false
-    4: introduction e
-    4.2: cases "l=0"
-    4.2: introduction
-    4.2.1: rewrite_goal_with_prev @4.2.0
-    4.2.1: rewrite_goal real_mul_lzero sym=false
-    4.2.1: rewrite_goal real_sub_rzero sym=false
-    4.2.1: rewrite_fact_with_prev @4.2.0,2
-    4.2.2: rewrite_fact real_sub_rzero @4.2.1 sym=false
-    4.2.3: cases "m=0"
-    4.2.3: introduction
-    4.2.3.1: rewrite_fact_with_prev @4.2.3.0,3
-    4.2.3.2: rewrite_fact real_sub_rzero @4.2.3.1 sym=false
-    4.2.3.3: cut "0 < sqrt e"
-    4.2.3.3: rewrite_goal sqrt_lt_0 sym=false
-    4.2.3.4: apply_fact @4.2.2,4.2.3.3
-    4.2.3.5: apply_fact @4.2.3.2,4.2.3.3
-    4.2.3.6: apply_forward_step conjI @4.2.3.4,4.2.3.5
-    4.2.3.7: rewrite_fact eventually_and @4.2.3.6 sym=true
-    4.2.3.8: apply_backward_step eventually_mono param_P="(λx. abs (f x) < sqrt e ∧ abs (g x) < sqrt e)"
-    4.2.3.8: introduction x
-    4.2.3.8.2: cut "!a. !b. abs (f x) < a ∧ abs (g x) < b --> abs (f x * g x) < a * b"
-    4.2.3.8.2: introduction "a ,b "
-    4.2.3.8.2.3: rewrite_goal real_abs_mul sym=false
-    4.2.3.8.2.3: z3 @4.2.3.8.2.2
-    4.2.3.8.3: apply_fact @4.2.3.8.2,4.2.3.8.1
-    4.2.3.8.4: apply_forward_step real_lt_imp_le @4.1
-    4.2.3.8.5: apply_forward_step sqrt_pow_2 @4.2.3.8.4
-    4.2.3.8.6: rewrite_fact real_pow_2 @4.2.3.8.5 sym=false
-    4.2.3.8.7: rewrite_fact_with_prev @4.2.3.8.6,4.2.3.8.3
-    4.2.4: introduction
-    4.2.4.1: apply_fact @4.2.2,4.1
-    4.2.4.2: cut "0 < 1 / abs m"
-    4.2.4.2: z3 @4.2.4.0
-    4.2.4.3: apply_fact @3,4.2.4.2
-  qed
 
 theorem reallim_inverse
-  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ ¬(l = 0) ⟶ tendsto_real (λx. real_inverse (f x)) (real_inverse l) net
+  fixes f :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real f l net --> ~(l = 0) --> tendsto_real (%x. real_inverse (f x)) (real_inverse l) net
   [hint_backward,hint_backward1,hint_forward]
 
 theorem reallim_div
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, m :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real g m net ⟶ ¬(m = 0) ⟶ tendsto_real (λx. f x / g x) (l / m) net
+  fixes f :: 'a => real, g :: 'a => real, l :: real, m :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real g m net --> ~(m = 0) --> tendsto_real (%x. f x / g x) (l / m) net
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    3: rewrite_goal real_divide_def sym=false
-    3: apply_backward_step reallim_mul @0
-    3: apply_backward_step reallim_inverse @1,2
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real g m net
+    #[3] ¬(m = 0)
+    #[4] tendsto_real (λx. f x / g x) (l / m) net
+  ← rewrite_goal real_divide_def sym=false goal=4
+    #[5] tendsto_real (λx. f x * real_inverse (g x)) (l * real_inverse m) net
+  ← apply_backward_step reallim_mul goal=5 facts=[1]
+    #[6] tendsto_real (λx. real_inverse (g x)) (real_inverse m) net
+  ← apply_backward_step reallim_inverse goal=6 facts=[2,3]
+    #[7] tendsto_real (λx. real_inverse (g x)) (real_inverse m) net
+qed
 
 theorem reallim_abs
-  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real (λx. abs (f x)) (abs l) net
+  fixes f :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real (%x. abs (f x)) (abs l) net
   [hint_backward]
-  proof
-    1: rewrite_goal tendsto_real_def sym=false
-    1: rewrite_fact tendsto_real_def @0 sym=false
-    2: introduction e
-    2.2: apply_fact @1,2.1
-    2.3: apply_backward_step eventually_mono param_P=" (λx. abs (f x - l) < e)"
-    2.3: z3
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real (λx. abs (f x)) (abs l) net
+  ← rewrite_goal tendsto_real_def sym=false goal=2
+    #[3] ∀e. 0 < e ⟶ eventually (λx. abs (abs (f x) - abs l) < e) net
+  → rewrite_fact tendsto_real_def sym=false goal=3 facts=[1]
+    #[4] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
+  ← introduction e goal=3
+    #[5] _VAR e
+    #[6] 0 < e
+    #[7] eventually (λx. abs (abs (f x) - abs l) < e) net
+  → apply_fact goal=7 facts=[4,6]
+    #[8] eventually (λx. abs (f x - l) < e) net
+  ← apply_backward_step eventually_mono param_P=" (λx. abs (f x - l) < e)" goal=7
+    #[9] ∀x. abs (f x - l) < e ⟶ abs (abs (f x) - abs l) < e
+  ← z3 goal=9
+    #[10] ∀x. abs (f x - l) < e ⟶ abs (abs (f x) - abs l) < e
+qed
 
 theorem reallim_pow
-  fixes f :: 'a ⇒ real, l :: real, n :: nat, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real (λx. f x ^ n) (l ^ n) net
+  fixes f :: 'a => real, l :: real, n :: nat, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real (%x. f x ^ n) (l ^ n) net
   [hint_backward,hint_forward]
-  proof
-    1: induction n nat_induct
-    1: rewrite_goal real_nat_power_def_1 sym=false
-    1: apply_backward_step reallim_const
-    3: introduction n
-    3.2: rewrite_goal real_nat_power_def_2 sym=false
-    3.2: apply_backward_step reallim_mul
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real (λx. f x ^ n) (l ^ n) net
+  ← induction n nat_induct goal=2
+    #[3] tendsto_real (λx. f x ^ (0::nat)) (l ^ (0::nat)) net
+    #[4] ∀n. tendsto_real (λx. f x ^ n) (l ^ n) net ⟶ tendsto_real (λx. f x ^ Suc n) (l ^ Suc n) net
+  ← rewrite_goal real_nat_power_def_1 sym=false goal=3
+    #[5] tendsto_real (λx. 1) 1 net
+  ← apply_backward_step reallim_const goal=5
+    #[6] tendsto_real (λx. 1) 1 net
+  ← introduction n goal=4
+    #[7] _VAR n
+    #[8] tendsto_real (λx. f x ^ n) (l ^ n) net
+    #[9] tendsto_real (λx. f x ^ Suc n) (l ^ Suc n) net
+  ← rewrite_goal real_nat_power_def_2 sym=false goal=9
+    #[10] tendsto_real (λx. f x * f x ^ n) (l * l ^ n) net
+  ← apply_backward_step reallim_mul goal=10
+qed
 
 theorem reallim_max
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, m :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real g m net ⟶ tendsto_real (λx. max (f x) (g x)) (max l m) net
+  fixes f :: 'a => real, g :: 'a => real, l :: real, m :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real g m net --> tendsto_real (%x. max (f x) (g x)) (max l m) net
   [hint_backward,hint_forward,hint_backward1]
-  proof
-    1: cut "!x::real. !y. max x y = 1 / 2 * ((x+y) + abs (x-y))"
-    1: z3
-    3: rewrite_goal_with_prev @1
-    3: apply_backward_step reallim_lmul
-    3: apply_backward_step reallim_add
-    3: apply_backward_step reallim_add @0,2
-    4: apply_backward_step reallim_abs
-    4: apply_backward_step reallim_sub @0,2
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real g m net
+    #[3] tendsto_real (λx. max (f x) (g x)) (max l m) net
+  cut "!x::real. !y. max x y = 1 / 2 * ((x+y) + abs (x-y))" goal=2
+    #[4] ∀x. ∀y. max x y = 1 / 2 * (x + y + abs (x - y))
+  ← z3 goal=4
+    #[5] ∀x. ∀y. max x y = 1 / 2 * (x + y + abs (x - y))
+  ← rewrite_goal_with_prev goal=3 facts=[5]
+    #[6] tendsto_real (λx. 1 / 2 * (f x + g x + abs (f x - g x))) (1 / 2 * (l + m + abs (l - m))) net
+  ← apply_backward_step reallim_lmul goal=6
+    #[7] tendsto_real (λx. f x + g x + abs (f x - g x)) (l + m + abs (l - m)) net
+  ← apply_backward_step reallim_add goal=7
+    #[8] tendsto_real (λx. f x + g x) (l + m) net
+    #[9] tendsto_real (λx. abs (f x - g x)) (abs (l - m)) net
+  ← apply_backward_step reallim_add goal=8 facts=[1,2]
+  ← apply_backward_step reallim_abs goal=9
+    #[10] tendsto_real (λx. f x - g x) (l - m) net
+  ← apply_backward_step reallim_sub goal=10 facts=[1,2]
+qed
 
 theorem reallim_min
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, m :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real g m net ⟶ tendsto_real (λx. min (f x) (g x)) (min l m) net
+  fixes f :: 'a => real, g :: 'a => real, l :: real, m :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real g m net --> tendsto_real (%x. min (f x) (g x)) (min l m) net
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    2: rewrite_goal real_min_max sym=false
-    2: rewrite_goal reallim_neg_eq sym=false
-    2: apply_backward_step reallim_max
-    2: rewrite_goal reallim_neg_eq sym=false
-    3: rewrite_goal reallim_neg_eq sym=false
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real g m net
+    #[3] tendsto_real (λx. min (f x) (g x)) (min l m) net
+  ← rewrite_goal real_min_max sym=false goal=3
+    #[4] tendsto_real (λx. -(max (-(f x)) (-(g x)))) (-(max (-l) (-m))) net
+  ← rewrite_goal reallim_neg_eq sym=false goal=4
+    #[5] tendsto_real (λx. max (-(f x)) (-(g x))) (max (-l) (-m)) net
+  ← apply_backward_step reallim_max goal=5
+    #[6] tendsto_real (λx. -(f x)) (-l) net
+    #[7] tendsto_real (λx. -(g x)) (-m) net
+  ← rewrite_goal reallim_neg_eq sym=false goal=6
+  ← rewrite_goal reallim_neg_eq sym=false goal=7
+qed
 
 theorem reallim_null
-  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real (λx. f x - l) 0 net
+  fixes f :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real (%x. f x - l) 0 net
   [hint_backward,hint_forward]
-  proof
-    1: rewrite_goal tendsto_real_def sym=false
-    1: rewrite_fact tendsto_real_def @0 sym=false
-    2: introduction e
-    2.2: apply_fact @1,2.1
-    2.3: rewrite_goal real_sub_rzero sym=false
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real (λx. f x - l) 0 net
+  ← rewrite_goal tendsto_real_def sym=false goal=2
+    #[3] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l - 0) < e) net
+  → rewrite_fact tendsto_real_def sym=false goal=3 facts=[1]
+    #[4] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
+  ← introduction e goal=3
+    #[5] _VAR e
+    #[6] 0 < e
+    #[7] eventually (λx. abs (f x - l - 0) < e) net
+  → apply_fact goal=7 facts=[4,6]
+    #[8] eventually (λx. abs (f x - l) < e) net
+  ← rewrite_goal real_sub_rzero sym=false goal=7
+qed
 
 theorem reallim_null_add
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
-  prop tendsto_real f 0 net ⟶ tendsto_real g 0 net ⟶ tendsto_real (λx. f x + g x) 0 net
+  fixes f :: 'a => real, g :: 'a => real, net :: 'a net
+  prop tendsto_real f 0 net --> tendsto_real g 0 net --> tendsto_real (%x. f x + g x) 0 net
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    2: apply_forward_step reallim_add @0,1
-    3: rewrite_fact real_add_lid @2 sym=false
-    2: apply_forward_step reallim_add @1,0
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f 0 net
+    #[2] tendsto_real g 0 net
+    #[3] tendsto_real (λx. f x + g x) 0 net
+  → apply_forward_step reallim_add goal=3 facts=[1,2]
+    #[4] tendsto_real (λx. f x + g x) (0 + 0) net
+  → rewrite_fact real_add_lid sym=false goal=3 facts=[4]
+  → apply_forward_step reallim_add goal=4 facts=[2,1]
+    #[5] tendsto_real (λx. g x + f x) (0 + 0) net
+qed
 
 theorem reallim_null_lmul
-  fixes c :: real, f :: 'a ⇒ real, net :: 'a net
-  prop tendsto_real f 0 net ⟶ tendsto_real (λx. c * f x) 0 net
+  fixes c :: real, f :: 'a => real, net :: 'a net
+  prop tendsto_real f 0 net --> tendsto_real (%x. c * f x) 0 net
   [hint_backward,hint_forward]
-  proof
-    1: apply_forward_step reallim_lmul @0 param_c=c
-    2: rewrite_fact real_mul_rzero @1 sym=false
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f 0 net
+    #[2] tendsto_real (λx. c * f x) 0 net
+  → apply_forward_step reallim_lmul param_c=c goal=2 facts=[1]
+    #[3] tendsto_real (λx. c * f x) (c * 0) net
+  → rewrite_fact real_mul_rzero sym=false goal=2 facts=[3]
+qed
 
 theorem reallim_null_rmul
-  fixes c :: real, f :: 'a ⇒ real, net :: 'a net
-  prop tendsto_real f 0 net ⟶ tendsto_real (λx. f x * c) 0 net
-  proof
-    1: rewrite_goal real_mult_comm sym=false
-    1: apply_backward_step reallim_null_lmul
-  qed
+  fixes c :: real, f :: 'a => real, net :: 'a net
+  prop tendsto_real f 0 net --> tendsto_real (%x. f x * c) 0 net
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f 0 net
+    #[2] tendsto_real (λx. f x * c) 0 net
+  ← rewrite_goal real_mult_comm sym=false goal=2
+    #[3] tendsto_real (λx. c * f x) 0 net
+  ← apply_backward_step reallim_null_lmul goal=3
+qed
 
 theorem reallim_null_pow
-  fixes f :: 'a ⇒ real, n :: nat, net :: 'a net
-  prop tendsto_real f 0 net ⟶ ¬(n = 0) ⟶ tendsto_real (λx. f x ^ n) 0 net
+  fixes f :: 'a => real, n :: nat, net :: 'a net
+  prop tendsto_real f 0 net --> ~(n = 0) --> tendsto_real (%x. f x ^ n) 0 net
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    2: apply_forward_step reallim_pow @0 param_n=n
-    3: rewrite_fact real_pow_zero @2 sym=false
-    4: rewrite_fact if_not_P @3,1 sym=false
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f 0 net
+    #[2] ¬(n = 0)
+    #[3] tendsto_real (λx. f x ^ n) 0 net
+  → apply_forward_step reallim_pow param_n=n goal=3 facts=[1]
+    #[4] tendsto_real (λx. f x ^ n) (0 ^ n) net
+  → rewrite_fact real_pow_zero sym=false goal=3 facts=[4]
+    #[5] tendsto_real (λx. f x ^ n) (if n = 0 then 1 else 0) net
+  → rewrite_fact if_not_P sym=false goal=3 facts=[5,2]
+qed
 
 theorem reallim_null_lmul_eq
-  fixes c :: real, f :: 'a ⇒ real, net :: 'a net
-  prop ¬(c = 0) ⟶ tendsto_real (λx. c * f x) 0 net ⟷ tendsto_real f 0 net
+  fixes c :: real, f :: 'a => real, net :: 'a net
+  prop ~(c = 0) --> tendsto_real (%x. c * f x) 0 net <--> tendsto_real f 0 net
   [hint_backward]
-  proof
-    1: apply_forward_step reallim_lmul_eq @0 param_f=f param_l="(0::real)" param_net=net
-    2: rewrite_fact real_mul_rzero @1 sym=false
-  qed
+proof
+  ← introduction goal=0
+    #[1] ¬(c = 0)
+    #[2] tendsto_real (λx. c * f x) 0 net ⟷ tendsto_real f 0 net
+  → apply_forward_step reallim_lmul_eq param_f=f param_l="(0::real)" param_net=net goal=2 facts=[1]
+    #[3] tendsto_real (λx. c * f x) (c * 0) net ⟷ tendsto_real f 0 net
+  → rewrite_fact real_mul_rzero sym=false goal=2 facts=[3]
+qed
 
 theorem reallim_null_rmul_eq
-  fixes c :: real, f :: 'a ⇒ real, net :: 'a net
-  prop ¬(c = 0) ⟶ tendsto_real (λx. f x * c) 0 net ⟷ tendsto_real f 0 net
-  proof
-    1: rewrite_goal real_mult_comm sym=false
-    1: apply_backward_step reallim_null_lmul_eq
-  qed
+  fixes c :: real, f :: 'a => real, net :: 'a net
+  prop ~(c = 0) --> tendsto_real (%x. f x * c) 0 net <--> tendsto_real f 0 net
+proof
+  ← introduction goal=0
+    #[1] ¬(c = 0)
+    #[2] tendsto_real (λx. f x * c) 0 net ⟷ tendsto_real f 0 net
+  ← rewrite_goal real_mult_comm sym=false goal=2
+    #[3] tendsto_real (λx. c * f x) 0 net ⟷ tendsto_real f 0 net
+  ← apply_backward_step reallim_null_lmul_eq goal=3
+qed
 
 theorem reallim_null_neg
-  fixes f :: 'a ⇒ real, net :: 'a net
-  prop tendsto_real (λx. -(f x)) 0 net ⟷ tendsto_real f 0 net
-  proof
-    0: apply_backward_step iffI
-    0: introduction
-    0.1: rewrite_goal reallim_neg_eq sym=true
-    0.1: rewrite_goal real_neg_0 sym=false
-    1: introduction
-    1.1: rewrite_fact reallim_neg_eq @1.0 sym=true
-    1.2: rewrite_fact real_neg_0 @1.1 sym=false
-  qed
+  fixes f :: 'a => real, net :: 'a net
+  prop tendsto_real (%x. -(f x)) 0 net <--> tendsto_real f 0 net
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] tendsto_real (λx. -(f x)) 0 net ⟶ tendsto_real f 0 net
+    #[2] tendsto_real f 0 net ⟶ tendsto_real (λx. -(f x)) 0 net
+  ← introduction goal=1
+    #[3] tendsto_real (λx. -(f x)) 0 net
+    #[4] tendsto_real f 0 net
+  ← rewrite_goal reallim_neg_eq sym=true goal=4
+    #[5] tendsto_real (λx. -(f x)) (-0) net
+  ← rewrite_goal real_neg_0 sym=false goal=5
+  ← introduction goal=2
+    #[6] tendsto_real f 0 net
+    #[7] tendsto_real (λx. -(f x)) 0 net
+  → rewrite_fact reallim_neg_eq sym=true goal=7 facts=[6]
+    #[8] tendsto_real (λx. -(f x)) (-0) net
+  → rewrite_fact real_neg_0 sym=false goal=7 facts=[8]
+qed
 
 theorem reallim_null_sub
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
-  prop tendsto_real f 0 net ⟶ tendsto_real g 0 net ⟶ tendsto_real (λx. f x - g x) 0 net
+  fixes f :: 'a => real, g :: 'a => real, net :: 'a net
+  prop tendsto_real f 0 net --> tendsto_real g 0 net --> tendsto_real (%x. f x - g x) 0 net
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    2: apply_forward_step reallim_sub @0,1
-    3: rewrite_fact real_sub_rzero @2 sym=false
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f 0 net
+    #[2] tendsto_real g 0 net
+    #[3] tendsto_real (λx. f x - g x) 0 net
+  → apply_forward_step reallim_sub goal=3 facts=[1,2]
+    #[4] tendsto_real (λx. f x - g x) (0 - 0) net
+  → rewrite_fact real_sub_rzero sym=false goal=3 facts=[4]
+qed
 
 theorem reallim_transform_eventually
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, net :: 'a net
-  prop eventually (λx. f x = g x) net ⟶ tendsto_real f l net ⟶ tendsto_real g l net
+  fixes f :: 'a => real, g :: 'a => real, l :: real, net :: 'a net
+  prop eventually (%x. f x = g x) net --> tendsto_real f l net --> tendsto_real g l net
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    2: rewrite_fact tendsto_real_def @1 sym=false
-    3: rewrite_goal tendsto_real_def sym=false
-    3: introduction e
-    3.2: apply_fact @2,3.1
-    3.3: apply_forward_step conjI @0,3.2
-    3.4: rewrite_fact eventually_and @3.3 sym=true
-    3.5: apply_backward_step eventually_mono param_P="(λx. f x = g x ∧ abs (f x - l) < e)"
-    3.5: z3
-  qed
+proof
+  ← introduction goal=0
+    #[1] eventually (λx. f x = g x) net
+    #[2] tendsto_real f l net
+    #[3] tendsto_real g l net
+  → rewrite_fact tendsto_real_def sym=false goal=3 facts=[2]
+    #[4] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
+  ← rewrite_goal tendsto_real_def sym=false goal=3
+    #[5] ∀e. 0 < e ⟶ eventually (λx. abs (g x - l) < e) net
+  ← introduction e goal=5
+    #[6] _VAR e
+    #[7] 0 < e
+    #[8] eventually (λx. abs (g x - l) < e) net
+  → apply_fact goal=8 facts=[4,7]
+    #[9] eventually (λx. abs (f x - l) < e) net
+  → apply_forward_step conjI goal=8 facts=[1,9]
+    #[10] eventually (λx. f x = g x) net ∧ eventually (λx. abs (f x - l) < e) net
+  → rewrite_fact eventually_and sym=true goal=8 facts=[10]
+    #[11] eventually (λx. f x = g x ∧ abs (f x - l) < e) net
+  ← apply_backward_step eventually_mono param_P="(λx. f x = g x ∧ abs (f x - l) < e)" goal=8
+    #[12] ∀x. f x = g x ∧ abs (f x - l) < e ⟶ abs (g x - l) < e
+  ← z3 goal=12
+    #[13] ∀x. f x = g x ∧ abs (f x - l) < e ⟶ abs (g x - l) < e
+qed
 
 theorem reallim_transform
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real (λx. f x - g x) 0 net ⟶ tendsto_real f l net ⟶ tendsto_real g l net
+  fixes f :: 'a => real, g :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real (%x. f x - g x) 0 net --> tendsto_real f l net --> tendsto_real g l net
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    2: apply_forward_step reallim_sub @1,0
-    3: rewrite_fact real_sub_rzero @2 sym=false
-    4: cut "(λx. f x - (f x - g x)) = g"
-    4: apply_backward_step extension
-    4: z3
-    6: rewrite_fact_with_prev @5,3
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real (λx. f x - g x) 0 net
+    #[2] tendsto_real f l net
+    #[3] tendsto_real g l net
+  → apply_forward_step reallim_sub goal=3 facts=[2,1]
+    #[4] tendsto_real (λx. f x - (f x - g x)) (l - 0) net
+  → rewrite_fact real_sub_rzero sym=false goal=3 facts=[4]
+    #[5] tendsto_real (λx. f x - (f x - g x)) l net
+  cut "(λx. f x - (f x - g x)) = g" goal=3
+    #[6] (λx. f x - (f x - g x)) = g
+  ← apply_backward_step extension goal=6
+    #[7] ∀x. f x - (f x - g x) = g x
+  ← z3 goal=7
+    #[8] ∀x. f x - (f x - g x) = g x
+  → rewrite_fact_with_prev goal=3 facts=[6,5]
+qed
 
 theorem reallim_transform_eq
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real (λx. f x - g x) 0 net ⟶ tendsto_real f l net ⟷ tendsto_real g l net
-  proof
-    1: apply_backward_step iffI
-    1: introduction
-    1.1: apply_backward_step reallim_transform @0,1.0
-    2: introduction
-    2.1: apply_backward_step reallim_transform param_f=g
-    2.1: rewrite_goal reallim_null_neg sym=true
-    2.1: rewrite_goal real_neg_sub sym=false
-  qed
+  fixes f :: 'a => real, g :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real (%x. f x - g x) 0 net --> tendsto_real f l net <--> tendsto_real g l net
+proof
+  ← introduction goal=0
+    #[1] tendsto_real (λx. f x - g x) 0 net
+    #[2] tendsto_real f l net ⟷ tendsto_real g l net
+  ← apply_backward_step iffI goal=2
+    #[3] tendsto_real f l net ⟶ tendsto_real g l net
+    #[4] tendsto_real g l net ⟶ tendsto_real f l net
+  ← introduction goal=3
+    #[5] tendsto_real f l net
+    #[6] tendsto_real g l net
+  ← apply_backward_step reallim_transform goal=6 facts=[1,5]
+  ← introduction goal=4
+    #[7] tendsto_real g l net
+    #[8] tendsto_real f l net
+  ← apply_backward_step reallim_transform param_f=g goal=8
+    #[9] tendsto_real (λx. g x - f x) 0 net
+  ← rewrite_goal reallim_null_neg sym=true goal=9
+    #[10] tendsto_real (λx. -(g x - f x)) 0 net
+  ← rewrite_goal real_neg_sub sym=false goal=10
+qed
 
 theorem real_seq_offset
-  fixes f :: nat ⇒ real, k :: nat, l :: real
-  prop tendsto_real f l sequentially ⟶ tendsto_real (λi. f (i + k)) l sequentially
+  fixes f :: nat => real, k :: nat, l :: real
+  prop tendsto_real f l sequentially --> tendsto_real (%i. f (i + k)) l sequentially
 
 theorem real_seq_offset_rev
-  fixes f :: nat ⇒ real, k :: nat, l :: real
-  prop tendsto_real (λi. f (i + k)) l sequentially ⟶ tendsto_real f l sequentially
+  fixes f :: nat => real, k :: nat, l :: real
+  prop tendsto_real (%i. f (i + k)) l sequentially --> tendsto_real f l sequentially
 
 theorem reallim_transform_straddle
-  fixes a :: real, f :: 'a ⇒ real, g :: 'a ⇒ real, h :: 'a ⇒ real, net :: 'a net
-  prop eventually (λn. f n ≤ g n) net ⟶ tendsto_real f a net ⟶ eventually (λn. g n ≤ h n) net ⟶ tendsto_real h a net ⟶ tendsto_real g a net
+  fixes a :: real, f :: 'a => real, g :: 'a => real, h :: 'a => real, net :: 'a net
+  prop eventually (%n. f n <= g n) net --> tendsto_real f a net --> eventually (%n. g n <= h n) net --> tendsto_real h a net --> tendsto_real g a net
   [hint_backward,hint_backward1,hint_forward]
 
 theorem reallim_null_abs
-  fixes f :: 'a ⇒ real, net :: 'a net
-  prop tendsto_real (λx. abs (f x)) 0 net ⟷ tendsto_real f 0 net
-  proof
-    0: rewrite_goal tendsto_real_def sym=false
-    0: rewrite_goal real_sub_rzero sym=false
-    0: rewrite_goal real_abs_abs sym=false
-  qed
+  fixes f :: 'a => real, net :: 'a net
+  prop tendsto_real (%x. abs (f x)) 0 net <--> tendsto_real f 0 net
+proof
+  ← rewrite_goal tendsto_real_def sym=false goal=0
+    #[1] (∀e. 0 < e ⟶ eventually (λx. abs (abs (f x) - 0) < e) net) ⟷ (∀e. 0 < e ⟶ eventually (λx. abs (f x - 0) < e) net)
+  ← rewrite_goal real_sub_rzero sym=false goal=1
+    #[2] (∀e. 0 < e ⟶ eventually (λx. abs (abs (f x)) < e) net) ⟷ (∀e. 0 < e ⟶ eventually (λx. abs (f x) < e) net)
+  ← rewrite_goal real_abs_abs sym=false goal=2
+qed
 
 theorem reallim_within_le
-  fixes a :: real, f :: real ⇒ real, l :: real, s :: real set
-  prop tendsto_real f l (within (at a) s) ⟷ (∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x. x ∈ s ⟶ 0 < abs (x - a) ⟶ abs (x - a) ≤ d ⟶ abs (f x - l) < e)))
+  fixes a :: real, f :: real => real, l :: real, s :: real set
+  prop tendsto_real f l (within (at a) s) <--> (!e. 0 < e --> (?d. 0 < d & (!x. x Mem s --> 0 < abs (x - a) --> abs (x - a) <= d --> abs (f x - l) < e)))
   [hint_rewrite]
-  proof
-    0: rewrite_goal tendsto_real_def sym=false
-  qed
 
 theorem reallim_within
-  fixes a :: real, f :: real ⇒ real, l :: real, s :: real set
-  prop tendsto_real f l (within (at a) s) ⟷ (∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x. x ∈ s ⟶ 0 < abs (x - a) ⟶ abs (x - a) < d ⟶ abs (f x - l) < e)))
+  fixes a :: real, f :: real => real, l :: real, s :: real set
+  prop tendsto_real f l (within (at a) s) <--> (!e. 0 < e --> (?d. 0 < d & (!x. x Mem s --> 0 < abs (x - a) --> abs (x - a) < d --> abs (f x - l) < e)))
   [hint_rewrite]
 
 theorem reallim_at
-  fixes a :: real, f :: real ⇒ real, l :: real
-  prop tendsto_real f l (at a) ⟷ (∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x. 0 < abs (x - a) ⟶ abs (x - a) < d ⟶ abs (f x - l) < e)))
+  fixes a :: real, f :: real => real, l :: real
+  prop tendsto_real f l (at a) <--> (!e. 0 < e --> (?d. 0 < d & (!x. 0 < abs (x - a) --> abs (x - a) < d --> abs (f x - l) < e)))
   [hint_rewrite]
 
 theorem reallim_at_infinity
-  fixes f :: real ⇒ real, l :: real
-  prop tendsto_real f l at_infinity ⟷ (∀e. 0 < e ⟶ (∃b. ∀x. abs x ≥ b ⟶ abs (f x - l) < e))
+  fixes f :: real => real, l :: real
+  prop tendsto_real f l at_infinity <--> (!e. 0 < e --> (?b. !x. abs x >= b --> abs (f x - l) < e))
 
 theorem reallim_sequentially
-  fixes l :: real, s :: nat ⇒ real
-  prop tendsto_real s l sequentially ⟷ (∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e))
+  fixes l :: real, s :: nat => real
+  prop tendsto_real s l sequentially <--> (!e. 0 < e --> (?N. !n. N <= n --> abs (s n - l) < e))
   [hint_rewrite]
-  proof
-    0: rewrite_goal tendsto_real_def sym=false
-    0: rewrite_goal eventually_sequentially sym=false
-  qed
+proof
+  ← rewrite_goal tendsto_real_def sym=false goal=0
+    #[1] (∀e. 0 < e ⟶ eventually (λx. abs (s x - l) < e) sequentially) ⟷ (∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e))
+  ← rewrite_goal eventually_sequentially sym=false goal=1
+qed
 
 theorem reallim_eventually
-  fixes f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop eventually (λx. f x = l) net ⟶ tendsto_real f l net
-  proof
-    1: rewrite_goal tendsto_real_def sym=false
-    1: introduction e
-    1.2: apply_backward_step eventually_mono param_P="(λx. f x = l)"
-    1.2: z3 @1.1
-  qed
+  fixes f :: 'a => real, l :: real, net :: 'a net
+  prop eventually (%x. f x = l) net --> tendsto_real f l net
+proof
+  ← introduction goal=0
+    #[1] eventually (λx. f x = l) net
+    #[2] tendsto_real f l net
+  ← rewrite_goal tendsto_real_def sym=false goal=2
+    #[3] ∀e. 0 < e ⟶ eventually (λx. abs (f x - l) < e) net
+  ← introduction e goal=3
+    #[4] _VAR e
+    #[5] 0 < e
+    #[6] eventually (λx. abs (f x - l) < e) net
+  ← apply_backward_step eventually_mono param_P="(λx. f x = l)" goal=6
+    #[7] ∀x. f x = l ⟶ abs (f x - l) < e
+  ← z3 goal=7 facts=[5]
+    #[8] ∀x. f x = l ⟶ abs (f x - l) < e
+qed
 
 theorem reallim_ubound
-  fixes b :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ ¬(trivial_limit net) ⟶ eventually (λx. f x ≤ b) net ⟶ l ≤ b
+  fixes b :: real, f :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real f l net --> ~(trivial_limit net) --> eventually (%x. f x <= b) net --> l <= b
   [hint_backward,hint_backward1,hint_forward]
 
 theorem reallim_lbound
-  fixes b :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ ¬(trivial_limit net) ⟶ eventually (λx. b ≤ f x) net ⟶ b ≤ l
+  fixes b :: real, f :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real f l net --> ~(trivial_limit net) --> eventually (%x. b <= f x) net --> b <= l
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    3: rewrite_goal real_le_lneg2 sym=true
-    3: apply_backward_step reallim_ubound param_f="(%a. -f a)" param_net=net
-    3: rewrite_goal reallim_neg_eq sym=false
-    4: rewrite_goal real_le_lneg2 sym=false
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] ¬(trivial_limit net)
+    #[3] eventually (λx. b ≤ f x) net
+    #[4] b ≤ l
+  ← rewrite_goal real_le_lneg2 sym=true goal=4
+    #[5] -l ≤ -b
+  ← apply_backward_step reallim_ubound param_f="(%a. -f a)" param_net=net goal=5
+    #[6] tendsto_real (λa. -(f a)) (-l) net
+    #[7] eventually (λx. -(f x) ≤ -b) net
+  ← rewrite_goal reallim_neg_eq sym=false goal=6
+  ← rewrite_goal real_le_lneg2 sym=false goal=7
+qed
 
 theorem reallim_le
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, l :: real, m :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ tendsto_real g m net ⟶ ¬(trivial_limit net) ⟶ eventually (λx. f x ≤ g x) net ⟶ l ≤ m
+  fixes f :: 'a => real, g :: 'a => real, l :: real, m :: real, net :: 'a net
+  prop tendsto_real f l net --> tendsto_real g m net --> ~(trivial_limit net) --> eventually (%x. f x <= g x) net --> l <= m
   [hint_backward,hint_backward1,hint_forward]
-  proof
-    4: apply_forward_step reallim_sub @1,0
-    5: rewrite_goal real_sub_le sym=true
-    5: rewrite_fact real_sub_le @3 sym=true
-    6: apply_backward_step reallim_lbound @4,2,5
-  qed
+proof
+  ← introduction goal=0
+    #[1] tendsto_real f l net
+    #[2] tendsto_real g m net
+    #[3] ¬(trivial_limit net)
+    #[4] eventually (λx. f x ≤ g x) net
+    #[5] l ≤ m
+  → apply_forward_step reallim_sub goal=5 facts=[2,1]
+    #[6] tendsto_real (λx. g x - f x) (m - l) net
+  ← rewrite_goal real_sub_le sym=true goal=5
+    #[7] 0 ≤ m - l
+  → rewrite_fact real_sub_le sym=true goal=7 facts=[4]
+    #[8] eventually (λx. 0 ≤ g x - f x) net
+  ← apply_backward_step reallim_lbound goal=7 facts=[6,3,8]
+qed
 
 theorem reallim_const_eq
   fixes c :: real, d :: real, net :: 'a net
-  prop tendsto_real (λx. c) d net ⟷ trivial_limit net ∨ c = d
+  prop tendsto_real (%x. c) d net <--> trivial_limit net | c = d
   [hint_rewrite]
-  proof
-    0: apply_backward_step iffI
-    0: introduction
-    0.1: cases "trivial_limit net"
-    0.1: introduction
-    0.1.1: apply_backward_step disjI1
-    0.2: introduction
-    0.2.1: apply_backward_step disjI2
-    0.2.1: apply_forward_step reallim_unique @0.2.0,0.0 param_l2=c
-    0.2.2: rewrite_goal eq_sym_eq sym=false
-    0.2.2: apply_prev @0.2.1
-    0.2.2: apply_backward_step reallim_const
-    1: introduction
-    1.1: apply_backward_step disjE @1.0
-    1.1: introduction
-    1.1.1: apply_backward_step reallim_trivial
-    1.2: introduction
-    1.2.1: rewrite_goal_with_prev @1.2.0
-    1.2.1: apply_backward_step reallim_const
-  qed
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] tendsto_real (λx. c) d net ⟶ trivial_limit net ∨ c = d
+    #[2] trivial_limit net ∨ c = d ⟶ tendsto_real (λx. c) d net
+  ← introduction goal=1
+    #[3] tendsto_real (λx. c) d net
+    #[4] trivial_limit net ∨ c = d
+  ← cases "trivial_limit net" goal=4
+    #[5] trivial_limit net ⟶ trivial_limit net ∨ c = d
+    #[6] ¬(trivial_limit net) ⟶ trivial_limit net ∨ c = d
+  ← introduction goal=5
+    #[7] trivial_limit net
+    #[8] trivial_limit net ∨ c = d
+  ← apply_backward_step disjI1 goal=8
+  ← introduction goal=6
+    #[9] ¬(trivial_limit net)
+    #[10] trivial_limit net ∨ c = d
+  ← apply_backward_step disjI2 goal=10
+    #[11] c = d
+  → apply_forward_step reallim_unique param_l2=c goal=11 facts=[9,3]
+    #[12] tendsto_real (λx. c) c net ⟶ d = c
+  ← rewrite_goal eq_sym_eq sym=false goal=11
+    #[13] d = c
+  ← apply_prev goal=13 facts=[12]
+    #[14] tendsto_real (λx. c) c net
+  ← apply_backward_step reallim_const goal=14
+    #[15] tendsto_real (λx. c) c net
+  ← introduction goal=2
+    #[16] trivial_limit net ∨ c = d
+    #[17] tendsto_real (λx. c) d net
+  ← apply_backward_step disjE goal=17 facts=[16]
+    #[18] trivial_limit net ⟶ tendsto_real (λx. c) d net
+    #[19] c = d ⟶ tendsto_real (λx. c) d net
+  ← introduction goal=18
+    #[20] tendsto_real (λx. c) d net
+  ← apply_backward_step reallim_trivial goal=20
+  ← introduction goal=19
+    #[21] c = d
+    #[22] tendsto_real (λx. c) d net
+  ← rewrite_goal_with_prev goal=22 facts=[21]
+    #[23] tendsto_real (λx. d) d net
+  ← apply_backward_step reallim_const goal=23
+    #[24] tendsto_real (λx. d) d net
+qed
 
 theorem reallim_sum
-  fixes f :: 'a ⇒ 'b ⇒ real, l :: 'a ⇒ real, net :: 'b net, s :: 'a set
-  prop finite s ⟶ (∀i. i ∈ s ⟶ tendsto_real (f i) (l i) net) ⟶ tendsto_real (λx. sum s (λi. f i x)) (sum s l) net
+  fixes f :: 'a => 'b => real, l :: 'a => real, net :: 'b net, s :: 'a set
+  prop finite s --> (!i. i Mem s --> tendsto_real (f i) (l i) net) --> tendsto_real (%x. sum s (%i. f i x)) (sum s l) net
   [hint_backward,hint_backward1,hint_forward]
 
 theorem reallim_null_sum
-  fixes f :: 'a ⇒ 'b ⇒ real, net :: 'a net, s :: 'b set
-  prop finite s ⟶ (∀a. a ∈ s ⟶ tendsto_real (λx. f x a) 0 net) ⟶ tendsto_real (λx. sum s (f x)) 0 net
+  fixes f :: 'a => 'b => real, net :: 'a net, s :: 'b set
+  prop finite s --> (!a. a Mem s --> tendsto_real (%x. f x a) 0 net) --> tendsto_real (%x. sum s (f x)) 0 net
   [hint_backward,hint_backward1]
 
 theorem reallim_null_comparison
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
-  prop eventually (λx. abs (f x) ≤ g x) net ⟶ tendsto_real g 0 net ⟶ tendsto_real f 0 net
+  fixes f :: 'a => real, g :: 'a => real, net :: 'a net
+  prop eventually (%x. abs (f x) <= g x) net --> tendsto_real g 0 net --> tendsto_real f 0 net
   [hint_backward,hint_backward1,hint_forward]
 
 theorem convergent_real_bounded_monotone
-  fixes s :: nat ⇒ real
-  prop real_bounded (image s univ) ⟶ (∀n. s n ≤ s (Suc n)) ∨ (∀n. s (Suc n) ≤ s n) ⟶ (∃l. tendsto_real s l sequentially)
+  fixes s :: nat => real
+  prop real_bounded (image s univ) --> (!n. s n <= s (Suc n)) | (!n. s (Suc n) <= s n) --> (?l. tendsto_real s l sequentially)
 
 theorem reallim_eventually_ubound
-  fixes c :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ l < c ⟶ eventually (λx. f x < c) net
+  fixes c :: real, f :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real f l net --> l < c --> eventually (%x. f x < c) net
 
 theorem reallim_eventually_lbound
-  fixes c :: real, f :: 'a ⇒ real, l :: real, net :: 'a net
-  prop tendsto_real f l net ⟶ c < l ⟶ eventually (λx. c < f x) net
+  fixes c :: real, f :: 'a => real, l :: real, net :: 'a net
+  prop tendsto_real f l net --> c < l --> eventually (%x. c < f x) net
 
 theorem reallim_sequentially_within
-  fixes f :: nat ⇒ real, l :: real, s :: nat set
-  prop tendsto_real f l sequentially ⟶ tendsto_real f l (within sequentially s)
+  fixes f :: nat => real, l :: real, s :: nat set
+  prop tendsto_real f l sequentially --> tendsto_real f l (within sequentially s)
 
 def real_sums :: (nat ⇒ real) ⇒ real ⇒ nat set ⇒ bool = real_sums f l s ⟷ tendsto_real (λn. sum (s ∩ {0..n}) f) l sequentially [hint_rewrite]
 
@@ -640,406 +964,406 @@ def real_infsum :: nat set ⇒ (nat ⇒ real) ⇒ real = real_infsum s f = (THE 
 def real_summable :: nat set ⇒ (nat ⇒ real) ⇒ bool = real_summable s f ⟷ (∃l. real_sums f l s) [hint_rewrite]
 
 theorem real_series_cauchy
-  fixes f :: nat ⇒ real, s :: nat set
-  prop (∃l. real_sums f l s) ⟷ (∀e. 0 < e ⟶ (∃N. ∀m. ∀n. m ≥ N ⟶ abs (sum (s ∩ {m..n}) f) < e))
+  fixes f :: nat => real, s :: nat set
+  prop (?l. real_sums f l s) <--> (!e. 0 < e --> (?N. !m. !n. m >= N --> abs (sum (s Int {m..n}) f) < e))
 
 theorem real_summable_cauchy
-  fixes f :: nat ⇒ real, s :: nat set
-  prop real_summable s f ⟷ (∀e. 0 < e ⟶ (∃N. ∀m. ∀n. m ≥ N ⟶ abs (sum (s ∩ {m..n}) f) < e))
+  fixes f :: nat => real, s :: nat set
+  prop real_summable s f <--> (!e. 0 < e --> (?N. !m. !n. m >= N --> abs (sum (s Int {m..n}) f) < e))
 
 theorem real_sums_summable
-  fixes f :: nat ⇒ real, l :: real, s :: nat set
-  prop real_sums f l s ⟶ real_summable s f
+  fixes f :: nat => real, l :: real, s :: nat set
+  prop real_sums f l s --> real_summable s f
 
 theorem real_sums_infsum
-  fixes f :: nat ⇒ real, s :: nat set
-  prop real_sums f (real_infsum s f) s ⟷ real_summable s f
+  fixes f :: nat => real, s :: nat set
+  prop real_sums f (real_infsum s f) s <--> real_summable s f
   [hint_rewrite]
 
 theorem real_series_from
-  fixes f :: nat ⇒ real, k :: nat, l :: real
-  prop real_sums f l (from k) ⟷ tendsto_real (λn. sum ({k..n}) f) l sequentially
+  fixes f :: nat => real, k :: nat, l :: real
+  prop real_sums f l (from k) <--> tendsto_real (%n. sum ({k..n}) f) l sequentially
 
 theorem real_series_unique
-  fixes f :: nat ⇒ real, l1 :: real, l2 :: real, s :: nat set
-  prop real_sums f l1 s ⟶ real_sums f l2 s ⟶ l1 = l2
+  fixes f :: nat => real, l1 :: real, l2 :: real, s :: nat set
+  prop real_sums f l1 s --> real_sums f l2 s --> l1 = l2
   [hint_backward]
 
 theorem real_infsum_unique
-  fixes f :: nat ⇒ real, l :: real, s :: nat set
-  prop real_sums f l s ⟶ real_infsum s f = l
+  fixes f :: nat => real, l :: real, s :: nat set
+  prop real_sums f l s --> real_infsum s f = l
   [hint_backward]
 
 theorem real_series_finite
-  fixes f :: nat ⇒ real, s :: nat set
-  prop finite s ⟶ real_sums f (sum s f) s
+  fixes f :: nat => real, s :: nat set
+  prop finite s --> real_sums f (sum s f) s
 
 theorem real_summable_finite
-  fixes f :: nat ⇒ real, s :: nat set
-  prop finite s ⟶ real_summable s f
+  fixes f :: nat => real, s :: nat set
+  prop finite s --> real_summable s f
   [hint_backward]
 
 theorem real_summable_iff_eventually
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, s :: nat set
-  prop (∃N. ∀n. N ≤ n ∧ n ∈ s ⟶ f n = g n) ⟶ real_summable s f ⟷ real_summable s g
+  fixes f :: nat => real, g :: nat => real, s :: nat set
+  prop (?N. !n. N <= n & n Mem s --> f n = g n) --> real_summable s f <--> real_summable s g
 
 theorem real_summable_eq_eventually
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, s :: nat set
-  prop (∃N. ∀n. N ≤ n ⟶ n ∈ s ⟶ f n = g n) ⟶ real_summable s f ⟶ real_summable s g
+  fixes f :: nat => real, g :: nat => real, s :: nat set
+  prop (?N. !n. N <= n --> n Mem s --> f n = g n) --> real_summable s f --> real_summable s g
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_summable_iff_cofinite
-  fixes f :: nat ⇒ real, s :: nat set, t :: nat set
-  prop finite (diff s t ∪ diff t s) ⟶ real_summable s f ⟷ real_summable t f
+  fixes f :: nat => real, s :: nat set, t :: nat set
+  prop finite (diff s t Un diff t s) --> real_summable s f <--> real_summable t f
 
 theorem real_summable_eq_cofinite
-  fixes f :: nat ⇒ real, s :: nat set, t :: nat set
-  prop finite (diff s t ∪ diff t s) ⟶ real_summable s f ⟶ real_summable t f
+  fixes f :: nat => real, s :: nat set, t :: nat set
+  prop finite (diff s t Un diff t s) --> real_summable s f --> real_summable t f
 
 theorem real_summable_from_elsewhere
-  fixes f :: nat ⇒ real, m :: nat, n :: nat
-  prop real_summable (from m) f ⟶ real_summable (from n) f
+  fixes f :: nat => real, m :: nat, n :: nat
+  prop real_summable (from m) f --> real_summable (from n) f
 
 theorem real_summable_from_elsewhere_eq
-  fixes f :: nat ⇒ real, m :: nat, n :: nat
-  prop real_summable (from m) f ⟷ real_summable (from n) f
+  fixes f :: nat => real, m :: nat, n :: nat
+  prop real_summable (from m) f <--> real_summable (from n) f
 
 theorem real_series_goestozero
-  fixes f :: nat ⇒ real, s :: nat set
-  prop real_summable s f ⟶ (∀e. 0 < e ⟶ eventually (λn. n ∈ s ⟶ abs (f n) < e) sequentially)
+  fixes f :: nat => real, s :: nat set
+  prop real_summable s f --> (!e. 0 < e --> eventually (%n. n Mem s --> abs (f n) < e) sequentially)
 
 theorem real_summable_imp_tozero
-  fixes f :: nat ⇒ real, s :: nat set
-  prop real_summable s f ⟶ tendsto_real (λn. if n ∈ s then f n else 0) 0 sequentially
+  fixes f :: nat => real, s :: nat set
+  prop real_summable s f --> tendsto_real (%n. if n Mem s then f n else 0) 0 sequentially
 
 theorem real_summable_imp__bounded
-  fixes f :: nat ⇒ real, s :: nat set
-  prop real_summable s f ⟶ real_bounded (image f s)
+  fixes f :: nat => real, s :: nat set
+  prop real_summable s f --> real_bounded (image f s)
 
 theorem real_summable_imp_real_sums_bounded
-  fixes f :: nat ⇒ real, k :: nat
-  prop real_summable (from k) f ⟶ real_bounded ({y. ∀n. y = sum ({k..n}) f})
+  fixes f :: nat => real, k :: nat
+  prop real_summable (from k) f --> real_bounded ({y. !n. y = sum ({k..n}) f})
 
 theorem real_series_0
   fixes s :: nat set
-  prop real_sums (λn. 0) 0 s
+  prop real_sums (%n. 0) 0 s
   [hint_backward]
 
 theorem real_series_add
-  fixes s :: nat set, x :: nat ⇒ real, x0 :: real, y :: nat ⇒ real, y0 :: real
-  prop real_sums x x0 s ⟶ real_sums y y0 s ⟶ real_sums (λn. x n + y n) (x0 + y0) s
+  fixes s :: nat set, x :: nat => real, x0 :: real, y :: nat => real, y0 :: real
+  prop real_sums x x0 s --> real_sums y y0 s --> real_sums (%n. x n + y n) (x0 + y0) s
   [hint_backward]
 
 theorem real_series_sub
-  fixes s :: nat set, x :: nat ⇒ real, x0 :: real, y :: nat ⇒ real, y0 :: real
-  prop real_sums x x0 s ⟶ real_sums y y0 s ⟶ real_sums (λn. x n - y n) (x0 - y0) s
+  fixes s :: nat set, x :: nat => real, x0 :: real, y :: nat => real, y0 :: real
+  prop real_sums x x0 s --> real_sums y y0 s --> real_sums (%n. x n - y n) (x0 - y0) s
   [hint_backward]
 
 theorem real_series_lmul
-  fixes c :: real, s :: nat set, x :: nat ⇒ real, x0 :: real
-  prop real_sums x x0 s ⟶ real_sums (λn. c * x n) (c * x0) s
+  fixes c :: real, s :: nat set, x :: nat => real, x0 :: real
+  prop real_sums x x0 s --> real_sums (%n. c * x n) (c * x0) s
   [hint_backward]
 
 theorem real_series_rmul
-  fixes c :: real, s :: nat set, x :: nat ⇒ real, x0 :: real
-  prop real_sums x x0 s ⟶ real_sums (λn. x n * c) (x0 * c) s
+  fixes c :: real, s :: nat set, x :: nat => real, x0 :: real
+  prop real_sums x x0 s --> real_sums (%n. x n * c) (x0 * c) s
 
 theorem real_series_neg
-  fixes s :: nat set, x :: nat ⇒ real, x0 :: real
-  prop real_sums x x0 s ⟶ real_sums (λn. -(x n)) (-x0) s
+  fixes s :: nat set, x :: nat => real, x0 :: real
+  prop real_sums x x0 s --> real_sums (%n. -(x n)) (-x0) s
 
 theorem real_sums_iff
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, l :: real, s :: nat set
-  prop (∀x. x ∈ s ⟶ f x = g x) ⟶ real_sums f l s ⟷ real_sums g l s
+  fixes f :: nat => real, g :: nat => real, l :: real, s :: nat set
+  prop (!x. x Mem s --> f x = g x) --> real_sums f l s <--> real_sums g l s
 
 theorem real_sums_eq
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, l :: real, s :: nat set
-  prop (∀x. x ∈ s ⟶ f x = g x) ⟶ real_sums f l s ⟶ real_sums g l s
+  fixes f :: nat => real, g :: nat => real, l :: real, s :: nat set
+  prop (!x. x Mem s --> f x = g x) --> real_sums f l s --> real_sums g l s
   [hint_backward]
 
 theorem real_series_finite_support
-  fixes f :: nat ⇒ real, s :: nat set, t :: nat set
-  prop finite (s ∩ t) ⟶ (∀x. ¬(x ∈ s ∩ t) ⟶ f x = 0) ⟶ real_sums f (sum (s ∩ t) f) t
+  fixes f :: nat => real, s :: nat set, t :: nat set
+  prop finite (s Int t) --> (!x. ~(x Mem s Int t) --> f x = 0) --> real_sums f (sum (s Int t) f) t
   [hint_backward1,hint_backward]
 
 theorem real_series_diffs
-  fixes f :: nat ⇒ real, k :: nat
-  prop tendsto_real f 0 sequentially ⟶ real_sums (λn. f n - f (n + 1)) (f k) (from k)
+  fixes f :: nat => real, k :: nat
+  prop tendsto_real f 0 sequentially --> real_sums (%n. f n - f (n + 1)) (f k) (from k)
 
 theorem real_series_trival
-  fixes f :: nat ⇒ real
-  prop real_sums f 0 ∅
+  fixes f :: nat => real
+  prop real_sums f 0 {}
 
 theorem real_series_restrict
-  fixes f :: nat ⇒ real, l :: real, s :: nat set
-  prop real_sums (λn. if n ∈ s then f n else 0) l univ ⟷ real_sums f l s
+  fixes f :: nat => real, l :: real, s :: nat set
+  prop real_sums (%n. if n Mem s then f n else 0) l univ <--> real_sums f l s
   [hint_rewrite]
 
 theorem real_series_sum
-  fixes f :: nat ⇒ real, l :: real, s :: nat set, t :: nat set
-  prop finite s ⟶ s ⊆ t ⟶ (∀x. ¬(x ∈ s) ⟶ f x = 0) ⟶ sum s f = l ⟶ real_sums f l t
+  fixes f :: nat => real, l :: real, s :: nat set, t :: nat set
+  prop finite s --> s Sub t --> (!x. ~(x Mem s) --> f x = 0) --> sum s f = l --> real_sums f l t
   [hint_backward]
 
 theorem real_series_reindex
-  fixes f :: nat ⇒ real, k :: nat, l :: real, m :: nat
-  prop real_sums (λn. f (n + k)) l (from m) ⟷ real_sums f l (from (m + k))
+  fixes f :: nat => real, k :: nat, l :: real, m :: nat
+  prop real_sums (%n. f (n + k)) l (from m) <--> real_sums f l (from (m + k))
 
 theorem real_series_even
-  fixes f :: nat ⇒ real, l :: real, n :: nat
-  prop real_sums f l (from n) ⟷ real_sums (λi. if even i then f (i DIV 2) else 0) l (from (2 * n))
+  fixes f :: nat => real, l :: real, n :: nat
+  prop real_sums f l (from n) <--> real_sums (%i. if even i then f (i DIV 2) else 0) l (from (2 * n))
 
 theorem real_series_odd
-  fixes f :: nat ⇒ real, l :: real, n :: nat
-  prop real_sums f l (from n) ⟷ real_sums (λi. if odd i then f (i DIV 2) else 0) l (from (2 * n + 1))
+  fixes f :: nat => real, l :: real, n :: nat
+  prop real_sums f l (from n) <--> real_sums (%i. if odd i then f (i DIV 2) else 0) l (from (2 * n + 1))
 
 theorem real_partial_sums_le_infsum
-  fixes f :: nat ⇒ real, n :: nat, s :: nat set
-  prop (∀i. i ∈ s ⟶ 0 ≤ f i) ⟶ real_summable s f ⟶ sum (s ∩ {0..n}) f ≤ real_infsum s f
+  fixes f :: nat => real, n :: nat, s :: nat set
+  prop (!i. i Mem s --> 0 <= f i) --> real_summable s f --> sum (s Int {0..n}) f <= real_infsum s f
   [hint_backward]
 
 theorem real_partial_sums_le_infsum_gen
-  fixes f :: nat ⇒ real, s :: nat set, t :: nat set
-  prop finite t ⟶ t ⊆ s ⟶ (∀i. i ∈ s ⟶ 0 ≤ f i) ⟶ real_summable s f ⟶ sum t f ≤ real_infsum s f
+  fixes f :: nat => real, s :: nat set, t :: nat set
+  prop finite t --> t Sub s --> (!i. i Mem s --> 0 <= f i) --> real_summable s f --> sum t f <= real_infsum s f
   [hint_backward]
 
 theorem real_series_terms_tozero
-  fixes f :: nat ⇒ real, l :: real, n :: nat
-  prop real_sums f l (from n) ⟶ tendsto_real f 0 sequentially
+  fixes f :: nat => real, l :: real, n :: nat
+  prop real_sums f l (from n) --> tendsto_real f 0 sequentially
   [hint_backward]
 
 theorem real_series_le
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, s :: nat set, y :: real, z :: real
-  prop real_sums f y s ⟶ real_sums g z s ⟶ (∀i. i ∈ s ⟶ f i ≤ g i) ⟶ y ≤ z
+  fixes f :: nat => real, g :: nat => real, s :: nat set, y :: real, z :: real
+  prop real_sums f y s --> real_sums g z s --> (!i. i Mem s --> f i <= g i) --> y <= z
   [hint_forward,hint_backward1]
 
 theorem real_series_pos
-  fixes f :: nat ⇒ real, s :: nat set, y :: real
-  prop real_sums f y s ⟶ (∀i. i ∈ s ⟶ 0 ≤ f i) ⟶ 0 ≤ y
+  fixes f :: nat => real, s :: nat set, y :: real
+  prop real_sums f y s --> (!i. i Mem s --> 0 <= f i) --> 0 <= y
   [hint_forward,hint_backward1]
 
 theorem real_series_bound
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, s :: nat set, y :: real, z :: real
-  prop real_sums f y s ⟶ real_sums g z s ⟶ (∀i. i ∈ s ⟶ abs (f i) ≤ g i) ⟶ abs y ≤ z
+  fixes f :: nat => real, g :: nat => real, s :: nat set, y :: real, z :: real
+  prop real_sums f y s --> real_sums g z s --> (!i. i Mem s --> abs (f i) <= g i) --> abs y <= z
   [hint_forward,hint_backward1]
 
 theorem real_series_comparison_bound
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, s :: nat set, z :: real
-  prop real_sums g z s ⟶ (∀i. i ∈ s ⟶ abs (f i) ≤ g i) ⟶ (∃y. real_sums f y s ∧ abs y ≤ z)
+  fixes f :: nat => real, g :: nat => real, s :: nat set, z :: real
+  prop real_sums g z s --> (!i. i Mem s --> abs (f i) <= g i) --> (?y. real_sums f y s & abs y <= z)
 
 theorem real_series_mul
-  fixes a :: real, b :: real, x :: nat ⇒ real, y :: nat ⇒ real
-  prop real_sums x a (from 0) ⟶ real_sums y b (from 0) ⟶ real_summable (from 0) (λn. abs (x n)) ∨ real_summable (from 0) (λn. abs (y n)) ⟶ real_sums (λn. sum ({0..n}) (λi. x i * y (n - i))) (a * b) (from 0)
+  fixes a :: real, b :: real, x :: nat => real, y :: nat => real
+  prop real_sums x a (from 0) --> real_sums y b (from 0) --> real_summable (from 0) (%n. abs (x n)) | real_summable (from 0) (%n. abs (y n)) --> real_sums (%n. sum ({0..n}) (%i. x i * y (n - i))) (a * b) (from 0)
 
 theorem real_series_mul_unique
-  fixes a :: real, b :: real, c :: real, x :: nat ⇒ real, y :: nat ⇒ real
-  prop real_sums x a (from 0) ⟶ real_sums y b (from 0) ⟶ real_sums (λn. sum ({0..n}) (λi. x i * y (n - i))) c (from 0) ⟶ a * b = c
+  fixes a :: real, b :: real, c :: real, x :: nat => real, y :: nat => real
+  prop real_sums x a (from 0) --> real_sums y b (from 0) --> real_sums (%n. sum ({0..n}) (%i. x i * y (n - i))) c (from 0) --> a * b = c
   [hint_backward1,hint_forward]
 
 theorem real_summable_0
   fixes s :: nat set
-  prop real_summable s (λn. 0)
+  prop real_summable s (%n. 0)
   [hint_backward]
 
 theorem real_summable_add
-  fixes s :: nat set, x :: nat ⇒ real, y :: nat ⇒ real
-  prop real_summable s x ⟶ real_summable s y ⟶ real_summable s (λn. x n + y n)
+  fixes s :: nat set, x :: nat => real, y :: nat => real
+  prop real_summable s x --> real_summable s y --> real_summable s (%n. x n + y n)
 
 theorem real_summable_sub
-  fixes s :: nat set, x :: nat ⇒ real, y :: nat ⇒ real
-  prop real_summable s x ⟶ real_summable s y ⟶ real_summable s (λn. x n - y n)
+  fixes s :: nat set, x :: nat => real, y :: nat => real
+  prop real_summable s x --> real_summable s y --> real_summable s (%n. x n - y n)
 
 theorem real_summable_lmul
-  fixes c :: real, s :: nat set, x :: nat ⇒ real
-  prop real_summable s x ⟶ real_summable s (λn. c * x n)
+  fixes c :: real, s :: nat set, x :: nat => real
+  prop real_summable s x --> real_summable s (%n. c * x n)
   [hint_backward]
 
 theorem real_summable_rmul
-  fixes c :: real, s :: nat set, x :: nat ⇒ real
-  prop real_summable s x ⟶ real_summable s (λn. x n * c)
+  fixes c :: real, s :: nat set, x :: nat => real
+  prop real_summable s x --> real_summable s (%n. x n * c)
 
 theorem real_summable_neg
-  fixes s :: nat set, x :: nat ⇒ real
-  prop real_summable s x ⟶ real_summable s (λn. -(x n))
+  fixes s :: nat set, x :: nat => real
+  prop real_summable s x --> real_summable s (%n. -(x n))
 
 theorem real_summable_iff
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, s :: nat set
-  prop (∀x. x ∈ s ⟶ f x = g x) ⟶ real_summable s f ⟷ real_summable s g
+  fixes f :: nat => real, g :: nat => real, s :: nat set
+  prop (!x. x Mem s --> f x = g x) --> real_summable s f <--> real_summable s g
 
 theorem real_summable_eq
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, s :: nat set
-  prop (∀x. x ∈ s ⟶ f x = g x) ⟶ real_summable s f ⟶ real_summable s g
+  fixes f :: nat => real, g :: nat => real, s :: nat set
+  prop (!x. x Mem s --> f x = g x) --> real_summable s f --> real_summable s g
   [hint_backward,hint_forward,hint_backward1]
 
 theorem real_series_subset
-  fixes f :: nat ⇒ real, l :: real, s :: nat set, t :: nat set
-  prop s ⊆ t ⟶ real_sums (λi. if i ∈ s then f i else 0) l t ⟶ real_sums f l s
+  fixes f :: nat => real, l :: real, s :: nat set, t :: nat set
+  prop s Sub t --> real_sums (%i. if i Mem s then f i else 0) l t --> real_sums f l s
   [hint_backward1,hint_backward]
 
 theorem real_summable_subset
-  fixes f :: nat ⇒ real, s :: nat set, t :: nat set
-  prop s ⊆ t ⟶ real_summable t (λi. if i ∈ s then f i else 0) ⟶ real_summable s f
+  fixes f :: nat => real, s :: nat set, t :: nat set
+  prop s Sub t --> real_summable t (%i. if i Mem s then f i else 0) --> real_summable s f
   [hint_backward1,hint_backward]
 
 theorem real_summable_trivial
-  fixes f :: nat ⇒ real
-  prop real_summable ∅ f
+  fixes f :: nat => real
+  prop real_summable {} f
 
 theorem real_summable_restrict
-  fixes f :: nat ⇒ real, s :: nat set
-  prop real_summable univ (λi. if i ∈ s then f i else 0) ⟷ real_summable s f
+  fixes f :: nat => real, s :: nat set
+  prop real_summable univ (%i. if i Mem s then f i else 0) <--> real_summable s f
 
 theorem real_sums_finite_diff
-  fixes f :: nat ⇒ real, l :: real, s :: nat set, t :: nat set
-  prop t ⊆ s ⟶ finite t ⟶ real_sums f l s ⟶ real_sums f (l - sum t f) (diff s t)
+  fixes f :: nat => real, l :: real, s :: nat set, t :: nat set
+  prop t Sub s --> finite t --> real_sums f l s --> real_sums f (l - sum t f) (diff s t)
   [hint_backward1,hint_backward]
 
 theorem real_sums_finite_union
-  fixes f :: nat ⇒ real, l :: real, s :: nat set, t :: nat set
-  prop finite t ⟶ real_sums f l s ⟶ real_sums f (l + sum (diff t s) f) (s ∪ t)
+  fixes f :: nat => real, l :: real, s :: nat set, t :: nat set
+  prop finite t --> real_sums f l s --> real_sums f (l + sum (diff t s) f) (s Un t)
   [hint_backward,hint_backward1]
 
 theorem real_sums_offset
-  fixes f :: nat ⇒ real, l :: real, m :: nat, n :: nat
-  prop real_sums f l (from m) ⟶ m < n ⟶ real_sums f (l - sum ({m..n - 1}) f) (from n)
+  fixes f :: nat => real, l :: real, m :: nat, n :: nat
+  prop real_sums f l (from m) --> m < n --> real_sums f (l - sum ({m..n - 1}) f) (from n)
   [hint_backward,hint_backward1]
 
 theorem real_sums_offset_rev
-  fixes f :: nat ⇒ real, l :: real, m :: nat, n :: nat
-  prop real_sums f l (from m) ⟶ n < m ⟶ real_sums f (l + sum ({n..m - 1}) f) (from n)
+  fixes f :: nat => real, l :: real, m :: nat, n :: nat
+  prop real_sums f l (from m) --> n < m --> real_sums f (l + sum ({n..m - 1}) f) (from n)
   [hint_backward,hint_backward1]
 
 theorem real_summable_even
-  fixes f :: nat ⇒ real, n :: nat
-  prop real_summable (from n) f ⟷ real_summable (from (2 * n)) (λi. if even i then f (i DIV 2) else 0)
+  fixes f :: nat => real, n :: nat
+  prop real_summable (from n) f <--> real_summable (from (2 * n)) (%i. if even i then f (i DIV 2) else 0)
 
 theorem real_summable_odd
-  fixes f :: nat ⇒ real, n :: nat
-  prop real_summable (from n) f ⟷ real_summable (from (2 * n + 1)) (λi. if odd i then f (i DIV 2) else 0)
+  fixes f :: nat => real, n :: nat
+  prop real_summable (from n) f <--> real_summable (from (2 * n + 1)) (%i. if odd i then f (i DIV 2) else 0)
 
 theorem real_infsum_0
   fixes s :: nat set
-  prop real_infsum s (λn. 0) = 0
+  prop real_infsum s (%n. 0) = 0
 
 theorem real_infsum_add
-  fixes s :: nat set, x :: nat ⇒ real, y :: nat ⇒ real
-  prop real_summable s x ⟶ real_summable s y ⟶ real_infsum s (λn. x n + y n) = real_infsum s x + real_infsum s y
+  fixes s :: nat set, x :: nat => real, y :: nat => real
+  prop real_summable s x --> real_summable s y --> real_infsum s (%n. x n + y n) = real_infsum s x + real_infsum s y
   [hint_backward]
 
 theorem real_infsum_sub
-  fixes s :: nat set, x :: nat ⇒ real, y :: nat ⇒ real
-  prop real_summable s x ⟶ real_summable s y ⟶ real_infsum s (λn. x n - y n) = real_infsum s x - real_infsum s y
+  fixes s :: nat set, x :: nat => real, y :: nat => real
+  prop real_summable s x --> real_summable s y --> real_infsum s (%n. x n - y n) = real_infsum s x - real_infsum s y
   [hint_backward]
 
 theorem real_infsum_lmul
-  fixes c :: real, s :: nat set, x :: nat ⇒ real
-  prop real_summable s x ⟶ real_infsum s (λn. c * x n) = c * real_infsum s x
+  fixes c :: real, s :: nat set, x :: nat => real
+  prop real_summable s x --> real_infsum s (%n. c * x n) = c * real_infsum s x
 
 theorem real_infsum_rmul
-  fixes c :: real, s :: nat set, x :: nat ⇒ real
-  prop real_summable s x ⟶ real_infsum s (λn. x n * c) = real_infsum s x * c
+  fixes c :: real, s :: nat set, x :: nat => real
+  prop real_summable s x --> real_infsum s (%n. x n * c) = real_infsum s x * c
 
 theorem real_infsum_neg
-  fixes s :: nat set, x :: nat ⇒ real
-  prop real_summable s x ⟶ real_infsum s (λn. -(x n)) = -(real_infsum s x)
+  fixes s :: nat set, x :: nat => real
+  prop real_summable s x --> real_infsum s (%n. -(x n)) = -(real_infsum s x)
 
 theorem real_infsum_eq
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, s :: nat set
-  prop (∀x. x ∈ s ⟶ f x = g x) ⟶ real_summable s f ⟶ real_summable s g ⟶ real_infsum s f = real_infsum s g
+  fixes f :: nat => real, g :: nat => real, s :: nat set
+  prop (!x. x Mem s --> f x = g x) --> real_summable s f --> real_summable s g --> real_infsum s f = real_infsum s g
   [hint_backward,hint_backward1]
 
 theorem real_infsum_restrict
-  fixes f :: nat ⇒ real, s :: nat set
-  prop real_infsum univ (λi. if i ∈ s then f i else 0) = real_infsum s f
+  fixes f :: nat => real, s :: nat set
+  prop real_infsum univ (%i. if i Mem s then f i else 0) = real_infsum s f
 
 theorem real_infsum_even
-  fixes f :: nat ⇒ real, n :: nat
-  prop real_infsum (from n) f = real_infsum (from (2 * n)) (λi. if even i then f (i DIV 2) else 0)
+  fixes f :: nat => real, n :: nat
+  prop real_infsum (from n) f = real_infsum (from (2 * n)) (%i. if even i then f (i DIV 2) else 0)
 
 theorem real_infsum_odd
-  fixes f :: nat ⇒ real, n :: nat
-  prop real_infsum (from n) f = real_infsum (from (2 * n + 1)) (λi. if odd i then f (i DIV 2) else 0)
+  fixes f :: nat => real, n :: nat
+  prop real_infsum (from n) f = real_infsum (from (2 * n + 1)) (%i. if odd i then f (i DIV 2) else 0)
 
 theorem rea_series_cauchy_uniform
-  fixes P :: 'a ⇒ bool, f :: 'a ⇒ nat ⇒ real, s :: nat set
-  prop (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. ∀x. N ≤ n ∧ P x ⟶ abs (sum (s ∩ {0..n}) (f x) - l x) < e)) ⟷ (∀e. 0 < e ⟶ (∃N. ∀m. ∀n. ∀x. N ≤ m ∧ P x ⟶ abs (sum (s ∩ {m..n}) (f x)) < e))
+  fixes P :: 'a => bool, f :: 'a => nat => real, s :: nat set
+  prop (?l. !e. 0 < e --> (?N. !n. !x. N <= n & P x --> abs (sum (s Int {0..n}) (f x) - l x) < e)) <--> (!e. 0 < e --> (?N. !m. !n. !x. N <= m & P x --> abs (sum (s Int {m..n}) (f x)) < e))
 
 theorem real_series_comparison
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, s :: nat set
-  prop (∃l. real_sums g l s) ⟶ (∃N. ∀i. i ≥ N ⟶ i ∈ s ⟶ abs (f i) ≤ g i) ⟶ (∃l. real_sums f l s)
+  fixes f :: nat => real, g :: nat => real, s :: nat set
+  prop (?l. real_sums g l s) --> (?N. !i. i >= N --> i Mem s --> abs (f i) <= g i) --> (?l. real_sums f l s)
   [hint_backward,hint_backward1]
 
 theorem real_summable_comparison
-  fixes f :: nat ⇒ real, g :: nat ⇒ real, s :: nat set
-  prop real_summable s g ⟶ (∃N. ∀i. i ≥ N ⟶ i ∈ s ⟶ abs (f i) ≤ g i) ⟶ real_summable s f
+  fixes f :: nat => real, g :: nat => real, s :: nat set
+  prop real_summable s g --> (?N. !i. i >= N --> i Mem s --> abs (f i) <= g i) --> real_summable s f
   [hint_backward,hint_backward1]
 
 theorem real_series_comparison_uniform
-  fixes P :: 'a ⇒ bool, f :: 'a ⇒ nat ⇒ real, g :: nat ⇒ real, s :: nat set
-  prop (∃l. real_sums g l s) ⟶ (∃N. ∀i. ∀x. N ≤ i ⟶ i ∈ s ⟶ P x ⟶ abs (f x i) ≤ g i) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀i. ∀x. N ≤ i ⟶ P x ⟶ abs (sum (s ∩ {0..i}) (f x) - l x) < e))
+  fixes P :: 'a => bool, f :: 'a => nat => real, g :: nat => real, s :: nat set
+  prop (?l. real_sums g l s) --> (?N. !i. !x. N <= i --> i Mem s --> P x --> abs (f x i) <= g i) --> (?l. !e. 0 < e --> (?N. !i. !x. N <= i --> P x --> abs (sum (s Int {0..i}) (f x) - l x) < e))
   [hint_backward,hint_backward1]
 
 theorem real_summable_pos_subset
-  fixes f :: nat ⇒ real, s :: nat set, t :: nat set
-  prop (∀x. x ∈ t ⟶ 0 ≤ f x) ⟶ real_summable t f ⟶ s ⊆ t ⟶ real_summable s f
+  fixes f :: nat => real, s :: nat set, t :: nat set
+  prop (!x. x Mem t --> 0 <= f x) --> real_summable t f --> s Sub t --> real_summable s f
   [hint_backward,hint_backward1]
 
 theorem real_series_ratio
-  fixes N :: nat, c :: real, f :: nat ⇒ real, s :: nat set
-  prop c < 1 ⟶ (∀i. i ≥ N ⟶ abs (f (Suc i)) ≤ c * abs (f i)) ⟶ (∃l. real_sums f l s)
+  fixes N :: nat, c :: real, f :: nat => real, s :: nat set
+  prop c < 1 --> (!i. i >= N --> abs (f (Suc i)) <= c * abs (f i)) --> (?l. real_sums f l s)
   [hint_backward,hint_backward1]
 
 theorem bounded_partial_real_sums
-  fixes f :: nat ⇒ real, k :: nat
-  prop real_bounded ({y. ∀n. y = sum ({k..n}) f}) ⟶ real_bounded ({y. ∀m. ∀n. y = sum ({m..n}) f})
+  fixes f :: nat => real, k :: nat
+  prop real_bounded ({y. !n. y = sum ({k..n}) f}) --> real_bounded ({y. !m. !n. y = sum ({m..n}) f})
 
 theorem real_series_dirichlet
-  fixes N :: nat, f :: nat ⇒ real, g :: nat ⇒ real, k :: nat, m :: nat
-  prop real_bounded ({y. ∀n. y = sum ({m..n}) f}) ⟶ (∀i. N ≤ i ⟶ g (Suc i) ≤ g i) ∧ tendsto_real g 0 sequentially ⟶ real_summable (from k) (λn. g n * f n)
+  fixes N :: nat, f :: nat => real, g :: nat => real, k :: nat, m :: nat
+  prop real_bounded ({y. !n. y = sum ({m..n}) f}) --> (!i. N <= i --> g (Suc i) <= g i) & tendsto_real g 0 sequentially --> real_summable (from k) (%n. g n * f n)
   [hint_backward]
 
 theorem real_series_absconv_imp_conv
-  fixes f :: nat ⇒ real, s :: nat set
-  prop real_summable s (λn. abs (f n)) ⟶ real_summable s f
+  fixes f :: nat => real, s :: nat set
+  prop real_summable s (%n. abs (f n)) --> real_summable s f
   [hint_backward,hint_forward]
 
 theorem real_sums_gp
   fixes n :: nat, x :: real
-  prop abs x < 1 ⟶ real_sums (λk. x ^ k) (x ^ n / (1 - x)) (from n)
+  prop abs x < 1 --> real_sums (%k. x ^ k) (x ^ n / (1 - x)) (from n)
   [hint_backward]
 
 theorem real_summable_gp
   fixes s :: nat set, x :: real
-  prop abs x < 1 ⟶ real_summable s (λk. x ^ k)
+  prop abs x < 1 --> real_summable s (%k. x ^ k)
   [hint_backward]
 
 theorem real_summable_zeta_integer
   fixes m :: nat, n :: nat
-  prop 2 ≤ m ⟶ real_summable (from n) (λk. real_inverse (of_nat k ^ m))
+  prop 2 <= m --> real_summable (from n) (%k. real_inverse (of_nat k ^ m))
   [hint_backward]
 
 theorem real_abel_lemma
-  fixes M :: real, a :: nat ⇒ real, r :: real, r0 :: real, s :: nat set
-  prop 0 ≤ r ⟶ r ≤ r0 ⟶ (∀n. n ∈ s ⟶ abs (a n) * r0 ^ n ≤ M) ⟶ real_summable s (λk. abs (a k) * r ^ k)
+  fixes M :: real, a :: nat => real, r :: real, r0 :: real, s :: nat set
+  prop 0 <= r --> r <= r0 --> (!n. n Mem s --> abs (a n) * r0 ^ n <= M) --> real_summable s (%k. abs (a k) * r ^ k)
   [hint_backward,hint_backward1]
 
 theorem real_power_series_conv_imp_absconv
-  fixes a :: nat ⇒ real, s :: nat set, w :: real, z :: real
-  prop real_summable s (λk. a k * z ^ k) ⟶ abs w < abs z ⟶ real_summable s (λk. abs (a k * w ^ k))
+  fixes a :: nat => real, s :: nat set, w :: real, z :: real
+  prop real_summable s (%k. a k * z ^ k) --> abs w < abs z --> real_summable s (%k. abs (a k * w ^ k))
   [hint_backward,hint_backward1]
 
 theorem power_real_series_conv_imp_absconv_weak
-  fixes a :: nat ⇒ real, s :: nat set, w :: real, z :: real
-  prop real_summable s (λk. a k * z ^ k) ⟶ abs w < abs z ⟶ real_summable s (λk. abs (a k) * w ^ k)
+  fixes a :: nat => real, s :: nat set, w :: real, z :: real
+  prop real_summable s (%k. a k * z ^ k) --> abs w < abs z --> real_summable s (%k. abs (a k) * w ^ k)
   [hint_backward,hint_backward1]
 
 theorem real_summable_mul_left
-  fixes m :: nat, n :: nat, p :: nat, x :: nat ⇒ real, y :: nat ⇒ real
-  prop real_summable (from m) (λk. abs (x k)) ⟶ real_summable (from n) y ⟶ real_summable (from p) (λk. sum ({0..k}) (λi. x i * y (k - i)))
+  fixes m :: nat, n :: nat, p :: nat, x :: nat => real, y :: nat => real
+  prop real_summable (from m) (%k. abs (x k)) --> real_summable (from n) y --> real_summable (from p) (%k. sum ({0..k}) (%i. x i * y (k - i)))
   [hint_backward,hint_backward1]
 
 theorem real_summable_mul_right
-  fixes m :: nat, n :: nat, p :: nat, x :: nat ⇒ real, y :: nat ⇒ real
-  prop real_summable (from m) x ⟶ real_summable (from n) (λk. abs (y k)) ⟶ real_summable (from p) (λk. sum ({0..k}) (λi. x i * y (k - i)))
+  fixes m :: nat, n :: nat, p :: nat, x :: nat => real, y :: nat => real
+  prop real_summable (from m) x --> real_summable (from n) (%k. abs (y k)) --> real_summable (from p) (%k. sum ({0..k}) (%i. x i * y (k - i)))
   [hint_backward,hint_backward1]
 
 const atreal :: real ⇒ real net
@@ -1050,72 +1374,72 @@ theorem withinreal_univ
   [hint_rewrite]
 
 theorem eventually_atreal
-  fixes a :: real, p :: real ⇒ bool
-  prop eventually p (atreal a) ⟷ (∃d. 0 < d ∧ (∀x. 0 < abs (x - a) ⟶ abs (x - a) < d ⟶ p x))
+  fixes a :: real, p :: real => bool
+  prop eventually p (atreal a) <--> (?d. 0 < d & (!x. 0 < abs (x - a) --> abs (x - a) < d --> p x))
   [hint_backward]
 
 theorem trivial_limit_atreal
   fixes a :: real
-  prop ¬(trivial_limit (atreal a))
+  prop ~(trivial_limit (atreal a))
 
 theorem eventually_withinreal
-  fixes a :: real, p :: real ⇒ bool, s :: real set
-  prop eventually p (within (atreal a) s) ⟷ (∃d. 0 < d ∧ (∀x. x ∈ s ⟶ 0 < abs (x - a) ⟶ abs (x - a) < d ⟶ p x))
+  fixes a :: real, p :: real => bool, s :: real set
+  prop eventually p (within (atreal a) s) <--> (?d. 0 < d & (!x. x Mem s --> 0 < abs (x - a) --> abs (x - a) < d --> p x))
   [hint_rewrite]
 
 theorem eventually_withinreal_le
-  fixes a :: real, p :: real ⇒ bool, s :: real set
-  prop eventually p (within (atreal a) s) ⟷ (∃d. 0 < d ∧ (∀x. x ∈ s ⟶ 0 < abs (x - a) ⟶ abs (x - a) ≤ d ⟶ p x))
+  fixes a :: real, p :: real => bool, s :: real set
+  prop eventually p (within (atreal a) s) <--> (?d. 0 < d & (!x. x Mem s --> 0 < abs (x - a) --> abs (x - a) <= d --> p x))
   [hint_rewrite]
 
 theorem reallim_withinreal_le
-  fixes a :: real, f :: real ⇒ real, l :: real, s :: real set
-  prop tendsto_real f l (within (atreal a) s) ⟷ (∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x. x ∈ s ⟶ 0 < abs (x - a) ⟶ abs (x - a) ≤ d ⟶ abs (f x - l) < e)))
+  fixes a :: real, f :: real => real, l :: real, s :: real set
+  prop tendsto_real f l (within (atreal a) s) <--> (!e. 0 < e --> (?d. 0 < d & (!x. x Mem s --> 0 < abs (x - a) --> abs (x - a) <= d --> abs (f x - l) < e)))
   [hint_rewrite]
 
 theorem reallim_withinreal
-  fixes a :: real, f :: real ⇒ real, l :: real, s :: real set
-  prop tendsto_real f l (within (atreal a) s) ⟷ (∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x. x ∈ s ⟶ 0 < abs (x - a) ⟶ abs (x - a) < d ⟶ abs (f x - l) < e)))
+  fixes a :: real, f :: real => real, l :: real, s :: real set
+  prop tendsto_real f l (within (atreal a) s) <--> (!e. 0 < e --> (?d. 0 < d & (!x. x Mem s --> 0 < abs (x - a) --> abs (x - a) < d --> abs (f x - l) < e)))
   [hint_rewrite]
 
 theorem reallim_atreal
-  fixes a :: real, f :: real ⇒ real, l :: real, s :: real set
-  prop tendsto_real f l (atreal a) ⟷ (∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x. 0 < abs (x - a) ⟶ abs (x - a) < d ⟶ abs (f x - l) < e)))
+  fixes a :: real, f :: real => real, l :: real, s :: real set
+  prop tendsto_real f l (atreal a) <--> (!e. 0 < e --> (?d. 0 < d & (!x. 0 < abs (x - a) --> abs (x - a) < d --> abs (f x - l) < e)))
   [hint_rewrite]
 
 theorem reallim_at_posinfinity
-  fixes f :: real ⇒ real, l :: real
-  prop tendsto_real f l at_posinfinity ⟷ (∀e. 0 < e ⟶ (∃b. ∀x. x ≥ b ⟶ abs (f x - l) < e))
+  fixes f :: real => real, l :: real
+  prop tendsto_real f l at_posinfinity <--> (!e. 0 < e --> (?b. !x. x >= b --> abs (f x - l) < e))
 
 theorem reallim_at_neginfinity
-  fixes f :: real ⇒ real, l :: real
-  prop tendsto_real f l at_neginfinity ⟷ (∀e. 0 < e ⟶ (∃b. ∀x. x ≤ b ⟶ abs (f x - l) < e))
+  fixes f :: real => real, l :: real
+  prop tendsto_real f l at_neginfinity <--> (!e. 0 < e --> (?b. !x. x <= b --> abs (f x - l) < e))
 
 theorem reallim_atreal_withinreal
-  fixes a :: real, f :: real ⇒ real, l :: real, s :: real set
-  prop tendsto_real f l (atreal a) ⟶ tendsto_real f l (within (atreal a) s)
+  fixes a :: real, f :: real => real, l :: real, s :: real set
+  prop tendsto_real f l (atreal a) --> tendsto_real f l (within (atreal a) s)
   [hint_backward]
 
 theorem reallim_withinreal_subset
-  fixes a :: real, f :: real ⇒ real, l :: real, s :: real set, t :: real set
-  prop tendsto_real f l (within (atreal a) s) ⟶ t ⊆ s ⟶ tendsto_real f l (within (atreal a) t)
+  fixes a :: real, f :: real => real, l :: real, s :: real set, t :: real set
+  prop tendsto_real f l (within (atreal a) s) --> t Sub s --> tendsto_real f l (within (atreal a) t)
   [hint_backward,hint_backward1]
 
 theorem reallim_atreal_id
   fixes a :: real
-  prop tendsto_real (λx. x) a (atreal a)
+  prop tendsto_real (%x. x) a (atreal a)
 
 theorem reallim_withinreal_id
   fixes a :: real, s :: real set
-  prop tendsto_real (λx. x) a (within (atreal a) s)
+  prop tendsto_real (%x. x) a (within (atreal a) s)
 
 theorem reallim_transform_withinreal_set
-  fixes a :: real, f :: real ⇒ real, l :: real, s :: real set, t :: real set
-  prop eventually (λx. x ∈ s ⟷ x ∈ t) (atreal a) ⟶ tendsto_real f l (within (atreal a) s) ⟷ tendsto_real f l (within (atreal a) t)
+  fixes a :: real, f :: real => real, l :: real, s :: real set, t :: real set
+  prop eventually (%x. x Mem s <--> x Mem t) (atreal a) --> tendsto_real f l (within (atreal a) s) <--> tendsto_real f l (within (atreal a) t)
 
 theorem reallim_transform_withinreal_set_imp
-  fixes a :: real, f :: real ⇒ real, l :: real, s :: real set, t :: real set
-  prop eventually (λx. x ∈ s ⟷ x ∈ t) (atreal a) ⟶ tendsto_real f l (within (atreal a) s) ⟶ tendsto_real f l (within (atreal a) t)
+  fixes a :: real, f :: real => real, l :: real, s :: real set, t :: real set
+  prop eventually (%x. x Mem s <--> x Mem t) (atreal a) --> tendsto_real f l (within (atreal a) s) --> tendsto_real f l (within (atreal a) t)
   [hint_backward,hint_backward1]
 
 theorem reallim_compose_within
@@ -1129,226 +1453,226 @@ theorem reallim_compose_at
   [hint_backward,hint_backward1,hint_forward]
 
 theorem alternating_sum_bounds
-  fixes a :: nat ⇒ real
-  prop (∀n. abs (a (Suc n)) ≤ abs (a n)) ⟶ (∀n. even n ⟶ 0 ≤ a n) ⟶ (∀n. odd n ⟶ a n ≤ 0) ⟶ (∀m. ∀n. (even m ⟶ 0 ≤ sum ({m..n}) a ∧ sum ({m..n}) a ≤ a m) ∧ (∀m1. ∀n1. odd m1 ⟶ a m1 ≤ sum ({m1..n1}) a ∧ sum ({m1..n1}) a ≤ 0))
+  fixes a :: nat => real
+  prop (!n. abs (a (Suc n)) <= abs (a n)) --> (!n. even n --> 0 <= a n) --> (!n. odd n --> a n <= 0) --> (!m. !n. (even m --> 0 <= sum ({m..n}) a & sum ({m..n}) a <= a m) & (!m1. !n1. odd m1 --> a m1 <= sum ({m1..n1}) a & sum ({m1..n1}) a <= 0))
   [hint_backward,hint_backward1]
 
 theorem alternating_sum_bound
-  fixes a :: nat ⇒ real
-  prop (∀n. abs (a (Suc n)) ≤ abs (a n)) ⟶ (∀n. even n ⟶ 0 ≤ a n) ⟶ (∀n. odd n ⟶ a n ≤ 0) ⟶ (∀m. ∀n. abs (sum ({m..n}) a) ≤ abs (a m))
+  fixes a :: nat => real
+  prop (!n. abs (a (Suc n)) <= abs (a n)) --> (!n. even n --> 0 <= a n) --> (!n. odd n --> a n <= 0) --> (!m. !n. abs (sum ({m..n}) a) <= abs (a m))
   [hint_backward,hint_backward1]
 
 theorem real_summable_alternating_series
-  fixes a :: nat ⇒ real, m :: nat
-  prop (∀n. abs (a (Suc n)) ≤ abs (a n)) ⟶ (∀n. even n ⟶ 0 ≤ a n) ⟶ (∀n. odd n ⟶ a n ≤ 0) ⟶ tendsto_real a 0 sequentially ⟶ real_summable (from m) a
+  fixes a :: nat => real, m :: nat
+  prop (!n. abs (a (Suc n)) <= abs (a n)) --> (!n. even n --> 0 <= a n) --> (!n. odd n --> a n <= 0) --> tendsto_real a 0 sequentially --> real_summable (from m) a
   [hint_backward,hint_backward1]
 
 theorem reallim_within_real_open
-  fixes a :: real, f :: real ⇒ real, l :: real, s :: real set
-  prop a ∈ s ⟶ real_open s ⟶ tendsto_real f l (within (atreal a) s) ⟷ tendsto_real f l (atreal a)
+  fixes a :: real, f :: real => real, l :: real, s :: real set
+  prop a Mem s --> real_open s --> tendsto_real f l (within (atreal a) s) <--> tendsto_real f l (atreal a)
   [hint_backward,hint_backward1]
 
 theorem reallim_atreal_zero
-  fixes a :: real, f :: real ⇒ real, l :: real
-  prop tendsto_real f l (atreal a) ⟷ tendsto_real (λx. f (a + x)) l (atreal 0)
+  fixes a :: real, f :: real => real, l :: real
+  prop tendsto_real f l (atreal a) <--> tendsto_real (%x. f (a + x)) l (atreal 0)
 
 theorem reallim_cong_withinreal
-  fixes a :: real, f :: real ⇒ real, g :: real ⇒ real, l :: real, s :: real set
-  prop (∀x. ¬(x = a) ⟶ f x = g x) ⟶ tendsto_real f l (within (atreal a) s) ⟷ tendsto_real g l (within (atreal a) s)
+  fixes a :: real, f :: real => real, g :: real => real, l :: real, s :: real set
+  prop (!x. ~(x = a) --> f x = g x) --> tendsto_real f l (within (atreal a) s) <--> tendsto_real g l (within (atreal a) s)
 
 theorem reallim_cong_atreal
-  fixes a :: real, f :: real ⇒ real, g :: real ⇒ real, l :: real
-  prop (∀x. ¬(x = a) ⟶ f x = g x) ⟶ tendsto_real f l (atreal a) ⟷ tendsto_real g l (atreal a)
+  fixes a :: real, f :: real => real, g :: real => real, l :: real
+  prop (!x. ~(x = a) --> f x = g x) --> tendsto_real f l (atreal a) <--> tendsto_real g l (atreal a)
 
 theorem real_abel_limit_theorem
-  fixes a :: nat ⇒ real, s :: nat set
-  prop real_summable s a ⟶ (∀r. abs r < 1 ⟶ real_summable s (λi. a i * r ^ i)) ∧ tendsto_real (λr. real_infsum s (λi. a i * r ^ i)) (real_infsum s a) (within (atreal 1) ({z. z ≤ 1}))
+  fixes a :: nat => real, s :: nat set
+  prop real_summable s a --> (!r. abs r < 1 --> real_summable s (%i. a i * r ^ i)) & tendsto_real (%r. real_infsum s (%i. a i * r ^ i)) (real_infsum s a) (within (atreal 1) ({z. z <= 1}))
 
 def real_continuous :: ('a ⇒ real) ⇒ 'a net ⇒ bool = real_continuous f net ⟷ tendsto_real f (f (netlimit net)) net
 
 theorem real_continuous_trivial_limit
-  fixes f :: 'a ⇒ real, net :: 'a net
-  prop trivial_limit net ⟶ real_continuous f net
+  fixes f :: 'a => real, net :: 'a net
+  prop trivial_limit net --> real_continuous f net
 
 theorem real_continuous_withinreal
-  fixes f :: real ⇒ real, s :: real set, x :: real
-  prop real_continuous f (within (atreal x) s) ⟷ tendsto_real f (f x) (within (atreal x) s)
+  fixes f :: real => real, s :: real set, x :: real
+  prop real_continuous f (within (atreal x) s) <--> tendsto_real f (f x) (within (atreal x) s)
 
 theorem real_continuous_atreal
-  fixes f :: real ⇒ real, x :: real
-  prop real_continuous f (atreal x) ⟷ tendsto_real f (f x) (atreal x)
+  fixes f :: real => real, x :: real
+  prop real_continuous f (atreal x) <--> tendsto_real f (f x) (atreal x)
   [hint_rewrite]
 
 theorem real_continuous_withinreal1
-  fixes f :: real ⇒ real, s :: real set, x :: real
-  prop real_continuous f (within (atreal x) s) ⟷ (∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x1. x1 ∈ s ⟶ abs (x1 - x) < d ⟶ abs (f x1 - f x) < e)))
+  fixes f :: real => real, s :: real set, x :: real
+  prop real_continuous f (within (atreal x) s) <--> (!e. 0 < e --> (?d. 0 < d & (!x1. x1 Mem s --> abs (x1 - x) < d --> abs (f x1 - f x) < e)))
   [hint_backward,hint_rewrite]
 
 theorem real_continuous_atreal1
-  fixes f :: real ⇒ real, x :: real
-  prop real_continuous f (atreal x) ⟷ (∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x1. abs (x1 - x) < d ⟶ abs (f x1 - f x) < e)))
+  fixes f :: real => real, x :: real
+  prop real_continuous f (atreal x) <--> (!e. 0 < e --> (?d. 0 < d & (!x1. abs (x1 - x) < d --> abs (f x1 - f x) < e)))
   [hint_rewrite]
 
 theorem real_continuous_atreal_withinreal
-  fixes f :: real ⇒ real, s :: real set, x :: real
-  prop real_continuous f (atreal x) ⟶ real_continuous f (within (atreal x) s)
+  fixes f :: real => real, s :: real set, x :: real
+  prop real_continuous f (atreal x) --> real_continuous f (within (atreal x) s)
   [hint_backward,hint_forward]
 
 theorem real_continuous_withinreal_subset
-  fixes f :: real ⇒ real, s :: real set, t :: real set, x :: real
-  prop real_continuous f (within (atreal x) s) ⟶ t ⊆ s ⟶ real_continuous f (within (atreal x) t)
+  fixes f :: real => real, s :: real set, t :: real set, x :: real
+  prop real_continuous f (within (atreal x) s) --> t Sub s --> real_continuous f (within (atreal x) t)
   [hint_backward,hint_backward1]
 
 theorem real_continuous_transform_withinreal
-  fixes d :: real, f :: real ⇒ real, g :: real ⇒ real, s :: real set, x :: real
-  prop 0 < d ⟶ x ∈ s ⟶ (∀x1. x1 ∈ s ∧ abs (x1 - x) < d ⟶ f x1 = g x1) ⟶ real_continuous f (within (atreal x) s) ⟶ real_continuous g (within (atreal x) s)
+  fixes d :: real, f :: real => real, g :: real => real, s :: real set, x :: real
+  prop 0 < d --> x Mem s --> (!x1. x1 Mem s & abs (x1 - x) < d --> f x1 = g x1) --> real_continuous f (within (atreal x) s) --> real_continuous g (within (atreal x) s)
   [hint_backward,hint_backward1]
 
 theorem real_continuous_transform_atreal
-  fixes d :: real, f :: real ⇒ real, g :: real ⇒ real, x :: real
-  prop 0 < d ⟶ (∀x1. abs (x1 - x) < d ⟶ f x1 = g x1) ⟶ real_continuous f (atreal x) ⟶ real_continuous g (atreal x)
+  fixes d :: real, f :: real => real, g :: real => real, x :: real
+  prop 0 < d --> (!x1. abs (x1 - x) < d --> f x1 = g x1) --> real_continuous f (atreal x) --> real_continuous g (atreal x)
   [hint_backward,hint_backward1]
 
 theorem real_continuous_const
   fixes c :: real, net :: 'a net
-  prop real_continuous (λx. c) net
+  prop real_continuous (%x. c) net
   [hint_backward]
 
 theorem real_continuous_lmul
-  fixes c :: real, f :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous (λx. c * f x) net
+  fixes c :: real, f :: 'a => real, net :: 'a net
+  prop real_continuous f net --> real_continuous (%x. c * f x) net
   [hint_backward]
 
 theorem real_continuous_rmul
-  fixes c :: real, f :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous (λx. f x * c) net
+  fixes c :: real, f :: 'a => real, net :: 'a net
+  prop real_continuous f net --> real_continuous (%x. f x * c) net
   [hint_backward]
 
 theorem real_continuous_neg
-  fixes f :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous (λx. -(f x)) net
+  fixes f :: 'a => real, net :: 'a net
+  prop real_continuous f net --> real_continuous (%x. -(f x)) net
   [hint_backward]
 
 theorem real_continuous_add
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous g net ⟶ real_continuous (λx. f x + g x) net
+  fixes f :: 'a => real, g :: 'a => real, net :: 'a net
+  prop real_continuous f net --> real_continuous g net --> real_continuous (%x. f x + g x) net
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_sub
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous g net ⟶ real_continuous (λx. f x - g x) net
+  fixes f :: 'a => real, g :: 'a => real, net :: 'a net
+  prop real_continuous f net --> real_continuous g net --> real_continuous (%x. f x - g x) net
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_mul
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous g net ⟶ real_continuous (λx. f x * g x) net
+  fixes f :: 'a => real, g :: 'a => real, net :: 'a net
+  prop real_continuous f net --> real_continuous g net --> real_continuous (%x. f x * g x) net
   [hint_backward,hint_backward1]
 
 theorem real_continuous_inv
-  fixes f :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ ¬(f (netlimit net) = 0) ⟶ real_continuous (λx. real_inverse (f x)) net
+  fixes f :: 'a => real, net :: 'a net
+  prop real_continuous f net --> ~(f (netlimit net) = 0) --> real_continuous (%x. real_inverse (f x)) net
   [hint_backward,hint_backward1]
 
 theorem real_continuous_div
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous g net ⟶ ¬(g (netlimit net) = 0) ⟶ real_continuous (λx. f x / g x) net
+  fixes f :: 'a => real, g :: 'a => real, net :: 'a net
+  prop real_continuous f net --> real_continuous g net --> ~(g (netlimit net) = 0) --> real_continuous (%x. f x / g x) net
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_pow
-  fixes f :: 'a ⇒ real, n :: nat, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous (λx. f x ^ n) net
+  fixes f :: 'a => real, n :: nat, net :: 'a net
+  prop real_continuous f net --> real_continuous (%x. f x ^ n) net
   [hint_backward]
 
 theorem real_continuous_abs
-  fixes f :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous (λx. abs (f x)) net
+  fixes f :: 'a => real, net :: 'a net
+  prop real_continuous f net --> real_continuous (%x. abs (f x)) net
   [hint_backward]
 
 theorem real_continuous_max
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous g net ⟶ real_continuous (λx. max (f x) (g x)) net
+  fixes f :: 'a => real, g :: 'a => real, net :: 'a net
+  prop real_continuous f net --> real_continuous g net --> real_continuous (%x. max (f x) (g x)) net
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_min
-  fixes f :: 'a ⇒ real, g :: 'a ⇒ real, net :: 'a net
-  prop real_continuous f net ⟶ real_continuous g net ⟶ real_continuous (λx. min (f x) (g x)) net
+  fixes f :: 'a => real, g :: 'a => real, net :: 'a net
+  prop real_continuous f net --> real_continuous g net --> real_continuous (%x. min (f x) (g x)) net
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_within_id
   fixes s :: real set, x :: real
-  prop real_continuous (λx1. x1) (within (atreal x) s)
+  prop real_continuous (%x1. x1) (within (atreal x) s)
   [hint_backward]
 
 theorem real_continuous_at_id
   fixes x :: real
-  prop real_continuous (λx1. x1) (atreal x)
+  prop real_continuous (%x1. x1) (atreal x)
   [hint_backward]
 
 theorem real_continuous_inv_withinreal
-  fixes a :: real, f :: real ⇒ real, s :: real set
-  prop real_continuous f (within (atreal a) s) ⟶ ¬(f a = 0) ⟶ real_continuous (λx. real_inverse (f x)) (within (atreal a) s)
+  fixes a :: real, f :: real => real, s :: real set
+  prop real_continuous f (within (atreal a) s) --> ~(f a = 0) --> real_continuous (%x. real_inverse (f x)) (within (atreal a) s)
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_inv_atreal
-  fixes a :: real, f :: real ⇒ real
-  prop real_continuous f (atreal a) ⟶ ¬(f a = 0) ⟶ real_continuous (λx. real_inverse (f x)) (atreal a)
+  fixes a :: real, f :: real => real
+  prop real_continuous f (atreal a) --> ~(f a = 0) --> real_continuous (%x. real_inverse (f x)) (atreal a)
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_div_withinreal
-  fixes a :: real, f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_continuous f (within (atreal a) s) ⟶ real_continuous g (within (atreal a) s) ⟶ ¬(g a = 0) ⟶ real_continuous (λx. f x / g x) (within (atreal a) s)
+  fixes a :: real, f :: real => real, g :: real => real, s :: real set
+  prop real_continuous f (within (atreal a) s) --> real_continuous g (within (atreal a) s) --> ~(g a = 0) --> real_continuous (%x. f x / g x) (within (atreal a) s)
   [hint_backward,hint_backward1]
 
 theorem real_continuous_div_atreal
-  fixes a :: real, f :: real ⇒ real, g :: real ⇒ real
-  prop real_continuous f (atreal a) ⟶ real_continuous g (atreal a) ⟶ ¬(g a = 0) ⟶ real_continuous (λx. f x / g x) (atreal a)
+  fixes a :: real, f :: real => real, g :: real => real
+  prop real_continuous f (atreal a) --> real_continuous g (atreal a) --> ~(g a = 0) --> real_continuous (%x. f x / g x) (atreal a)
   [hint_backward,hint_backward1]
 
 theorem real_continuous_withinreal_compose
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set, x :: real
-  prop real_continuous f (within (atreal x) s) ⟶ real_continuous g (within (atreal (f x)) (image f s)) ⟶ real_continuous (λx1. g (f x1)) (within (atreal x) s)
+  fixes f :: real => real, g :: real => real, s :: real set, x :: real
+  prop real_continuous f (within (atreal x) s) --> real_continuous g (within (atreal (f x)) (image f s)) --> real_continuous (%x1. g (f x1)) (within (atreal x) s)
   [hint_backward,hint_backward1]
 
 theorem real_continuous_atreal_compose
-  fixes f :: real ⇒ real, g :: real ⇒ real, x :: real
-  prop real_continuous f (atreal x) ⟶ real_continuous g (atreal (f x)) ⟶ real_continuous (λx1. g (f x1)) (atreal x)
+  fixes f :: real => real, g :: real => real, x :: real
+  prop real_continuous f (atreal x) --> real_continuous g (atreal (f x)) --> real_continuous (%x1. g (f x1)) (atreal x)
   [hint_backward,hint_backward1,hint_forward]
 
 def real_continuous_on :: (real ⇒ real) ⇒ real set ⇒ bool = real_continuous_on f s ⟷ (∀x. x ∈ s ⟶ (∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x1. x1 ∈ s ∧ abs (x1 - x) < d ⟶ abs (f x1 - f x) < e))))
 
 theorem real_continuous_on_eq_continuous_within
-  fixes f :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟷ (∀x. x ∈ s ⟶ real_continuous f (within (atreal x) s))
+  fixes f :: real => real, s :: real set
+  prop real_continuous_on f s <--> (!x. x Mem s --> real_continuous f (within (atreal x) s))
   [hint_rewrite]
 
 theorem real_continuous_on_subset
-  fixes f :: real ⇒ real, s :: real set, t :: real set
-  prop real_continuous_on f s ⟶ t ⊆ s ⟶ real_continuous_on f t
+  fixes f :: real => real, s :: real set, t :: real set
+  prop real_continuous_on f s --> t Sub s --> real_continuous_on f t
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_on_compose
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on g (image f s) ⟶ real_continuous_on (λx. g (f x)) s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on g (image f s) --> real_continuous_on (%x. g (f x)) s
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_on_const
   fixes c :: real, s :: real set
-  prop real_continuous_on (λx. c) s
+  prop real_continuous_on (%x. c) s
   [hint_backward]
 
 theorem real_continuous_on_id
   fixes s :: real set
-  prop real_continuous_on (λx. x) s
+  prop real_continuous_on (%x. x) s
   [hint_backward]
 
 theorem real_continuous_on_lmul
-  fixes c :: real, f :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on (λx. c * f x) s
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on (%x. c * f x) s
   [hint_backward]
 
 theorem real_continuous_on_rmul
-  fixes c :: real, f :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on (λx. f x * c) s
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on (%x. f x * c) s
   [hint_backward]
 
 theorem real_continuous_on_uminus
@@ -1356,186 +1680,187 @@ theorem real_continuous_on_uminus
   prop real_continuous_on uminus s
 
 theorem real_continuous_on_neg
-  fixes f :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on (λx. -(f x)) s
+  fixes f :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on (%x. -(f x)) s
   [hint_backward]
 
 theorem real_continuous_on_add
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on g s ⟶ real_continuous_on (λx. f x + g x) s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on g s --> real_continuous_on (%x. f x + g x) s
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_on_sub
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on g s ⟶ real_continuous_on (λx. f x - g x) s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on g s --> real_continuous_on (%x. f x - g x) s
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_on_mul
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on g s ⟶ real_continuous_on (λx. f x * g x) s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on g s --> real_continuous_on (%x. f x * g x) s
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_on_inv
-  fixes f :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ (∀x. x ∈ s ⟶ ¬(f x = 0)) ⟶ real_continuous_on (λx. real_inverse (f x)) s
+  fixes f :: real => real, s :: real set
+  prop real_continuous_on f s --> (!x. x Mem s --> ~(f x = 0)) --> real_continuous_on (%x. real_inverse (f x)) s
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_on_div
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on g s ⟶ (∀x. x ∈ s ⟶ ¬(g x = 0)) ⟶ real_continuous_on (λx. f x / g x) s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on g s --> (!x. x Mem s --> ~(g x = 0)) --> real_continuous_on (%x. f x / g x) s
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_on_pow
-  fixes f :: real ⇒ real, n :: nat, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on (λx. f x ^ n) s
+  fixes f :: real => real, n :: nat, s :: real set
+  prop real_continuous_on f s --> real_continuous_on (%x. f x ^ n) s
   [hint_backward]
 
 theorem real_continuous_on_real_pow
-  fixes f :: real ⇒ real, p :: real ⇒ real, s :: real set
-  prop real_continuous_on p s ⟶ real_continuous_on f s ⟶ (∀x. x ∈ s ⟶ p x ≥ 0) ⟶ (∀x. x ∈ s ⟶ f x ≥ 0) ⟶ real_continuous_on (λx. f x ^ p x) s
+  fixes f :: real => real, p :: real => real, s :: real set
+  prop real_continuous_on p s --> real_continuous_on f s --> (!x. x Mem s --> p x >= 0) --> (!x. x Mem s --> f x >= 0) --> real_continuous_on (%x. f x ^ p x) s
 
 theorem real_continuous_on_real_pow2
-  fixes f :: real ⇒ real, p :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on p s ⟶ (∀x. x ∈ s ⟶ f x > 0) ⟶ real_continuous_on (λx. f x ^ p x) s
+  fixes f :: real => real, p :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on p s --> (!x. x Mem s --> f x > 0) --> real_continuous_on (%x. f x ^ p x) s
 
 theorem real_continuous_on_real_neg1_pow
-  fixes f :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ (∀x. x ∈ s ⟶ f x < 0) ⟶ real_continuous_on (λx. f x ^ -(1::real)) s
+  fixes f :: real => real, s :: real set
+  prop real_continuous_on f s --> (!x. x Mem s --> f x < 0) --> real_continuous_on (%x. f x ^ -(1::real)) s
 
 theorem real_continuous_on_abs
   fixes s :: real set
   prop real_continuous_on abs s
 
 theorem real_continuous_on_abs_compose
-  fixes f :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on (λx. abs (f x)) s
+  fixes f :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on (%x. abs (f x)) s
 
 theorem real_continuous_on_max
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on g s ⟶ real_continuous_on (λx. max (f x) (g x)) s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on g s --> real_continuous_on (%x. max (f x) (g x)) s
   [hint_backward,hint_backward1,hint_forward]
 
 theorem real_continuous_on_min
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_continuous_on g s ⟶ real_continuous_on (λx. min (f x) (g x)) s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_continuous_on f s --> real_continuous_on g s --> real_continuous_on (%x. min (f x) (g x)) s
 
 theorem real_continuous_on_eq
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop (∀x. x ∈ s ⟶ f x = g x) ⟶ real_continuous_on f s ⟶ real_continuous_on g s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop (!x. x Mem s --> f x = g x) --> real_continuous_on f s --> real_continuous_on g s
 
 theorem real_continuous_on_union
-  fixes f :: real ⇒ real, s :: real set, t :: real set
-  prop real_closed s ⟶ real_closed t ⟶ real_continuous_on f s ⟶ real_continuous_on f t ⟶ real_continuous_on f (s ∪ t)
+  fixes f :: real => real, s :: real set, t :: real set
+  prop real_closed s --> real_closed t --> real_continuous_on f s --> real_continuous_on f t --> real_continuous_on f (s Un t)
 
 theorem real_continuous_on_union_open
-  fixes f :: real ⇒ real, s :: real set, t :: real set
-  prop real_open s ⟶ real_open t ⟶ real_continuous_on f s ⟶ real_continuous_on f t ⟶ real_continuous_on f (s ∪ t)
+  fixes f :: real => real, s :: real set, t :: real set
+  prop real_open s --> real_open t --> real_continuous_on f s --> real_continuous_on f t --> real_continuous_on f (s Un t)
 
 theorem real_continuous_on_cases
-  fixes P :: real ⇒ bool, f :: real ⇒ real, g :: real ⇒ real, s :: real set, t :: real set
-  prop real_closed s ⟶ real_closed t ⟶ real_continuous_on f s ⟶ real_continuous_on f t ⟶ (∀x. x ∈ s ∧ ¬(P x) ∨ x ∈ t ∧ P x ⟶ f x = g x) ⟶ real_continuous_on (λx. if P x then f x else g x) (s ∪ t)
+  fixes P :: real => bool, f :: real => real, g :: real => real, s :: real set, t :: real set
+  prop real_closed s --> real_closed t --> real_continuous_on f s --> real_continuous_on f t --> (!x. x Mem s & ~(P x) | x Mem t & P x --> f x = g x) --> real_continuous_on (%x. if P x then f x else g x) (s Un t)
   [hint_backward]
 
 theorem real_continuous_on_cases_open
-  fixes P :: real ⇒ bool, f :: real ⇒ real, g :: real ⇒ real, s :: real set, t :: real set
-  prop real_open s ⟶ real_open t ⟶ real_continuous_on f s ⟶ real_continuous_on f t ⟶ (∀x. x ∈ s ∧ ¬(P x) ∨ x ∈ t ∧ P x ⟶ f x = g x) ⟶ real_continuous_on (λx. if P x then f x else g x) (s ∪ t)
+  fixes P :: real => bool, f :: real => real, g :: real => real, s :: real set, t :: real set
+  prop real_open s --> real_open t --> real_continuous_on f s --> real_continuous_on f t --> (!x. x Mem s & ~(P x) | x Mem t & P x --> f x = g x) --> real_continuous_on (%x. if P x then f x else g x) (s Un t)
 
 theorem real_continuous_sum
-  fixes f :: 'a ⇒ 'b ⇒ real, net :: 'b net, s :: 'a set
-  prop finite s ⟶ (∀a. a ∈ s ⟶ real_continuous (f a) net) ⟶ real_continuous (λx. sum s (λa. f a x)) net
+  fixes f :: 'a => 'b => real, net :: 'b net, s :: 'a set
+  prop finite s --> (!a. a Mem s --> real_continuous (f a) net) --> real_continuous (%x. sum s (%a. f a x)) net
 
 theorem real_continuous_product
-  fixes f :: 'a ⇒ 'b ⇒ real, net :: 'b net, s :: 'a set
-  prop finite s ⟶ (∀a. a ∈ s ⟶ real_continuous (f a) net) ⟶ real_continuous (λx. product s (λa. f a x)) net
+  fixes f :: 'a => 'b => real, net :: 'b net, s :: 'a set
+  prop finite s --> (!a. a Mem s --> real_continuous (f a) net) --> real_continuous (%x. product s (%a. f a x)) net
 
 theorem real_continuous_on_sum
-  fixes f :: 'a ⇒ real ⇒ real, s :: 'a set, t :: real set
-  prop finite s ⟶ (∀a. a ∈ s ⟶ real_continuous_on (f a) t) ⟶ real_continuous_on (λx. sum s (λa. f a x)) t
+  fixes f :: 'a => real => real, s :: 'a set, t :: real set
+  prop finite s --> (!a. a Mem s --> real_continuous_on (f a) t) --> real_continuous_on (%x. sum s (%a. f a x)) t
 
 theorem real_continuous_on_product
-  fixes f :: 'a ⇒ real ⇒ real, s :: 'a set, t :: real set
-  prop finite s ⟶ (∀a. a ∈ s ⟶ real_continuous_on (f a) t) ⟶ real_continuous_on (λx. product s (λa. f a x)) t
+  fixes f :: 'a => real => real, s :: 'a set, t :: real set
+  prop finite s --> (!a. a Mem s --> real_continuous_on (f a) t) --> real_continuous_on (%x. product s (%a. f a x)) t
 
 theorem reallim_real_continuous_function
-  fixes f :: real ⇒ real, g :: 'a ⇒ real, l :: real, net :: 'a net
-  prop real_continuous f (atreal l) ⟶ tendsto_real g l net ⟶ tendsto_real (λx. f (g x)) (f l) net
+  fixes f :: real => real, g :: 'a => real, l :: real, net :: 'a net
+  prop real_continuous f (atreal l) --> tendsto_real g l net --> tendsto_real (%x. f (g x)) (f l) net
   [hint_backward,hint_backward1]
 
 theorem real_continuous_on_eq_real_continuous_at
-  fixes f :: real ⇒ real, s :: real set
-  prop real_open s ⟶ real_continuous_on f s ⟷ (∀x. x ∈ s ⟶ real_continuous f (atreal x))
+  fixes f :: real => real, s :: real set
+  prop real_open s --> real_continuous_on f s <--> (!x. x Mem s --> real_continuous f (atreal x))
 
 theorem real_continuous_attains_sup
-  fixes f :: real ⇒ real, s :: real set
-  prop real_compact s ⟶ ¬(s = ∅) ⟶ real_continuous_on f s ⟶ (∃x. x ∈ s ∧ (∀y. y ∈ s ⟶ f y ≤ f x))
+  fixes f :: real => real, s :: real set
+  prop real_compact s --> ~(s = {}) --> real_continuous_on f s --> (?x. x Mem s & (!y. y Mem s --> f y <= f x))
 
 theorem real_continuous_attains_inf
-  fixes f :: real ⇒ real, s :: real set
-  prop real_compact s ⟶ ¬(s = ∅) ⟶ real_continuous_on f s ⟶ (∃x. x ∈ s ∧ (∀y. y ∈ s ⟶ f x ≤ f y))
+  fixes f :: real => real, s :: real set
+  prop real_compact s --> ~(s = {}) --> real_continuous_on f s --> (?x. x Mem s & (!y. y Mem s --> f x <= f y))
   [hint_backward,hint_backward1]
 
 def real_uniformly_continuous_on :: (real ⇒ real) ⇒ real set ⇒ bool = real_uniformly_continuous_on f s ⟷ (∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x. ∀x1. x ∈ s ⟶ x1 ∈ s ⟶ abs (x1 - x) < d ⟶ abs (f x1 - f x) < e))) [hint_rewrite]
 
 theorem real_uniformly_continuous_imp_real_continuous
-  fixes f :: real ⇒ real, s :: real set
-  prop real_uniformly_continuous_on f s ⟶ real_continuous_on f s
+  fixes f :: real => real, s :: real set
+  prop real_uniformly_continuous_on f s --> real_continuous_on f s
 
 theorem real_uniformly_continuous_on_sequentially
-  fixes f :: real ⇒ real, s :: real set
-  prop real_uniformly_continuous_on f s ⟷ (∀x. ∀y. (∀n. x n ∈ s) ⟶ (∀n. y n ∈ s) ⟶ tendsto_real (λn. x n - y n) 0 sequentially ⟶ tendsto_real (λn. f (x n) - f (y n)) 0 sequentially)
+  fixes f :: real => real, s :: real set
+  prop real_uniformly_continuous_on f s <--> (!x. !y. (!n. x n Mem s) --> (!n. y n Mem s) --> tendsto_real (%n. x n - y n) 0 sequentially --> tendsto_real (%n. f (x n) - f (y n)) 0 sequentially)
   [hint_rewrite]
 
 theorem real_uniformly_continuous_on_subset
-  fixes f :: real ⇒ real, s :: real set, t :: real set
-  prop real_uniformly_continuous_on f s ⟶ t ⊆ s ⟶ real_uniformly_continuous_on f t
+  fixes f :: real => real, s :: real set, t :: real set
+  prop real_uniformly_continuous_on f s --> t Sub s --> real_uniformly_continuous_on f t
 
 theorem real_uniformly_continuous_on_compose
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_uniformly_continuous_on f s ⟶ real_uniformly_continuous_on g (image f s) ⟶ real_uniformly_continuous_on (g ∘ f) s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_uniformly_continuous_on f s --> real_uniformly_continuous_on g (image f s) --> real_uniformly_continuous_on (g O f) s
 
 theorem real_uniformly_continuous_on_const
   fixes c :: real, s :: real set
-  prop real_uniformly_continuous_on (λx. c) s
+  prop real_uniformly_continuous_on (%x. c) s
 
 theorem real_uniformly_continuous_on_id
   fixes s :: real set
-  prop real_uniformly_continuous_on (λx. x) s
+  prop real_uniformly_continuous_on (%x. x) s
 
 theorem real_uniformly_continuous_on_lmul
-  fixes c :: real, f :: real ⇒ real, s :: real set
-  prop real_uniformly_continuous_on f s ⟶ real_uniformly_continuous_on (λx. c * f x) s
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_uniformly_continuous_on f s --> real_uniformly_continuous_on (%x. c * f x) s
 
 theorem real_uniformly_continuous_on_rmul
-  fixes c :: real, f :: real ⇒ real, s :: real set
-  prop real_uniformly_continuous_on f s ⟶ real_uniformly_continuous_on (λx. f x * c) s
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_uniformly_continuous_on f s --> real_uniformly_continuous_on (%x. f x * c) s
 
 theorem real_uniformly_continuous_on_neg
-  fixes f :: real ⇒ real, s :: real set
-  prop real_uniformly_continuous_on f s ⟶ real_uniformly_continuous_on (λx. -(f x)) s
+  fixes f :: real => real, s :: real set
+  prop real_uniformly_continuous_on f s --> real_uniformly_continuous_on (%x. -(f x)) s
 
 theorem real_uniformly_continuous_on_add
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_uniformly_continuous_on f s ⟶ real_uniformly_continuous_on g s ⟶ real_uniformly_continuous_on (λx. f x + g x) s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_uniformly_continuous_on f s --> real_uniformly_continuous_on g s --> real_uniformly_continuous_on (%x. f x + g x) s
 
 theorem real_uniformly_continuous_on_sub
-  fixes f :: real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_uniformly_continuous_on f s ⟶ real_uniformly_continuous_on g s ⟶ real_uniformly_continuous_on (λx. f x - g x) s
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_uniformly_continuous_on f s --> real_uniformly_continuous_on g s --> real_uniformly_continuous_on (%x. f x - g x) s
   [hint_backward,hint_backward1]
 
 theorem real_uniformly_continuous_on_sum
-  fixes f :: 'a ⇒ real ⇒ real, s :: 'a set, t :: real set
-  prop finite s ⟶ (∀a. a ∈ s ⟶ real_uniformly_continuous_on (f a) t) ⟶ real_uniformly_continuous_on (λx. sum s (λa. f a x)) t
+  fixes f :: 'a => real => real, s :: 'a set, t :: real set
+  prop finite s --> (!a. a Mem s --> real_uniformly_continuous_on (f a) t) --> real_uniformly_continuous_on (%x. sum s (%a. f a x)) t
 
 theorem real_compact_uniformly_continuous
-  fixes f :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_compact s ⟶ real_uniformly_continuous_on f s
+  fixes f :: real => real, s :: real set
+  prop real_continuous_on f s --> real_compact s --> real_uniformly_continuous_on f s
   [hint_backward,hint_backward1]
 
 theorem real_compact_continuous_image
-  fixes f :: real ⇒ real, s :: real set
-  prop real_continuous_on f s ⟶ real_compact s ⟶ real_compact (image f s)
+  fixes f :: real => real, s :: real set
+  prop real_continuous_on f s --> real_compact s --> real_compact (image f s)
   [hint_backward,hint_backward1]
 
 theorem real_dini
-  fixes f :: nat ⇒ real ⇒ real, g :: real ⇒ real, s :: real set
-  prop real_compact s ⟶ (∀n. real_continuous_on (f n) s) ⟶ real_continuous_on g s ⟶ (∀x. x ∈ s ⟶ tendsto_real (λn. f n x) (g x) sequentially) ⟶ (∀n. ∀x. x ∈ s ⟶ f n x ≤ f (n + 1) x) ⟶ (∀e. 0 < e ⟶ eventually (λn. ∀x. x ∈ s ⟶ abs (f n x - g x) < e) sequentially)
+  fixes f :: nat => real => real, g :: real => real, s :: real set
+  prop real_compact s --> (!n. real_continuous_on (f n) s) --> real_continuous_on g s --> (!x. x Mem s --> tendsto_real (%n. f n x) (g x) sequentially) --> (!n. !x. x Mem s --> f n x <= f (n + 1) x) --> (!e. 0 < e --> eventually (%n. !x. x Mem s --> abs (f n x - g x) < e) sequentially)
+

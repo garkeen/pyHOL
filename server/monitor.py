@@ -24,24 +24,25 @@ from syntax.settings import settings, global_setting
 
 def check_proof(item, *, rewrite):
     if item.steps:
+        from server.stable_state import StableProofState
         context.set_context(None, vars=item.vars)
-        state = server.parse_init_state(item.prop)
-        history = state.parse_steps(item.steps)
-        if rewrite:
-            with global_setting(unicode=True):
-                item.proof = state.export_proof()
-
-        for step in history:
-            if 'error' in step:
+        vars_dict = {nm: T for nm, T in context.ctxt.vars.items()}
+        sps = StableProofState.create(item.prop, vars_dict)
+        for step in item.steps:
+            ok = sps.apply_method_dict(step)
+            if not ok:
                 return {
                     'status': 'Failed',
-                    'err_type': step['error']['err_type'],
-                    'err_str': step['error']['err_str'],
-                    'trace': step['error']['trace']
+                    'err_type': 'ReplayError',
+                    'err_str': 'failed at %s' % step.get('method_name', '?'),
+                    'trace': ''
                 }
+        if rewrite:
+            with global_setting(unicode=True):
+                item.proof = sps.state.export_proof()
 
         try:
-            state.check_proof()
+            sps.state.check_proof()
         except Exception as e:
             return {
                 'status': 'Failed',
@@ -50,9 +51,8 @@ def check_proof(item, *, rewrite):
                 'trace': traceback.format_exc()
             }
 
-        # Otherwise OK
         return {
-            'status': 'OK' if len(state.rpt.gaps) == 0 else 'Partial',
+            'status': 'OK' if len(sps.state.rpt.gaps) == 0 else 'Partial',
             'num_steps': len(item.steps),
         }
     elif item.proof:
@@ -215,18 +215,20 @@ def validate_theory(filename, *, force=False):
             theory.thy.set_error(name, errors[name])
             continue
 
-        # Replay the proof
+        # Replay the proof using stable-ID pipeline
         try:
+            from server.stable_state import StableProofState
             with theory.fresh_theory():
                 context.set_context(filename, limit=('thm', name),
                                     vars=dict(item.vars) if item.vars else {})
-                state = server.parse_init_state(item.prop)
+                sps = StableProofState.create(item.prop,
+                    dict(item.vars) if item.vars else {})
                 for step in item.steps:
-                    state.parse_steps([step])
-                state.check_proof(compute_only=True)
-                gaps = len(state.rpt.gaps)
+                    if not sps.apply_method_dict(step):
+                        raise Exception('replay failed at step: %s' % step.get('method_name', '?'))
+                gaps = sps.num_gaps
             statuses[name] = 'VALID' if gaps == 0 else 'STEP_FAILED'
-            errors[name] = None if gaps == 0 else _gap_error(state)
+            errors[name] = None if gaps == 0 else 'proof has %d open goal(s)' % gaps
         except Exception as e:
             statuses[name] = 'STEP_FAILED'
             errors[name] = '%s: %s' % (e.__class__.__name__, str(e))

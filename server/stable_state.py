@@ -91,8 +91,12 @@ class StableProofState:
         sps = cls()
         # Set up context variables
         if vars_dict:
-            for nm, T_str in vars_dict.items():
-                T = parser.parse_type(T_str)
+            from kernel.type import Type
+            for nm, T_val in vars_dict.items():
+                if isinstance(T_val, str):
+                    T = parser.parse_type(T_val)
+                else:
+                    T = T_val  # already a Type object
                 context.ctxt.vars[nm] = T
                 sps.state.vars.append(Var(nm, T))
 

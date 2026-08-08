@@ -203,33 +203,6 @@ class ProofState():
                 except AssertionError:
                     pass
 
-    def parse_steps(self, steps):
-        """Parse and apply a list of steps to self.
-
-        Return the output from the list of steps.
-
-        """
-        history = []
-        for step in steps:
-            with global_setting(unicode=True, highlight=True):
-                step_output = output_step(self, step)
-            history.append({
-                'step_output': step_output,
-                'goal_id': step['goal_id'],
-                'fact_ids': step.get('fact_ids', [])
-            })
-            try:
-                apply_method(self, step)
-                self.check_proof(compute_only=True)
-            except Exception as e:
-                history[-1]['error'] = {
-                    'err_type': e.__class__.__name__,
-                    'err_str': str(e),
-                    'trace': traceback.format_exc()
-                }
-
-        return history
-
 
 """Global store for methods."""
 global_methods: Dict[str, "Method"] = dict()
@@ -347,7 +320,7 @@ class cut_method(Method):
     def display_step(self, state: ProofState, data):
         id = data['goal_id']
         with context.fresh_context(vars=state.get_vars(id)):
-            goal = parser.parse_term(data['goal'])
+            goal = parser.parse_term(data.get('cut_goal', data.get('goal')))
         return pprint.N("have ") + printer.print_term(goal)
 
     def apply(self, state: ProofState, id, data, prevs):
@@ -355,7 +328,7 @@ class cut_method(Method):
         hyps = cur_item.th.hyps
 
         with context.fresh_context(vars=state.get_vars(id)):
-            C = parser.parse_term(data['goal'])
+            C = parser.parse_term(data.get('cut_goal', data.get('goal')))
             for v in C.get_vars():
                 if v.name not in context.ctxt.vars:
                     raise AssertionError('Insert goal: extra variable %s' % v.name)
@@ -1609,9 +1582,11 @@ def output_step(state: ProofState, step):
         res = method.display_step(state, step)
     except Exception as e:
         res = pprint.N(step['method_name'])
-    res += pprint.N(' on ' + step['goal_id'])
-    if 'fact_ids' in step and len(step['fact_ids']) > 0:
-        res += pprint.N(' using ' + ','.join(step['fact_ids']))
+    goal = step.get('goal_id', str(step.get('goal', '')))
+    res += pprint.N(' on ' + goal)
+    facts = step.get('fact_ids') or [str(f) for f in step.get('facts', [])]
+    if facts:
+        res += pprint.N(' using ' + ','.join(str(f) for f in facts))
     return res
 
 def output_hint(state: ProofState, step):
