@@ -4,7 +4,7 @@ description "Basic results in logic"
 
 theorem conj_comm
   fixes A :: bool, B :: bool
-  prop A & B <--> B & A
+  prop A ∧ B ⟷ B ∧ A
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -30,7 +30,7 @@ qed
 
 theorem disj_comm
   fixes A :: bool, B :: bool
-  prop A | B <--> B | A
+  prop A ∨ B ⟷ B ∨ A
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -70,7 +70,7 @@ qed
 
 theorem conj_assoc
   fixes A :: bool, B :: bool, C :: bool
-  prop A & B & C <--> (A & B) & C
+  prop A ∧ B ∧ C ⟷ (A ∧ B) ∧ C
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -108,7 +108,7 @@ qed
 
 theorem disj_assoc
   fixes A :: bool, B :: bool, C :: bool
-  prop A | B | C --> (A | B) | C
+  prop A ∨ B ∨ C ⟶ (A ∨ B) ∨ C
 proof
   ← introduction goal=0
     #[1] A ∨ B ∨ C
@@ -145,7 +145,7 @@ qed
 
 theorem disj_assoc_eq
   fixes A :: bool, B :: bool, C :: bool
-  prop A | B | C <--> (A | B) | C
+  prop A ∨ B ∨ C ⟷ (A ∨ B) ∨ C
   [hint_rewrite,hint_rewrite_sym]
 proof
   ← apply_backward_step iffI goal=0
@@ -187,7 +187,7 @@ qed
 
 theorem double_neg
   fixes A :: bool
-  prop ~~A <--> A
+  prop ¬¬A ⟷ A
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -215,7 +215,7 @@ qed
 
 theorem disj_conv_imp
   fixes A :: bool, B :: bool
-  prop ~A | B <--> (A --> B)
+  prop ¬A ∨ B ⟷ (A ⟶ B)
 proof
   ← apply_backward_step iffI goal=0
     #[1] ¬A ∨ B ⟶ A ⟶ B
@@ -248,8 +248,8 @@ proof
 qed
 
 theorem ex_conj_distrib
-  fixes A :: 'a => bool, B :: 'a => bool
-  prop (?x. A x & B x) --> (?x. A x) & (?x. B x)
+  fixes A :: 'a ⇒ bool, B :: 'a ⇒ bool
+  prop (∃x. A x ∧ B x) ⟶ (∃x. A x) ∧ (∃x. B x)
   [hint_backward]
 proof
   ← introduction goal=0
@@ -273,8 +273,8 @@ proof
 qed
 
 theorem all_conj_distrib
-  fixes A :: 'a => bool, B :: 'a => bool, x :: 'a
-  prop (!x. A x & B x) --> (!x. A x) & (!x. B x)
+  fixes A :: 'a ⇒ bool, B :: 'a ⇒ bool, x :: 'a
+  prop (∀x. A x ∧ B x) ⟶ (∀x. A x) ∧ (∀x. B x)
   [hint_rewrite]
 proof
   ← introduction goal=0
@@ -297,7 +297,7 @@ qed
 
 theorem conj_disj_distribL1
   fixes A :: bool, B :: bool, C :: bool
-  prop A & (B | C) <--> A & B | A & C
+  prop A ∧ (B ∨ C) ⟷ A ∧ B ∨ A ∧ C
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -359,7 +359,7 @@ qed
 
 theorem disj_conj_distribL1
   fixes A :: bool, B :: bool, C :: bool
-  prop A | B & C <--> (A | B) & (A | C)
+  prop A ∨ B ∧ C ⟷ (A ∨ B) ∧ (A ∨ C)
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -419,7 +419,7 @@ qed
 
 theorem disj_conj_distribL2
   fixes A :: bool, B :: bool, C :: bool
-  prop A & B | C <--> (A | C) & (B | C)
+  prop A ∧ B ∨ C ⟷ (A ∨ C) ∧ (B ∨ C)
 proof
   ← apply_backward_step iffI goal=0
     #[1] A ∧ B ∨ C ⟶ (A ∨ C) ∧ (B ∨ C)
@@ -485,7 +485,7 @@ qed
 
 theorem de_morgan_thm1
   fixes A :: bool, B :: bool
-  prop ~(A & B) <--> ~A | ~B
+  prop ¬(A ∧ B) ⟷ ¬A ∨ ¬B
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -546,7 +546,7 @@ qed
 
 theorem de_morgan_thm2
   fixes A :: bool, B :: bool
-  prop ~(A | B) <--> ~A & ~B
+  prop ¬(A ∨ B) ⟷ ¬A ∧ ¬B
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -602,7 +602,7 @@ qed
 
 theorem not_imp
   fixes A :: bool, B :: bool
-  prop ~(A --> B) <--> A & ~B
+  prop ¬(A ⟶ B) ⟷ A ∧ ¬B
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -653,7 +653,7 @@ qed
 
 theorem eq_true
   fixes A :: bool
-  prop A <--> A <--> true
+  prop A ⟷ A ⟷ true
 proof
   ← apply_backward_step iffI goal=0
     #[1] A ⟶ A ⟷ true
@@ -680,7 +680,7 @@ qed
 
 theorem eq_false
   fixes A :: bool
-  prop ~A <--> A <--> false
+  prop ¬A ⟷ A ⟷ false
 proof
   ← apply_backward_step iffI goal=0
     #[1] ¬A ⟶ A ⟷ false
@@ -711,7 +711,7 @@ proof
 qed
 
 theorem not_true
-  prop ~true <--> false
+  prop ¬true ⟷ false
 proof
   ← apply_backward_step iffI goal=0
     #[1] ¬true ⟶ false
@@ -731,7 +731,7 @@ proof
 qed
 
 theorem not_false
-  prop ~false <--> true
+  prop ¬false ⟷ true
 proof
   ← apply_backward_step iffI goal=0
     #[1] ¬false ⟶ true
@@ -750,7 +750,7 @@ qed
 
 theorem pierce
   fixes A :: bool, B :: bool
-  prop ((A --> B) --> A) --> A
+  prop ((A ⟶ B) ⟶ A) ⟶ A
 proof
   ← introduction goal=0
     #[1] (A ⟶ B) ⟶ A
@@ -770,24 +770,24 @@ proof
 qed
 
 theorem not_all
-  fixes P :: 'a => bool
-  prop ~(!x. P x) <--> (?x. ~(P x))
+  fixes P :: 'a ⇒ bool
+  prop ¬(∀x. P x) ⟷ (∃x. ¬(P x))
   [hint_rewrite]
 proof
   ← z3 goal=0
 qed
 
 theorem not_exists
-  fixes P :: 'a => bool
-  prop ~(?x. P x) <--> (!x. ~(P x))
+  fixes P :: 'a ⇒ bool
+  prop ¬(∃x. P x) ⟷ (∀x. ¬(P x))
   [hint_rewrite]
 proof
   ← z3 goal=0
 qed
 
 theorem right_or_exists_thm
-  fixes P :: bool, Q :: 'a => bool
-  prop P | (?x. Q x) <--> (?x. P | Q x)
+  fixes P :: bool, Q :: 'a ⇒ bool
+  prop P ∨ (∃x. Q x) ⟷ (∃x. P ∨ Q x)
   [hint_rewrite,hint_rewrite_sym]
 proof
   ← apply_backward_step iffI goal=0
@@ -837,16 +837,16 @@ proof
 qed
 
 theorem left_exists_and_thm
-  fixes P :: 'a => bool, Q :: bool
-  prop (?x. P x & Q) <--> (?x1. P x1) & Q
+  fixes P :: 'a ⇒ bool, Q :: bool
+  prop (∃x. P x ∧ Q) ⟷ (∃x1. P x1) ∧ Q
   [hint_rewrite,hint_rewrite_sym]
 proof
   ← z3 goal=0
 qed
 
 theorem left_imp_exists_thm
-  fixes P :: 'a => bool, Q :: bool
-  prop ((?x. P x) --> Q) <--> (!x. P x --> Q)
+  fixes P :: 'a ⇒ bool, Q :: bool
+  prop ((∃x. P x) ⟶ Q) ⟷ (∀x. P x ⟶ Q)
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -872,8 +872,8 @@ proof
 qed
 
 theorem left_imp_forall_thm
-  fixes P :: 'a => bool, Q :: bool
-  prop ((!x. P x) --> Q) <--> (?x. P x --> Q)
+  fixes P :: 'a ⇒ bool, Q :: bool
+  prop ((∀x. P x) ⟶ Q) ⟷ (∃x. P x ⟶ Q)
   [hint_rewrite]
 proof
   cut "!A. !B. (A <--> B) <--> (~A <--> ~B)" goal=0
@@ -889,32 +889,32 @@ proof
 qed
 
 theorem left_exists_imp_thm
-  fixes P :: 'a => bool, Q :: bool
-  prop (?x. P x --> Q) <--> ((!x. P x) --> Q)
+  fixes P :: 'a ⇒ bool, Q :: bool
+  prop (∃x. P x ⟶ Q) ⟷ ((∀x. P x) ⟶ Q)
   [hint_rewrite]
 proof
   ← rewrite_goal left_imp_forall_thm sym=false goal=0
 qed
 
 theorem right_imp_exists_thm
-  fixes P :: bool, Q :: 'a => bool
-  prop (P --> (?x. Q x)) <--> (?x. P --> Q x)
+  fixes P :: bool, Q :: 'a ⇒ bool
+  prop (P ⟶ (∃x. Q x)) ⟷ (∃x. P ⟶ Q x)
   [hint_rewrite]
 proof
   ← z3 goal=0
 qed
 
 theorem right_exists_imp_thm
-  fixes P :: bool, Q :: 'a => bool
-  prop (?x. P --> Q x) <--> (P --> (?x. Q x))
+  fixes P :: bool, Q :: 'a ⇒ bool
+  prop (∃x. P ⟶ Q x) ⟷ (P ⟶ (∃x. Q x))
   [hint_rewrite]
 proof
   ← rewrite_goal right_imp_exists_thm sym=false goal=0
 qed
 
 theorem drinker
-  fixes P :: 'a => bool
-  prop ?x. P x --> (!x1. P x1)
+  fixes P :: 'a ⇒ bool
+  prop ∃x. P x ⟶ (∀x1. P x1)
 proof
   ← cases "!x. P x" goal=0
     #[1] (∀x. P x) ⟶ (∃x. P x ⟶ (∀x1. P x1))
@@ -944,8 +944,8 @@ proof
 qed
 
 theorem test
-  fixes a :: 'a, b :: 'a, p :: 'a => bool, q :: 'a => bool
-  prop p a | q b --> (!x. p x --> q x) --> (?x. q x)
+  fixes a :: 'a, b :: 'a, p :: 'a ⇒ bool, q :: 'a ⇒ bool
+  prop p a ∨ q b ⟶ (∀x. p x ⟶ q x) ⟶ (∃x. q x)
 proof
   ← introduction goal=0
     #[1] p a ∨ q b
@@ -969,8 +969,8 @@ proof
 qed
 
 theorem forall_elim
-  fixes P :: 'a => bool, a :: 'a
-  prop (!x. P x) --> P a
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop (∀x. P x) ⟶ P a
 proof
   ← introduction goal=0
     #[1] ∀x. P x
@@ -979,8 +979,8 @@ proof
 qed
 
 theorem quant_intro_forall
-  fixes P :: 'a => bool, Q :: 'a => bool, x :: 'a, y :: 'a
-  prop P = Q --> (!x1. P x1) <--> (!x2. Q x2)
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, x :: 'a, y :: 'a
+  prop P = Q ⟶ (∀x1. P x1) ⟷ (∀x2. Q x2)
 proof
   ← introduction goal=0
     #[1] P = Q
@@ -989,8 +989,8 @@ proof
 qed
 
 theorem quant_intro_exists
-  fixes P :: 'a => bool, Q :: 'a => bool
-  prop P = Q --> (?x1. P x1) <--> (?x2. Q x2)
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
+  prop P = Q ⟶ (∃x1. P x1) ⟷ (∃x2. Q x2)
 proof
   ← introduction goal=0
     #[1] P = Q
@@ -999,8 +999,8 @@ proof
 qed
 
 theorem skolem_thm
-  fixes P :: 'a => 'b => bool
-  prop (!x. ?y. P x y) <--> (?y. !x. P x (y x))
+  fixes P :: 'a ⇒ 'b ⇒ bool
+  prop (∀x. ∃y. P x y) ⟷ (∃y. ∀x. P x (y x))
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -1038,8 +1038,8 @@ proof
 qed
 
 theorem skolem_thm_gen
-  fixes P :: 'a => bool, R :: 'a => 'b => bool
-  prop (!x. P x --> (?y. R x y)) <--> (?f. !x. P x --> R x (f x))
+  fixes P :: 'a ⇒ bool, R :: 'a ⇒ 'b ⇒ bool
+  prop (∀x. P x ⟶ (∃y. R x y)) ⟷ (∃f. ∀x. P x ⟶ R x (f x))
   [hint_rewrite]
 proof
   ← rewrite_goal right_imp_exists_thm sym=false goal=0
@@ -1049,7 +1049,7 @@ qed
 
 theorem iff_conv_conj_disj
   fixes A :: bool, B :: bool
-  prop (A <--> B) <--> (A | ~B) & (~A | B)
+  prop (A ⟷ B) ⟷ (A ∨ ¬B) ∧ (¬A ∨ B)
 proof
   ← apply_backward_step iffI goal=0
     #[1] A ⟷ B ⟶ (A ∨ ¬B) ∧ (¬A ∨ B)
@@ -1114,7 +1114,7 @@ qed
 
 theorem eq_imp_false
   fixes A :: 'a, B :: 'a
-  prop (A = A --> false) --> false
+  prop (A = A ⟶ false) ⟶ false
   [hint_rewrite]
 proof
   ← introduction goal=0
@@ -1128,7 +1128,7 @@ qed
 
 theorem disj_false_right
   fixes A :: bool
-  prop A | false <--> A
+  prop A ∨ false ⟷ A
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -1153,7 +1153,7 @@ qed
 
 theorem disj_false_left
   fixes A :: bool
-  prop false | A <--> A
+  prop false ∨ A ⟷ A
   [hint_rewrite]
 proof
   ← rewrite_goal disj_comm sym=false goal=0
@@ -1163,7 +1163,7 @@ qed
 
 theorem force_disj_true1
   fixes A :: bool, B :: bool
-  prop A | B --> ~B --> A
+  prop A ∨ B ⟶ ¬B ⟶ A
   [hint_backward1,hint_forward]
 proof
   ← introduction goal=0
@@ -1182,7 +1182,7 @@ qed
 
 theorem force_disj_true2
   fixes A :: bool, B :: bool
-  prop A | ~B --> B --> A
+  prop A ∨ ¬B ⟶ B ⟶ A
   [hint_backward1,hint_forward]
 proof
   ← introduction goal=0
@@ -1196,7 +1196,7 @@ qed
 
 theorem eq_mean_true
   fixes A :: 'a
-  prop A = A <--> true
+  prop A = A ⟷ true
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -1216,7 +1216,7 @@ qed
 
 theorem conj_false_right
   fixes P :: bool
-  prop false & P <--> false
+  prop false ∧ P ⟷ false
   [hint_rewrite]
 proof
   ← apply_backward_step iffI goal=0
@@ -1234,7 +1234,7 @@ qed
 
 theorem conj_false_left
   fixes P :: bool
-  prop P & false <--> false
+  prop P ∧ false ⟷ false
 proof
   ← rewrite_goal conj_comm sym=false goal=0
     #[1] false ∧ P ⟷ false
@@ -1243,7 +1243,7 @@ qed
 
 theorem imply_neg
   fixes P :: bool, Q :: bool
-  prop (P --> Q) <--> (~Q --> ~P)
+  prop (P ⟶ Q) ⟷ (¬Q ⟶ ¬P)
 proof
   ← apply_backward_step iffI goal=0
     #[1] (P ⟶ Q) ⟶ ¬Q ⟶ ¬P
@@ -1276,15 +1276,31 @@ qed
 
 theorem not_or_elim1
   fixes p :: bool, q :: bool
-  prop ~(p | q) --> ~p
+  prop ¬(p ∨ q) ⟶ ¬p
+proof
+  ← introduction goal=0
+    #[1] ¬(p ∨ q)
+    #[2] ¬p
+  ← cases p goal=2
+    #[3] p ⟶ ¬p
+    #[4] ¬p ⟶ ¬p
+  ← introduction goal=3
+    #[5] p
+    #[6] ¬p
+  cut "p ∨ q" goal=6 facts=[1]
+    #[7] p | q
+  ← apply_backward_step disjI1 goal=7 facts=[5]
+    #[8] p | q
+  ← apply_backward_step negE_gen goal=6 facts=[1,8]
+qed
 
 theorem not_or_elim2
   fixes p :: bool, q :: bool
-  prop ~(p | q) --> ~q
+  prop ¬(p ∨ q) ⟶ ¬q
 
 theorem conj_true_left
   fixes P :: bool
-  prop true & P <--> P
+  prop true ∧ P ⟷ P
 proof
   ← apply_backward_step iffI goal=0
     #[1] true ∧ P ⟶ P
@@ -1304,7 +1320,7 @@ qed
 
 theorem conj_true_right
   fixes P :: bool
-  prop P & true <--> P
+  prop P ∧ true ⟷ P
 proof
   ← apply_backward_step iffI goal=0
     #[1] P ∧ true ⟶ P
@@ -1324,7 +1340,7 @@ qed
 
 theorem disj_true_left
   fixes P :: bool
-  prop true | P <--> true
+  prop true ∨ P ⟷ true
 proof
   ← apply_backward_step iffI goal=0
     #[1] true ∨ P ⟶ true
@@ -1342,7 +1358,7 @@ qed
 
 theorem disj_true_right
   fixes P :: bool
-  prop P | true <--> true
+  prop P ∨ true ⟷ true
 proof
   ← apply_backward_step iffI goal=0
     #[1] P ∨ true ⟶ true
@@ -1360,107 +1376,107 @@ qed
 
 theorem conj_pos_neg
   fixes P :: bool
-  prop P & ~P <--> false
+  prop P ∧ ¬P ⟷ false
 
 theorem conj_neg_pos
   fixes P :: bool
-  prop ~P & P <--> false
+  prop ¬P ∧ P ⟷ false
 
 theorem conj_same_atom
   fixes P :: bool
-  prop P & P <--> P
+  prop P ∧ P ⟷ P
 
 theorem disj_pos_neg
   fixes P :: bool
-  prop P | ~P <--> true
+  prop P ∨ ¬P ⟷ true
 
 theorem disj_neg_pos
   fixes P :: bool
-  prop ~P | P <--> true
+  prop ¬P ∨ P ⟷ true
 
 theorem disj_same_atom
   fixes P :: bool
-  prop P | P <--> P
+  prop P ∨ P ⟷ P
 
 theorem neg_iff
   fixes P :: bool, Q :: bool
-  prop ~(P <--> Q) <--> ~P <--> Q
+  prop ¬(P ⟷ Q) ⟷ ¬P ⟷ Q
 
 theorem neg_disj_pos_conj_other
   fixes P :: bool, Q :: bool
-  prop ~P | Q & P <--> ~P | Q
+  prop ¬P ∨ Q ∧ P ⟷ ¬P ∨ Q
 
 theorem neg_iff_both_sides
   fixes P :: bool, Q :: bool
-  prop (P <--> Q) <--> ~P <--> ~Q
+  prop (P ⟷ Q) ⟷ ¬P ⟷ ¬Q
 
 theorem pos_eq_neg
   fixes P :: bool
-  prop (P <--> ~P) <--> false
+  prop (P ⟷ ¬P) ⟷ false
 
 theorem neg_eq_pos
   fixes P :: bool
-  prop (~P <--> P) <--> false
+  prop (¬P ⟷ P) ⟷ false
 
 theorem ite_to_disj
   fixes P :: bool, Q :: bool, R :: bool
-  prop (if P then Q else R) <--> P & Q | ~P & R
+  prop (if P then Q else R) ⟷ P ∧ Q ∨ ¬P ∧ R
 
 theorem ite_eq_value
   fixes P :: bool, x :: 'a, y :: 'a, z :: 'a
-  prop (if P then x else y) = z <--> P & x = z | ~P & y = z
+  prop (if P then x else y) = z ⟷ P ∧ x = z ∨ ¬P ∧ y = z
 
 theorem ite_cond_disj_to_conj
   fixes P :: bool, Q :: bool, x :: 'a, y :: 'a
-  prop (if P | Q then x else y) = (if ~P & ~Q then y else x)
+  prop (if P ∨ Q then x else y) = (if ¬P ∧ ¬Q then y else x)
 
 theorem norm_neg_equality
   fixes P :: bool, Q :: bool
-  prop (~P <--> Q) <--> P <--> ~Q
+  prop (¬P ⟷ Q) ⟷ P ⟷ ¬Q
 
 theorem ite_elim_else_if
   fixes P :: bool, Q :: bool, x :: 'a, y :: 'a
-  prop (if P then x else if Q then x else y) = (if P | Q then x else y)
+  prop (if P then x else if Q then x else y) = (if P ∨ Q then x else y)
 
 theorem conj_extend_exists
-  fixes P :: bool, Q :: 'a => bool, R :: 'a => bool, t :: 'a
-  prop P --> (?t. Q t & R t) --> (?t. Q t & P & R t)
+  fixes P :: bool, Q :: 'a ⇒ bool, R :: 'a ⇒ bool, t :: 'a
+  prop P ⟶ (∃t. Q t ∧ R t) ⟶ (∃t. Q t ∧ P ∧ R t)
 
 theorem exists_forall
-  fixes P :: 'a => bool, a :: 'a
-  prop (?a. P a) <--> ~(!a. ~(P a))
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop (∃a. P a) ⟷ ¬(∀a. ¬(P a))
 
 theorem veriT_not_implies1
   fixes P :: bool, Q :: bool
-  prop ~(P --> Q) --> P
+  prop ¬(P ⟶ Q) ⟶ P
 
 theorem veriT_not_implies2
   fixes P :: bool, Q :: bool
-  prop ~(P --> Q) --> ~Q
+  prop ¬(P ⟶ Q) ⟶ ¬Q
 
 theorem conj_extend_exists1
-  fixes P :: 'a => bool, Q :: 'a => bool, R :: bool
-  prop R --> (?t. Q t --> P t) --> (?t. Q t --> R & P t)
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, R :: bool
+  prop R ⟶ (∃t. Q t ⟶ P t) ⟶ (∃t. Q t ⟶ R ∧ P t)
 
 theorem implies_or_assm
   fixes A :: bool, B :: bool
-  prop (A --> B) | A
+  prop (A ⟶ B) ∨ A
 
 theorem implies_or_neg_concl
   fixes A :: bool, B :: bool
-  prop (A --> B) | ~B
+  prop (A ⟶ B) ∨ ¬B
 
 theorem forall_exists
-  fixes P :: 'a => bool, t :: 'a
-  prop (!t. P t) <--> ~(?t1. ~(P t1))
+  fixes P :: 'a ⇒ bool, t :: 'a
+  prop (∀t. P t) ⟷ ¬(∃t1. ¬(P t1))
 
 theorem imp_disj_eq
   fixes A :: bool, B :: bool
-  prop (A --> B) <--> ~A | B
+  prop (A ⟶ B) ⟷ ¬A ∨ B
 
 theorem eq_implies1
   fixes A :: bool, B :: bool
-  prop A <--> B --> A --> B
+  prop A ⟷ B ⟶ A ⟶ B
 
 def Let :: 'a ⇒ ('a ⇒ 'b) ⇒ 'b = Let s f = f s
 
@@ -1468,71 +1484,70 @@ def xor :: bool ⇒ bool ⇒ bool = xor A B ⟷ A ∧ ¬B ∨ ¬A ∧ B
 
 theorem disjI1_syllogism
   fixes P :: bool, Q :: bool, R :: bool
-  prop (P | Q --> R) --> P --> R
+  prop (P ∨ Q ⟶ R) ⟶ P ⟶ R
 
 theorem disjI2_syllogism
   fixes P :: bool, Q :: bool, R :: bool
-  prop (P | Q --> R) --> Q --> R
+  prop (P ∨ Q ⟶ R) ⟶ Q ⟶ R
 
 header "Boolean simplification rules"
 
 theorem imp_false_iff
   fixes P :: bool
-  prop (P --> false) <--> ~P
+  prop (P ⟶ false) ⟷ ¬P
   [hint_rewrite]
 
 theorem exists_false
   fixes A :: 'a
-  prop (?x::'a. false) <--> false
+  prop (∃x::'a. false) ⟷ false
   [hint_rewrite]
 
 theorem exists_true
   fixes A :: 'a
-  prop (?x::'a. true) <--> true
+  prop (∃x::'a. true) ⟷ true
   [hint_rewrite]
 
 theorem forall_true
   fixes A :: 'a
-  prop (!x::'a. true) <--> true
+  prop (∀x::'a. true) ⟷ true
   [hint_rewrite]
 
 theorem forall_false
   fixes A :: 'a
-  prop (!x::'a. false) <--> false
+  prop (∀x::'a. false) ⟷ false
   [hint_rewrite]
 
 theorem conj_iff_left
   fixes P :: bool, Q :: bool
-  prop (P & Q <--> P) <--> (P --> Q)
+  prop (P ∧ Q ⟷ P) ⟷ (P ⟶ Q)
   [hint_rewrite]
 
 theorem disj_iff_left
   fixes P :: bool, Q :: bool
-  prop (P | Q <--> P) <--> (Q --> P)
+  prop (P ∨ Q ⟷ P) ⟷ (Q ⟶ P)
   [hint_rewrite]
 
 theorem exists_eq
-  fixes P :: 'a => bool, x :: 'a
-  prop (?y. P y & x = y) <--> P x
+  fixes P :: 'a ⇒ bool, x :: 'a
+  prop (∃y. P y ∧ x = y) ⟷ P x
   [hint_rewrite]
 
 theorem exists_disj_distrib
-  fixes P :: 'a => bool, Q :: 'a => bool
-  prop (?x. P x | Q x) <--> (?x. P x) | (?x. Q x)
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
+  prop (∃x. P x ∨ Q x) ⟷ (∃x. P x) ∨ (∃x. Q x)
   [hint_rewrite]
 
 theorem exists_eq_left
-  fixes P :: 'a => bool, a :: 'a
-  prop (?y. y = a & P y) <--> P a
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop (∃y. y = a ∧ P y) ⟷ P a
   [hint_rewrite]
 
 theorem exists_disj_conj_distrib
-  fixes P :: 'a => bool, Q :: 'a => bool, R :: 'a => bool
-  prop (?y. (P y | Q y) & R y) <--> (?y. P y & R y) | (?y. Q y & R y)
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, R :: 'a ⇒ bool
+  prop (∃y. (P y ∨ Q y) ∧ R y) ⟷ (∃y. P y ∧ R y) ∨ (∃y. Q y ∧ R y)
   [hint_rewrite]
 
 theorem exists_flatten
-  fixes P :: 'a => bool, Q :: 'a => 'b, R :: 'b => bool
-  prop (?y. (?z. P z & y = Q z) & R y) <--> (?z. P z & R (Q z))
+  fixes P :: 'a ⇒ bool, Q :: 'a ⇒ 'b, R :: 'b ⇒ bool
+  prop (∃y. (∃z. P z ∧ y = Q z) ∧ R y) ⟷ (∃z. P z ∧ R (Q z))
   [hint_rewrite]
-

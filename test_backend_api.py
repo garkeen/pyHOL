@@ -248,7 +248,7 @@ def test_new_theorem_prove_flow(client, filename='logic_base'):
     print(f"  Step 1: check-modify OK, name={checked['name']}")
     
     # Step 2: init-saved-proof with the new theorem's data
-    resp = client.post('/api/init-saved-proof', json={
+    resp = client.post('/api/v2/init-saved-proof', json={
         'theory_name': filename,
         'thm_name': checked['name'],
         'vars': checked.get('vars', {}),
@@ -270,7 +270,7 @@ def test_new_theorem_prove_flow(client, filename='logic_base'):
 def test_init_saved_proof(client, filename='logic_base'):
     """Test /api/init-saved-proof with a trivial proposition."""
     print(f"\n=== Test: init-saved-proof ({filename}) ===")
-    resp = client.post('/api/init-saved-proof', json={
+    resp = client.post('/api/v2/init-saved-proof', json={
         'theory_name': filename,
         'thm_name': '',
         'vars': {'A': 'bool'},

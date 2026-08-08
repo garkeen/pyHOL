@@ -311,7 +311,7 @@ class Method:
 class cut_method(Method):
     """Insert intermediate goal."""
     def __init__(self):
-        self.sig = ['goal']
+        self.sig = ['cut_goal']
         self.limit = None
 
     def search(self, state: ProofState, id, prevs):

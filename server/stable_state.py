@@ -208,7 +208,7 @@ class StableProofState:
             step_dict['fact_ids'] = fact_pos
         # Copy all extra keys (flat args at top level + nested args dict)
         for k, v in step.items():
-            if k not in ('method_name', 'goal', 'facts', 'new_ids', 'args'):
+            if k not in ('method_name', 'goal', 'facts', 'new_ids', 'new_items', 'args'):
                 step_dict[k] = v
         args = step.get('args', {})
         for k, v in args.items():
@@ -380,44 +380,79 @@ class StableProofState:
             return [str(a) for a in args]
         return str(args)
 
-    def search_backward(self, goal_sid: int, fact_sids: list) -> list:
-        """Backward search: find methods applicable to goal_sid."""
+    def search_backward(self, goal_sid: int, fact_sids: list) -> dict:
+        """Backward search: find methods applicable to goal_sid.
+
+        Exact results use the original fact order; fuzzy results cover
+        other permutations and subsets (largest first).
+        Returns {'results': [...], 'fuzzy': [...]}.
+        """
+        import itertools
         pos2sid = self._build_pos2sid()
         sid2pos = {v: k for k, v in pos2sid.items()}
 
         goal_pos = sid2pos.get(goal_sid)
         if goal_pos is None:
-            return []
+            return {'results': [], 'fuzzy': []}
 
         fact_pos = [sid2pos.get(f) for f in fact_sids]
         if any(f is None for f in fact_pos):
-            return []
+            return {'results': [], 'fuzzy': []}
 
         goal_id = ItemID(goal_pos)
         prevs = [ItemID(f) for f in fact_pos]
 
-        results = []
+        results, fuzzy = [], []
+
+        def collect(method_name, method_obj, perm_prevs, exact):
+            try:
+                search_res = method_obj.search(self.state, goal_id, perm_prevs)
+            except Exception:
+                return
+            for r in search_res:
+                r['method_name'] = method_name
+                r['fact_ids'] = [str(p) for p in perm_prevs]
+                try:
+                    with global_setting(unicode=True):
+                        r['_facts'] = [printer.print_term(self.state.get_proof_item(p).th.prop)
+                                       for p in perm_prevs]
+                except Exception:
+                    r['_facts'] = []
+                r['fuzzy'] = not exact
+                tr = self._translate_search_result(r, pos2sid)
+                (results if exact else fuzzy).append(tr)
+
         for method_name in methods_core.global_methods:
             method = methods_core.global_methods[method_name]
             if method.limit is not None and not theory.thy.has_theorem(method.limit):
                 continue
-            try:
-                search_res = method.search(self.state, goal_id, prevs)
-                for r in search_res:
-                    r['method_name'] = method_name
-                    results.append(self._translate_search_result(r, pos2sid))
-            except Exception:
-                pass
-        return results
+            collect(method_name, method, prevs, exact=True)
+            if hasattr(method, 'no_order'):
+                continue
+            # Fuzzy: other permutations of all facts, then subsets, largest first
+            n = len(prevs)
+            for k in range(n, 0, -1):
+                for comb in itertools.combinations(prevs, k):
+                    for perm in itertools.permutations(comb):
+                        if k == n and list(perm) == prevs:
+                            continue  # already in exact
+                        collect(method_name, method, list(perm), exact=False)
+        return {'results': results, 'fuzzy': fuzzy}
 
-    def search_forward(self, fact_sids: list) -> list:
-        """Forward search: find methods applicable to facts (no goal)."""
+    def search_forward(self, fact_sids: list) -> dict:
+        """Forward search: find methods applicable to facts (no goal).
+
+        Exact results use the original fact order; fuzzy results cover
+        other permutations and subsets (largest first).
+        Returns {'results': [...], 'fuzzy': [...]}.
+        """
+        import itertools
         pos2sid = self._build_pos2sid()
         sid2pos = {v: k for k, v in pos2sid.items()}
 
         fact_pos = [sid2pos.get(f) for f in fact_sids]
         if any(f is None for f in fact_pos):
-            return []
+            return {'results': [], 'fuzzy': []}
 
         prevs = [ItemID(f) for f in fact_pos]
 
@@ -429,20 +464,43 @@ class StableProofState:
                     prevs = []
                     break
             else:
-                return []
+                return {'results': [], 'fuzzy': []}
 
-        results = []
+        results, fuzzy = [], []
+
+        def collect(method_name, method_obj, perm_prevs, exact):
+            try:
+                search_res = method_obj.search(self.state, ItemID(0), perm_prevs)
+            except Exception:
+                return
+            for r in search_res:
+                r['method_name'] = method_name
+                r['fact_ids'] = [str(p) for p in perm_prevs]
+                try:
+                    with global_setting(unicode=True):
+                        r['_facts'] = [printer.print_term(self.state.get_proof_item(p).th.prop)
+                                       for p in perm_prevs]
+                except Exception:
+                    r['_facts'] = []
+                r['fuzzy'] = not exact
+                tr = self._translate_search_result(r, pos2sid)
+                (results if exact else fuzzy).append(tr)
+
         for method_name in methods_core.global_methods:
             method = methods_core.global_methods[method_name]
             if method_name not in FORWARD:
                 continue
             if method.limit is not None and not theory.thy.has_theorem(method.limit):
                 continue
-            try:
-                search_res = method.search(self.state, ItemID(0), prevs)
-                for r in search_res:
-                    r['method_name'] = method_name
-                    results.append(self._translate_search_result(r, pos2sid))
-            except Exception:
-                pass
-        return results
+            collect(method_name, method, prevs, exact=True)
+            if hasattr(method, 'no_order'):
+                continue
+            # Fuzzy: other permutations of all facts, then subsets, largest first
+            n = len(prevs)
+            for k in range(n, 0, -1):
+                for comb in itertools.combinations(prevs, k):
+                    for perm in itertools.permutations(comb):
+                        if k == n and list(perm) == prevs:
+                            continue  # already in exact
+                        collect(method_name, method, list(perm), exact=False)
+        return {'results': results, 'fuzzy': fuzzy}

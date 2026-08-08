@@ -136,13 +136,16 @@ def v2_apply_method():
                     return jsonify({'query': e.params, 'query_hints': getattr(e, 'hints', {})})
             return jsonify({'error': 'method application failed'}), 500
 
-        # Get new items for #[N] annotations
+# Get new items for #[N] annotations
         new_items = sps._find_new_items(old_ths)
+
+        with global_setting(unicode=True):
+            new_items_out = [{'sid': sid, 'prop': printer.print_term(th.prop)}
+                             for sid, th in new_items]
 
         return jsonify({
             'state': sps.json_data(),
-            'new_items': [{'sid': sid, 'prop': printer.print_term(th.prop)}
-                         for sid, th in new_items],
+            'new_items': new_items_out,
             'num_gaps': sps.num_gaps,
             'apply_time': time.perf_counter() - start,
         })
@@ -168,8 +171,8 @@ def v2_backward_search():
 
         goal_sid = data.get('goal')
         fact_sids = data.get('facts', [])
-        results = sps.search_backward(goal_sid, fact_sids)
-        return jsonify({'results': results, 'ctxt': {}})
+        res = sps.search_backward(goal_sid, fact_sids)
+        return jsonify({'results': res['results'], 'fuzzy': res['fuzzy'], 'ctxt': {}})
 
 
 @app.route('/api/v2/forward-search', methods=['POST'])
@@ -191,8 +194,8 @@ def v2_forward_search():
             return jsonify({'error': str(e)}), 500
 
         fact_sids = data.get('facts', [])
-        results = sps.search_forward(fact_sids)
-        return jsonify({'results': results, 'ctxt': {}})
+        res = sps.search_forward(fact_sids)
+        return jsonify({'results': res['results'], 'fuzzy': res['fuzzy'], 'ctxt': {}})
 
 
 # ── helpers ──────────────────────────────────────────────────────
@@ -207,5 +210,8 @@ def _build_step_dict(step, sid2pos):
     if facts:
         fact_pos = [sid2pos.get(f, '0') for f in facts]
         step_dict['fact_ids'] = fact_pos
+    for k, v in step.items():
+        if k not in ('method_name', 'goal', 'facts', 'new_ids', 'args'):
+            step_dict[k] = v
     step_dict.update(step.get('args', {}))
     return step_dict

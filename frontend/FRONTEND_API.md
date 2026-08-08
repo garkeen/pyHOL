@@ -16,11 +16,11 @@
 | `/api/remove-file` | PUT | 删除理论文件 | Editor.delete_file() |
 | `/api/check-modify` | POST | 检查修改的 item | Editor.check_item() / save_item() |
 | `/api/find-link` | POST | 定位 item 所在文件与位置 | ExpressionNode |
-| `/api/init-saved-proof` | POST | 加载/跳转到证明步骤 | ProofArea.gotoStep() |
-| `/api/forward-search` | POST | 正向搜索（仅事实，无目标） | ProofArea.match_thm() |
-| `/api/backward-search` | POST | 反向搜索（有目标，可选事实） | ProofArea.match_thm() |
+| `/api/v2/init-saved-proof` | POST | 加载/跳转到证明步骤（稳定 `#[N]` ID） | ProofArea.gotoStep() |
+| `/api/v2/forward-search` | POST | 正向搜索（仅事实，无目标，稳定 ID） | ProofArea.match_thm() |
+| `/api/v2/backward-search` | POST | 反向搜索（有目标，可选事实，稳定 ID） | ProofArea.match_thm() |
+| `/api/v2/apply-method` | POST | 应用证明方法（稳定 ID） | ProofArea.apply_method_ajax() |
 | `/api/theorem-search` | POST | 按名称模式搜索定理（手动 tab 补全） | ProofArea.search_theorems() |
-| `/api/apply-method` | POST | 应用证明方法 | ProofArea.apply_method_ajax() |
 | `/api/check-proof` | POST | 检查证明完整性（后端保留） | — |
 | `/api/validate-theory` | POST | 验证理论全部定理 | Editor.validate_all() |
 | `/api/theory-status` | GET | 查询全部定理证明状态缓存 | Editor.compute_thm_status() |
@@ -166,9 +166,9 @@
 
 ---
 
-### 6. `/api/init-saved-proof` (POST)
+### 6. `/api/v2/init-saved-proof` (POST)
 
-**功能**：加载理论到指定定理为止，重放 `steps` 到 `index`，返回证明状态。每次交互（搜索/应用/跳转）前都会调用，后端是无状态的。
+**功能**（新稳定 ID 管道）：加载理论到指定定理为止，重放 `steps` 到 `index`，返回证明状态。每次交互（搜索/应用/跳转）前都会调用，后端是无状态的。步骤使用稳定 ID：`step = { method_name, goal (int sid), facts ([int sid]), new_ids ([int],可选) }`。`#0` 是要证明的定理（隐含）。
 
 **输入参数**：
 | 参数 | 类型 | 说明 |
@@ -203,9 +203,9 @@
 
 ---
 
-### 7. `/api/forward-search` (POST)
+### 7. `/api/v2/forward-search` (POST)
 
-**功能**：正向搜索 —— 无需目标，根据选中事实推导新事实。对 `apply_forward_step` / `apply_fact` / `rewrite_fact` / `forall_elim` / `exists_elim` / `drule` / `frule` 逐个尝试（必要时对事实做排列）。
+**功能**（新稳定 ID 管道）：正向搜索 —— 无需目标，根据选中事实推导新事实。返回结果的 `facts`/`goal` 为稳定 ID。
 
 **输入参数**：
 | 参数 | 类型 | 说明 |
@@ -244,9 +244,9 @@
 
 ---
 
-### 8. `/api/backward-search` (POST)
+### 8. `/api/v2/backward-search` (POST)
 
-**功能**：反向搜索 —— 必须有目标，可选事实。对 `apply_backward_step` / `apply_prev` / `rewrite_goal` / `apply_resolve_step` / `reflexive` / `sym` / `introduction` / `inst_exists_goal` / `simp` 逐个尝试。若存在闭合目标的解，只保留闭合解。
+**功能**（新稳定 ID 管道）：反向搜索 —— 必须有目标，可选事实。若存在闭合目标的解，只保留闭合解。返回结果的 `facts`/`goal` 为稳定 ID。
 
 **输入参数**：
 | 参数 | 类型 | 说明 |
@@ -301,9 +301,9 @@
 
 ---
 
-### 10. `/api/apply-method` (POST)
+### 10. `/api/v2/apply-method` (POST)
 
-**功能**：应用证明方法。后端会解析 goal_id（为空时按事实自动定位插入点），应用方法并返回新状态。
+**功能**（新稳定 ID 管道）：应用证明方法。`step` 使用稳定 ID（`goal`/`facts`），无 goal 的正向方法由后端自动定位插入点。成功时返回 `state` + `new_items`（`[{sid, prop}]`），前端把 `new_items` 的 sid 写回步骤的 `new_ids` 以便重放。
 
 **输入参数**：
 | 参数 | 类型 | 说明 |

@@ -13,6 +13,7 @@ Format:
 
 Replay: stable IDs are mapped to positional IDs for the current kernel.
 #[N] propositions are read (for ID assignment) but NOT verified.
+Prop texts are kept in new_items for round-trip display/export.
 """
 
 import re
@@ -31,12 +32,13 @@ from server.methods.core import apply_method, ProofState
 
 class NewStep:
     """One method call + its #[N] annotations."""
-    def __init__(self, method_name, args, goal, facts, new_ids):
+    def __init__(self, method_name, args, goal, facts, new_ids, new_items=None):
         self.method_name = method_name
         self.args = args            # dict of arg key -> value
         self.goal = goal            # stable ID (int)
         self.facts = facts          # list of stable IDs (ints)
         self.new_ids = new_ids      # list of stable IDs from #[N] annotations
+        self.new_items = new_items if new_items is not None else []  # [(sid, prop)]
 
     def __repr__(self):
         return 'NewStep(%s goal=%d facts=%s new=%s)' % (
@@ -59,9 +61,9 @@ def parse_proof_body(lines: List[str]) -> List[NewStep]:
         m = re.match(r'^#\[(\d+)\]\s*(.*)$', stripped)
         if m:
             sid = int(m.group(1))
-            # proposition = m.group(2)  # ignored during replay
             if current_step is not None:
                 current_step.new_ids.append(sid)
+                current_step.new_items.append((sid, m.group(2)))
             continue
 
         # Method call line

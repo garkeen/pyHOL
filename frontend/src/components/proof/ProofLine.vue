@@ -10,17 +10,17 @@
     <span v-if="line.rule === 'assume'">
       <span class="item-text keyword2">assume </span>
       <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
-        <Expression v-if="line.args_hl" :line="line.args_hl"/>
+        <Expression v-if="propDisplay" :line="propDisplay"/>
       </span>
     </span>
     <span v-else-if="line.rule === 'variable'">
       <span class="item-text keyword2">fix </span>
-      <Expression v-if="line.args_hl" :line="line.args_hl"/>
+      <Expression v-if="argDisplay" :line="argDisplay"/>
     </span>
     <span v-else-if="line.rule === 'subproof'">
       <span class="item-text keyword1">have </span>
       <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
-        <Expression v-if="line.th_hl" :line="line.th_hl"/>
+        <Expression v-if="propDisplay" :line="propDisplay"/>
       </span>
       <span class="item-text keyword1"> with</span>
     </span>
@@ -28,19 +28,19 @@
       <span v-if="is_last_id" class="item-text keyword2">show </span>
       <span v-else class="item-text keyword1">have </span>
       <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
-        <Expression v-if="line.th_hl" :line="line.th_hl"/>
+        <Expression v-if="propDisplay" :line="propDisplay"/>
       </span>
       <span class="item-text keyword3"> by </span>
       <span v-if="line.rule === 'sorry'" class="sorry-clickable" 
             :class="{'sorry-goal': is_goal}"
             @click.stop="$emit('select-goal')">sorry</span>
       <span v-else-if="!APPLY_THEOREM_RULES.includes(line.rule)" class="item-text">{{line.rule}} </span>
-      <span v-if="line.args_hl && line.args_hl.length > 0">
-        <Expression :line="line.args_hl"/>
+      <span v-if="argDisplay">
+        <Expression :line="argDisplay"/>
       </span>
       <span v-if="line.prevs && line.prevs.length > 0">
         <span class="item-text keyword3"> from </span>
-        <span class="item-text">{{line.prevs.join(', ')}}</span>
+        <span class="item-text">#{{line.prevs.join(', #')}}</span>
       </span>
     </span>
   </div>
@@ -103,6 +103,23 @@ const indent = computed(() => {
     }
   }
   return result
+})
+
+// New stable-ID backend sends plain-text th/args (no th_hl/args_hl highlights).
+const propDisplay = computed(() => {
+  const line = props.line
+  if (!line) return ''
+  if (line.th_hl) return line.th_hl
+  return line.th || ''
+})
+
+const argDisplay = computed(() => {
+  const line = props.line
+  if (!line) return ''
+  if (line.args_hl) return line.args_hl
+  if (line.args === undefined || line.args === null) return ''
+  if (Array.isArray(line.args)) return line.args.join(', ')
+  return String(line.args)
 })
 
 const styleObject = computed(() => {

@@ -175,7 +175,7 @@
                :class="{'history-selected': proof_history_idx === i + 1}"
                @click="proof_goto_step(i + 1)">
             <span class="history-idx">{{ i + 1 }}</span>
-            <span v-if="h.step_output" class="history-text">{{ formatHistory(h.step_output) }}</span>
+            <span v-if="formatHistory(h)" class="history-text">{{ formatHistory(h) }}</span>
           </div>
         </div>
       </div>
@@ -648,11 +648,19 @@ const statusIcon = (s) => ({
   'PENDING': '⏳', 'UNPROVED': '○', 'AXIOM': '□', 'DIRTY': '•'
 }[s] || '')
 
-const formatHistory = (step_output) => {
-  if (Array.isArray(step_output)) {
-    return step_output.map(item => item.text || String(item)).join('')
+const formatHistory = (h) => {
+  if (h === undefined || h === null) return ''
+  if (h.step_output) {
+    if (Array.isArray(h.step_output)) {
+      return h.step_output.map(item => item.text || String(item)).join('')
+    }
+    return String(h.step_output)
   }
-  return String(step_output)
+  // New stable-ID pipeline: history entries carry method_name/goal/facts.
+  let s = h.method_name || ''
+  if (h.goal !== undefined && h.goal !== null) s += ' goal=' + h.goal
+  if (h.facts && h.facts.length) s += ' facts=[' + h.facts.join(',') + ']'
+  return s
 }
 
 const formatType = (T) => {

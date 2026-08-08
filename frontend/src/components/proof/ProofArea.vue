@@ -114,6 +114,7 @@
             </optgroup>
             <optgroup label="← Backward (needs goal)">
               <option value="apply_backward_step">apply_backward_step</option>
+              <option value="apply_resolve_step">apply_resolve_step</option>
               <option value="apply_prev">apply_prev</option>
               <option value="rewrite_goal">rewrite_goal</option>
               <option value="simp">simp</option>
@@ -133,9 +134,6 @@
               <option value="thin">thin</option>
               <option value="new_var">new_var</option>
             </optgroup>
-            <optgroup label="Escape">
-              <option value="call_tactic">call_tactic</option>
-            </optgroup>
           </select>
         </div>
         <div v-if="manual_method && method_params.length > 0" class="manual-params">
@@ -153,7 +151,7 @@
           </div>
         </div>
         <button v-if="manual_method" class="btn btn-sm btn-primary" @click="apply_manual_method"
-                :disabled="goal === -1 && !FORWARD_METHODS.has(manual_method) && manual_method !== 'insert' && manual_method !== 'new_var' && manual_method !== 'call_tactic'">
+                :disabled="goal === -1 && !FORWARD_METHODS.has(manual_method) && manual_method !== 'insert' && manual_method !== 'new_var'">
           Apply
         </button>
       </div>
@@ -170,6 +168,8 @@
         <span class="auto-desc">linear arithmetic</span>
         <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('z3')" :disabled="goal === -1">z3</button>
         <span class="auto-desc">SMT solver (oracle)</span>
+        <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('vcg')" :disabled="goal === -1">vcg</button>
+        <span class="auto-desc">Hoare logic VC generation</span>
       </div>
     </div>
 
@@ -225,34 +225,26 @@ const INST_PARAM_METHODS = new Set(['apply_backward_step', 'apply_forward_step',
 
 const method_sig_map = {
   'introduction': [], 'apply_backward_step': ['theorem'], 'apply_forward_step': ['theorem'],
-  'apply_prev': [], 'apply_fact': [], 'cut': ['goal'], 'cases': ['case'], 'induction': ['theorem', 'var'],
+  'apply_prev': [], 'apply_fact': [], 'cut': ['cut_goal'], 'cases': ['case'], 'induction': ['theorem', 'var'],
   'forall_elim': ['s'], 'exists_elim': ['names'], 'inst_exists_goal': ['s'], 'new_var': ['name', 'type'],
   'sym': [], 'subst': ['theorem'], 'reflexive': [],
   'rewrite_goal': ['theorem', 'sym'], 'rewrite_fact': ['theorem', 'sym'],
   'unfold': ['theorem'], 'fold': ['theorem'], 'simp': [],
   'insert': ['theorem'], 'thin': ['index'], 'drule': ['theorem'], 'frule': ['theorem'],
-  'call_tactic': ['tactic_name'],
-}
-
-const call_tactic_extra_params = {
-  'rule': ['theorem'], 'rewrite_goal': ['theorem', 'sym'], 'apply_prev': [],
-  'intros': [], 'assumption': [], 'resolve': ['theorem'], 'cases': ['case'],
 }
 
 const method_params = computed(() => {
-  const base = method_sig_map[manual_method.value] || []
-  if (manual_method.value === 'call_tactic') {
-    const tn = manual_params.value.tactic_name || ''
-    return [...base, ...(call_tactic_extra_params[tn] || [])]
-  }
-  return base
+  // Prefer the backend-provided signature (stable-ID pipeline); fall back
+  // to the static map below for manual tab.
+  const sig = method_sig.value[manual_method.value]
+  if (sig) return sig
+  return method_sig_map[manual_method.value] || []
 })
 
 const param_hint = (p) => ({
   'theorem': 'theorem name', 'sym': 'true/false', 'loc': 'position', 'case': 'expression',
   'var': 'variable', 's': 'term', 'names': 'names', 'name': 'name', 'type': 'HOL type',
-  'goal': 'proposition', 'tactic_name': 'rule/rewrite_goal/...', 'macro_name': 'macro name',
-  'index': 'assumption index',
+  'goal': 'proposition', 'cut_goal': 'proposition', 'index': 'assumption index',
 }[p] || p)
 
 const derive_suggestions = computed(() => {
@@ -406,18 +398,22 @@ const match_thm = async () => {
     let endpoint, resultsKey
     if (goal.value === -1 && facts.value.length > 0) {
       // Forward search: no goal, has facts
-      endpoint = '/forward-search'
+      endpoint = '/v2/forward-search'
       resultsKey = 'results'
     } else if (goal.value !== -1) {
       // Backward search: has goal
-      endpoint = '/backward-search'
+      endpoint = '/v2/backward-search'
       resultsKey = 'results'
     } else {
       search_res.value = []
       fuzzy_res.value = []
       return
     }
-    const response = await api.post(endpoint, input)
+    const response = await api.post(endpoint, {
+      ...input,
+      goal: input.step.goal,
+      facts: input.step.facts,
+    })
     search_res.value = response.data[resultsKey] || []
     fuzzy_res.value = response.data.fuzzy || []
     const og2 = proof.value ? proof.value.filter(l => l.is_goal).map(l => l.sid) : []
@@ -523,9 +519,11 @@ const apply_method_ajax = async (input, desc = null) => {
     } else if ('error' in result.data) {
       emit('set-message', { type: 'error', data: result.data.error.err_type + ': ' + result.data.error.err_str })
     } else {
-      // Record new_ids from backend response
+      // Record new_ids and annotated props from backend response
       if (result.data.new_items) {
-        input.step.new_ids = result.data.new_items.map(ni => ni.sid)
+        const nis = result.data.new_items
+        input.step.new_ids = nis.map(ni => ni.sid)
+        input.step.new_items = nis  // [{sid, prop}] kept for #[N] annotation export
       }
       if (input.step.facts && input.step.facts.length === 0) { delete input.step.facts }
       // Truncate + push (branch and discard)

@@ -120,10 +120,9 @@ header "Some simple results"
 
 theorem trivial
   fixes A :: bool
-  prop A --> A
+  prop A ⟶ A
 proof
   ← introduction goal=0
-    #[1] A
     #[1] A
   revert_intro goal=1 facts=[1]
   ← introduction goal=0
@@ -131,7 +130,7 @@ qed
 
 theorem syllogism
   fixes A :: bool, B :: bool, C :: bool
-  prop (A --> B) --> (B --> C) --> A --> C
+  prop (A ⟶ B) ⟶ (B ⟶ C) ⟶ A ⟶ C
 proof
   ← introduction goal=0
     #[1] A ⟶ B
@@ -145,7 +144,7 @@ qed
 
 theorem disjE2
   fixes A :: bool, B :: bool, C :: bool
-  prop (A --> C) --> (B --> C) --> A | B --> C
+  prop (A ⟶ C) ⟶ (B ⟶ C) ⟶ A ∨ B ⟶ C
 proof
   ← introduction goal=0
     #[1] A ⟶ C
@@ -156,7 +155,7 @@ proof
 qed
 
 theorem not_false_res
-  prop ~false
+  prop ¬false
   [hint_resolve]
 proof
   ← apply_backward_step negI goal=0
@@ -173,7 +172,7 @@ qed
 
 theorem classical_cases
   fixes A :: bool, C :: bool
-  prop (A --> C) --> (~A --> C) --> C
+  prop (A ⟶ C) ⟶ (¬A ⟶ C) ⟶ C
 proof
   ← introduction goal=0
     #[1] A ⟶ C
@@ -186,7 +185,7 @@ qed
 
 theorem negE_gen
   fixes A :: bool, C :: bool
-  prop ~A --> A --> C
+  prop ¬A ⟶ A ⟶ C
   [hint_backward1,hint_forward]
 proof
   ← introduction goal=0
@@ -200,7 +199,7 @@ qed
 
 theorem contradiction
   fixes P :: bool
-  prop (~P --> P) --> P
+  prop (¬P ⟶ P) ⟶ P
 proof
   ← introduction goal=0
     #[1] ¬P ⟶ P
@@ -211,7 +210,7 @@ qed
 
 theorem contrapositive
   fixes P :: bool, Q :: bool
-  prop P --> (~Q --> ~P) --> Q
+  prop P ⟶ (¬Q ⟶ ¬P) ⟶ Q
 proof
   ← introduction goal=0
     #[1] P
@@ -230,7 +229,7 @@ qed
 
 theorem iffI
   fixes A :: bool, B :: bool
-  prop (A --> B) --> (B --> A) --> A <--> B
+  prop (A ⟶ B) ⟶ (B ⟶ A) ⟶ A ⟷ B
   [hint_backward]
 proof
   ← introduction goal=0
@@ -242,7 +241,7 @@ qed
 
 theorem ineq_sym
   fixes x :: 'a, y :: 'a
-  prop ~(x = y) --> ~(y = x)
+  prop ¬(x = y) ⟶ ¬(y = x)
   [hint_backward]
 proof
   ← introduction goal=0
@@ -263,7 +262,7 @@ qed
 
 theorem eq_sym_eq
   fixes x :: 'a, y :: 'a
-  prop x = y <--> y = x
+  prop x = y ⟷ y = x
 proof
   ← apply_backward_step iffI goal=0
     #[1] x = y ⟶ y = x
@@ -279,8 +278,8 @@ proof
 qed
 
 theorem someI
-  fixes P :: 'a => bool, x :: 'a
-  prop P x --> P (SOME x1. P x1)
+  fixes P :: 'a ⇒ bool, x :: 'a
+  prop P x ⟶ P (SOME x1. P x1)
   [hint_backward]
 proof
   ← introduction goal=0
@@ -298,7 +297,7 @@ proof
 qed
 
 theorem exists_thm
-  prop exists = (%P::'a => bool. P (Some P))
+  prop exists = (λP::'a ⇒ bool. P (Some P))
 proof
   ← apply_backward_step extension goal=0
     #[1] ∀x::'a ⇒ bool. (exists x) ⟷ x (Some x)
@@ -344,8 +343,8 @@ proof
 qed
 
 theorem some_unique
-  fixes P :: 'a => bool, x :: 'a
-  prop (!y. P y <--> y = x) --> (Some P) = x
+  fixes P :: 'a ⇒ bool, x :: 'a
+  prop (∀y. P y ⟷ y = x) ⟶ (Some P) = x
   [hint_backward]
 proof
   ← introduction goal=0
@@ -360,8 +359,8 @@ proof
 qed
 
 theorem theI
-  fixes P :: 'a => bool, a :: 'a
-  prop P a --> (!x. P x --> x = a) --> P (THE x. P x)
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop P a ⟶ (∀x. P x ⟶ x = a) ⟶ P (THE x. P x)
 proof
   ← introduction goal=0
     #[1] P a
@@ -374,8 +373,8 @@ proof
 qed
 
 theorem some_the
-  fixes P :: 'a => bool, a :: 'a
-  prop P a --> (!x. P x --> x = a) --> (THE x. P x) = (SOME x. P x)
+  fixes P :: 'a ⇒ bool, a :: 'a
+  prop P a ⟶ (∀x. P x ⟶ x = a) ⟶ (THE x. P x) = (SOME x. P x)
   [hint_backward,hint_backward1]
 proof
   ← introduction goal=0
@@ -400,8 +399,8 @@ proof
 qed
 
 theorem theI'
-  fixes P :: 'a => bool
-  prop (?!x. P x) --> P (THE x. P x)
+  fixes P :: 'a ⇒ bool
+  prop (∃!x. P x) ⟶ P (THE x. P x)
 proof
   ← introduction goal=0
     #[1] ∃!x. P x
@@ -446,7 +445,7 @@ qed
 
 theorem if_P1
   fixes P :: bool, a :: 'a, b :: 'a
-  prop P --> (if P then a else b) = a
+  prop P ⟶ (if P then a else b) = a
   [hint_backward]
 proof
   ← introduction goal=0
@@ -457,7 +456,7 @@ qed
 
 theorem if_not_P1
   fixes P :: bool, a :: 'a, b :: 'a
-  prop ~P --> (if P then a else b) = b
+  prop ¬P ⟶ (if P then a else b) = b
   [hint_backward]
 proof
   ← introduction goal=0
@@ -468,7 +467,7 @@ qed
 
 theorem if_not_P2
   fixes P :: bool, a :: 'a, b :: 'a
-  prop P --> (if ~P then a else b) = b
+  prop P ⟶ (if ¬P then a else b) = b
   [hint_backward]
 proof
   ← introduction goal=0
@@ -507,7 +506,7 @@ proof
 qed
 
 theorem cond_rand
-  fixes P :: bool, f :: 'a => 'b, x :: 'a, y :: 'a
+  fixes P :: bool, f :: 'a ⇒ 'b, x :: 'a, y :: 'a
   prop f (if P then x else y) = (if P then f x else f y)
   [hint_rewrite]
 proof
@@ -525,7 +524,7 @@ proof
 qed
 
 theorem cond_rator
-  fixes P :: bool, f :: 'a => 'b, g :: 'a => 'b, x :: 'a
+  fixes P :: bool, f :: 'a ⇒ 'b, g :: 'a ⇒ 'b, x :: 'a
   prop (if P then f else g) x = (if P then f x else g x)
   [hint_rewrite]
 proof
@@ -543,8 +542,8 @@ proof
 qed
 
 theorem cond_abs
-  fixes P :: bool, f :: 'a => 'b, g :: 'a => 'b
-  prop (%x. if P then f x else g x) = (if P then f else g)
+  fixes P :: bool, f :: 'a ⇒ 'b, g :: 'a ⇒ 'b
+  prop (λx. if P then f x else g x) = (if P then f else g)
   [hint_rewrite]
 proof
   ← apply_backward_step extension goal=0
@@ -557,7 +556,7 @@ qed
 
 theorem cond_swap
   fixes P :: bool, x :: 'a, y :: 'a
-  prop (if ~P then x else y) = (if P then y else x)
+  prop (if ¬P then x else y) = (if P then y else x)
   [hint_rewrite]
 proof
   ← cases P goal=0
@@ -579,7 +578,7 @@ qed
 
 theorem mono_cond
   fixes A :: bool, B :: bool, C :: bool, D :: bool, P :: bool
-  prop (A --> B) --> (C --> D) --> (if P then A else C) --> (if P then B else D)
+  prop (A ⟶ B) ⟶ (C ⟶ D) ⟶ (if P then A else C) ⟶ (if P then B else D)
   [hint_backward,hint_backward1]
 proof
   ← introduction goal=0
@@ -611,8 +610,8 @@ proof
 qed
 
 theorem cond_elim_thm
-  fixes P :: 'a => bool, c :: bool, x :: 'a, y :: 'a
-  prop P (if c then x else y) <--> (c --> P x) & (~c --> P y)
+  fixes P :: 'a ⇒ bool, c :: bool, x :: 'a, y :: 'a
+  prop P (if c then x else y) ⟷ (c ⟶ P x) ∧ (¬c ⟶ P y)
   [hint_rewrite]
 proof
   ← rewrite_goal cond_rand sym=false goal=0
@@ -656,7 +655,7 @@ qed
 
 theorem resolution_left
   fixes A :: bool, B :: bool
-  prop A | B --> ~A --> B
+  prop A ∨ B ⟶ ¬A ⟶ B
   [hint_backward1,hint_forward]
 proof
   ← introduction goal=0
@@ -674,7 +673,7 @@ qed
 
 theorem resolution_right
   fixes A :: bool, B :: bool
-  prop A --> ~A | B --> B
+  prop A ⟶ ¬A ∨ B ⟶ B
   [hint_forward,hint_backward1]
 proof
   ← introduction goal=0
@@ -692,7 +691,7 @@ qed
 
 theorem resolution
   fixes A :: bool, B :: bool, C :: bool
-  prop A | B --> ~A | C --> B | C
+  prop A ∨ B ⟶ ¬A ∨ C ⟶ B ∨ C
 proof
   ← introduction goal=0
     #[1] A ∨ B
@@ -719,7 +718,7 @@ qed
 
 theorem conjE
   fixes A :: bool, B :: bool, C :: bool
-  prop A & B --> (A --> B --> C) --> C
+  prop A ∧ B ⟶ (A ⟶ B ⟶ C) ⟶ C
 proof
   ← introduction goal=0
     #[1] A ∧ B
@@ -735,8 +734,8 @@ proof
 qed
 
 theorem allE
-  fixes P :: 'a => bool, R :: bool, x :: 'a
-  prop (!x1. P x1) --> (P x --> R) --> R
+  fixes P :: 'a ⇒ bool, R :: bool, x :: 'a
+  prop (∀x1. P x1) ⟶ (P x ⟶ R) ⟶ R
 proof
   ← introduction goal=0
     #[1] ∀x1. P x1
@@ -750,13 +749,11 @@ qed
 
 theorem weakening
   fixes A :: bool, B :: bool
-  prop A --> B --> A
+  prop A ⟶ B ⟶ A
   [hint_forward]
 proof
   ← introduction goal=0
     #[1] A
     #[2] B
-    #[3] A
   ← apply_prev goal=3 facts=[1]
 qed
-

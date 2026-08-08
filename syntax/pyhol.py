@@ -314,9 +314,26 @@ def _export_theorem(item):
         lines.append('proof')
         for step in steps:
             lines.append('  %s' % _export_step(step))
+            for ann in _export_anns(step):
+                lines.append('    %s' % ann)
         lines.append('qed')
 
     return lines
+
+
+def _export_anns(step):
+    """Return '#[N] prop' annotation lines for a step's new items."""
+    items = step.get('new_items')
+    if not isinstance(items, list):
+        return []
+    anns = []
+    for it in items:
+        if not isinstance(it, dict) or 'sid' not in it:
+            continue
+        sid = it['sid']
+        prop = it.get('prop', '')
+        anns.append('#[%d] %s' % (sid, prop) if prop else '#[%d]' % sid)
+    return anns
 
 # Method -> (positional_keys, remaining_keys are named)
 _METHOD_POSITIONAL = {
@@ -382,7 +399,7 @@ def _export_step(step):
                     positional.append(_quote_if_needed(val))
         named = {}
         for k, v in step.items():
-            if k in _SKIP_KEYS or k in pos_keys or k in ('goal', 'facts', 'new_ids', 'args'):
+            if k in _SKIP_KEYS or k in pos_keys or k in ('goal', 'facts', 'new_ids', 'new_items', 'args'):
                 continue
             named[k] = str(v)
         parts = [prefix + method]
@@ -930,7 +947,9 @@ def _parse_proof_block(lines, i):
         # #[N] annotation line
         m_ann = re.match(r'^#\[(\d+)\]\s*(.*)$', stripped)
         if m_ann and current_step is not None:
-            current_step.setdefault('new_ids', []).append(int(m_ann.group(1)))
+            sid = int(m_ann.group(1))
+            current_step.setdefault('new_ids', []).append(sid)
+            current_step.setdefault('new_items', []).append({'sid': sid, 'prop': m_ann.group(2)})
             i += 1
             continue
         # Method call line (indented)
