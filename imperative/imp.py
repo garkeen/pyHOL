@@ -257,17 +257,38 @@ class vcg_macro(Macro):
 
 class vcg_tactic(Tactic):
     """Tactic corresponding to VCG macro."""
-    def get_proof_term(self, goal, args, prevs):
-        assert len(goal.hyps) == 0, "vcg_tactic"
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         assert goal.prop.is_comb("Valid", 3), "vcg_tactic"
         P, c, Q = goal.prop.args
 
-        # Obtain the theorem [...] |- Valid P c Q
         T = Q.get_type().domain_type()
         pt = vcg_norm(T, goal.prop)
 
         ptAs = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in pt.assums]
         return ProofTerm("vcg", goal.prop, ptAs)
+
+
+# Register vcg as a method so imp_compile can reference it
+from server.methods.core import register_method, Method
+from syntax import pprint as _pprint
+
+@register_method('vcg')
+class vcg_method(Method):
+    """VCG method: applies vcg_tactic to decompose a Valid goal into VCs."""
+    def __init__(self):
+        self.sig = []
+        self.limit = 'while_rule'
+
+    def search(self, state, id, prevs):
+        return []
+
+    def display_step(self, state, data):
+        return _pprint.N("VCG")
+
+    def apply(self, state, id, data, prevs):
+        state.apply_tactic(id, vcg_tactic())
 
 
 def vcg_solve(goal):

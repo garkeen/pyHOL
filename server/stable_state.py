@@ -31,6 +31,7 @@ BACKWARD = {
     'inst_exists_goal', 'induction', 'reflexive', 'equal_intr',
     'subst', 'unfold', 'fold', 'simp', 'assumption',
     'norm', 'eval', 'linarith', 'z3',
+    'vcg',
 }
 FORWARD = {
     'apply_forward_step', 'rewrite_fact', 'rewrite_fact_with_prev',

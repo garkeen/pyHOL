@@ -311,10 +311,10 @@ def _export_theorem(item):
     # steps (only if non-empty)
     steps = item.get('steps', [])
     if steps:
-        lines.append('  proof')
+        lines.append('proof')
         for step in steps:
-            lines.append('    %s' % _export_step(step))
-        lines.append('  qed')
+            lines.append('  %s' % _export_step(step))
+        lines.append('qed')
 
     return lines
 
@@ -357,21 +357,53 @@ _FACT_KEYS = {'fact_ids'}
 
 
 def _export_step(step):
-    """Export a step dict to a single .pyhol line.
-    
-    Format: <goal_id>: <method_shorthand> [<positional>] [key=value ...]
+    """Export a step dict to a .pyhol line.
+
+    New format: [<- |-> ] method [positional] [key=value ...] goal=N [facts=[N,...]]
+    Old format: goal_id: method [positional] [key=value ...]
     """
     method = step['method_name']
+
+    # New format: goal is an int
+    if 'goal' in step and isinstance(step.get('goal'), int):
+        from server.stable_state import BACKWARD, FORWARD
+        if method in BACKWARD:
+            prefix = '← '
+        elif method in FORWARD:
+            prefix = '→ '
+        else:
+            prefix = ''
+        pos_keys = _METHOD_POSITIONAL.get(method, [])
+        positional = []
+        for k in pos_keys:
+            if k in step:
+                val = str(step[k])
+                if val:
+                    positional.append(_quote_if_needed(val))
+        named = {}
+        for k, v in step.items():
+            if k in _SKIP_KEYS or k in pos_keys or k in ('goal', 'facts', 'new_ids', 'args'):
+                continue
+            named[k] = str(v)
+        parts = [prefix + method]
+        if positional:
+            parts.extend(positional)
+        for k in sorted(named):
+            parts.append('%s=%s' % (k, _quote_if_needed(named[k])))
+        parts.append('goal=%d' % step['goal'])
+        facts = step.get('facts', [])
+        if facts:
+            parts.append('facts=[%s]' % ','.join(str(f) for f in facts))
+        return ' '.join(parts)
+
+    # Old format: goal_id is a string
     goal_id = step.get('goal_id', '0')
-
     positional, named = _step_to_args(method, step)
-
     parts = ['%s:' % goal_id, method]
     if positional:
         parts.extend(positional)
     for k, v in sorted(named.items()):
         parts.append('%s=%s' % (k, _quote_if_needed(v)))
-
     return ' '.join(parts)
 
 

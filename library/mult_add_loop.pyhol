@@ -4,26 +4,31 @@ description "translated from .imp"
 
 theorem mult_add_loop_vc_0
   fixes A :: nat, B :: nat
-  prop !s. reg s 0 = 0 & reg s 1 = 0 --> reg s 1 = reg s 0 * B
+  prop ∀s. reg s 0 = 0 ∧ reg s 1 = 0 ⟶ reg s 1 = reg s 0 * B
 proof
   ← z3 goal=0
 qed
 
 theorem mult_add_loop_vc_1
   fixes A :: nat, B :: nat
-  prop !s. reg s 1 = reg s 0 * B & ~~(reg s 0 = A) --> reg s 1 = A * B
+  prop ∀s. reg s 1 = reg s 0 * B ∧ ¬¬(reg s 0 = A) ⟶ reg s 1 = A * B
 proof
   ← z3 goal=0
 qed
 
 theorem mult_add_loop_vc_2
   fixes A :: nat, B :: nat
-  prop !s. reg s 1 = reg s 0 * B & ~(reg s 0 = A) --> reg (Pair ((reg (Pair ((reg s)(1 := reg s 1 + B)) (heap s)))(0 := reg (Pair ((reg s)(1 := reg s 1 + B)) (heap s)) 0 + 1)) (heap (Pair ((reg s)(1 := reg s 1 + B)) (heap s)))) 1 = reg (Pair ((reg (Pair ((reg s)(1 := reg s 1 + B)) (heap s)))(0 := reg (Pair ((reg s)(1 := reg s 1 + B)) (heap s)) 0 + 1)) (heap (Pair ((reg s)(1 := reg s 1 + B)) (heap s)))) 0 * B
+  prop ∀s. reg s 1 = reg s 0 * B ∧ ¬(reg s 0 = A) ⟶ reg (Pair ((reg (Pair ((reg s)(1 := reg s 1 + B)) (heap s)))(0 := reg (Pair ((reg s)(1 := reg s 1 + B)) (heap s)) 0 + 1)) (heap (Pair ((reg s)(1 := reg s 1 + B)) (heap s)))) 1 = reg (Pair ((reg (Pair ((reg s)(1 := reg s 1 + B)) (heap s)))(0 := reg (Pair ((reg s)(1 := reg s 1 + B)) (heap s)) 0 + 1)) (heap (Pair ((reg s)(1 := reg s 1 + B)) (heap s)))) 0 * B
 proof
   ← z3 goal=0
 qed
 
 theorem mult_add_loop
   fixes A :: nat, B :: nat
-  prop Valid (%st. reg st 0 = 0 & reg st 1 = 0) (While (%st. ~(reg st 0 = A)) (%st. reg st 1 = reg st 0 * B) (Seq (AssignV (%st. 1) (%st. reg st 1 + B)) (AssignV (%st. 0) (%st. reg st 0 + 1)))) (%st. reg st 1 = A * B)
-
+  prop Valid (λst. reg st 0 = 0 ∧ reg st 1 = 0) (While (λst. ¬(reg st 0 = A)) (λst. reg st 1 = reg st 0 * B) (Seq (AssignV (λst. 1) (λst. reg st 1 + B)) (AssignV (λst. 0) (λst. reg st 0 + 1)))) (λst. reg st 1 = A * B)
+proof
+  ← vcg goal=0
+  ← apply_backward_step mult_add_loop_vc_0 goal=1
+  ← apply_backward_step mult_add_loop_vc_1 goal=2
+  ← apply_backward_step mult_add_loop_vc_2 goal=3
+qed

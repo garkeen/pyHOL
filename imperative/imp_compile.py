@@ -854,9 +854,9 @@ def compile_programs(imp_file, existing_pyhol_text=None, validate_steps=True):
                 if vc['prop'] in existing and existing[vc['prop']]:
                     steps = existing[vc['prop']]
                 elif vc['smt']:
-                    steps = [{'method_name': 'z3', 'goal_id': '0'}]
+                    steps = [{'method_name': 'z3', 'goal': 0}]
                 else:
-                    steps = [{'method_name': 'sorry', 'goal_id': '0'}]
+                    steps = [{'method_name': 'sorry', 'goal': 0}]
                 content.append({
                     'ty': 'thm',
                     'name': vc['name'],
@@ -869,11 +869,13 @@ def compile_programs(imp_file, existing_pyhol_text=None, validate_steps=True):
             # Other programs can reference this as the program's spec.
             with settings.global_setting(unicode=True, line_length=None):
                 goal_text = ' '.join(printer.print_term(goal).split())
-            main_steps = [{'method_name': 'vcg', 'goal_id': '0'}]
+            # vcg produces one subgoal per VC. Assign stable IDs 1, 2, 3, ...
+            vc_ids = list(range(1, len(prog_vcs) + 1))
+            main_steps = [{'method_name': 'vcg', 'goal': 0, 'new_ids': vc_ids}]
             for i, vc in enumerate(prog_vcs):
                 main_steps.append({
                     'method_name': 'apply_backward_step',
-                    'goal_id': str(i),
+                    'goal': vc_ids[i],
                     'theorem': vc['name'],
                 })
             content.append({

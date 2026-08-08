@@ -28,3 +28,6 @@ try:
 except Exception as e:
     import sys
     print(f"Warning: failed to load server.methods.z3: {e}", file=sys.stderr)
+
+# Register domain-specific methods
+import imperative.imp  # noqa: F401 (registers vcg method)

@@ -89,7 +89,7 @@ program p2
         self.assertIn("theorem mult_add_loop_vc_0", pyhol)
         self.assertIn("theorem mult_add_loop_vc_1", pyhol)
         self.assertIn("theorem mult_add_loop_vc_2", pyhol)
-        self.assertEqual(pyhol.count(": z3"), 3)
+        self.assertEqual(pyhol.count("z3 goal="), 3)
 
     def test_compile_if_demo(self):
         pyhol, num_vcs, vcs = compile_to_programs('if_demo')
