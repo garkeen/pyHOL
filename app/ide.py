@@ -33,24 +33,6 @@ def _load_theory_for_proof(theory_name, thm_name, vars):
         except theory.TheoryException:
             pass  # Theorem not in file (new theorem), fall through
     context.set_context(theory_name, vars=vars)
-
-
-def _create_proof_state(prop, steps, index=None):
-    """Helper to create proof state and replay steps.
-    
-    Returns (state, history) tuple.
-    """
-    state = server.parse_init_state(prop)
-    history = []
-    # Only replay steps up to index (if provided)
-    replay_steps = steps[:index] if index is not None else steps
-    for step in replay_steps:
-        history.extend(state.parse_steps([step]))
-    return state, history
-
-
-@app.route('/api/init-saved-proof', methods=['POST'])
-def init_saved_proof():
     """Load a saved proof.
     
     Input:
@@ -236,10 +218,6 @@ def check_modify():
     return jsonify({
         'item': output_item
     })
-
-
-@app.route('/api/apply-method', methods=['POST'])
-def apply_method():
     """Apply a proof method.
     
     Input:
@@ -343,10 +321,6 @@ def apply_method():
             'step': data['step']
         }
         return jsonify(res)
-
-
-@app.route('/api/check-proof', methods=['POST'])
-def check_proof():
     """Check the proof for validity.
     
     Input:
@@ -460,10 +434,6 @@ def validate_theory():
         'failed': counts.get('STEP_FAILED', 0) + counts.get('DEP_FAILED', 0),
         'total': len(statuses)
     })
-
-
-@app.route('/api/forward-search', methods=['POST'])
-def forward_search():
     """Forward-only search: given facts, find derivable facts.
     
     No goal_id needed. Searches hint_forward and hint_rewrite (for facts).
@@ -534,10 +504,6 @@ def forward_search():
                         collect(method_name, list(perm), exact=False)
 
     return jsonify({'results': results, 'fuzzy': fuzzy, 'ctxt': {}})
-
-
-@app.route('/api/backward-search', methods=['POST'])
-def backward_search():
     """Backward-only search: given goal (and optional facts), find ways to modify goal.
     
     Every result must modify the goal (decompose, close, or transform).
