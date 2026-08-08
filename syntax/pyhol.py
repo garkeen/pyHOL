@@ -368,7 +368,6 @@ _METHOD_POSITIONAL = {
     'subst': ['theorem'],
     'new_var': ['name', 'type'],
     'call_tactic': ['tactic_name'],
-    'call_macro': ['macro_name'],
     'rewrite_goal_with_prev': [],
     'rewrite_fact_with_prev': [],
 }

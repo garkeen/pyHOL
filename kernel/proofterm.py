@@ -316,30 +316,6 @@ class ProofTerm:
             pt = pt.transitive(eq_pt)
         return pt
 
-    def tac(self, tac):
-        """Apply the given tactic to the proof term. Return the new
-        proof term.
-        
-        Each tactic is applied only to the subgoal. Use tac_all to apply a
-        tactic to all subgoals.
-        
-        """
-        if self.rule == 'sorry':
-            return tac.get_proof_term(self.th)
-
-        for i, prev in enumerate(self.prevs):
-            if prev.gaps:
-                new_prevs = self.prevs[:i] + [prev.tac(tac)] + self.prevs[i+1:]
-                return ProofTerm(self.rule, self.args, prevs=new_prevs, th=self.th)
-
-        raise TacticException('tac: no remaining subgoals')
-
-    def tacs(self, *tacs):
-        """Apply the given tactics in sequence."""
-        pt = self
-        for tac in tacs:
-            pt = pt.tac(tac)
-        return pt
 
 
 def refl(t: Term) -> ProofTerm:

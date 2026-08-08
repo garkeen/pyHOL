@@ -16,9 +16,8 @@ from logic import matcher
 from logic import logic
 from logic import context
 from logic import tactic
-from logic.tactic import Tactic
+from logic.tactic import Tactic, trivial
 from logic import conv
-from logic.macros.core import trivial_macro, apply_theorem_macro, rewrite_fact_macro, rewrite_fact_with_prev_macro, apply_fact_macro
 from syntax import parser, printer, pprint
 from syntax.settings import settings, global_setting
 
@@ -166,7 +165,7 @@ class ProofState():
         cur_item = self.get_proof_item(id)
         assert cur_item.rule == "sorry", "apply_tactic: id is not a gap"
 
-        pt = tactic.get_proof_term(cur_item.th, args=args, prevs=prevs)
+        pt = tactic.get_proof_term(args=args, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)
         
         # When the tactic returns an atom, the fact directly proves the goal.
         # Find the fact's proof item and replace the sorry with it.
@@ -198,8 +197,11 @@ class ProofState():
         # Resolve trivial subgoals
         for item in new_prf.items:
             if item.rule == 'sorry':
-                if trivial_macro().can_eval(item.th.prop):
+                try:
+                    trivial().get_proof_term(prevs=[ProofTerm.atom(item.id, item.th)])
                     self.set_line(item.id, 'trivial', args=item.th.prop)
+                except AssertionError:
+                    pass
 
     def parse_steps(self, steps):
         """Parse and apply a list of steps to self.
@@ -399,7 +401,7 @@ class apply_prev(Method):
         cur_item = state.get_proof_item(id)
         prevs = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
         try:
-            pt = tactic.apply_prev().get_proof_term(cur_item.th, args=None, prevs=prevs)
+            pt = tactic.apply_prev().get_proof_term(args=None, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)
             return [{"_goal": [gap.prop for gap in pt.gaps]}]
         except (AssertionError, matcher.MatchException):
             return []
@@ -434,7 +436,7 @@ class rewrite_goal_with_prev(Method):
         try:
             cur_item = state.get_proof_item(id)
             prevs = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
-            pt = tactic.rewrite_goal_with_prev().get_proof_term(cur_item.th, args=None, prevs=prevs)
+            pt = tactic.rewrite_goal_with_prev().get_proof_term(args=None, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)
         except (AssertionError, matcher.MatchException):
             return []
         else:
@@ -463,7 +465,7 @@ class rewrite_goal(Method):
         def search_thm(th_name, sym):
             try:
                 sym_b = True if sym == 'true' else False
-                pt = tactic.rewrite_goal(sym=sym_b).get_proof_term(cur_item.th, args=th_name, prevs=prevs)
+                pt = tactic.rewrite_goal(sym=sym_b).get_proof_term(args=th_name, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)
                 th = theory.get_theorem(th_name, svar=False)
                 results.append({"theorem": th_name, "sym": sym, "_goal": [gap.prop for gap in pt.gaps], "_thm": th.prop})
             except (AssertionError, matcher.MatchException) as e:
@@ -519,9 +521,9 @@ class rewrite_fact(Method):
         def search_thm(th_name, sym):
             try:
                 sym_b = True if sym == 'true' else False
-                pt = rewrite_fact_macro(sym=sym_b).get_proof_term(th_name, prevs)
+                pt = tactic.rewrite_fact_forward(sym=sym_b).get_proof_term(args=th_name, prevs=prevs)
                 th = theory.get_theorem(th_name, svar=False)
-                results.append({"theorem": th_name, "sym": sym, "_fact": [pt.prop], "_thm": th.prop})
+                results.append({"theorem": th_name, "sym": sym, "_fact": [pt.th.prop], "_thm": th.prop})
             except (AssertionError, matcher.MatchException, InvalidDerivationException) as e:
                 # print(e)
                 pass
@@ -544,7 +546,7 @@ class rewrite_fact(Method):
         try:
             prev_pts = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
             sym_b = 'sym' in data and data['sym'] == 'true'
-            pt = rewrite_fact_macro(sym=sym_b).get_proof_term(data['theorem'], prev_pts)
+            tactic.rewrite_fact_forward(sym=sym_b).get_proof_term(args=data['theorem'], prevs=prev_pts)
         except InvalidDerivationException as e:
             raise e
 
@@ -570,9 +572,8 @@ class rewrite_fact_with_prev(Method):
     def search(self, state: ProofState, id, prevs):
         prevs = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
         try:
-            macro = rewrite_fact_with_prev_macro()
-            pt = macro.get_proof_term(args=None, pts=prevs)
-            return [{"_fact": [pt.prop]}]
+            pt = tactic.rewrite_fact_with_prev_forward().get_proof_term(args=None, prevs=prevs)
+            return [{"_fact": [pt.th.prop]}]
         except (AssertionError, matcher.MatchException):
             return []
 
@@ -582,7 +583,7 @@ class rewrite_fact_with_prev(Method):
     def apply(self, state: ProofState, id, args, prevs):
         try:
             prev_pts = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
-            pt = rewrite_fact_with_prev_macro().get_proof_term(None, prev_pts)
+            tactic.rewrite_fact_with_prev_forward().get_proof_term(args=None, prevs=prev_pts)
         except AssertionError as e:
             raise e
 
@@ -612,10 +613,10 @@ class apply_forward_step(Method):
                 return
 
             try:
-                macro = apply_theorem_macro()
-                res_th = macro.eval(th_name, prev_ths)
+                prev_pts = [ProofTerm.atom(p, t) for p, t in zip(prevs, prev_ths)]
+                pt = tactic.apply_theorem_forward().get_proof_term(args=th_name, prevs=prev_pts)
                 th = theory.get_theorem(th_name, svar=False)
-                results.append({"theorem": th_name, "_fact": [res_th.prop], "_thm": th.prop})
+                results.append({"theorem": th_name, "_fact": [pt.th.prop], "_thm": th.prop})
             except theory.ParameterQueryException as e:
                 results.append({"theorem": th_name, "_needs_params": list(e.params)})
             except (AssertionError, matcher.MatchException):
@@ -638,26 +639,13 @@ class apply_forward_step(Method):
                     if val != '':
                         inst[key[6:]] = parser.parse_term(val)
 
-        th = theory.get_theorem(data['theorem'])
-
-        # Check whether to ask for parameters
-        As, C = th.prop.strip_implies()
-        match_svars = term.get_svars(As[:len(prevs)])
-        all_svars = th.prop.get_svars()
-        param_svars = [v for v in all_svars if v not in match_svars and 'param_' + v.name not in data]
-        if param_svars:
-            raise theory.ParameterQueryException(list("param_" + v.name for v in param_svars))
-
-        # First test apply_theorem
-        prev_ths = [state.get_proof_item(prev).th for prev in prevs]
-        macro = apply_theorem_macro(with_inst=True)
-        res_th = macro.eval((data['theorem'], inst), prev_ths)
+        provided = [k[6:] for k in data if k.startswith("param_")]
+        prev_pts = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
+        pt = tactic.apply_theorem_forward().get_proof_term(
+            args=(data['theorem'], inst, provided), prevs=prev_pts)
 
         state.add_line_before(id, 1)
-        if inst:
-            state.set_line(id, 'apply_theorem_for', args=(data['theorem'], inst), prevs=prevs)
-        else:
-            state.set_line(id, 'apply_theorem', args=data['theorem'], prevs=prevs)
+        state.set_line(id, pt.rule, args=pt.args, prevs=prevs)
 
         id2 = id.incr_id(1)
         new_id = state.find_goal(state.get_proof_item(id2).th, id2)
@@ -680,7 +668,7 @@ class apply_backward_step(Method):
 
         def search_thm(th_name):
             try:
-                pt = tactic.rule().get_proof_term(cur_item.th, args=th_name, prevs=prevs)
+                pt = tactic.rule().get_proof_term(args=th_name, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)
                 th = theory.get_theorem(th_name, svar=False)
                 results.append({"theorem": th_name, "_goal": [gap.prop for gap in pt.gaps], "_thm": th.prop})
             except theory.ParameterQueryException:
@@ -726,7 +714,7 @@ class apply_resolve_step(Method):
 
         def search_thm(th_name):
             try:
-                pt = tactic.resolve().get_proof_term(cur_item.th, args=th_name, prevs=prevs)
+                pt = tactic.resolve().get_proof_term(args=th_name, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)
                 results.append({"theorem": th_name, "_goal": [gap.prop for gap in pt.gaps]})
             except (AssertionError, matcher.MatchException):
                 pass
@@ -797,7 +785,7 @@ class introduction(Method):
             names = [name.strip() for name in data['names'].split(",")]
         else:
             names = []
-        pt = intros_tac.get_proof_term(cur_item.th, args=names)
+        pt = intros_tac.get_proof_term(args=names, prevs=[ProofTerm.atom(id, cur_item.th)])
 
         cur_item.rule = "subproof"
         cur_item.subproof = pt.export(prefix=id)
@@ -928,6 +916,8 @@ class forall_elim(Method):
                 if v.name not in context.ctxt.vars:
                     raise AssertionError('Forall elimination: extra variable %s' % v.name)
 
+        prev_pts = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
+        tactic.forall_elim_forward().get_proof_term(args=t, prevs=prev_pts)
         state.add_line_before(id, 1)
         state.set_line(id, 'forall_elim_gen', args=t, prevs=prevs)
 
@@ -1038,9 +1028,9 @@ class apply_fact(Method):
         prev_ths = [state.get_proof_item(prev).th for prev in prevs]
 
         try:
-            macro = apply_fact_macro()
-            pt = macro.eval(args=None, prevs=prev_ths)
-            return [{"_fact": [pt.prop]}]
+            prev_pts = [ProofTerm.atom(p, t) for p, t in zip(prevs, prev_ths)]
+            pt = tactic.apply_fact_forward().get_proof_term(args=None, prevs=prev_pts)
+            return [{"_fact": [pt.th.prop]}]
         except (AssertionError, matcher.MatchException):
             return []
 
@@ -1048,6 +1038,8 @@ class apply_fact(Method):
         return pprint.N("Apply fact (f) %s onto %s" % (data['fact_ids'][0], ", ".join(data['fact_ids'][1:])))
 
     def apply(self, state: ProofState, id, data, prevs):
+        prev_pts = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
+        tactic.apply_fact_forward().get_proof_term(args=None, prevs=prev_pts)
         state.add_line_before(id, 1)
         state.set_line(id, 'apply_fact', prevs=prevs)
 
@@ -1107,34 +1099,6 @@ class call_tactic_method(Method):
             raise AssertionError("call_tactic: unknown tactic '%s'" % tactic_name)
 
 
-@register_method('call_macro')
-class call_macro_method(Method):
-    """Directly invoke any registered macro by name.
-    Escape hatch when no method works.
-    """
-    def __init__(self):
-        self.sig = ['macro_name']
-        self.limit = None
-
-    def search(self, state, id, prevs):
-        return []
-
-    def display_step(self, state, data):
-        return pprint.N("macro " + data.get('macro_name', '?'))
-
-    def apply(self, state, id, data, prevs):
-        macro_name = data.get('macro_name')
-        if not macro_name:
-            raise AssertionError("call_macro: macro_name required")
-        
-        if not theory.has_macro(macro_name):
-            raise AssertionError("call_macro: macro '%s' not found" % macro_name)
-        
-        macro_obj = theory.get_macro(macro_name)
-        prev_ths = [state.get_proof_item(p).th for p in prevs]
-        
-        result_th = macro_obj.eval(None, prev_ths)
-        state.set_line(id, macro_name, prevs=prevs, th=result_th)
 
 
 @register_method('simp')
@@ -1527,16 +1491,13 @@ class drule_method(Method):
             raise AssertionError("drule: at least one fact required")
 
         thm = theory.thy.get_theorem(thm_name)
-        prev_ths = [state.get_proof_item(p).th for p in prevs]
-
-        # Apply the theorem forward to derive a new fact
-        macro_obj = apply_theorem_macro()
-        result_th = macro_obj.eval(thm_name, prev_ths)
+        prev_pts = [ProofTerm.atom(p, state.get_proof_item(p).th) for p in prevs]
+        pt = tactic.apply_theorem_forward().get_proof_term(args=thm_name, prevs=prev_pts)
 
         # drule consumes the first fact: replace the fact line with the result.
         # This makes the original fact unavailable for later proof steps.
         fact_id = prevs[0]
-        state.set_line(fact_id, 'apply_theorem', args=thm_name, prevs=prevs, th=result_th)
+        state.set_line(fact_id, pt.rule, args=pt.args, prevs=prevs, th=pt.th)
         # Point the goal to reference the new result line
         state.replace_id(id, fact_id)
 
@@ -1566,16 +1527,13 @@ class frule_method(Method):
             raise AssertionError("frule: theorem required")
 
         thm = theory.thy.get_theorem(thm_name)
-        prev_ths = [state.get_proof_item(p).th for p in prevs]
-
-        # Apply the theorem forward to derive a new fact
-        macro_obj = apply_theorem_macro()
-        result_th = macro_obj.eval(thm_name, prev_ths)
+        prev_pts = [ProofTerm.atom(p, state.get_proof_item(p).th) for p in prevs]
+        pt = tactic.apply_theorem_forward().get_proof_term(args=thm_name, prevs=prev_pts)
 
         # frule preserves facts: insert a new line with the derived result.
         # The original fact lines remain unchanged and available.
         state.add_line_before(id, 1)
-        state.set_line(id, 'apply_theorem', args=thm_name, prevs=prevs, th=result_th)
+        state.set_line(id, pt.rule, args=pt.args, prevs=prevs, th=pt.th)
 
 
 @register_method('linarith')

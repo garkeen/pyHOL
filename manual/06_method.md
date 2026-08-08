@@ -86,7 +86,6 @@ method.apply -> state.set_line(rule, args, prevs, th)
 
 ### 逃生舱
 - `call_tactic`：按名调用底层策略。
-- `call_macro`：按名调用底层宏。
 
 ## 4. 方法目录
 
@@ -123,7 +122,6 @@ method.apply -> state.set_line(rule, args, prevs, th)
 | `drule` | `[theorem]` | C | 向前推理，**消耗**首个 fact |
 | `frule` | `[theorem]` | C | 向前推理，**保留**所有 fact |
 | `call_tactic` | `[tactic_name]` | A | 直接调用策略 |
-| `call_macro` | `[macro_name]` | C | 直接调用宏 |
 
 ### 4.2 自动化方法
 

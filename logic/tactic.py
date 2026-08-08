@@ -5,7 +5,7 @@ from copy import copy
 from kernel.type import TyInst
 from kernel import term
 from kernel.term import Term, Implies, Not, Lambda, Inst
-from kernel.thm import Thm
+from kernel.thm import Thm, InvalidDerivationException
 from kernel import theory
 from kernel.proofterm import ProofTerm, TacticException
 from logic import logic
@@ -27,7 +27,7 @@ class Tactic:
     of existing facts to use.
 
     """
-    def get_proof_term(self, goal, *, args=None, prevs=None) -> ProofTerm:
+    def get_proof_term(self, *, args=None, prevs=None) -> ProofTerm:
         raise NotImplementedError
 
 
@@ -42,10 +42,10 @@ class MacroTactic(Tactic):
     def __init__(self, macro):
         self.macro = macro
 
-    def get_proof_term(self, goal, *, args=None, prevs=None):
-        assert isinstance(goal, Thm), "MacroTactic"
-        if prevs is None:
-            prevs = []
+    def get_proof_term(self, *, args=None, prevs=None):
+        assert prevs is not None and len(prevs) >= 1, "MacroTactic"
+        goal = prevs[0].th
+        prevs = prevs[1:]
 
         if args is None:
             args = goal.prop
@@ -61,7 +61,9 @@ class rule(Tactic):
     theorem name alone.
 
     """
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         if isinstance(args, tuple):
             th_name, inst = args
         else:
@@ -117,7 +119,9 @@ class resolve(Tactic):
     solve the goal.
     
     """
-    def get_proof_term(self, goal, args, prevs):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         assert isinstance(args, str) and len(prevs) == 1, "resolve: type"
         th_name = args
         th = theory.get_theorem(th_name)
@@ -132,7 +136,9 @@ class intros(Tactic):
     introduce variables for x_1, ..., x_n and assumptions for A_1, ..., A_n.
     
     """
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         if args is None:
             var_names = []
         else:
@@ -147,7 +153,9 @@ class intros(Tactic):
 
 class var_induct(Tactic):
     """Apply induction rule on a variable."""
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         th_name, var = args
         P = Lambda(var, goal.prop)
         th = theory.get_theorem(th_name)
@@ -170,7 +178,9 @@ class rewrite_goal(Tactic):
     def __init__(self, *, sym=False):
         self.sym = sym
 
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         th_name = args
         C = goal.prop
 
@@ -199,7 +209,9 @@ class rewrite_goal_with_conv(Tactic):
     def __init__(self, cv):
         self.cv = cv
 
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         C = goal.prop
         eq_th = self.cv.eval(C)
         new_goal = eq_th.prop.rhs
@@ -214,7 +226,9 @@ class rewrite_goal_with_conv(Tactic):
         ])
 
 class rewrite_goal_with_prev(Tactic):
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         assert isinstance(prevs, list) and len(prevs) == 1, "rewrite_goal_with_prev"
         pt = prevs[0]
         C = goal.prop
@@ -245,7 +259,9 @@ class rewrite_goal_with_prev(Tactic):
 
 class apply_prev(Tactic):
     """Applies an existing fact in the backward direction."""
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         assert isinstance(prevs, list) and len(prevs) >= 1, "apply_prev"
         pt, prev_pts = prevs[0], prevs[1:]
 
@@ -294,7 +310,9 @@ class cases(Tactic):
     Uses the classical_cases theorem by default. Pass a different theorem
     name via the 'cases_thm' key in args (as a tuple) to override.
     """
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         # args can be either a Term (the case expression) or a tuple
         # (case_expr, cases_thm_name) where cases_thm_name defaults to
         # 'classical_cases'.
@@ -317,7 +335,9 @@ class inst_exists_goal(Tactic):
     Uses the exI theorem by default. Pass a different theorem name via
     the 'exists_intro_thm' key in args (as a tuple) to override.
     """
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         # args can be either a Term (the witness) or a tuple
         # (witness, exists_intro_thm_name) where exists_intro_thm_name
         # defaults to 'exI'.
@@ -335,32 +355,13 @@ class inst_exists_goal(Tactic):
             str(C.arg.var_T), str(argT)
         )
 
-        return rule().get_proof_term(goal, args=(exists_intro_thm, Inst(P=C.arg, a=witness)))
+        return rule().get_proof_term(args=(exists_intro_thm, Inst(P=C.arg, a=witness)), prevs=[ProofTerm.sorry(goal)])
 
-
-class intro_imp_tac(Tactic):
-    def get_proof_term(self, goal):
-        if not goal.prop.is_implies():
-            raise TacticException('intro_imp: goal is not implies.')
-
-        A, C = goal.prop.args
-        new_goal = ProofTerm.sorry(Thm(C, goal.hyps, A))
-        return new_goal.implies_intr(A)
-
-class intro_forall_tac(Tactic):
-    def __init__(self, var_name=None):
-        self.var_name = var_name
-        
-    def get_proof_term(self, goal):
-        if not goal.prop.is_forall():
-            raise TacticException('intro_forall: goal is not forall')
-
-        v, body = goal.prop.arg.dest_abs(self.var_name)
-        new_goal = ProofTerm.sorry(Thm(body, goal.hyps))
-        return new_goal.forall_intr(v)
 
 class assumption(Tactic):
-    def get_proof_term(self, goal):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         if not goal.prop in goal.hyps:
             raise TacticException('assumption: prop does not appear in hyps')
         
@@ -368,14 +369,18 @@ class assumption(Tactic):
 
 class reflexive(Tactic):
     """Prove |- t = t by the reflexive primitive rule."""
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         if not goal.prop.is_equals() or goal.prop.arg1 != goal.prop.arg:
             raise TacticException('reflexive: goal is not of the form t = t')
         return ProofTerm.reflexive(goal.prop.arg1)
 
 class equal_intr(Tactic):
     """Prove |- A = B by proving A --> B and B --> A separately."""
-    def get_proof_term(self, goal, *, args=None, prevs=None):
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
         if not goal.prop.is_equals():
             raise TacticException('equal_intr: goal is not an equality')
         A, B = goal.prop.arg1, goal.prop.arg
@@ -383,105 +388,140 @@ class equal_intr(Tactic):
         pt_BA = ProofTerm.sorry(Thm(Implies(B, A), goal.hyps))
         return ProofTerm.equal_intr(pt_AB, pt_BA)
 
-class then_tac(Tactic):
-    def __init__(self, tac1, tac2):
-        self.tac1 = tac1
-        self.tac2 = tac2
-        
-    def get_proof_term(self, goal):
-        return ProofTerm.sorry(goal).tacs(self.tac1, self.tac2)
-
-class else_tac(Tactic):
-    def __init__(self, tac1, tac2):
-        self.tac1 = tac1
-        self.tac2 = tac2
-        
-    def get_proof_term(self, goal):
-        try:
-            return self.tac1.get_proof_term(goal)
-        except TacticException:
-            return self.tac2.get_proof_term(goal)
-
-class repeat_tac(Tactic):
-    def __init__(self, tac):
-        self.tac = tac
-        
-    def get_proof_term(self, goal):
-        pt = ProofTerm.sorry(goal)
-        while True:
-            try:
-                pt = pt.tac(self.tac)
-            except TacticException:
-                break
-        return pt
-
-intros_tac = repeat_tac(else_tac(intro_imp_tac(), intro_forall_tac()))
-
-class rule_tac(Tactic):
-    def __init__(self, th_name, *, inst=None):
-        self.th_name = th_name
-        if inst is None:
-            inst = Inst()
-        self.inst = inst
-        
-    def get_proof_term(self, goal):
-        th = theory.get_theorem(self.th_name)
-        try:
-            inst = matcher.first_order_match(th.concl, goal.prop, self.inst)
-        except matcher.MatchException:
-            raise TacticException('rule: matching failed')
-            
-        if any(v.name not in inst for v in th.prop.get_svars()):
-            raise TacticException('rule: not all variables are matched')
-            
-        pt = ProofTerm.theorem(self.th_name).substitution(inst).on_prop(beta_norm_conv())
-        for assum in pt.assums:
-            pt = pt.implies_elim(ProofTerm.sorry(Thm(assum, goal.hyps)))
-        return pt
 
 
-class elim_tac(Tactic):
-    def __init__(self, th_name, *, cond=None, inst=None):
-        self.th_name = th_name
-        if inst is None:
-            inst = Inst()
-        self.inst = inst
-        self.cond = cond
-        
-    def get_proof_term(self, goal):
-        th = theory.get_theorem(self.th_name)
+class trivial(Tactic):
+    """Close a trivial goal: A_1 --> ... --> A_n --> B where B agrees with some A_i.
 
-        assum = th.assums[0]
-        cond = self.cond
-        if cond is None:
-            # Find cond by matching with goal.hyps one by one
-            for hyp in goal.hyps:
-                try:
-                    inst = matcher.first_order_match(th.assums[0], hyp, self.inst)
-                    cond = hyp
-                    break
-                except matcher.MatchException:
-                    pass
-        
-        if cond is None:
-            raise TacticException('elim: cannot match assumption')
+    Backward tactic. Probes via the trivial macro: constructing the proof term
+    raises if the goal is not trivially closeable.
+    """
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        return ProofTerm('trivial', goal.prop, prevs[1:])
 
-        try:
-            inst = matcher.first_order_match(th.concl, goal.prop, inst)
-        except matcher.MatchException:
-            raise TacticException('elim: matching failed')
+class apply_theorem_forward(Tactic):
+    """Forward: apply a theorem to facts to derive a new fact. No goal.
 
-        if any(v.name not in inst for v in th.prop.get_svars()):
-            raise TacticException('elim: not all variables are matched')
-            
-        pt = ProofTerm.theorem(self.th_name).substitution(inst).on_prop(beta_norm_conv())
-        pt = pt.implies_elim(ProofTerm.assume(cond))
-        for assum in pt.assums:
-            pt = pt.implies_elim(ProofTerm.sorry(Thm(assum, goal.hyps)))
-        return pt
+    Mirrors rule (backward): does the forward matching (assumptions to
+    facts) and param detection IN THE TACTIC. `provided` lists param names
+    already supplied by the user (possibly empty-valued, meaning 'leave
+    as forall' -- these are NOT raised). Returns apply_theorem (the macro
+    does the full matching -- resolving type variables, which forward
+    cannot determine without a goal -- and the mechanical chaining).
+    """
+    def get_proof_term(self, *, args=None, prevs=None):
+        if prevs is None:
+            prevs = []
+        if isinstance(args, tuple):
+            th_name, user_inst, provided = args
+        else:
+            th_name, user_inst, provided = args, None, []
+        assert isinstance(th_name, str), "apply_theorem_forward"
+        th = theory.get_theorem(th_name)
+        As, C = th.assums, th.concl
+        assert len(prevs) <= len(As), "apply_theorem_forward: too many prevs"
+
+        # Forward matching (for param detection). Mirror rule's detection.
+        inst_check = Inst() if user_inst is None else user_inst
+        for pat, prev in zip(As, prevs):
+            inst_check = matcher.first_order_match(pat, prev.prop, inst_check)
+
+        unmatched_vars = [v.name for v in term.get_svars(As + [C])
+                          if v.name not in inst_check and v.name not in provided]
+        if unmatched_vars:
+            raise theory.ParameterQueryException(list("param_" + name for name in unmatched_vars))
+
+        # Return apply_theorem with the user-provided inst only (the macro
+        # performs the full matching, resolving type variables, and chaining).
+        if user_inst is not None:
+            return apply_theorem(th_name, *prevs, inst=user_inst)
+        else:
+            return apply_theorem(th_name, *prevs)
 
 
-class conj_elim_tac(Tactic):
-    def get_proof_term(self, goal):
-        return ProofTerm.sorry(goal).tacs(
-            elim_tac('conjE'), intro_imp_tac(), intro_imp_tac())
+class rewrite_fact_forward(Tactic):
+    """Forward: rewrite a fact using a theorem. No goal.
+
+    Does the has_rewrite check (does the theorem apply to the fact) IN THE
+    TACTIC. Returns rewrite_fact (the macro does the conv rewrite).
+    """
+    def __init__(self, *, sym=False):
+        self.sym = sym
+
+    def get_proof_term(self, *, args=None, prevs=None):
+        if prevs is None:
+            prevs = []
+        assert isinstance(args, str), "rewrite_fact_forward"
+        assert len(prevs) >= 1, "rewrite_fact_forward: need a fact to rewrite"
+        # Reasoning: does the theorem actually rewrite the fact?
+        if not has_rewrite(args, prevs[0].prop, sym=self.sym, conds=prevs[1:]):
+            raise InvalidDerivationException("rewrite_fact using %s" % args)
+        return ProofTerm('rewrite_fact_sym' if self.sym else 'rewrite_fact', args, prevs)
+
+
+class apply_fact_forward(Tactic):
+    """Forward: apply a forall/implies fact to other facts. No goal.
+
+    Mirrors apply_fact_macro: does the forward matching (the fact's
+    assumptions to the other facts) IN THE TACTIC. Returns apply_fact
+    (the macro does forall_elim/implies_elim/forall_intr chaining).
+    No param detection (unmatched vars are forall_intr'd by the macro).
+    """
+    def get_proof_term(self, *, args=None, prevs=None):
+        if prevs is None:
+            prevs = []
+        assert len(prevs) >= 2, "apply_fact_forward: too few prevs"
+        pt_fact = prevs[0]
+        pt_prevs = prevs[1:]
+        new_names = logic.get_forall_names(pt_fact.prop)
+        new_vars, As, C = logic.strip_all_implies(pt_fact.prop, new_names)
+        assert len(pt_prevs) <= len(As), "apply_fact_forward: too many prevs"
+        # Forward matching (mirror the macro).
+        inst = Inst()
+        for idx, pt_prev in enumerate(pt_prevs):
+            inst = matcher.first_order_match(As[idx], pt_prev.prop, inst)
+        # Return apply_fact (macro does forall_elim/implies_elim/forall_intr).
+        if args:
+            return ProofTerm('apply_fact_for', args, prevs)
+        return ProofTerm('apply_fact', None, prevs)
+
+
+class rewrite_fact_with_prev_forward(Tactic):
+    """Forward: rewrite a fact using a previous equality. No goal.
+
+    Mirrors rewrite_fact_with_prev_macro: does the forall-handling and
+    has-effect check IN THE TACTIC. Returns rewrite_fact_with_prev (the
+    macro does the conv rewrite).
+    """
+    def get_proof_term(self, *, args=None, prevs=None):
+        if prevs is None:
+            prevs = []
+        assert len(prevs) == 2, "rewrite_fact_with_prev_forward"
+        eq_pt, pt = prevs[0], prevs[1]
+        new_names = logic.get_forall_names(eq_pt.prop)
+        new_vars, eq_As, eq_C = logic.strip_all_implies(eq_pt.prop, new_names)
+        assert len(eq_As) == 0 and eq_C.is_equals(), "rewrite_fact_with_prev_forward"
+        # forall_elim the equality (instantiate its forall vars)
+        for new_var in new_vars:
+            eq_pt = eq_pt.forall_elim(new_var)
+        # has-effect check (rewriting must change the fact)
+        cv1 = top_sweep_conv(rewr_conv(eq_pt))
+        if cv1.eval(pt.prop).is_reflexive():
+            raise InvalidDerivationException("rewrite_fact_with_prev: no effect")
+        return ProofTerm('rewrite_fact_with_prev', args, prevs)
+
+
+class forall_elim_forward(Tactic):
+    """Forward: instantiate a forall fact with a term. No goal.
+
+    Asserts the fact is a forall (the reasoning). Returns forall_elim_gen
+    (the macro does forall_elim + beta_norm).
+    """
+    def get_proof_term(self, *, args=None, prevs=None):
+        if prevs is None:
+            prevs = []
+        assert len(prevs) == 1, "forall_elim_forward"
+        assert isinstance(args, Term), "forall_elim_forward"
+        assert prevs[0].prop.is_forall(), "forall_elim_forward: fact is not forall"
+        return ProofTerm('forall_elim_gen', args, prevs)

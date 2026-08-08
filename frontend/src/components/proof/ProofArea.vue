@@ -135,7 +135,6 @@
             </optgroup>
             <optgroup label="Escape">
               <option value="call_tactic">call_tactic</option>
-              <option value="call_macro">call_macro</option>
             </optgroup>
           </select>
         </div>
@@ -154,7 +153,7 @@
           </div>
         </div>
         <button v-if="manual_method" class="btn btn-sm btn-primary" @click="apply_manual_method"
-                :disabled="goal === -1 && !FORWARD_METHODS.has(manual_method) && manual_method !== 'insert' && manual_method !== 'new_var' && manual_method !== 'call_tactic' && manual_method !== 'call_macro'">
+                :disabled="goal === -1 && !FORWARD_METHODS.has(manual_method) && manual_method !== 'insert' && manual_method !== 'new_var' && manual_method !== 'call_tactic'">
           Apply
         </button>
       </div>
@@ -232,7 +231,7 @@ const method_sig_map = {
   'rewrite_goal': ['theorem', 'sym'], 'rewrite_fact': ['theorem', 'sym'],
   'unfold': ['theorem'], 'fold': ['theorem'], 'simp': [],
   'insert': ['theorem'], 'thin': ['index'], 'drule': ['theorem'], 'frule': ['theorem'],
-  'call_tactic': ['tactic_name'], 'call_macro': ['macro_name'],
+  'call_tactic': ['tactic_name'],
 }
 
 const call_tactic_extra_params = {
