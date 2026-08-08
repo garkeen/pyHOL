@@ -1,0 +1,446 @@
+theory hoare
+imports function, int
+description "Hoare logic"
+
+header "Programs"
+
+datatype com 'a =
+  | Basic (f :: ('a ⇒ 'a)) :: 'a com
+  | Seq (c1 :: 'a com) (c2 :: 'a com) :: 'a com
+  | Cond (b :: ('a ⇒ bool)) (c1 :: 'a com) (c2 :: 'a com) :: 'a com
+  | While (b :: ('a ⇒ bool)) (I :: ('a ⇒ bool)) (c :: 'a com) :: 'a com
+
+header "Memory programs: state = (variable register, heap)"
+
+datatype state =
+  | Pair (reg :: (nat ⇒ nat)) (heap :: (nat ⇒ nat)) :: state
+
+inductive Sem :: 'a com ⇒ 'a ⇒ 'a ⇒ bool
+  | Sem_basic: Sem (Basic f) s (f s)
+  | Sem_seq: Sem c1 s s3 ⟶ Sem c2 s3 s2 ⟶ Sem (Seq c1 c2) s s2
+  | Sem_if1: b s ⟶ Sem c1 s s2 ⟶ Sem (Cond b c1 c2) s s2
+  | Sem_if2: ¬(b s) ⟶ Sem c2 s s2 ⟶ Sem (Cond b c1 c2) s s2
+  | Sem_while_skip: ¬(b s) ⟶ Sem (While b I c) s s
+  | Sem_while_loop: b s ⟶ Sem c s s3 ⟶ Sem (While b I c) s3 s2 ⟶ Sem (While b I c) s s2
+
+def AssignV :: (state ⇒ nat) ⇒ (state ⇒ nat) ⇒ state com = AssignV a b = Basic (λst. Pair ((reg st)(a st := b st)) (heap st))
+
+theorem Sem_AssignV
+  fixes a :: state => nat, b :: state => nat, st :: state
+  prop Sem (AssignV a b) st (Pair ((reg st)(a st := b st)) (heap st))
+proof
+  ← rewrite_goal AssignV_def sym="" goal=0
+    #[1] Sem (Basic (λst1. Pair ((reg st1)(a st1 := b st1)) (heap st1))) st (Pair ((reg st)(a st := b st)) (heap st))
+  ← apply_backward_step Sem_basic goal=1
+qed
+
+theorem Sem_AssignV_elim
+  fixes a :: state => nat, b :: state => nat, st :: state, st2 :: state
+  prop Sem (AssignV a b) st st2 --> st2 = Pair ((reg st)(a st := b st)) (heap st)
+  [hint_forward]
+
+def AssignH :: (state ⇒ nat) ⇒ (state ⇒ nat) ⇒ state com = AssignH a b = Basic (λst. Pair (reg st) ((heap st)(a st := b st)))
+
+theorem Sem_AssignH
+  fixes a :: state => nat, b :: state => nat, st :: state
+  prop Sem (AssignH a b) st (Pair (reg st) ((heap st)(a st := b st)))
+proof
+  ← rewrite_goal AssignH_def sym="" goal=0
+    #[1] Sem (Basic (λst1. Pair (reg st1) ((heap st1)(a st1 := b st1)))) st (Pair (reg st) ((heap st)(a st := b st)))
+  ← apply_backward_step Sem_basic goal=1
+qed
+
+theorem Sem_AssignH_elim
+  fixes a :: state => nat, b :: state => nat, st :: state, st2 :: state
+  prop Sem (AssignH a b) st st2 --> st2 = Pair (reg st) ((heap st)(a st := b st))
+  [hint_forward]
+
+theorem Sem_Seq_elim
+  fixes c1 :: 'a com, c2 :: 'a com, s :: 'a, s2 :: 'a
+  prop Sem (Seq c1 c2) s s2 --> (?s3. Sem c1 s s3 & Sem c2 s3 s2)
+  [hint_forward]
+
+def Skip :: 'a com = Skip = Basic (λf::'a. f)
+
+theorem Sem_Skip
+  fixes s :: 'a
+  prop Sem Skip s s
+proof
+  ← rewrite_goal Skip_def sym="" goal=0
+    #[1] Sem (Basic (λf. f)) s s
+  ← apply_backward_step Sem_basic goal=1
+qed
+
+def Entail :: ('a ⇒ bool) ⇒ ('a ⇒ bool) ⇒ bool = Entail P Q ⟷ (∀s. P s ⟶ Q s) [hint_rewrite]
+
+def Valid :: ('a ⇒ bool) ⇒ 'a com ⇒ ('a ⇒ bool) ⇒ bool = Valid P c Q ⟷ (∀s. ∀s2. P s ⟶ Sem c s s2 ⟶ Q s2) [hint_rewrite]
+
+theorem assign_v_rule
+  fixes P :: state => bool, a :: state => nat, b :: state => nat
+  prop Valid (%st. P (Pair ((reg st)(a st := b st)) (heap st))) (AssignV a b) P
+
+theorem assign_h_rule
+  fixes P :: state => bool, a :: state => nat, b :: state => nat
+  prop Valid (%st. P (Pair (reg st) ((heap st)(a st := b st)))) (AssignH a b) P
+
+theorem pre_rule
+  fixes P :: 'a => bool, Q :: 'a => bool, R :: 'a => bool, c :: 'a com
+  prop Entail P Q --> Valid Q c R --> Valid P c R
+proof
+  ← introduction goal=0
+    #[1] Entail P Q
+    #[2] Valid Q c R
+    #[3] Valid P c R
+  ← rewrite_goal Valid_def goal=3
+    #[4] ∀s. ∀s2. P s ⟶ Sem c s s2 ⟶ R s2
+  ← introduction "s, s2" goal=4
+    #[5] _VAR s
+    #[6] _VAR s2
+    #[7] P s
+    #[8] Sem c s s2
+    #[9] R s2
+  -> rewrite_fact Entail_def goal=9 facts=[1]
+    #[10] ∀s. P s ⟶ Q s
+  -> rewrite_fact Valid_def goal=9 facts=[2]
+    #[11] ∀s. ∀s2. Q s ⟶ Sem c s s2 ⟶ R s2
+  -> apply_fact goal=9 facts=[10,7]
+    #[12] Q s
+  ← apply_prev goal=9 facts=[11,12]
+qed
+
+theorem skip_rule
+  fixes P :: 'a => bool
+  prop Valid P Skip P
+
+theorem seq_rule
+  fixes P :: 'a => bool, Q :: 'a => bool, R :: 'a => bool, c1 :: 'a com, c2 :: 'a com
+  prop Valid P c1 Q --> Valid Q c2 R --> Valid P (Seq c1 c2) R
+proof
+  ← introduction goal=0
+    #[1] Valid P c1 Q
+    #[2] Valid Q c2 R
+    #[3] Valid P (Seq c1 c2) R
+  ← rewrite_goal Valid_def goal=3
+    #[4] ∀s. ∀s2. P s ⟶ Sem (Seq c1 c2) s s2 ⟶ R s2
+  ← introduction s,s2 goal=4
+    #[5] _VAR s
+    #[6] _VAR s2
+    #[7] P s
+    #[8] Sem (Seq c1 c2) s s2
+    #[9] R s2
+  -> apply_forward_step Sem_Seq_elim goal=9 facts=[8]
+    #[10] ∃s3. Sem c1 s s3 ∧ Sem c2 s3 s2
+  ← apply_backward_step exE goal=9 facts=[10]
+    #[11] ∀s3. Sem c1 s s3 ∧ Sem c2 s3 s2 ⟶ R s2
+  ← introduction s3 goal=11
+    #[12] _VAR s3
+    #[13] Sem c1 s s3 ∧ Sem c2 s3 s2
+    #[14] R s2
+  -> apply_forward_step conjD1 goal=14 facts=[13]
+    #[15] Sem c1 s s3
+  -> apply_forward_step conjD2 goal=14 facts=[13]
+    #[16] Sem c2 s3 s2
+  -> rewrite_fact Valid_def goal=14 facts=[1]
+    #[17] ∀s. ∀s2. P s ⟶ Sem c1 s s2 ⟶ Q s2
+  -> rewrite_fact Valid_def goal=14 facts=[2]
+    #[18] ∀s. ∀s2. Q s ⟶ Sem c2 s s2 ⟶ R s2
+  -> apply_fact goal=14 facts=[17,7,15]
+    #[19] Q s3
+  ← apply_prev goal=14 facts=[18,19,16]
+    #[20] R s2
+qed
+
+theorem if_rule
+  fixes P :: 'a => bool, Q :: 'a => bool, R :: 'a => bool, b :: 'a => bool, c1 :: 'a com, c2 :: 'a com
+  prop Valid P c1 R --> Valid Q c2 R --> Valid (%s. if b s then P s else Q s) (Cond b c1 c2) R
+proof
+  ← introduction goal=0
+    #[1] Valid P c1 R
+    #[2] Valid Q c2 R
+    #[3] Valid (λs. if b s then P s else Q s) (Cond b c1 c2) R
+  ← rewrite_goal Valid_def goal=3
+    #[4] ∀s. ∀s2. (if b s then P s else Q s) ⟶ Sem (Cond b c1 c2) s s2 ⟶ R s2
+  ← introduction s,s2 goal=4
+    #[5] _VAR s
+    #[6] _VAR s2
+    #[7] if b s then P s else Q s
+    #[8] Sem (Cond b c1 c2) s s2
+    #[9] R s2
+  ← apply_backward_step Sem_cases goal=9 facts=[8]
+    #[10] ∀f. ∀s1. Cond b c1 c2 = Basic f ⟶ s = s1 ⟶ s2 = f s1 ⟶ R s2
+    #[11] ∀c11. ∀s1. ∀s3. ∀c21. ∀s21. Cond b c1 c2 = Seq c11 c21 ⟶ s = s1 ⟶ s2 = s21 ⟶ Sem c11 s1 s3 ⟶ Sem c21 s3 s21 ⟶ R s2
+    #[12] ∀b1. ∀s1. ∀c11. ∀s21. ∀c21. Cond b c1 c2 = Cond b1 c11 c21 ⟶ s = s1 ⟶ s2 = s21 ⟶ b1 s1 ⟶ Sem c11 s1 s21 ⟶ R s2
+    #[13] ∀b1. ∀s1. ∀c21. ∀s21. ∀c11. Cond b c1 c2 = Cond b1 c11 c21 ⟶ s = s1 ⟶ s2 = s21 ⟶ ¬(b1 s1) ⟶ Sem c21 s1 s21 ⟶ R s2
+    #[14] ∀b1. ∀s1. ∀I. ∀c. Cond b c1 c2 = While b1 I c ⟶ s = s1 ⟶ s2 = s1 ⟶ ¬(b1 s1) ⟶ R s2
+    #[15] ∀b1. ∀s1. ∀c. ∀s3. ∀I. ∀s21. Cond b c1 c2 = While b1 I c ⟶ s = s1 ⟶ s2 = s21 ⟶ b1 s1 ⟶ Sem c s1 s3 ⟶ Sem (While b1 I c) s3 s21 ⟶ R s2
+  ← introduction f,s1 goal=10
+    #[16] _VAR f
+    #[17] _VAR s1
+    #[18] Cond b c1 c2 = Basic f
+    #[19] s = s1
+    #[20] s2 = f s1
+    #[21] R s2
+  -> rewrite_fact eq_sym_eq sym=false goal=21 facts=[18]
+    #[22] Basic f = Cond b c1 c2
+  ← apply_resolve_step com_Basic_Cond_neq goal=21 facts=[22]
+    #[23] R s2
+  ← introduction c11,s1,s3,c21,s21 goal=11
+    #[24] _VAR c11
+    #[25] _VAR s3
+    #[26] _VAR c21
+    #[27] _VAR s21
+    #[28] Cond b c1 c2 = Seq c11 c21
+    #[29] s2 = s21
+    #[30] Sem c11 s1 s3
+    #[31] Sem c21 s3 s21
+    #[32] R s2
+  -> rewrite_fact eq_sym_eq sym=false goal=32 facts=[28]
+    #[33] Seq c11 c21 = Cond b c1 c2
+  ← apply_resolve_step com_Seq_Cond_neq goal=32 facts=[33]
+    #[34] R s2
+  ← introduction b1,s1,c11,s21,c21 goal=12
+    #[35] _VAR b1
+    #[36] Cond b c1 c2 = Cond b1 c11 c21
+    #[37] b1 s1
+    #[38] Sem c11 s1 s21
+    #[39] R s2
+  -> apply_forward_step com_Cond_inject goal=39 facts=[36]
+    #[40] b = b1 ∧ c1 = c11 ∧ c2 = c21
+  -> apply_forward_step conjD1 goal=39 facts=[40]
+    #[41] b = b1
+  -> apply_forward_step conjD2 goal=39 facts=[40]
+    #[42] c1 = c11 ∧ c2 = c21
+  -> apply_forward_step conjD1 goal=39 facts=[42]
+    #[43] c1 = c11
+  -> apply_forward_step conjD2 goal=39 facts=[42]
+    #[44] c2 = c21
+  -> rewrite_fact eq_sym_eq sym=false goal=39 facts=[41]
+    #[45] b1 = b
+  -> rewrite_fact eq_sym_eq sym=false goal=39 facts=[19]
+    #[46] s1 = s
+  -> rewrite_fact eq_sym_eq sym=false goal=39 facts=[43]
+    #[47] c11 = c1
+  -> rewrite_fact eq_sym_eq sym=false goal=39 facts=[29]
+    #[48] s21 = s2
+  -> rewrite_fact eq_sym_eq sym=false goal=39 facts=[44]
+    #[49] c21 = c2
+  -> rewrite_fact_with_prev goal=39 facts=[47,38]
+    #[50] Sem c1 s1 s21
+  -> rewrite_fact_with_prev goal=39 facts=[46,50]
+    #[51] Sem c1 s s21
+  -> rewrite_fact_with_prev goal=39 facts=[48,51]
+    #[52] Sem c1 s s2
+  -> rewrite_fact_with_prev goal=39 facts=[45,37]
+    #[53] b s1
+  -> rewrite_fact_with_prev goal=39 facts=[46,53]
+    #[54] b s
+  -> rewrite_fact if_P sym=false goal=39 facts=[7,54]
+    #[55] P s
+  -> rewrite_fact Valid_def goal=39 facts=[1]
+    #[56] ∀s. ∀s2. P s ⟶ Sem c1 s s2 ⟶ R s2
+  ← apply_prev goal=39 facts=[56,55,52]
+    #[57] R s2
+  ← introduction b1,s1,c21,s21,c11 goal=13
+    #[58] ¬(b1 s1)
+    #[59] Sem c21 s1 s21
+    #[60] R s2
+  -> apply_forward_step com_Cond_inject goal=60 facts=[36]
+  -> apply_forward_step conjD1 goal=60 facts=[40]
+  -> apply_forward_step conjD2 goal=60 facts=[40]
+  -> apply_forward_step conjD1 goal=60 facts=[42]
+  -> apply_forward_step conjD2 goal=60 facts=[42]
+  -> rewrite_fact eq_sym_eq sym=false goal=60 facts=[41]
+  -> rewrite_fact eq_sym_eq sym=false goal=60 facts=[19]
+  -> rewrite_fact eq_sym_eq sym=false goal=60 facts=[43]
+  -> rewrite_fact eq_sym_eq sym=false goal=60 facts=[29]
+  -> rewrite_fact eq_sym_eq sym=false goal=60 facts=[44]
+  -> rewrite_fact_with_prev goal=60 facts=[49,59]
+    #[61] Sem c2 s1 s21
+  -> rewrite_fact_with_prev goal=60 facts=[46,61]
+    #[62] Sem c2 s s21
+  -> rewrite_fact_with_prev goal=60 facts=[48,62]
+    #[63] Sem c2 s s2
+  -> rewrite_fact_with_prev goal=60 facts=[45,58]
+    #[64] ¬(b s1)
+  -> rewrite_fact_with_prev goal=60 facts=[46,64]
+    #[65] ¬(b s)
+  -> rewrite_fact if_not_P sym=false goal=60 facts=[7,65]
+    #[66] Q s
+  -> rewrite_fact Valid_def goal=60 facts=[2]
+    #[67] ∀s. ∀s2. Q s ⟶ Sem c2 s s2 ⟶ R s2
+  ← apply_prev goal=60 facts=[67,66,63]
+    #[68] R s2
+  ← introduction b1,s1,I,c goal=14
+    #[69] _VAR I
+    #[70] _VAR c
+    #[71] Cond b c1 c2 = While b1 I c
+    #[72] s2 = s1
+    #[73] R s2
+  ← apply_resolve_step com_Cond_While_neq goal=73 facts=[71]
+    #[74] R s2
+  ← introduction b1,s1,c,s3,I,s21 goal=15
+    #[75] Sem c s1 s3
+    #[76] Sem (While b1 I c) s3 s21
+    #[77] R s2
+  ← apply_resolve_step com_Cond_While_neq goal=77 facts=[71]
+qed
+
+theorem While_eq_refl
+  fixes I :: 'a => bool, b :: 'a => bool, c :: 'a com
+  prop While b I c = While b I c
+proof
+  ← reflexive goal=0
+qed
+
+theorem Sem_while_inv
+  fixes I :: 'a => bool, Q :: 'a => bool, b :: 'a => bool, c :: 'a com
+  prop Entail (%s. I s & ~(b s)) Q --> Valid (%s. I s & b s) c I --> (!d. !x. !y. Sem d x y --> d = While b I c --> I x --> Q y)
+proof
+  ← introduction goal=0
+    #[1] Entail (λs. I s ∧ ¬(b s)) Q
+    #[2] Valid (λs. I s ∧ b s) c I
+    #[3] ∀d. ∀x. ∀y. Sem d x y ⟶ d = While b I c ⟶ I x ⟶ Q y
+  ← apply_backward_step Sem_induct goal=3
+    #[4] ∀f. ∀s. Basic f = While b I c ⟶ I s ⟶ Q (f s)
+    #[5] ∀c1. ∀s. ∀s3. ∀c2. ∀s2. Sem c1 s s3 ⟶ (c1 = While b I c ⟶ I s ⟶ Q s3) ⟶ Sem c2 s3 s2 ⟶ (c2 = While b I c ⟶ I s3 ⟶ Q s2) ⟶ Seq c1 c2 = While b I c ⟶ I s ⟶ Q s2
+    #[6] ∀b1. ∀s. ∀c1. ∀s2. ∀c2. b1 s ⟶ Sem c1 s s2 ⟶ (c1 = While b I c ⟶ I s ⟶ Q s2) ⟶ Cond b1 c1 c2 = While b I c ⟶ I s ⟶ Q s2
+    #[7] ∀b1. ∀s. ∀c2. ∀s2. ∀c1. ¬(b1 s) ⟶ Sem c2 s s2 ⟶ (c2 = While b I c ⟶ I s ⟶ Q s2) ⟶ Cond b1 c1 c2 = While b I c ⟶ I s ⟶ Q s2
+    #[8] ∀b1. ∀s. ∀I1. ∀c1. ¬(b1 s) ⟶ While b1 I1 c1 = While b I c ⟶ I s ⟶ Q s
+    #[9] ∀b1. ∀s. ∀c1. ∀s3. ∀I1. ∀s2. b1 s ⟶ Sem c1 s s3 ⟶ (c1 = While b I c ⟶ I s ⟶ Q s3) ⟶ Sem (While b1 I1 c1) s3 s2 ⟶ (While b1 I1 c1 = While b I c ⟶ I s3 ⟶ Q s2) ⟶ While b1 I1 c1 = While b I c ⟶ I s ⟶ Q s2
+  ← introduction f,s goal=4
+    #[10] _VAR f
+    #[11] _VAR s
+    #[12] Basic f = While b I c
+    #[13] I s
+    #[14] Q (f s)
+  ← apply_resolve_step com_Basic_While_neq goal=14 facts=[12]
+    #[15] Q (f s)
+  ← introduction c1,s,s3,c2,s2 goal=5
+    #[16] _VAR c1
+    #[17] _VAR s3
+    #[18] _VAR c2
+    #[19] _VAR s2
+    #[20] Sem c1 s s3
+    #[21] c1 = While b I c ⟶ I s ⟶ Q s3
+    #[22] Sem c2 s3 s2
+    #[23] c2 = While b I c ⟶ I s3 ⟶ Q s2
+    #[24] Seq c1 c2 = While b I c
+    #[25] Q s2
+  ← apply_resolve_step com_Seq_While_neq goal=25 facts=[24]
+    #[26] Q s2
+  ← introduction b1,s,c1,s2,c2 goal=6
+    #[27] _VAR b1
+    #[28] b1 s
+    #[29] Sem c1 s s2
+    #[30] c1 = While b I c ⟶ I s ⟶ Q s2
+    #[31] Cond b1 c1 c2 = While b I c
+    #[32] Q s2
+  ← apply_resolve_step com_Cond_While_neq goal=32 facts=[31]
+    #[33] Q s2
+  ← introduction b1,s,c2,s2,c1 goal=7
+    #[34] ¬(b1 s)
+    #[35] Sem c2 s s2
+    #[36] c2 = While b I c ⟶ I s ⟶ Q s2
+    #[37] Q s2
+  ← apply_resolve_step com_Cond_While_neq goal=37 facts=[31]
+  ← introduction b1,s,I1,c1 goal=8
+    #[38] _VAR I1
+    #[39] While b1 I1 c1 = While b I c
+    #[40] Q s
+  -> apply_forward_step com_While_inject goal=40 facts=[39]
+    #[41] b1 = b ∧ I1 = I ∧ c1 = c
+  -> apply_forward_step conjD1 goal=40 facts=[41]
+    #[42] b1 = b
+  -> rewrite_fact_with_prev goal=40 facts=[42,34]
+    #[43] ¬(b s)
+  -> apply_forward_step conjI goal=40 facts=[13,43]
+    #[44] I s ∧ ¬(b s)
+  -> rewrite_fact Entail_def goal=40 facts=[1]
+    #[45] ∀s. I s ∧ ¬(b s) ⟶ Q s
+  -> apply_fact goal=40 facts=[45,44]
+    #[46] Q s
+  ← apply_prev goal=40 facts=[46]
+  ← introduction b1,s,c1,s3,I1,s2 goal=9
+    #[47] Sem (While b1 I1 c1) s3 s2
+    #[48] While b1 I1 c1 = While b I c ⟶ I s3 ⟶ Q s2
+    #[49] Q s2
+  -> apply_forward_step com_While_inject goal=49 facts=[39]
+  -> apply_forward_step conjD1 goal=49 facts=[41]
+  -> apply_forward_step conjD2 goal=49 facts=[41]
+    #[50] I1 = I ∧ c1 = c
+  -> apply_forward_step conjD1 goal=49 facts=[50]
+    #[51] I1 = I
+  -> apply_forward_step conjD2 goal=49 facts=[50]
+    #[52] c1 = c
+  -> rewrite_fact_with_prev goal=49 facts=[52,20]
+    #[53] Sem c s s3
+  -> rewrite_fact_with_prev goal=49 facts=[42,28]
+    #[54] b s
+  -> apply_forward_step conjI goal=49 facts=[13,54]
+    #[55] I s ∧ b s
+  -> rewrite_fact Valid_def goal=49 facts=[2]
+    #[56] ∀s. ∀s2. I s ∧ b s ⟶ Sem c s s2 ⟶ I s2
+  -> apply_fact goal=49 facts=[56,55,53]
+    #[57] I s3
+  -> apply_fact goal=49 facts=[48,39,57]
+    #[58] Q s2
+  ← apply_prev goal=49 facts=[58]
+qed
+
+theorem while_rule
+  fixes I :: 'a => bool, Q :: 'a => bool, b :: 'a => bool, c :: 'a com
+  prop Entail (%s. I s & ~(b s)) Q --> Valid (%s. I s & b s) c I --> Valid I (While b I c) Q
+proof
+  ← introduction goal=0
+    #[1] Entail (λs. I s ∧ ¬(b s)) Q
+    #[2] Valid (λs. I s ∧ b s) c I
+    #[3] Valid I (While b I c) Q
+  ← rewrite_goal Valid_def goal=3
+    #[4] ∀s. ∀s2. I s ⟶ Sem (While b I c) s s2 ⟶ Q s2
+  ← introduction "s, s2" goal=4
+    #[5] _VAR s
+    #[6] _VAR s2
+    #[7] I s
+    #[8] Sem (While b I c) s s2
+    #[9] Q s2
+  -> apply_forward_step Sem_while_inv goal=9 facts=[1,2]
+    #[10] ∀d. ∀x. ∀y. Sem d x y ⟶ d = While b I c ⟶ I x ⟶ Q y
+  -> forall_elim "While b I c" goal=9 facts=[10]
+    #[11] ∀x. ∀y. Sem (While b I c) x y ⟶ While b I c = While b I c ⟶ I x ⟶ Q y
+  -> forall_elim s goal=9 facts=[11]
+    #[12] ∀y. Sem (While b I c) s y ⟶ While b I c = While b I c ⟶ I s ⟶ Q y
+  -> forall_elim s2 goal=9 facts=[12]
+    #[13] Sem (While b I c) s s2 ⟶ While b I c = While b I c ⟶ I s ⟶ Q s2
+  -> apply_fact goal=9 facts=[13,8]
+    #[14] While b I c = While b I c ⟶ I s ⟶ Q s2
+  -> apply_forward_step While_eq_refl param_I=I param_b=b param_c=c goal=9
+    #[15] While b I c = While b I c
+  ← apply_prev goal=9 facts=[14,15,7]
+qed
+
+theorem abs_test
+  fixes a :: int
+  prop true --> (if 0 <= a then a = abs a else -a = abs a)
+proof
+  ← introduction goal=0
+    #[1] true
+    #[2] if 0 ≤ a then a = abs a else -a = abs a
+  ← rewrite_goal abs_def goal=2
+    #[3] if 0 ≤ a then a = (if 0 ≤ a then a else -a) else -a = (if 0 ≤ a then a else -a)
+  ← z3 goal=3
+    #[4] if 0 ≤ a then a = (if 0 ≤ a then a else -a) else -a = (if 0 ≤ a then a else -a)
+qed
+
+theorem max_test
+  fixes m :: int, n :: int
+  prop true --> (if m <= n then n = max m n else m = max m n)
+proof
+  ← introduction goal=0
+    #[1] true
+    #[2] if m ≤ n then n = max m n else m = max m n
+  ← rewrite_goal max_def goal=2
+    #[3] if m ≤ n then n = (if m ≤ n then n else m) else m = (if m ≤ n then n else m)
+  ← z3 goal=3
+    #[4] if m ≤ n then n = (if m ≤ n then n else m) else m = (if m ≤ n then n else m)
+qed
+

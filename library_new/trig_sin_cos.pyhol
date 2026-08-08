@@ -1,0 +1,565 @@
+theory trig_sin_cos
+imports realgamma
+description "Formal inequalities for trig."
+
+theorem cos_pi_2
+  fixes x :: real
+  prop cos (x + pi / 2) = -(sin x)
+  [hint_rewrite]
+proof
+  ← rewrite_goal cos_sin sym=true goal=0
+    #[1] sin (pi / 2 - (x + pi / 2)) = -(sin x)
+  cut "pi / 2 - (x + pi / 2) = -x" goal=1
+    #[2] pi / 2 - (x + pi / 2) = -x
+  real_norm goal=2
+  ← rewrite_goal_with_prev goal=1 facts=[2]
+    #[3] sin (-x) = -(sin x)
+  ← rewrite_goal sin_neg sym=false goal=3
+qed
+
+theorem cos_derivatives
+  fixes n :: nat, x :: real
+  prop has_real_derivative (%x1. cos (x1 + of_nat n * pi / 2)) (cos (x + of_nat (n + 1) * pi / 2)) (atreal x)
+  [hint_backward]
+
+theorem taylor_cos_raw
+  fixes n :: nat, x :: real
+  prop abs (cos x - sum ({0..n}) (%k. if even k then -1 ^ (k DIV 2) * x ^ k / of_nat (fact k) else 0)) <= abs x ^ (n + 1) / of_nat (fact (n + 1))
+  [hint_backward]
+
+theorem sum_pair_from_0
+  fixes f :: nat => real, n :: nat
+  prop sum ({0..2 * n + 1}) f = sum ({0..n}) (%i. f (2 * i) + f (2 * i + 1))
+  [hint_rewrite]
+proof
+  -> apply_forward_step sum_pair param_f=f param_m="(0::nat)" param_n=n goal=0
+    #[1] sum ({2 * 0..2 * n + 1}) f = sum ({0..n}) (λi. f (2 * i) + f (2 * i + 1))
+  -> rewrite_fact mult_0_right sym=false goal=0 facts=[1]
+qed
+
+theorem taylor_cos
+  fixes n :: nat, x :: real
+  prop abs (cos x - sum ({0..n}) (%i. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) <= abs x ^ (2 * n + 2) / of_nat (fact (2 * n + 2))
+  [hint_backward]
+proof
+  -> apply_forward_step taylor_cos_raw param_n="2 * n + 1" param_x=x goal=0
+    #[1] abs (cos x - sum ({0..2 * n + 1}) (λk. if even k then -1 ^ (k DIV 2) * x ^ k / of_nat (fact k) else 0)) ≤ abs x ^ (2 * n + 1 + 1) / of_nat (fact (2 * n + 1 + 1))
+  -> rewrite_fact sum_pair_from_0 sym=false goal=0 facts=[1]
+    #[2] abs (cos x - sum ({0..n}) (λi. (if even (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if even (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0))) ≤ abs x ^ (2 * n + 1 + 1) / of_nat (fact (2 * n + 1 + 1))
+  cut "!i. (if even (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if even (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)" goal=0
+    #[3] ∀i. (if even (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if even (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)
+  ← introduction i goal=3
+    #[4] _VAR i
+    #[5] (if even (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if even (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)
+  cut "even (2 * i)" goal=5
+    #[6] even (2 * i)
+  ← apply_backward_step even_double goal=6
+  ← rewrite_goal if_P sym=false goal=5 facts=[6]
+    #[7] -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) + (if even (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)
+  cut "~even (2 * i + 1)" goal=7
+    #[8] ¬(even (2 * i + 1))
+  ← rewrite_goal add_1_right sym=false goal=8
+    #[9] ¬(even (Suc (2 * i)))
+  ← rewrite_goal even_def_2 sym=false goal=9
+    #[10] ¬¬(even (2 * i))
+  ← rewrite_goal double_neg sym=false goal=10
+  ← rewrite_goal if_not_P sym=false goal=7 facts=[8]
+    #[11] -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) + 0 = -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)
+  ← rewrite_goal real_add_rid sym=false goal=11
+    #[12] -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) = -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)
+  cut "2 * i DIV 2 = i" goal=12
+    #[13] 2 * i DIV 2 = i
+  ← apply_backward_step div_mult goal=13
+    #[14] ¬((2::nat) = 0)
+  nat_const_ineq goal=14
+  ← rewrite_goal_with_prev goal=12 facts=[13]
+    #[15] -1 ^ i * x ^ (2 * i) / of_nat (fact (2 * i)) = -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)
+  ← rewrite_goal real_divide_def sym=false goal=15
+    #[16] -1 ^ i * x ^ (2 * i) * real_inverse (of_nat (fact (2 * i))) = -1 ^ i * real_inverse (of_nat (fact (2 * i))) * x ^ (2 * i)
+  real_norm goal=16
+  -> rewrite_fact_with_prev goal=0 facts=[3,2]
+    #[17] abs (cos x - sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ abs x ^ (2 * n + 1 + 1) / of_nat (fact (2 * n + 1 + 1))
+  cut "2 * n + 1 + 1 = 2 * n + 2" goal=0 facts=[17]
+    #[18] 2 * n + 1 + 1 = 2 * n + 2
+  nat_norm goal=18
+  -> rewrite_fact_with_prev goal=0 facts=[18,17]
+qed
+
+theorem cos_poly_upper_bound
+  fixes n :: nat, x :: real
+  prop even n --> cos x <= sum ({0..n}) (%i. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] even n
+    #[2] cos x ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))
+  ← cases "n=0" goal=2
+    #[3] n = 0 ⟶ cos x ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))
+    #[4] ¬(n = 0) ⟶ cos x ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))
+  ← introduction goal=3
+    #[5] n = 0
+    #[6] cos x ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))
+  ← rewrite_goal_with_prev goal=6 facts=[5]
+    #[7] cos x ≤ sum ({0..0}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))
+  ← rewrite_goal sum_sing_natseg sym=false goal=7
+    #[8] cos x ≤ -1 ^ (0::nat) / of_nat (fact (2 * 0)) * x ^ ((2::nat) * 0)
+  ← rewrite_goal mult_0_right sym=false goal=8
+    #[9] cos x ≤ -1 ^ (0::nat) / of_nat (fact 0) * x ^ (0::nat)
+  ← rewrite_goal real_nat_power_def_1 sym=false goal=9
+    #[10] cos x ≤ 1 / of_nat (fact 0) * 1
+  ← rewrite_goal fact_def_1 sym=false goal=10
+    #[11] cos x ≤ 1 / of_nat 1 * 1
+  ← rewrite_goal real_mul_rid sym=false goal=11
+    #[12] cos x ≤ 1 / of_nat 1
+  ← rewrite_goal real_one_def sym=true goal=12
+    #[13] cos x ≤ 1 / 1
+  ← rewrite_goal real_div_1 sym=false goal=13
+    #[14] cos x ≤ 1
+  ← apply_backward_step cos_ubound goal=14
+    #[15] cos x ≤ 1
+  ← introduction goal=4
+    #[16] ¬(n = 0)
+    #[17] cos x ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))
+  -> apply_forward_step le_1_1 goal=17 facts=[16]
+    #[18] 0 < n
+  -> apply_forward_step lt_imp_le goal=17 facts=[18]
+    #[19] 0 ≤ n
+  -> apply_forward_step sum_clauses_right param_f="" goal=17 facts=[18,19]
+    #[20] ∀f. sum ({0..n}) f = sum ({0..n - 1}) f + f n
+  ← rewrite_goal_with_prev goal=17 facts=[20]
+    #[21] cos x ≤ sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) + -1 ^ n / of_nat (fact (2 * n)) * x ^ (2 * n)
+  -> apply_forward_step taylor_cos param_n=n-1 param_x=x goal=21
+    #[22] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ abs x ^ (2 * (n - 1) + 2) / of_nat (fact (2 * (n - 1) + 2))
+  cut "-1 ^ n = (1::real)" goal=21
+    #[23] -(1::real) ^ n = 1
+  ← rewrite_goal real_pow_neg sym=false goal=23
+    #[24] (if even n then (1::real) ^ n else -(1 ^ n)) = 1
+  ← rewrite_goal if_P sym=false goal=24 facts=[1]
+    #[25] (1::real) ^ n = 1
+  ← rewrite_goal real_pow_one sym=false goal=25
+    #[26] (1::real) ^ n = 1
+  ← rewrite_goal_with_prev goal=21 facts=[23]
+    #[27] cos x ≤ sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) + 1 / of_nat (fact (2 * n)) * x ^ (2 * n)
+  cut "!a::real. !b. 1/a * b = b /a" goal=27
+    #[28] ∀a. ∀b. 1 / a * b = b / a
+  ← introduction a,b goal=28
+    #[29] _VAR a
+    #[30] _VAR b
+    #[31] 1 / a * b = b / a
+  ← rewrite_goal real_divide_def sym=false goal=31
+    #[32] 1 * real_inverse a * b = b * real_inverse a
+  real_norm goal=32
+    #[33] 1 * real_inverse a * b = b * real_inverse a
+  ← rewrite_goal_with_prev goal=27 facts=[28]
+    #[34] cos x ≤ sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) + x ^ (2 * n) / of_nat (fact (2 * n))
+  cut "(2 * (n - 1) + 2) = 2 * n" goal=34 facts=[22]
+    #[35] 2 * (n - 1) + 2 = 2 * n
+  ← z3 goal=35 facts=[16]
+    #[36] 2 * (n - 1) + 2 = 2 * n
+  -> rewrite_fact_with_prev goal=34 facts=[36,22]
+    #[37] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ abs x ^ (2 * n) / of_nat (fact (2 * n))
+  cut "abs x ^ (2 * n) = x ^ (2 * n)" goal=34
+    #[38] abs x ^ (2 * n) = x ^ (2 * n)
+  ← rewrite_goal real_pow_eq_eq sym=false goal=38
+    #[39] if even (2 * n) then 2 * n = 0 ∨ abs (abs x) = abs x else abs x = x
+  cut "even (2 * n)" goal=39
+    #[40] even (2 * n)
+  ← apply_backward_step even_double goal=40
+    #[41] even (2 * n)
+  ← rewrite_goal if_P sym=false goal=39 facts=[41]
+    #[42] 2 * n = 0 ∨ abs (abs x) = abs x
+  ← apply_backward_step disjI2 goal=42
+    #[43] abs (abs x) = abs x
+  ← rewrite_goal real_abs_abs sym=false goal=43
+    #[44] abs (abs x) = abs x
+  -> rewrite_fact_with_prev goal=34 facts=[38,37]
+    #[45] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ x ^ (2 * n) / of_nat (fact (2 * n))
+  cut "!x::real. !y. !z. abs (x-y) <= z --> x <= y + z" goal=34
+    #[46] ∀x::real. ∀y. ∀z. abs (x - y) ≤ z ⟶ x ≤ y + z
+  ← z3 goal=46
+    #[47] ∀x::real. ∀y. ∀z. abs (x - y) ≤ z ⟶ x ≤ y + z
+  ← apply_prev goal=34 facts=[47]
+qed
+
+theorem cos_poly_lower_bound
+  fixes n :: nat, x :: real
+  prop odd n --> sum ({0..n}) (%i. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) <= cos x
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] odd n
+    #[2] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) ≤ cos x
+  -> rewrite_fact not_even sym=true goal=2 facts=[1]
+    #[3] ¬(even n)
+  cut "~(n=0)" goal=2
+    #[4] ¬(n = 0)
+  ← apply_backward_step contrapositive goal=4 facts=[3]
+    #[5] ¬¬(n = 0) ⟶ ¬¬(even n)
+  ← rewrite_goal double_neg sym=false goal=5
+    #[6] n = 0 ⟶ even n
+  ← introduction goal=6
+    #[7] n = 0
+    #[8] even n
+  ← rewrite_goal_with_prev goal=8 facts=[7]
+    #[9] even 0
+  ← rewrite_goal even_def_1 sym=false goal=9
+    #[10] true
+  ← apply_backward_step trueI goal=10
+    #[11] true
+  -> apply_forward_step le_1_1 goal=2 facts=[4]
+    #[12] 0 < n
+  -> apply_forward_step lt_imp_le goal=2 facts=[12]
+    #[13] 0 ≤ n
+  -> apply_forward_step sum_clauses_right param_f="(λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))" goal=2 facts=[12,13]
+    #[14] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) = sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) + -1 ^ n / of_nat (fact (2 * n)) * x ^ (2 * n)
+  ← rewrite_goal_with_prev goal=2 facts=[14]
+    #[15] sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) + -1 ^ n / of_nat (fact (2 * n)) * x ^ (2 * n) ≤ cos x
+  -> apply_forward_step taylor_cos param_n=n-1 param_x=x goal=15
+    #[16] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ abs x ^ (2 * (n - 1) + 2) / of_nat (fact (2 * (n - 1) + 2))
+  cut "-(1::real) ^ n = -1" goal=15
+    #[17] -(1::real) ^ n = -1
+  ← rewrite_goal real_pow_neg sym=false goal=17
+    #[18] (if even n then (1::real) ^ n else -(1 ^ n)) = -1
+  ← rewrite_goal if_not_P sym=false goal=18 facts=[3]
+    #[19] -((1::real) ^ n) = -1
+  ← rewrite_goal real_pow_one sym=false goal=19
+    #[20] -((1::real) ^ n) = -1
+  ← rewrite_goal_with_prev goal=15 facts=[17]
+    #[21] sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) + -1 / of_nat (fact (2 * n)) * x ^ (2 * n) ≤ cos x
+  cut "2 * (n - 1) + 2 = 2 * n" goal=21 facts=[16]
+    #[22] 2 * (n - 1) + 2 = 2 * n
+  ← z3 goal=22 facts=[12]
+  -> rewrite_fact_with_prev goal=21 facts=[22,16]
+    #[23] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ abs x ^ (2 * n) / of_nat (fact (2 * n))
+  cut "∀a. ∀b. -1 / a * b = -(b / a)" goal=21
+    #[24] ∀a. ∀b. -1 / a * b = -(b / a)
+  ← introduction a,b goal=24
+    #[25] _VAR a
+    #[26] _VAR b
+    #[27] -1 / a * b = -(b / a)
+  ← rewrite_goal real_divide_def sym=false goal=27
+    #[28] -1 * real_inverse a * b = -(b * real_inverse a)
+  real_norm goal=28
+    #[29] -1 * real_inverse a * b = -(b * real_inverse a)
+  ← rewrite_goal_with_prev goal=21 facts=[24]
+    #[30] sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i)) + -(x ^ (2 * n) / of_nat (fact (2 * n))) ≤ cos x
+  cut "abs x ^ (2 * n) = x ^ (2 * n)" goal=30
+    #[31] abs x ^ (2 * n) = x ^ (2 * n)
+  ← rewrite_goal real_pow_eq_eq sym=false goal=31
+    #[32] if even (2 * n) then 2 * n = 0 ∨ abs (abs x) = abs x else abs x = x
+  cut "even (2 * n)" goal=32
+    #[33] even (2 * n)
+  ← apply_backward_step even_double goal=33
+    #[34] even (2 * n)
+  ← rewrite_goal if_P sym=false goal=32 facts=[34]
+    #[35] 2 * n = 0 ∨ abs (abs x) = abs x
+  ← apply_backward_step disjI2 goal=35
+    #[36] abs (abs x) = abs x
+  ← rewrite_goal real_abs_abs sym=false goal=36
+    #[37] abs (abs x) = abs x
+  -> rewrite_fact_with_prev goal=30 facts=[31,23]
+    #[38] abs (cos x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i)) * x ^ (2 * i))) ≤ x ^ (2 * n) / of_nat (fact (2 * n))
+  cut "∀x::real. ∀y. ∀z. abs (x - y) ≤ z ⟶ y + -z ≤ x" goal=30
+    #[39] ∀x::real. ∀y. ∀z. abs (x - y) ≤ z ⟶ y + -z ≤ x
+  ← z3 goal=39
+    #[40] ∀x::real. ∀y. ∀z. abs (x - y) ≤ z ⟶ y + -z ≤ x
+  ← apply_prev goal=30 facts=[40]
+qed
+
+theorem sin_pi_2
+  fixes x :: real
+  prop sin (x + pi / 2) = cos x
+  [hint_rewrite]
+proof
+  ← rewrite_goal sin_cos sym=true goal=0
+    #[1] cos (pi / 2 - (x + pi / 2)) = cos x
+  cut "pi / 2 - (x + pi / 2) = -x" goal=1
+    #[2] pi / 2 - (x + pi / 2) = -x
+  real_norm goal=2
+  ← rewrite_goal_with_prev goal=1 facts=[2]
+    #[3] cos (-x) = cos x
+  ← rewrite_goal cos_neg sym=false goal=3
+qed
+
+theorem sin_derivatives
+  fixes n :: nat, x :: real
+  prop has_real_derivative (%x1. sin (x1 + of_nat n * pi / 2)) (sin (x + of_nat (n + 1) * pi / 2)) (atreal x)
+  [hint_backward]
+
+theorem taylor_sin_raw
+  fixes n :: nat, x :: real
+  prop abs (sin x - sum ({0..n}) (%k. if odd k then -1 ^ (k DIV 2) * x ^ k / of_nat (fact k) else 0)) <= abs x ^ (n + 1) / of_nat (fact (n + 1))
+  [hint_backward]
+
+theorem taylor_sin
+  fixes n :: nat, x :: real
+  prop abs (sin x - sum ({0..n}) (%i. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) <= abs x ^ (2 * n + 3) / of_nat (fact (2 * n + 3))
+  [hint_backward]
+proof
+  -> apply_forward_step taylor_sin_raw param_n=2*n+2 param_x=x goal=0
+    #[1] abs (sin x - sum ({0..2 * n + 2}) (λk. if odd k then -1 ^ (k DIV 2) * x ^ k / of_nat (fact k) else 0)) ≤ abs x ^ (2 * n + 2 + 1) / of_nat (fact (2 * n + 2 + 1))
+  cut "!f. sum ({0..2 * n + 2}) (λk. if odd k then f k else 0) = sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)" goal=0
+    #[2] ∀f. sum ({0..2 * n + 2}) (λk. if odd k then f k else 0) = sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)
+  ← introduction f goal=2
+    #[3] _VAR f
+    #[4] sum ({0..2 * n + 2}) (λk. if odd k then f k else 0) = sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)
+  cut "!a. a + 2 = Suc (a + 1)" goal=4
+    #[5] ∀a. a + 2 = Suc (a + 1)
+  ← rewrite_goal add_1_right sym=true goal=5
+    #[6] ∀a::nat. a + 2 = a + 1 + 1
+  ← z3 goal=6
+  ← rewrite_goal_with_prev goal=4 facts=[5]
+    #[7] sum ({0..Suc (2 * n + 1)}) (λk. if odd k then f k else 0) = sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)
+  ← rewrite_goal sum_Suc_natseg sym=false goal=7
+    #[8] (if 0 ≤ Suc (2 * n + 1) then sum ({0..2 * n + 1}) (λk. if odd k then f k else 0) + (if odd (Suc (2 * n + 1)) then f (Suc (2 * n + 1)) else 0) else sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)) = sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)
+  cut "0 ≤ Suc (2 * n + 1)" goal=8
+    #[9] 0 ≤ Suc (2 * n + 1)
+  ← apply_backward_step le_0 goal=9
+  ← rewrite_goal if_P sym=false goal=8 facts=[9]
+    #[10] sum ({0..2 * n + 1}) (λk. if odd k then f k else 0) + (if odd (Suc (2 * n + 1)) then f (Suc (2 * n + 1)) else 0) = sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)
+  cut "~odd (Suc (2 * n + 1))" goal=10
+    #[11] ¬(odd (Suc (2 * n + 1)))
+  ← rewrite_goal odd_def_2 sym=false goal=11
+    #[12] ¬¬(odd (2 * n + 1))
+  ← rewrite_goal double_neg sym=false goal=12
+    #[13] odd (2 * n + 1)
+  ← rewrite_goal odd_exists sym=false goal=13
+    #[14] ∃m. 2 * n + 1 = Suc (2 * m)
+  ← inst_exists_goal n goal=14
+    #[15] 2 * n + 1 = Suc (2 * n)
+  ← rewrite_goal add_1_right sym=false goal=15
+  ← rewrite_goal if_not_P sym=false goal=10 facts=[11]
+    #[16] sum ({0..2 * n + 1}) (λk. if odd k then f k else 0) + 0 = sum ({0..2 * n + 1}) (λk. if odd k then f k else 0)
+  ← rewrite_goal real_add_rid sym=false goal=16
+  -> rewrite_fact_with_prev goal=0 facts=[2,1]
+    #[17] abs (sin x - sum ({0..2 * n + 1}) (λk. if odd k then -1 ^ (k DIV 2) * x ^ k / of_nat (fact k) else 0)) ≤ abs x ^ (2 * n + 2 + 1) / of_nat (fact (2 * n + 2 + 1))
+  -> rewrite_fact sum_pair_from_0 sym=false goal=0 facts=[17]
+    #[18] abs (sin x - sum ({0..n}) (λi. (if odd (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if odd (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0))) ≤ abs x ^ (2 * n + 2 + 1) / of_nat (fact (2 * n + 2 + 1))
+  cut "!i. (if odd (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if odd (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)" goal=0
+    #[19] ∀i. (if odd (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if odd (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)
+  ← introduction i goal=19
+    #[20] _VAR i
+    #[21] (if odd (2 * i) then -1 ^ (2 * i DIV 2) * x ^ (2 * i) / of_nat (fact (2 * i)) else 0) + (if odd (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)
+  cut "~odd (2 * i)" goal=21
+    #[22] ¬(odd (2 * i))
+  ← rewrite_goal not_odd sym=false goal=22
+    #[23] even (2 * i)
+  ← apply_backward_step even_double goal=23
+  ← rewrite_goal if_not_P sym=false goal=21 facts=[22]
+    #[24] 0 + (if odd (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)
+  ← rewrite_goal real_add_lid sym=false goal=24
+    #[25] (if odd (2 * i + 1) then -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) else 0) = -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)
+  cut "odd (2 * i + 1)" goal=25
+    #[26] odd (2 * i + 1)
+  ← rewrite_goal odd_exists sym=false goal=26
+    #[27] ∃m. 2 * i + 1 = Suc (2 * m)
+  ← inst_exists_goal i goal=27
+    #[28] 2 * i + 1 = Suc (2 * i)
+  ← rewrite_goal add_1_right sym=false goal=28
+  ← rewrite_goal if_P sym=false goal=25 facts=[26]
+    #[29] -1 ^ ((2 * i + 1) DIV 2) * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) = -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)
+  cut "(2 * i + 1) DIV 2 = i" goal=29
+    #[30] (2 * i + 1) DIV 2 = i
+  ← apply_backward_step div_uniq param_r="(1::nat)" goal=30
+    #[31] 2 * i + 1 = i * 2 + 1
+    #[32] (1::nat) < 2
+  nat_norm goal=31
+  ← z3 goal=32
+  ← rewrite_goal_with_prev goal=29 facts=[30]
+    #[33] -1 ^ i * x ^ (2 * i + 1) / of_nat (fact (2 * i + 1)) = -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)
+  cut "!a::real. !b. !c. (a * b) / c = (a / c) * b" goal=33
+    #[34] ∀a. ∀b. ∀c. a * b / c = a / c * b
+  ← rewrite_goal real_divide_def sym=false goal=34
+    #[35] ∀a. ∀b. ∀c. a * b * real_inverse c = a * real_inverse c * b
+  ← z3 goal=35
+  ← apply_prev goal=33 facts=[34]
+    #[36] ∀b. ∀c. -1 ^ i * b / c = -1 ^ i / c * b
+    #[37] ∀c. -1 ^ i * x ^ (2 * i + 1) / c = -1 ^ i / c * x ^ (2 * i + 1)
+  -> rewrite_fact_with_prev goal=0 facts=[19,18]
+    #[38] abs (sin x - sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) ≤ abs x ^ (2 * n + 2 + 1) / of_nat (fact (2 * n + 2 + 1))
+  cut "2 * n + 2 + 1 = 2 * n + 3" goal=0 facts=[38]
+    #[39] 2 * n + 2 + 1 = 2 * n + 3
+  nat_norm goal=39
+  -> rewrite_fact_with_prev goal=0 facts=[39,38]
+qed
+
+theorem sin_pos_poly_upper_bound
+  fixes n :: nat, x :: real
+  prop 0 <= x --> even n --> sin x <= sum ({0..n}) (%i. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))
+  [hint_backward,hint_backward1]
+
+theorem sin_pos_poly_lower_bound
+  fixes n :: nat, x :: real
+  prop 0 <= x --> odd n --> sum ({0..n}) (%i. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) <= sin x
+  [hint_backward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] 0 ≤ x
+    #[2] odd n
+    #[3] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) ≤ sin x
+  -> rewrite_fact not_even sym=true goal=3 facts=[2]
+    #[4] ¬(even n)
+  cut "~(n=0)" goal=3
+    #[5] ¬(n = 0)
+  ← apply_backward_step contrapositive goal=5 facts=[4]
+    #[6] ¬¬(n = 0) ⟶ ¬¬(even n)
+  ← rewrite_goal double_neg sym=false goal=6
+    #[7] n = 0 ⟶ even n
+  ← introduction goal=7
+    #[8] n = 0
+    #[9] even n
+  ← rewrite_goal_with_prev goal=9 facts=[8]
+    #[10] even 0
+  ← rewrite_goal even_def_1 sym=false goal=10
+    #[11] true
+  ← apply_backward_step trueI goal=11
+    #[12] true
+  -> apply_forward_step le_1_1 goal=3 facts=[5]
+    #[13] 0 < n
+  -> apply_forward_step lt_imp_le goal=3 facts=[13]
+    #[14] 0 ≤ n
+  -> apply_forward_step sum_clauses_right param_f="(λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))" goal=3 facts=[13,14]
+    #[15] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) = sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) + -1 ^ n / of_nat (fact (2 * n + 1)) * x ^ (2 * n + 1)
+  -> apply_forward_step taylor_sin param_n=n-1 param_x=x goal=3
+    #[16] abs (sin x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) ≤ abs x ^ (2 * (n - 1) + 3) / of_nat (fact (2 * (n - 1) + 3))
+  ← rewrite_goal_with_prev goal=3 facts=[15]
+    #[17] sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) + -1 ^ n / of_nat (fact (2 * n + 1)) * x ^ (2 * n + 1) ≤ sin x
+  cut "-(1::real) ^ n = -1" goal=17
+    #[18] -(1::real) ^ n = -1
+  ← rewrite_goal real_pow_neg sym=false goal=18
+    #[19] (if even n then (1::real) ^ n else -(1 ^ n)) = -1
+  ← rewrite_goal if_not_P sym=false goal=19 facts=[4]
+    #[20] -((1::real) ^ n) = -1
+  ← rewrite_goal real_pow_one sym=false goal=20
+    #[21] -((1::real) ^ n) = -1
+  ← rewrite_goal_with_prev goal=17 facts=[18]
+    #[22] sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) + -1 / of_nat (fact (2 * n + 1)) * x ^ (2 * n + 1) ≤ sin x
+  cut "2 * (n - 1) + 3 = 2 * n + 1" goal=22
+    #[23] 2 * (n - 1) + 3 = 2 * n + 1
+  ← z3 goal=23 facts=[13]
+  -> rewrite_fact_with_prev goal=22 facts=[23,16]
+    #[24] abs (sin x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) ≤ abs x ^ (2 * n + 1) / of_nat (fact (2 * n + 1))
+  cut "abs x ^ (2 * n + 1) = x ^ (2 * n + 1)" goal=22
+    #[25] abs x ^ (2 * n + 1) = x ^ (2 * n + 1)
+  ← rewrite_goal real_pow_eq_eq sym=false goal=25
+    #[26] if even (2 * n + 1) then 2 * n + 1 = 0 ∨ abs (abs x) = abs x else abs x = x
+  cut "~even (2 * n + 1)" goal=26
+    #[27] ¬(even (2 * n + 1))
+  ← rewrite_goal add_1_right sym=false goal=27
+    #[28] ¬(even (Suc (2 * n)))
+  ← rewrite_goal even_def_2 sym=false goal=28
+    #[29] ¬¬(even (2 * n))
+  ← rewrite_goal double_neg sym=false goal=29
+    #[30] even (2 * n)
+  ← apply_backward_step even_double goal=30
+    #[31] even (2 * n)
+  ← rewrite_goal if_not_P sym=false goal=26 facts=[27]
+    #[32] abs x = x
+  ← rewrite_goal abs_def sym=false goal=32
+    #[33] (if 0 ≤ x then x else -x) = x
+  ← rewrite_goal if_P sym=false goal=33 facts=[1]
+    #[34] (if 0 ≤ x then x else -x) = x
+  -> rewrite_fact_with_prev goal=22 facts=[25,24]
+    #[35] abs (sin x - sum ({0..n - 1}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) ≤ x ^ (2 * n + 1) / of_nat (fact (2 * n + 1))
+  cut "∀a. ∀b. ∀c. ∀d. ~(d = 0) --> abs (a - b) ≤ c / d ⟶ b + -1 / d * c ≤ a" goal=22
+    #[36] ∀a. ∀b. ∀c. ∀d. ¬(d = 0) ⟶ abs (a - b) ≤ c / d ⟶ b + -1 / d * c ≤ a
+  ← z3 goal=36
+    #[37] ∀a. ∀b. ∀c. ∀d. ¬(d = 0) ⟶ abs (a - b) ≤ c / d ⟶ b + -1 / d * c ≤ a
+  ← apply_prev goal=22 facts=[37]
+    #[38] ¬(of_nat (fact (2 * n + 1)) = (0::real))
+  ← rewrite_goal real_zero_def sym=false goal=38
+    #[39] ¬((of_nat::nat ⇒ real) (fact (2 * n + 1)) = of_nat 0)
+  ← rewrite_goal real_of_nat_eq sym=false goal=39
+    #[40] ¬(fact (2 * n + 1) = 0)
+  ← apply_backward_step fact_nz goal=40
+    #[41] ¬(fact (2 * n + 1) = 0)
+qed
+
+theorem sin_neg_poly_upper_bound
+  fixes n :: nat, x :: real
+  prop x <= 0 --> odd n --> sin x <= sum ({0..n}) (%i. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))
+  [hint_backward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] x ≤ 0
+    #[2] odd n
+    #[3] sin x ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))
+  cut "0 <= -x" goal=3
+    #[4] 0 ≤ -x
+  ← z3 goal=4 facts=[1]
+    #[5] 0 ≤ -x
+  -> apply_forward_step sin_pos_poly_lower_bound goal=3 facts=[5,2]
+    #[6] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -x ^ (2 * i + 1)) ≤ sin (-x)
+  -> rewrite_fact sin_neg sym=false goal=3 facts=[6]
+    #[7] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -x ^ (2 * i + 1)) ≤ -(sin x)
+  cut "!i::nat. -x ^ (2 * i + 1) = -(x ^ (2 * i + 1))" goal=3
+    #[8] ∀i::nat. -x ^ (2 * i + 1) = -(x ^ (2 * i + 1))
+  ← introduction i goal=8
+    #[9] _VAR i
+    #[10] -x ^ (2 * i + 1) = -(x ^ (2 * i + 1))
+  ← rewrite_goal real_pow_neg sym=false goal=10
+    #[11] (if even (2 * i + 1) then x ^ (2 * i + 1) else -(x ^ (2 * i + 1))) = -(x ^ (2 * i + 1))
+  cut "~even (2 * i + 1)" goal=11
+    #[12] ¬(even (2 * i + 1))
+  ← rewrite_goal add_1_right sym=false goal=12
+    #[13] ¬(even (Suc (2 * i)))
+  ← rewrite_goal even_def_2 sym=false goal=13
+    #[14] ¬¬(even (2 * i))
+  ← rewrite_goal double_neg sym=false goal=14
+    #[15] even (2 * i)
+  ← apply_backward_step even_double goal=15
+    #[16] even (2 * i)
+  ← rewrite_goal if_not_P sym=false goal=11 facts=[12]
+  -> rewrite_fact_with_prev goal=3 facts=[8,7]
+    #[17] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -(x ^ (2 * i + 1))) ≤ -(sin x)
+  -> rewrite_fact real_mul_rneg sym=false goal=3 facts=[17]
+    #[18] sum ({0..n}) (λi. -(-1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1))) ≤ -(sin x)
+  -> rewrite_fact sum_neg sym=false goal=3 facts=[18]
+    #[19] -(sum ({0..n}) (λx1. -1 ^ x1 / of_nat (fact (2 * x1 + 1)) * x ^ (2 * x1 + 1))) ≤ -(sin x)
+  -> rewrite_fact real_le_lneg2 sym=false goal=3 facts=[19]
+qed
+
+theorem sin_neg_poly_lower_bound
+  fixes n :: nat, x :: real
+  prop x <= 0 --> even n --> sum ({0..n}) (%i. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) <= sin x
+  [hint_backward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] x ≤ 0
+    #[2] even n
+    #[3] sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)) ≤ sin x
+  cut "0 <= -x" goal=3
+    #[4] 0 ≤ -x
+  ← z3 goal=4 facts=[1]
+    #[5] 0 ≤ -x
+  -> apply_forward_step sin_pos_poly_upper_bound goal=3 facts=[5,2]
+    #[6] sin (-x) ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -x ^ (2 * i + 1))
+  -> rewrite_fact sin_neg sym=false goal=3 facts=[6]
+    #[7] -(sin x) ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -x ^ (2 * i + 1))
+  cut "!i::nat. -x ^ (2 * i + 1) = -(x ^ (2 * i + 1))" goal=3
+    #[8] ∀i::nat. -x ^ (2 * i + 1) = -(x ^ (2 * i + 1))
+  ← introduction i goal=8
+    #[9] _VAR i
+    #[10] -x ^ (2 * i + 1) = -(x ^ (2 * i + 1))
+  ← rewrite_goal real_pow_neg sym=false goal=10
+    #[11] (if even (2 * i + 1) then x ^ (2 * i + 1) else -(x ^ (2 * i + 1))) = -(x ^ (2 * i + 1))
+  cut "~even (2 * i + 1)" goal=11
+    #[12] ¬(even (2 * i + 1))
+  ← rewrite_goal add_1_right sym=false goal=12
+    #[13] ¬(even (Suc (2 * i)))
+  ← rewrite_goal even_def_2 sym=false goal=13
+    #[14] ¬¬(even (2 * i))
+  ← rewrite_goal double_neg sym=false goal=14
+    #[15] even (2 * i)
+  ← apply_backward_step even_double goal=15
+    #[16] even (2 * i)
+  ← rewrite_goal if_not_P sym=false goal=11 facts=[12]
+  -> rewrite_fact_with_prev goal=3 facts=[8,7]
+    #[17] -(sin x) ≤ sum ({0..n}) (λi. -1 ^ i / of_nat (fact (2 * i + 1)) * -(x ^ (2 * i + 1)))
+  -> rewrite_fact real_mul_rneg sym=false goal=3 facts=[17]
+    #[18] -(sin x) ≤ sum ({0..n}) (λi. -(-1 ^ i / of_nat (fact (2 * i + 1)) * x ^ (2 * i + 1)))
+  -> rewrite_fact sum_neg sym=false goal=3 facts=[18]
+    #[19] -(sin x) ≤ -(sum ({0..n}) (λx1. -1 ^ x1 / of_nat (fact (2 * x1 + 1)) * x ^ (2 * x1 + 1)))
+  -> rewrite_fact real_le_lneg2 sym=false goal=3 facts=[19]
+qed
+

@@ -1,0 +1,49 @@
+theory limits
+imports real
+description "limits"
+
+def has_limit :: (nat ⇒ real) ⇒ real ⇒ bool = has_limit f x ⟷ (∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (f n - x) < e))
+
+theorem has_limit_D1
+  fixes e :: real, f :: nat => real, x :: real
+  prop has_limit f x --> 0 < e --> (?N. !n. N <= n --> abs (f n - x) < e)
+  [hint_forward]
+proof
+  ← introduction goal=0
+    #[1] has_limit f x
+    #[2] 0 < e
+    #[3] ∃N. ∀n. N ≤ n ⟶ abs (f n - x) < e
+  -> rewrite_fact has_limit_def goal=3 facts=[1]
+    #[4] ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (f n - x) < e)
+  ← apply_prev goal=3 facts=[4,2]
+qed
+
+theorem has_limit_D2
+  fixes e :: real, f :: nat => real, x :: real
+  prop has_limit f x --> 0 < e --> (?n. abs (f n - x) < e)
+
+theorem has_limit_unique
+  fixes f :: nat => real, x :: real, y :: real
+  prop has_limit f x --> has_limit f y --> x = y
+proof
+  ← introduction goal=0
+    #[1] has_limit f x
+    #[2] has_limit f y
+    #[3] x = y
+  ← apply_backward_step real_eqI_from_lt_gt goal=3
+    #[4] x < y ⟶ false
+    #[5] y < x ⟶ false
+  ← introduction goal=4
+    #[6] x < y
+    #[7] false
+  ← introduction goal=5
+    #[8] y < x
+    #[9] false
+  -> apply_forward_step has_limit_D2 param_e="y - x" goal=7 facts=[1]
+    #[10] 0 < y - x ⟶ (∃n. abs (f n - x) < y - x)
+qed
+
+theorem has_limit_add
+  fixes f :: nat => real, g :: nat => real, x :: real, y :: real
+  prop has_limit f x --> has_limit g y --> has_limit (%n. f n + g n) (x + y)
+

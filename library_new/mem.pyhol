@@ -1,0 +1,94 @@
+theory mem
+imports nat, function
+description "Heap memory model: null, linked list (ll) and reachability (reached) predicates over the heap function h :: nat => nat"
+
+header "Basic definitions"
+
+def null :: nat = null = 0 [hint_rewrite]
+
+inductive ll :: nat ⇒ (nat ⇒ nat) ⇒ bool
+  | ll_null: ll null s
+  | ll_step: ¬(p = null) ⟶ ll (s p) s ⟶ ll p s
+
+inductive reached :: (nat ⇒ nat) ⇒ nat ⇒ nat ⇒ bool
+  | r_self: reached s x x
+  | r_step: ¬(x = null) ⟶ reached s (s x) y ⟶ reached s x y
+
+header "Properties of ll"
+
+theorem ll_fwd
+  fixes p :: nat, s :: nat => nat
+  prop !x. !s. ll x s --> x = null | ~(x = null) & ll (s x) s
+
+theorem reached_self_neq
+  fixes p :: nat, q :: nat, s :: nat => nat
+  prop ~(reached s p q) --> ~(p = q)
+proof
+  ← introduction goal=0
+    #[1] ¬(reached s p q)
+    #[2] ¬(p = q)
+  ← apply_backward_step negI goal=2
+    #[3] p = q ⟶ false
+  ← introduction goal=3
+    #[4] p = q
+    #[5] false
+  cut "reached s p q" goal=5
+    #[6] reached s p q
+  ← rewrite_goal_with_prev goal=6 facts=[4]
+    #[7] reached s q q
+  ← apply_backward_step r_self goal=7
+    #[8] reached s q q
+  -> apply_forward_step negE goal=5 facts=[1,6]
+qed
+
+theorem reached_next_neq
+  fixes p :: nat, q :: nat, s :: nat => nat
+  prop ~(p = null) --> ~(reached s p q) --> ~(reached s (s p) q)
+proof
+  ← introduction goal=0
+    #[1] ¬(p = null)
+    #[2] ¬(reached s p q)
+    #[3] ¬(reached s (s p) q)
+  ← apply_backward_step negI goal=3
+    #[4] reached s (s p) q ⟶ false
+  ← introduction goal=4
+    #[5] reached s (s p) q
+    #[6] false
+  -> apply_forward_step r_step goal=6 facts=[1,5]
+    #[7] reached s p q
+  -> apply_forward_step negE goal=6 facts=[2,7]
+qed
+
+theorem ll_update_unreached
+  fixes q :: nat, v :: nat
+  prop !x. !s. ll x s --> ~(reached s x q) --> ll x ((s)(q := v))
+proof
+  ← apply_backward_step ll_induct goal=0
+    #[1] ∀s. ¬(reached s null q) ⟶ ll null ((s)(q := v))
+    #[2] ∀p. ∀s. ¬(p = null) ⟶ ll (s p) s ⟶ (¬(reached s (s p) q) ⟶ ll (s p) ((s)(q := v))) ⟶ ¬(reached s p q) ⟶ ll p ((s)(q := v))
+  ← introduction s goal=1
+    #[3] _VAR s
+    #[4] ¬(reached s null q)
+    #[5] ll null ((s)(q := v))
+  ← apply_backward_step ll_null goal=5
+    #[6] ll null ((s)(q := v))
+  ← introduction p,s goal=2
+    #[7] _VAR p
+    #[8] ¬(p = null)
+    #[9] ll (s p) s
+    #[10] ¬(reached s (s p) q) ⟶ ll (s p) ((s)(q := v))
+    #[11] ¬(reached s p q)
+    #[12] ll p ((s)(q := v))
+  ← apply_backward_step ll_step goal=12
+    #[13] ll ((s)(q := v) p) ((s)(q := v))
+  -> apply_forward_step reached_self_neq goal=13 facts=[11]
+    #[14] ¬(p = q)
+  ← rewrite_goal fun_upd_other goal=13 facts=[14]
+    #[15] ll (s p) ((s)(q := v))
+  -> apply_forward_step reached_next_neq goal=15 facts=[8,11]
+    #[16] ¬(reached s (s p) q)
+  -> apply_fact goal=15 facts=[10,16]
+    #[17] ll (s p) ((s)(q := v))
+  ← apply_prev goal=15 facts=[17]
+qed
+

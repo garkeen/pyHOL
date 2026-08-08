@@ -1,0 +1,535 @@
+theory set
+imports nat
+description "Set theory"
+
+header "Set type and basic operations"
+
+type set 'a
+
+const member :: 'a ⇒ 'a set ⇒ bool
+
+const empty_set :: 'a set
+
+const insert :: 'a ⇒ 'a set ⇒ 'a set
+
+const subset :: 'a set ⇒ 'a set ⇒ bool
+
+const inter :: 'a set ⇒ 'a set ⇒ 'a set
+
+const union :: 'a set ⇒ 'a set ⇒ 'a set
+
+const diff :: 'a set ⇒ 'a set ⇒ 'a set
+
+const collect :: ('a ⇒ bool) ⇒ 'a set
+
+const countable :: 'a set ⇒ bool
+
+const Union :: 'a set set ⇒ 'a set
+
+const Inter :: 'a set set ⇒ 'a set
+
+def comp_fun :: ('a ⇒ 'b) ⇒ ('b ⇒ 'c) ⇒ 'a ⇒ 'c = f ∘ g = (λx. g (f x)) [hint_rewrite]
+
+const finite :: 'a set ⇒ bool
+
+const delete :: 'a set ⇒ 'a ⇒ 'a set
+
+const image :: ('a ⇒ 'b) ⇒ 'a set ⇒ 'b set
+
+const disjoint :: 'a set ⇒ 'a set ⇒ bool
+
+const from :: nat ⇒ nat set
+
+const univ :: 'a set
+
+const card :: 'a set ⇒ nat
+
+const has_size :: 'a set ⇒ nat ⇒ bool
+
+const infinite :: 'a set ⇒ bool
+
+axiom member_empty_simp
+  fixes x :: 'a
+  prop x ∈ ∅ ⟷ false
+  [hint_rewrite]
+
+axiom member_insert
+  fixes x :: 'a, y :: 'a, A :: 'a set
+  prop x ∈ insert y A ⟷ x = y ∨ x ∈ A
+  [hint_rewrite]
+
+header "Membership and definitions"
+
+axiom subset_def
+  fixes A :: 'a set, B :: 'a set
+  prop A ⊆ B ⟷ (∀x. x ∈ A ⟶ x ∈ B)
+  [hint_rewrite]
+
+theorem member_empty
+  fixes x :: 'a
+  prop x Mem {} <--> false
+  [hint_rewrite]
+proof
+  ← rewrite_goal member_empty_simp sym=false goal=0
+qed
+
+theorem member_singleton
+  fixes x :: 'a, a :: 'a
+  prop x Mem {a} <--> x = a
+  [hint_rewrite]
+proof
+  ← rewrite_goal member_insert sym=false goal=0
+    #[1] x = a ∨ x ∈ ∅ ⟷ x = a
+  ← rewrite_goal member_empty_simp sym=false goal=1
+    #[2] x = a ∨ false ⟷ x = a
+  ← rewrite_goal disj_false_right sym=false goal=2
+qed
+
+axiom member_univ
+  fixes x :: 'a
+  prop x ∈ univ ⟷ true
+  [hint_rewrite]
+
+axiom member_inter_iff
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop x ∈ A ∩ B ⟷ x ∈ A ∧ x ∈ B
+  [hint_rewrite]
+
+axiom inter_def
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop x ∈ A ∩ B ⟷ x ∈ A ∧ x ∈ B
+  [hint_rewrite]
+
+axiom member_union_iff
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop x ∈ A ∪ B ⟷ x ∈ A ∨ x ∈ B
+  [hint_rewrite]
+
+axiom member_diff
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop x ∈ diff A B ⟷ x ∈ A ∧ ¬(x ∈ B)
+  [hint_rewrite]
+
+axiom diff_def
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop x ∈ diff A B ⟷ x ∈ A ∧ ¬(x ∈ B)
+  [hint_rewrite]
+
+axiom member_delete
+  fixes x :: 'a, A :: 'a set, a :: 'a
+  prop x ∈ delete A a ⟷ x ∈ A ∧ ¬(x = a)
+  [hint_rewrite]
+
+axiom delete_def
+  fixes x :: 'a, A :: 'a set, a :: 'a
+  prop x ∈ delete A a ⟷ x ∈ A ∧ ¬(x = a)
+  [hint_rewrite]
+
+axiom member_collect
+  fixes x :: 'a, P :: 'a ⇒ bool
+  prop x ∈ collect P ⟷ P x
+  [hint_rewrite]
+
+axiom member_Union
+  fixes x :: 'a, A :: 'a set set
+  prop x ∈ ⋃A ⟷ (∃S. S ∈ A ∧ x ∈ S)
+  [hint_rewrite]
+
+axiom member_Inter
+  fixes x :: 'a, A :: 'a set set
+  prop x ∈ ⋂A ⟷ (∀S. S ∈ A ⟶ x ∈ S)
+  [hint_rewrite]
+
+axiom in_image
+  fixes y :: 'b, f :: 'a ⇒ 'b, A :: 'a set
+  prop y ∈ image f A ⟷ (∃x. x ∈ A ∧ y = f x)
+  [hint_rewrite]
+
+axiom image_def
+  fixes y :: 'b, f :: 'a ⇒ 'b, A :: 'a set
+  prop y ∈ image f A ⟷ (∃x. x ∈ A ∧ y = f x)
+  [hint_rewrite]
+
+axiom disjoint_def
+  fixes A :: 'a set, B :: 'a set
+  prop disjoint A B ⟷ A ∩ B = ∅
+  [hint_rewrite]
+
+axiom infinite_def
+  fixes A :: 'a set
+  prop infinite A ⟷ ¬(finite A)
+  [hint_rewrite]
+
+axiom has_size_def
+  fixes A :: 'a set, n :: nat
+  prop has_size A n ⟷ finite A ∧ card A = n
+  [hint_rewrite]
+
+axiom set_equal_iff
+  fixes A :: 'a set, B :: 'a set
+  prop A = B ⟷ (∀x. x ∈ A ⟷ x ∈ B)
+  [hint_rewrite]
+
+axiom member_ext
+  fixes A :: 'a set, B :: 'a set
+  prop A = B ⟷ (∀x. x ∈ A ⟷ x ∈ B)
+  [hint_rewrite]
+
+header "Subset"
+
+theorem subset_refl
+  fixes A :: 'a set
+  prop A Sub A
+  [hint_rewrite]
+
+theorem subset_trans
+  fixes A :: 'a set, B :: 'a set, C :: 'a set
+  prop A Sub B --> B Sub C --> A Sub C
+  [hint_backward]
+
+theorem subset_empty
+  fixes A :: 'a set
+  prop A Sub {} <--> A = {}
+  [hint_rewrite]
+proof
+  ← rewrite_goal subset_def sym=false goal=0
+    #[1] (∀x. x ∈ A ⟶ x ∈ ∅) ⟷ A = ∅
+  ← rewrite_goal member_empty_simp sym=false goal=1
+    #[2] (∀x. x ∈ A ⟶ false) ⟷ A = ∅
+  ← rewrite_goal set_equal_iff sym=false goal=2
+    #[3] (∀x. x ∈ A ⟶ false) ⟷ (∀x. x ∈ A ⟷ x ∈ ∅)
+  ← rewrite_goal member_empty_simp sym=false goal=3
+    #[4] (∀x. x ∈ A ⟶ false) ⟷ (∀x. x ∈ A ⟷ false)
+  ← rewrite_goal imp_false_iff sym=false goal=4
+    #[5] (∀x. ¬(x ∈ A)) ⟷ (∀x. x ∈ A ⟷ false)
+  ← rewrite_goal eq_false sym=false goal=5
+qed
+
+theorem subset_univ
+  fixes A :: 'a set
+  prop A Sub univ
+  [hint_rewrite]
+proof
+  ← rewrite_goal subset_def sym=false goal=0
+    #[1] ∀x. x ∈ A ⟶ x ∈ univ
+  ← rewrite_goal member_univ sym=false goal=1
+    #[2] ∀x. x ∈ A ⟶ true
+  ← introduction x goal=2
+    #[3] _VAR x
+    #[4] x ∈ A
+    #[5] true
+  ← apply_backward_step trueI goal=5
+    #[6] true
+qed
+
+theorem subset_union_id
+  fixes A :: 'a set, B :: 'a set
+  prop A Un B = A <--> B Sub A
+  [hint_rewrite]
+proof
+  ← rewrite_goal set_equal_iff sym=false goal=0
+    #[1] (∀x. x ∈ A ∪ B ⟷ x ∈ A) ⟷ B ⊆ A
+  ← rewrite_goal member_union_iff sym=false goal=1
+    #[2] (∀x. x ∈ A ∨ x ∈ B ⟷ x ∈ A) ⟷ B ⊆ A
+  ← rewrite_goal subset_def sym=false goal=2
+    #[3] (∀x. x ∈ A ∨ x ∈ B ⟷ x ∈ A) ⟷ (∀x. x ∈ B ⟶ x ∈ A)
+  ← rewrite_goal disj_iff_left sym=false goal=3
+qed
+
+theorem subset_diff
+  fixes A :: 'a set, B :: 'a set
+  prop diff A B Sub A
+  [hint_rewrite]
+
+header "Union and intersection"
+
+theorem inter_comm
+  fixes A :: 'a set, B :: 'a set
+  prop A Int B = B Int A
+  [hint_rewrite]
+
+theorem inter_subset_id
+  fixes A :: 'a set, B :: 'a set
+  prop A Int B = A <--> A Sub B
+  [hint_rewrite]
+proof
+  ← rewrite_goal set_equal_iff sym=false goal=0
+    #[1] (∀x. x ∈ A ∩ B ⟷ x ∈ A) ⟷ A ⊆ B
+  ← rewrite_goal member_inter_iff sym=false goal=1
+    #[2] (∀x. x ∈ A ∧ x ∈ B ⟷ x ∈ A) ⟷ A ⊆ B
+  ← rewrite_goal subset_def sym=false goal=2
+    #[3] (∀x. x ∈ A ∧ x ∈ B ⟷ x ∈ A) ⟷ (∀x. x ∈ A ⟶ x ∈ B)
+  ← rewrite_goal conj_iff_left sym=false goal=3
+qed
+
+theorem union_comm
+  fixes A :: 'a set, B :: 'a set
+  prop A Un B = B Un A
+  [hint_rewrite]
+
+theorem union_empty
+  fixes A :: 'a set
+  prop A Un {} = A
+  [hint_rewrite]
+proof
+  ← rewrite_goal set_equal_iff sym=false goal=0
+    #[1] ∀x. x ∈ A ∪ ∅ ⟷ x ∈ A
+  ← rewrite_goal member_union_iff sym=false goal=1
+    #[2] ∀x. x ∈ A ∨ x ∈ ∅ ⟷ x ∈ A
+  ← rewrite_goal member_empty_simp sym=false goal=2
+    #[3] ∀x. x ∈ A ∨ false ⟷ x ∈ A
+  ← rewrite_goal disj_false_right sym=false goal=3
+    #[4] ∀x. x ∈ A ⟷ x ∈ A
+  ← introduction x goal=4
+    #[5] _VAR x
+    #[6] x ∈ A ⟷ x ∈ A
+  ← reflexive goal=6
+qed
+
+header "Finite sets"
+
+theorem finite_empty
+  fixes A :: 'a set
+  prop finite ({}::'a set)
+  [hint_backward]
+
+theorem finite_insert
+  fixes A :: 'a set, a :: 'a
+  prop finite (insert a A) <--> finite A
+  [hint_backward,hint_rewrite]
+
+theorem finite_subset
+  fixes A :: 'a set, B :: 'a set
+  prop A Sub B --> finite B --> finite A
+  [hint_backward]
+
+theorem finite_union_imp
+  fixes A :: 'a set, B :: 'a set
+  prop finite A --> finite B --> finite (A Un B)
+  [hint_backward]
+
+theorem finite_inter
+  fixes A :: 'a set, B :: 'a set
+  prop finite A | finite B --> finite (A Int B)
+  [hint_backward]
+
+theorem finite_image
+  fixes f :: 'a => 'b, A :: 'a set
+  prop finite A --> finite (image f A)
+  [hint_backward]
+
+theorem finite_delete
+  fixes A :: 'a set, a :: 'a
+  prop finite (delete A a) <--> finite A
+  [hint_backward,hint_rewrite]
+
+theorem finite_diff
+  fixes A :: 'a set, B :: 'a set
+  prop finite A --> finite (diff A B)
+  [hint_backward]
+
+header "Image"
+
+theorem image_empty
+  fixes f :: 'a => 'b
+  prop image f {} = {}
+  [hint_rewrite]
+proof
+  ← rewrite_goal set_equal_iff sym=false goal=0
+    #[1] ∀x. x ∈ image f ∅ ⟷ x ∈ ∅
+  ← rewrite_goal in_image sym=false goal=1
+    #[2] ∀x. (∃x1. x1 ∈ ∅ ∧ x = f x1) ⟷ x ∈ ∅
+  ← rewrite_goal member_empty_simp sym=false goal=2
+    #[3] ∀x. (∃x1. false ∧ x = f x1) ⟷ false
+  ← rewrite_goal conj_false_right sym=false goal=3
+    #[4] ∀x::'b. (∃x1::'a. false) ⟷ false
+  ← rewrite_goal exists_false sym=false goal=4
+    #[5] ∀x::'b. false ⟷ false
+  ← introduction x goal=5
+    #[6] _VAR x
+    #[7] false ⟷ false
+  ← reflexive goal=7
+qed
+
+theorem image_insert
+  fixes f :: 'a => 'b, A :: 'a set, a :: 'a
+  prop image f (insert a A) = insert (f a) (image f A)
+  [hint_rewrite]
+
+theorem image_id
+  fixes A :: 'a set
+  prop image (%x. x) A = A
+  [hint_rewrite]
+proof
+  ← rewrite_goal set_equal_iff sym=false goal=0
+    #[1] ∀x. x ∈ image (λx1. x1) A ⟷ x ∈ A
+  ← rewrite_goal in_image sym=false goal=1
+    #[2] ∀x. (∃x1. x1 ∈ A ∧ x = x1) ⟷ x ∈ A
+  ← rewrite_goal exists_eq sym=false goal=2
+    #[3] ∀x. x ∈ A ⟷ x ∈ A
+  ← introduction x goal=3
+    #[4] _VAR x
+    #[5] x ∈ A ⟷ x ∈ A
+  ← reflexive goal=5
+qed
+
+theorem image_combine
+  fixes f :: 'b => 'c, g :: 'a => 'b, A :: 'a set
+  prop image f (image g A) = image (g O f) A
+  [hint_rewrite]
+
+theorem insert_delete
+  fixes A :: 'a set, a :: 'a
+  prop a Mem A --> insert a (delete A a) = A
+  [hint_rewrite]
+
+theorem exists_in_gspec1
+  fixes P :: 'a => bool, Q :: 'a => bool
+  prop (?x. x Mem {y. P y} & Q x) <--> (?x. P x & Q x)
+  [hint_rewrite]
+proof
+  ← rewrite_goal member_collect sym=false goal=0
+qed
+
+theorem forall_in_gspec1
+  fixes P :: 'a => bool, Q :: 'a => bool
+  prop (!x. x Mem {y. P y} --> Q x) <--> (!x. P x --> Q x)
+  [hint_rewrite]
+proof
+  ← rewrite_goal member_collect sym=false goal=0
+qed
+
+header "Cardinality and surjectivity"
+
+theorem card_image_inj
+  fixes f :: 'a => 'b, s :: 'a set
+  prop finite s --> (!x. !y. x Mem s --> y Mem s --> f x = f y --> x = y) --> card (image f s) = card s
+
+theorem surjective_iff_injective
+  fixes s :: 'a set, f :: 'a => 'a
+  prop finite s --> image f s Sub s --> (!y. y Mem s --> (?x. x Mem s & f x = y)) <--> (!x. !y. x Mem s --> y Mem s --> f x = f y --> x = y)
+
+header "Monotone operators and least fixed point"
+
+def bnd_mono :: ('a set ⇒ 'a set) ⇒ bool = bnd_mono h ⟷ (∀W. ∀X. W ⊆ X ⟶ h W ⊆ h X) [hint_rewrite]
+
+def lfp :: ('a set ⇒ 'a set) ⇒ 'a set = lfp h = ⋂({X. h X ⊆ X}) [hint_rewrite]
+
+theorem Union_union
+  fixes A :: 'a set set, B :: 'a set set
+  prop UN (A Un B) = UN A Un UN B
+  [hint_rewrite]
+proof
+  ← rewrite_goal set_equal_iff sym=false goal=0
+    #[1] ∀x. x ∈ ⋃(A ∪ B) ⟷ x ∈ ⋃A ∪ ⋃B
+  ← rewrite_goal member_union_iff sym=false goal=1
+    #[2] ∀x. x ∈ ⋃(A ∪ B) ⟷ x ∈ ⋃A ∨ x ∈ ⋃B
+  ← rewrite_goal member_Union sym=false goal=2
+    #[3] ∀x. (∃S. S ∈ A ∪ B ∧ x ∈ S) ⟷ (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S)
+  ← rewrite_goal member_union_iff sym=false goal=3
+    #[4] ∀x. (∃S. (S ∈ A ∨ S ∈ B) ∧ x ∈ S) ⟷ (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S)
+  ← rewrite_goal exists_disj_conj_distrib sym=false goal=4
+    #[5] ∀x. (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S) ⟷ (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S)
+  ← introduction x goal=5
+    #[6] _VAR x
+    #[7] (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S) ⟷ (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S)
+  ← reflexive goal=7
+qed
+
+theorem cantor
+  fixes f :: 'a => 'a set
+  prop ?S. !x. ~(f x = S)
+proof
+  ← inst_exists_goal "{x. ¬(x ∈ f x)}" goal=0
+    #[1] ∀x. ¬(f x = {x1. ¬(x1 ∈ f x1)})
+  ← introduction x goal=1
+    #[2] _VAR x
+    #[3] ¬(f x = {x1. ¬(x1 ∈ f x1)})
+  ← apply_backward_step negI goal=3
+    #[4] f x = {x1. ¬(x1 ∈ f x1)} ⟶ false
+  ← introduction goal=4
+    #[5] f x = {x1. ¬(x1 ∈ f x1)}
+    #[6] false
+  ← cases "x ∈ f x" goal=6
+    #[7] x ∈ f x ⟶ false
+    #[8] ¬(x ∈ f x) ⟶ false
+  ← introduction goal=7
+    #[9] x ∈ f x
+    #[10] false
+  -> rewrite_fact_with_prev goal=10 facts=[5,9]
+    #[11] x ∈ {x1. ¬(x1 ∈ f x1)}
+  -> rewrite_fact member_collect sym=false goal=10 facts=[11]
+    #[12] ¬(x ∈ f x)
+  ← apply_backward_step negE goal=10 facts=[12,9]
+  ← introduction goal=8
+    #[13] ¬(x ∈ f x)
+    #[14] false
+  -> rewrite_fact_with_prev goal=14 facts=[5,13]
+    #[15] ¬(x ∈ {x1. ¬(x1 ∈ f x1)})
+  -> rewrite_fact member_collect sym=false goal=14 facts=[15]
+    #[16] ¬¬(x ∈ f x)
+  ← apply_backward_step negE goal=14 facts=[16,13]
+qed
+
+theorem subsetE
+  fixes A :: 'a set, B :: 'a set, x :: 'a
+  prop A Sub B --> x Mem A --> x Mem B
+
+theorem subset_antisym
+  fixes A :: 'a set, B :: 'a set
+  prop A Sub B --> B Sub A --> A = B
+proof
+  ← introduction goal=0
+    #[1] A ⊆ B
+    #[2] B ⊆ A
+    #[3] A = B
+  ← rewrite_goal set_equal_iff sym=false goal=3
+    #[4] ∀x. x ∈ A ⟷ x ∈ B
+  ← introduction x goal=4
+    #[5] _VAR x
+    #[6] x ∈ A ⟷ x ∈ B
+  ← apply_backward_step iffI goal=6
+    #[7] x ∈ A ⟶ x ∈ B
+    #[8] x ∈ B ⟶ x ∈ A
+  ← introduction goal=7
+    #[9] x ∈ A
+    #[10] x ∈ B
+  -> apply_forward_step subsetE goal=10 facts=[1,9]
+    #[11] x ∈ B
+  ← introduction goal=8
+    #[12] x ∈ B
+    #[13] x ∈ A
+  -> apply_forward_step subsetE goal=13 facts=[2,12]
+    #[14] x ∈ A
+qed
+
+theorem lfp_lowerbound
+  fixes h :: 'a set => 'a set, A :: 'a set
+  prop h A Sub A --> lfp h Sub A
+
+theorem lfp_greatest
+  fixes h :: 'a set => 'a set, A :: 'a set
+  prop (!X. h X Sub X --> A Sub X) --> A Sub lfp h
+
+theorem lfp_fix_upper
+  fixes h :: 'a set => 'a set
+  prop bnd_mono h --> h (lfp h) Sub lfp h
+
+theorem lfp_fix_lower
+  fixes h :: 'a set => 'a set
+  prop bnd_mono h --> lfp h Sub h (lfp h)
+
+theorem lfp_unfold
+  fixes h :: 'a set => 'a set
+  prop bnd_mono h --> h (lfp h) = lfp h
+proof
+  ← introduction goal=0
+    #[1] bnd_mono h
+    #[2] h (lfp h) = lfp h
+  ← apply_backward_step subset_antisym goal=2
+    #[3] h (lfp h) ⊆ lfp h
+    #[4] lfp h ⊆ h (lfp h)
+  ← apply_backward_step lfp_fix_upper goal=3 facts=[1]
+  ← apply_backward_step lfp_fix_lower goal=4 facts=[1]
+qed
+

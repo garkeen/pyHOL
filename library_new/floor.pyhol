@@ -1,0 +1,352 @@
+theory floor
+imports realset
+description "The integer/rational-value reals, and the 'floor' and 'frac' functions."
+
+def integer :: real ⇒ bool = integer x ⟷ (∃n. abs x = of_nat n) [hint_rewrite]
+
+theorem integer_cases
+  fixes x :: real
+  prop integer x <--> (?n. x = of_nat n) | (?n. x = -(of_nat n))
+  [hint_rewrite]
+proof
+  ← rewrite_goal integer_def sym=false goal=0
+    #[1] (∃n. abs x = of_nat n) ⟷ (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
+  ← rewrite_goal abs_def sym=false goal=1
+    #[2] (∃n. (if 0 ≤ x then x else -x) = of_nat n) ⟷ (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
+  ← apply_backward_step iffI goal=2
+    #[3] (∃n. (if 0 ≤ x then x else -x) = of_nat n) ⟶ (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
+    #[4] (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n)) ⟶ (∃n. (if 0 ≤ x then x else -x) = of_nat n)
+  ← introduction goal=3
+    #[5] ∃n. (if 0 ≤ x then x else -x) = of_nat n
+    #[6] (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
+  ← cases "0 ≤ x" goal=6 facts=[5]
+    #[7] 0 ≤ x ⟶ (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
+    #[8] ¬(0 ≤ x) ⟶ (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
+  ← introduction goal=7
+    #[9] 0 ≤ x
+    #[10] (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
+  -> rewrite_fact if_P sym=false goal=10 facts=[5,9]
+    #[11] ∃n. x = of_nat n
+  ← apply_backward_step disjI1 goal=10
+  ← introduction goal=8
+    #[12] ¬(0 ≤ x)
+    #[13] (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
+  -> rewrite_fact if_not_P sym=false goal=13 facts=[5,12]
+    #[14] ∃n. -x = of_nat n
+  ← apply_backward_step disjI2 goal=13
+    #[15] ∃n. x = -(of_nat n)
+  exists_elim n goal=15 facts=[14]
+    #[16] _VAR n
+    #[17] -x = of_nat n
+    #[18] ∃n. x = -(of_nat n)
+    #[19] (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
+  ← inst_exists_goal n goal=18
+    #[20] x = -(of_nat n)
+  -> rewrite_fact eq_sym_eq sym=false goal=20 facts=[17]
+    #[21] of_nat n = -x
+  ← rewrite_goal_with_prev goal=20 facts=[21]
+    #[22] x = --x
+  ← rewrite_goal real_neg_neg sym=false goal=22
+    #[23] x = --x
+  ← introduction goal=4
+    #[24] (∃n. x = of_nat n) ∨ (∃n. x = -(of_nat n))
+    #[25] ∃n. (if 0 ≤ x then x else -x) = of_nat n
+  ← apply_backward_step disjE goal=25 facts=[24]
+    #[26] (∃n. x = of_nat n) ⟶ (∃n. (if 0 ≤ x then x else -x) = of_nat n)
+    #[27] (∃n. x = -(of_nat n)) ⟶ (∃n. (if 0 ≤ x then x else -x) = of_nat n)
+  ← introduction goal=26
+    #[28] ∃n. x = of_nat n
+    #[29] ∃n. (if 0 ≤ x then x else -x) = of_nat n
+  exists_elim n goal=29 facts=[28]
+    #[30] x = of_nat n
+    #[31] ∃n. (if 0 ≤ x then x else -x) = of_nat n
+  ← inst_exists_goal n goal=31
+    #[32] (if 0 ≤ x then x else -x) = of_nat n
+  cut "0 ≤ x" goal=32
+    #[33] 0 ≤ x
+  ← rewrite_goal_with_prev goal=33 facts=[30]
+    #[34] (0::real) ≤ of_nat n
+  ← apply_backward_step real_pos goal=34
+    #[35] (0::real) ≤ of_nat n
+  ← rewrite_goal if_P sym=false goal=32 facts=[33]
+  ← introduction goal=27
+    #[36] ∃n. x = -(of_nat n)
+    #[37] ∃n. (if 0 ≤ x then x else -x) = of_nat n
+  exists_elim n goal=37 facts=[36]
+    #[38] x = -(of_nat n)
+    #[39] ∃n. (if 0 ≤ x then x else -x) = of_nat n
+  ← inst_exists_goal n goal=39
+    #[40] (if 0 ≤ x then x else -x) = of_nat n
+  cut "(if 0 ≤ x then x else -x) = (if 0 ≤ -x then -x else x)" goal=40
+    #[41] (if 0 ≤ x then x else -x) = (if 0 ≤ -x then -x else x)
+  ← z3 goal=41
+    #[42] (if 0 ≤ x then x else -x) = (if 0 ≤ -x then -x else x)
+  ← rewrite_goal_with_prev goal=40 facts=[42]
+    #[43] (if 0 ≤ -x then -x else x) = of_nat n
+  cut "0 ≤ -x" goal=43
+    #[44] 0 ≤ -x
+  ← rewrite_goal_with_prev goal=44 facts=[38]
+    #[45] (0::real) ≤ --(of_nat n)
+  ← rewrite_goal real_neg_neg sym=false goal=45
+    #[46] (0::real) ≤ of_nat n
+  ← apply_backward_step real_pos goal=46
+  ← rewrite_goal if_P sym=false goal=43 facts=[44]
+    #[47] -x = of_nat n
+  ← rewrite_goal_with_prev goal=47 facts=[38]
+    #[48] --(of_nat n) = of_nat n
+  ← rewrite_goal real_neg_neg sym=false goal=48
+    #[49] --(of_nat n) = of_nat n
+qed
+
+theorem real_abs_integer_lemma
+  fixes x :: real
+  prop integer x --> ~(x = 0) --> 1 <= abs x
+  [hint_backward,hint_backward1]
+
+theorem integer_add
+  fixes x :: real, y :: real
+  prop integer x --> integer y --> integer (x + y)
+  [hint_backward,hint_backward1]
+
+theorem integer_sub
+  fixes x :: real, y :: real
+  prop integer x --> integer y --> integer (x - y)
+  [hint_backward,hint_backward1]
+
+theorem integer_mul
+  fixes x :: real, y :: real
+  prop integer x --> integer y --> integer (x * y)
+  [hint_backward,hint_backward1]
+
+theorem integer_pow
+  fixes n :: nat, x :: real
+  prop integer x --> integer (x ^ n)
+  [hint_backward]
+
+theorem integer_neg
+  fixes x :: real
+  prop integer (-x) <--> integer x
+  [hint_rewrite]
+proof
+  ← rewrite_goal integer_def sym=false goal=0
+    #[1] (∃n. abs (-x) = of_nat n) ⟷ (∃n. abs x = of_nat n)
+  ← rewrite_goal real_abs_neg sym=false goal=1
+qed
+
+def rational :: real ⇒ bool = rational x ⟷ (∃m. ∃n. integer m ∧ integer n ∧ ¬(n = 0) ∧ x = m / n)
+
+theorem real_truncate_pos
+  fixes x :: real
+  prop 0 <= x --> (?n. ?r. 0 <= r & r < 1 & x = of_nat n + r)
+
+theorem real_truncate
+  fixes x :: real
+  prop ?n. ?r. integer n & 0 <= r & r < 1 & x = n + r
+
+def floor :: real ⇒ real = floor x = (THE n. integer n ∧ 0 ≤ x - n ∧ x - n < 1)
+
+def frac :: real ⇒ real = frac x = (THE r. integer (x - r) ∧ 0 ≤ r ∧ r < 1)
+
+theorem floor_frac_1
+  fixes x :: real
+  prop integer (floor x)
+  [hint_backward]
+
+theorem floor_frac_2
+  fixes x :: real
+  prop 0 <= frac x
+  [hint_backward]
+
+theorem floor_frac_3
+  fixes x :: real
+  prop frac x < 1
+  [hint_backward]
+
+theorem floor_frac_4
+  fixes x :: real
+  prop x = floor x + frac x
+
+theorem floor_unique
+  fixes a :: real, x :: real
+  prop integer a & a <= x & x < a + 1 <--> floor x = a
+
+theorem floor_eq_0
+  fixes x :: real
+  prop floor x = 0 <--> 0 <= x & x < 1
+
+theorem floor
+  fixes x :: real
+  prop integer (floor x) & floor x <= x & x < floor x + 1
+  [hint_backward]
+
+theorem frac_floor
+  fixes x :: real
+  prop frac x = x - floor x
+
+theorem floor_nat
+  fixes n :: nat
+  prop floor (of_nat n) = of_nat n
+
+theorem real_le_floor
+  fixes n :: real, x :: real
+  prop integer n --> n <= floor x <--> n <= x
+  [hint_backward]
+
+theorem real_floor_le
+  fixes n :: real, x :: real
+  prop integer n --> floor x <= n <--> x - 1 < n
+  [hint_backward]
+
+theorem real_floor_lt
+  fixes n :: real, x :: real
+  prop integer n --> floor x < n <--> x < n
+  [hint_backward]
+
+theorem real_lt_floor
+  fixes n :: real, x :: real
+  prop integer n --> n < floor x <--> n <= x - 1
+  [hint_backward]
+
+theorem floor_pos
+  fixes x :: real
+  prop 0 <= x --> (?n. floor x = of_nat n)
+  [hint_backward]
+
+theorem floor_div_div
+  fixes m :: nat, n :: nat
+  prop ~(m = 0) --> floor (of_nat n / of_nat m) = of_nat (n DIV m)
+  [hint_backward]
+
+theorem floor_mono
+  fixes x :: real, y :: real
+  prop x <= y --> floor x <= floor y
+  [hint_backward]
+
+theorem real_floor_eq
+  fixes x :: real
+  prop floor x = x <--> integer x
+  [hint_rewrite]
+
+theorem real_floor_lt_refl
+  fixes x :: real
+  prop floor x < x <--> ~(integer x)
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_lt_le sym=false goal=0
+    #[1] floor x ≤ x ∧ ¬(floor x = x) ⟷ ¬(integer x)
+  ← apply_backward_step iffI goal=1
+    #[2] floor x ≤ x ∧ ¬(floor x = x) ⟶ ¬(integer x)
+    #[3] ¬(integer x) ⟶ floor x ≤ x ∧ ¬(floor x = x)
+  ← introduction goal=2
+    #[4] floor x ≤ x ∧ ¬(floor x = x)
+    #[5] ¬(integer x)
+  -> apply_forward_step conjD2 goal=5 facts=[4]
+    #[6] ¬(floor x = x)
+  -> rewrite_fact real_floor_eq sym=false goal=5 facts=[6]
+  ← introduction goal=3
+    #[7] ¬(integer x)
+    #[8] floor x ≤ x ∧ ¬(floor x = x)
+  ← apply_backward_step conjI goal=8
+    #[9] floor x ≤ x
+    #[10] ¬(floor x = x)
+  -> apply_forward_step floor param_x=x goal=9
+    #[11] integer (floor x) ∧ floor x ≤ x ∧ x < floor x + 1
+  -> apply_forward_step conjD2 goal=9 facts=[11]
+    #[12] floor x ≤ x ∧ x < floor x + 1
+  ← apply_backward_step conjD1 goal=9 facts=[12]
+    #[13] floor x ≤ x
+  ← rewrite_goal real_floor_eq sym=false goal=10
+qed
+
+theorem real_frac_eq_0
+  fixes x :: real
+  prop frac x = 0 <--> integer x
+  [hint_rewrite]
+
+theorem real_frac_pos_lt
+  fixes x :: real
+  prop 0 < frac x <--> ~(integer x)
+  [hint_rewrite]
+
+theorem frac_nat
+  fixes n :: nat
+  prop frac (of_nat n) = 0
+  [hint_rewrite]
+
+theorem real_floor_refl
+  fixes x :: real
+  prop integer x --> floor x = x
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] integer x
+    #[2] floor x = x
+  ← rewrite_goal real_floor_eq sym=false goal=2
+qed
+
+theorem real_frac_zero
+  fixes x :: real
+  prop integer x --> frac x = 0
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] integer x
+    #[2] frac x = 0
+  ← rewrite_goal real_frac_eq_0 sym=false goal=2
+qed
+
+theorem real_floor_add
+  fixes x :: real, y :: real
+  prop floor (x + y) = (if frac x + frac y < 1 then floor x + floor y else floor x + floor y + 1)
+  [hint_rewrite]
+
+theorem real_floor_triangle
+  fixes x :: real, y :: real
+  prop floor x + floor y <= floor (x + y) & floor (x + y) <= floor x + floor y + 1
+  [hint_backward]
+
+theorem real_floor_neg
+  fixes x :: real
+  prop floor (-x) = (if integer x then -x else -(floor x + 1))
+  [hint_rewrite]
+
+theorem real_frac_add
+  fixes x :: real, y :: real
+  prop frac (x + y) = (if frac x + frac y < 1 then frac x + frac y else frac x + frac y - 1)
+  [hint_rewrite]
+
+theorem floor_pos_le
+  fixes x :: real
+  prop 0 <= floor x <--> 0 <= x
+  [hint_rewrite]
+
+theorem frac_unique
+  fixes a :: real, x :: real
+  prop integer (x - a) & 0 <= a & a < 1 <--> frac x = a
+  [hint_rewrite]
+
+theorem real_frac_eq
+  fixes x :: real
+  prop frac x = x <--> 0 <= x & x < 1
+  [hint_rewrite]
+
+theorem integer_round
+  fixes x :: real
+  prop ?n. integer n & abs (x - n) <= 1 / 2
+  [hint_backward]
+
+theorem frac_div_mod
+  fixes m :: nat, n :: nat
+  prop ~(n = 0) --> frac (of_nat m / of_nat n) = of_nat (m MOD n) / of_nat n
+  [hint_backward]
+
+theorem frac_neg
+  fixes x :: real
+  prop frac (-x) = (if integer x then 0 else 1 - frac x)
+  [hint_rewrite]
+
+theorem real_floor_floor_div
+  fixes n :: nat, x :: real
+  prop floor (floor x / of_nat n) = floor (x / of_nat n)
+  [hint_rewrite]
+

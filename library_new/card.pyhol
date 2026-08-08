@@ -1,0 +1,73 @@
+theory card
+imports products
+description "Basic notions of cardinal arithmetic. Refer to card.ml from HOL Light."
+
+theorem nat_countable
+  prop countable (univ::nat set)
+  [hint_backward]
+
+theorem countable_subset
+  fixes s :: 'a set, t :: 'a set
+  prop countable t --> s Sub t --> countable s
+  [hint_backward,hint_backward1]
+
+theorem countable_restrict
+  fixes P :: 'a => bool, s :: 'a set
+  prop countable s --> countable ({x. x Mem s & P x})
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] countable s
+    #[2] countable ({x. x ∈ s ∧ P x})
+  ← apply_backward_step countable_subset goal=2 facts=[1]
+    #[3] {x. x ∈ s ∧ P x} ⊆ s
+  ← z3 goal=3
+    #[4] {x. x ∈ s ∧ P x} ⊆ s
+qed
+
+theorem countable_subset_nat
+  fixes s :: nat set
+  prop countable s
+  [hint_backward]
+proof
+  ← apply_backward_step countable_subset param_t="(univ::nat set)" goal=0
+    #[1] countable (univ::nat set)
+    #[2] s ⊆ univ
+  ← apply_backward_step nat_countable goal=1
+  ← apply_backward_step subset_univ goal=2
+qed
+
+theorem finite_imp_countable
+  fixes s :: 'a set
+  prop finite s --> countable s
+  [hint_backward]
+
+theorem countable_image
+  fixes f :: 'a => 'b, s :: 'a set
+  prop countable s --> countable (image f s)
+  [hint_backward]
+
+theorem countable_empty
+  prop countable ({}::'a set)
+  [hint_backward]
+
+theorem countable_inter
+  fixes s :: 'a set, t :: 'a set
+  prop countable s | countable t --> countable (s Int t)
+  [hint_backward]
+
+theorem countable_union_imp
+  fixes s :: 'a set, t :: 'a set
+  prop countable s --> countable t --> countable (s Un t)
+  [hint_backward]
+
+theorem countable_union
+  fixes s :: 'a set, t :: 'a set
+  prop countable (s Un t) <--> countable s & countable t
+  [hint_rewrite]
+
+theorem countable_sing
+  fixes x :: 'a
+  prop countable ({x})
+  [hint_backward]
+

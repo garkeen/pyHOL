@@ -1,0 +1,781 @@
+theory int
+imports list
+domains integer
+description "integers"
+
+type int
+
+const of_nat :: nat ⇒ int
+
+def zero :: int = (0::int) = of_nat 0
+
+def one :: int = (1::int) = of_nat 1
+
+const plus :: int ⇒ int ⇒ int
+
+def int_divides :: int ⇒ int ⇒ bool = int_divides p q ⟷ (∃m. m * p = q)
+
+const uminus :: 'a ⇒ 'a
+
+def abs :: 'a ⇒ 'a = abs n = (if 0 ≤ n then n else -n) [hint_rewrite]
+
+const less_eq :: int ⇒ int ⇒ bool
+
+const less :: int ⇒ int ⇒ bool
+
+theorem int_add_assoc
+  fixes x :: int, y :: int, z :: int
+  prop x + (y + z) = x + y + z
+proof
+  ← z3 goal=0
+qed
+
+theorem int_add_comm
+  fixes x :: int, y :: int
+  prop x + y = y + x
+
+theorem int_mult_assoc
+  fixes x :: int, y :: int, z :: int
+  prop x * (y * z) = x * y * z
+
+theorem int_mult_comm
+  fixes x :: int, y :: int
+  prop x * y = y * x
+
+theorem add_opp_r
+  fixes m :: int, n :: int
+  prop n + -m = n - m
+
+theorem sub_0_l
+  fixes n :: int
+  prop 0 - n = -n
+
+theorem sub_diag
+  fixes n :: int
+  prop n - n = 0
+
+theorem add_opp_diag_l
+  fixes n :: int
+  prop -n + n = 0
+
+theorem add_opp_diag_r
+  fixes n :: int
+  prop n + -n = 0
+
+theorem add_opp_l
+  fixes m :: int, n :: int
+  prop -m + n = n - m
+
+theorem add_sub_assoc
+  fixes m :: int, n :: int, p :: int
+  prop n + (m - p) = n + m - p
+
+theorem opp_involutive
+  fixes n :: int
+  prop --n = n
+
+theorem opp_add_distr
+  fixes m :: int, n :: int
+  prop -(n + m) = -n + -m
+
+theorem opp_sub_distr
+  fixes m :: int, n :: int
+  prop -(n - m) = -n + m
+
+theorem opp_inj
+  fixes m :: int, n :: int
+  prop -n = -m --> n = m
+
+theorem opp_inj_wd
+  fixes m :: int, n :: int
+  prop -n = -m <--> n = m
+
+theorem eq_opp_l
+  fixes m :: int, n :: int
+  prop -n = m <--> n = -m
+
+theorem eq_opp_r
+  fixes m :: int, n :: int
+  prop n = -m <--> -n = m
+
+theorem int_sub_add_distr
+  fixes m :: int, n :: int, p :: int
+  prop n - (m + p) = n - m - p
+
+theorem int_sub_sub_distr
+  fixes m :: int, n :: int, p :: int
+  prop n - (m - p) = n - m + p
+
+theorem sub_opp_l
+  fixes m :: int, n :: int
+  prop -n - m = -m - n
+
+theorem sub_opp_r
+  fixes m :: int, n :: int
+  prop n - -m = n + m
+
+theorem add_sub_swap
+  fixes m :: int, n :: int, p :: int
+  prop n + m - p = n - p + m
+
+theorem sub_cancel_l
+  fixes m :: int, n :: int, p :: int
+  prop n - m = n - p <--> m = p
+
+theorem sub_cancel_r
+  fixes m :: int, n :: int, p :: int
+  prop n - p = m - p <--> n = m
+
+theorem add_move_l
+  fixes m :: int, n :: int, p :: int
+  prop n + m = p <--> m = p - n
+
+theorem add_move_r
+  fixes m :: int, n :: int, p :: int
+  prop n + m = p <--> n = p - m
+
+theorem sub_move_l
+  fixes m :: int, n :: int, p :: int
+  prop n - m = p <--> -m = p - n
+
+theorem add_move_0_1
+  fixes m :: int, n :: int
+  prop n + m = 0 <--> m = -n
+
+theorem add_move_0_r
+  fixes m :: int, n :: int
+  prop n + m = 0 <--> n = -m
+
+theorem sub_move_0_l
+  fixes m :: int, n :: int
+  prop n - m = 0 <--> -m = n
+
+theorem int_sub_move_0_r
+  fixes m :: int, n :: int
+  prop n - m = 0 <--> n = m
+
+theorem add_simpl_l
+  fixes m :: int, n :: int
+  prop n + m - n = m
+
+theorem add_simpl_r
+  fixes m :: int, n :: int
+  prop n + m - m = n
+
+theorem sub_simpl_l
+  fixes m :: int, n :: int
+  prop -n - m + n = -m
+
+theorem sub_simp_r
+  fixes m :: int, n :: int
+  prop n - m + m = n
+
+theorem add_add_simpl_l_l
+  fixes m :: int, n :: int, p :: int
+  prop n + m - (n + p) = m - p
+
+theorem add_add_simpl_l_r
+  fixes m :: int, n :: int, p :: int
+  prop n + m - (p + n) = m - p
+
+theorem add_add_simpl_r_l
+  fixes m :: int, n :: int, p :: int
+  prop n + m - (m + p) = n - p
+
+theorem add_add_simpl_r_r
+  fixes m :: int, n :: int, p :: int
+  prop n + m - (p + m) = n - p
+
+theorem sub_add_simpl_r_l
+  fixes m :: int, n :: int, p :: int
+  prop n - m + (m + p) = n + p
+
+theorem sub_add_simpl_r_r
+  fixes m :: int, n :: int, p :: int
+  prop n - m + (p + m) = n + p
+
+theorem add_neg_neg
+  fixes m :: int, n :: int
+  prop n < 0 --> m < 0 --> n + m < 0
+
+theorem add_neg_nonpos
+  fixes m :: int, n :: int
+  prop n < 0 --> m <= 0 --> n + m < 0
+
+theorem add_nonpos_neg
+  fixes m :: int, n :: int
+  prop n <= 0 --> m < 0 --> n + m < 0
+
+theorem add_nonpos_nonpos
+  fixes m :: int, n :: int
+  prop n <= 0 --> m <= 0 --> n + m <= 0
+
+theorem lt_0_sub
+  fixes m :: int, n :: int
+  prop 0 < m - n <--> n < m
+
+theorem le_0_sub
+  fixes m :: int, n :: int
+  prop 0 <= m - n <--> n <= m
+
+theorem opp_lt_mono
+  fixes m :: int, n :: int
+  prop n < m <--> -m < -n
+
+theorem opp_le_mono
+  fixes m :: int, n :: int
+  prop n <= m <--> -m <= -n
+
+theorem opp_pos_neg
+  fixes m :: int, n :: int
+  prop 0 < -n <--> n < 0
+
+theorem opp_neg_pos
+  fixes m :: int, n :: int
+  prop -n < 0 <--> 0 < n
+
+theorem opp_nonneg_nonpos
+  fixes m :: int, n :: int
+  prop 0 <= -n <--> n <= 0
+
+theorem opp_nonpos_nonneg
+  fixes n :: int
+  prop -n <= 0 <--> 0 <= n
+
+theorem sub_lt_mono_l
+  fixes m :: int, n :: int, p :: int
+  prop n < m <--> p - m < p - n
+
+theorem sub_lt_mono_r
+  fixes m :: int, n :: int, p :: int
+  prop n < m <--> n - p < m - p
+
+theorem sub_lt_mono
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n < m --> q < p --> n - p < m - q
+
+theorem sub_le_mono_l
+  fixes m :: int, n :: int, p :: int
+  prop n <= m <--> p - m <= p - n
+
+theorem sub_le_mono_r
+  fixes m :: int, n :: int, p :: int
+  prop n <= m <--> n - p <= m - p
+
+theorem sub_le_mono
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n <= m --> q <= p --> n - p <= m - q
+
+theorem sub_lt_le_mono
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n < m --> q <= p --> n - p < m - q
+
+theorem sub_le_lt_mono
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n <= m --> q < p --> n - p < m - q
+
+theorem le_lt_sub_lt
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n <= m --> p - n < q - m --> p < q
+
+theorem lt_le_sub_lt
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n < m --> p - n <= q - m --> p < q
+
+theorem le_le_sub_lt
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n <= m --> p - n <= q - m --> p < q
+
+theorem lt_add_lt_sub_r
+  fixes m :: int, n :: int, p :: int
+  prop n + p < m <--> n < m - p
+
+theorem le_add_le_sub_r
+  fixes m :: int, n :: int, p :: int
+  prop n + p <= m <--> n <= m - p
+
+theorem lt_add_lt_sub_l
+  fixes m :: int, n :: int, p :: int
+  prop n + p < m <--> p < m - n
+
+theorem le_add_le_sub_l
+  fixes m :: int, n :: int, p :: int
+  prop n + p <= m <--> p <= m - n
+
+theorem lt_sub_lt_add_r
+  fixes m :: int, n :: int, p :: int
+  prop n - p < m <--> n < m + p
+
+theorem le_sub_le_add_r
+  fixes m :: int, n :: int, p :: int
+  prop n - p <= m <--> n <= m + p
+
+theorem lt_sub_lt_add_l
+  fixes m :: int, n :: int, p :: int
+  prop n - m < p <--> n < m + p
+
+theorem le_sub_le_add_l
+  fixes m :: int, n :: int, p :: int
+  prop n - m <= p <--> n <= m + p
+
+theorem lt_sub_lt_add
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n - m < p - q <--> n + q < m + p
+
+theorem le_sub_le_add
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n - m <= p - q <--> n + q <= m + p
+
+theorem lt_sub_pos
+  fixes m :: int, n :: int
+  prop 0 < m <--> n - m < n
+
+theorem le_sub_nonneg
+  fixes m :: int, n :: int
+  prop 0 <= m <--> n - m <= n
+
+theorem sub_lt_cases
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n - m < p - q --> n < m | q < p
+
+theorem sub_le_cases
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n - m <= p - q --> n <= m | q <= p
+
+theorem sub_neg_cases
+  fixes m :: int, n :: int
+  prop n - m < 0 --> n < 0 | 0 < m
+
+theorem sub_pos_cases
+  fixes m :: int, n :: int
+  prop 0 < n - m --> 0 < n | m < 0
+
+theorem sub_nonpos_cases
+  fixes m :: int, n :: int
+  prop n - m <= 0 --> n <= 0 | 0 <= m
+
+theorem sub_nonneg_cases
+  fixes m :: int, n :: int
+  prop 0 <= n - m --> 0 <= n | m <= 0
+
+theorem neg_pos_cases
+  fixes n :: int
+  prop ~(n = 0) <--> n < 0 | n > 0
+
+theorem nonpos_pos_cases
+  fixes n :: int
+  prop n <= 0 | n > 0
+
+theorem neg_nonneg_cases
+  fixes n :: int
+  prop n < 0 | n >= 0
+
+theorem nonpos_nonneg_cases
+  fixes n :: int
+  prop n <= 0 | n >= 0
+
+theorem int_mul_0_r
+  fixes n :: int
+  prop n * 0 = 0
+
+theorem int_mul_add_distr_r
+  fixes m :: int, n :: int, p :: int
+  prop (n + m) * p = n * p + m * p
+
+theorem int_mul_add_distr_l
+  fixes m :: int, n :: int, p :: int
+  prop n * (m + p) = n * m + n * p
+
+theorem int_mul_1_l
+  fixes n :: int
+  prop 1 * n = n
+
+theorem int_mul_1_r
+  fixes n :: int
+  prop n * 1 = n
+
+theorem mul_shuffle0
+  fixes m :: int, n :: int, p :: int
+  prop n * m * p = n * p * m
+
+theorem mul_shuffle1
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n * m * (p * q) = n * p * (m * q)
+
+theorem mul_shuffle2
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n * m * (p * q) = n * q * (m * p)
+
+theorem mul_shuffle3
+  fixes m :: int, n :: int, p :: int, q :: int
+  prop n * (m * p) = m * (n * p)
+
+theorem mul_opp_l
+  fixes m :: int, n :: int
+  prop -n * m = -(n * m)
+
+theorem mul_opp_r
+  fixes m :: int, n :: int
+  prop n * -m = -(n * m)
+
+theorem mul_opp_opp
+  fixes m :: int, n :: int
+  prop -n * -m = n * m
+
+theorem mul_opp_comm
+  fixes m :: int, n :: int
+  prop -n * m = n * -m
+
+theorem mul_sub_distr_l
+  fixes m :: int, n :: int, p :: int
+  prop n * (m - p) = n * m - n * p
+
+theorem mul_sub_distr_r
+  fixes m :: int, n :: int, p :: int
+  prop (n - m) * p = n * p - m * p
+
+theorem int_poly_neg1
+  fixes m :: int
+  prop -m = -1 * m
+
+theorem int_poly_neg2
+  fixes m :: int, n :: int
+  prop m - n = m + -1 * n
+
+theorem int_power_1
+  fixes m :: int
+  prop m ^ (1::int) = m
+
+theorem int_power_add
+  fixes m :: int, p :: nat, q :: nat
+  prop m ^ (p + q) = m ^ p * m ^ q
+
+theorem int_add_0_right
+  fixes n :: int
+  prop n + 0 = n
+
+theorem int_add_0_left
+  fixes n :: int
+  prop 0 + n = n
+
+theorem int_sub_n_0
+  fixes n :: int
+  prop n - 0 = n
+
+theorem int_mul_0_l
+  fixes n :: int
+  prop 0 * n = 0
+
+theorem int_pow_1_r
+  fixes n :: int
+  prop n ^ (1::nat) = n
+
+theorem int_less
+  fixes m :: int, n :: int
+  prop m < n <--> m - n < 0
+
+theorem int_leq
+  fixes m :: int, n :: int
+  prop m <= n <--> m - n <= 0
+
+theorem int_gt
+  fixes m :: int, n :: int
+  prop m > n <--> m - n > 0
+
+theorem int_geq
+  fixes m :: int, n :: int
+  prop m >= n <--> m - n >= 0
+
+theorem int_lesseq_0
+  fixes m :: int, n :: int
+  prop m <= 0 <--> m < 1
+
+theorem int_greater_less
+  fixes m :: int
+  prop m > 0 <--> -m < 0
+
+theorem int_greatereq_less
+  fixes m :: int
+  prop m >= 0 <--> -m < 1
+
+theorem int_pos_mul_less
+  fixes c :: int, m :: int, n :: int
+  prop c > 0 --> m < n <--> c * m < c * n
+
+theorem int_neg_mul_less
+  fixes c :: int, m :: int, n :: int
+  prop c < 0 --> m < n <--> c * m > c * n
+
+theorem int_pos_mul_less_eq
+  fixes c :: int, m :: int, n :: int
+  prop c > 0 --> m <= n <--> c * m <= c * n
+
+theorem int_neg_mul_less_eq
+  fixes c :: int, m :: int, n :: int
+  prop c < 0 --> m <= n <--> c * m >= c * n
+
+theorem int_pos_mul_greater
+  fixes c :: int, m :: int, n :: int
+  prop c > 0 --> m > n <--> c * m > c * n
+
+theorem int_neg_mul_greater
+  fixes c :: int, m :: int, n :: int
+  prop c < 0 --> m > n --> c * m < c * n
+
+theorem int_pos_mul_greater_eq
+  fixes c :: int, m :: int, n :: int
+  prop c > 0 --> m >= n --> c * m >= c * n
+
+theorem int_neg_mul_greater_eq
+  fixes c :: int, m :: int, n :: int
+  prop c < 0 --> m >= n --> c * m <= c * n
+
+theorem int_great_to_geq
+  fixes m :: int
+  prop m > 0 <--> m >= 1
+
+theorem int_leq_to_geq
+  fixes m :: int
+  prop m <= 0 <--> -m >= 0
+
+theorem int_less_to_geq
+  fixes m :: int
+  prop m < 0 <--> -m >= 1
+
+theorem int_geq_comp1
+  fixes a :: int, b :: int, x :: int
+  prop x >= a --> x >= b --> a >= b --> x >= a
+
+theorem int_geq_comp2
+  fixes a :: int, b :: int, x :: int
+  prop x >= a --> x >= b --> b >= a --> x >= b
+
+theorem int_leq_comp1
+  fixes a :: int, b :: int, x :: int
+  prop x <= a --> x <= b --> a <= b --> x <= a
+
+theorem int_leq_comp2
+  fixes a :: int, b :: int, x :: int
+  prop x <= a --> x <= b --> b <= a --> x <= b
+
+theorem int_comp_contr1
+  fixes a :: int, b :: int, x :: int
+  prop a < b --> x >= b --> x <= a --> false
+
+theorem int_comp_contr2
+  fixes a :: int, b :: int, x :: int
+  prop a < b --> b <= x --> x <= a --> false
+
+theorem int_times_0
+  fixes a :: int, x :: int
+  prop x = 0 --> a * x = 0
+
+theorem int_add_uminus
+  fixes x :: int, y :: int
+  prop x + -1 * y = 0 <--> x = y
+
+theorem int_leq_mul_neg
+  fixes a :: int, u :: int, x :: int
+  prop x <= u --> a < 0 --> a * u <= a * x
+
+theorem int_geq_mul_pos
+  fixes a :: int, l :: int, x :: int
+  prop x >= l --> a > 0 --> a * l <= a * x
+
+theorem int_leq_pair_plus
+  fixes a :: int, b :: int, c :: int, d :: int
+  prop a <= b --> c <= d --> a + c <= b + d
+
+theorem int_leq_mul_pos
+  fixes a :: int, u :: int, x :: int
+  prop x <= u --> a > 0 --> a * x <= a * u
+
+theorem int_geq_mul_less
+  fixes a :: int, l :: int, x :: int
+  prop x >= l --> a < 0 --> a * x <= a * l
+
+theorem int_link_interval
+  fixes i :: int, l :: int, u :: int, x :: int
+  prop (x >= l --> x <= i --> false) --> (x >= i + 1 --> x <= u --> false) --> x >= l --> x <= u --> false
+
+theorem int_less_pair_add
+  fixes a :: int, b :: int, c :: int, d :: int
+  prop a < b --> c < d --> a + c < b + d
+
+theorem int_lesseq_pair_add
+  fixes a :: int, b :: int, c :: int, d :: int
+  prop a <= b --> c <= d --> a + c <= b + d
+
+theorem int_greater_pair_add
+  fixes a :: int, b :: int, c :: int, d :: int
+  prop a > b --> c > d --> a + c > b + d
+
+theorem int_greatereq_pair_add
+  fixes a :: int, b :: int, c :: int, d :: int
+  prop a >= b --> c >= d --> a + c >= b + d
+
+theorem int_gcd_pos
+  fixes c :: int, d :: int, n :: int, x :: int
+  prop c > 0 --> 0 <= c * x + d --> 0 > c * n + d --> 0 < c * (n + 1) + d --> 0 <= x - (n + 1)
+
+theorem int_gcd_neg
+  fixes c :: int, d :: int, n :: int, x :: int
+  prop c < 0 --> 0 <= c * x + d --> 0 < c * n + d --> 0 > c * (n + 1) + d --> 0 <= -1 * x + n
+
+theorem int_gcd_divide
+  fixes c :: int, x :: int, y :: int
+  prop c > 1 --> 0 <= x --> x = c * y --> 0 <= y
+
+theorem int_gcd
+  fixes c :: int, d :: int, m :: int, n :: int, x :: int, y :: int
+  prop c > 0 --> 0 <= x + d --> c * y = x --> c * n + d < 0 --> c * (n + 1) + d > 0 --> 0 <= 1 * y + -(n + 1)
+proof
+  ← introduction goal=0
+    #[1] c > 0
+    #[2] 0 ≤ x + d
+    #[3] c * y = x
+    #[4] c * n + d < 0
+    #[5] c * (n + 1) + d > 0
+    #[6] 0 ≤ 1 * y + -(n + 1)
+  ← z3 goal=6 facts=[1,2,3,4,5]
+qed
+
+theorem int_gcd_1
+  fixes c :: int, x :: int, y :: int
+  prop c > 0 --> 0 <= x --> x = c * y --> 0 <= y
+
+theorem int_geq_zero_mul_pos
+  fixes c :: int, x :: int
+  prop c > 0 --> 0 <= x --> 0 <= c * x
+
+theorem int_geq_zero_mul_neg
+  fixes c :: int, x :: int
+  prop c < 0 --> 0 <= x --> 0 <= -1 * c * x
+
+theorem int_pos_plus
+  fixes x :: int, y :: int
+  prop 0 <= x --> 0 <= y --> 0 <= x + y
+
+theorem int_zero_less
+  fixes x :: int, y :: int
+  prop x < y <--> 0 <= y - x - 1
+
+theorem int_zero_less_eq
+  fixes x :: int, y :: int
+  prop x <= y <--> 0 <= y - x
+
+theorem int_zero_greater
+  fixes x :: int, y :: int
+  prop x > y <--> 0 <= x - y - 1
+
+theorem int_zero_greater_eq
+  fixes x :: int, y :: int
+  prop x >= y <--> 0 <= x - y
+
+theorem int_comp_contr
+  fixes a :: int, b :: int, x :: int
+  prop 0 <= x + a --> 0 <= -1 * x + b --> -a > b --> false
+
+theorem int_zero_less_eq_neg
+  fixes x :: int
+  prop x < 0 --> 0 <= x --> false
+proof
+  ← introduction goal=0
+    #[1] x < 0
+    #[2] 0 ≤ x
+    #[3] false
+  ← z3 goal=3 facts=[2,1]
+qed
+
+theorem int_pos_neg_eq_0
+  fixes x :: int
+  prop x = 0 <--> -1 * x = 0
+
+theorem int_eq_leq_geq
+  fixes x :: int, y :: int
+  prop x = y <--> x <= y & x >= y
+
+theorem int_not_less
+  fixes x :: int, y :: int
+  prop ~(x < y) <--> x >= y
+
+theorem int_not_less_eq
+  fixes x :: int, y :: int
+  prop ~(x <= y) <--> x > y
+
+theorem int_not_greater
+  fixes x :: int, y :: int
+  prop ~(x > y) <--> x <= y
+
+theorem int_not_greater_eq
+  fixes x :: int, y :: int
+  prop ~(x >= y) <--> x < y
+
+theorem int_eq_geq_leq_conj
+  fixes x :: int, y :: int
+  prop x = y <--> x >= y & x <= y
+
+theorem int_omega_leq_comp_simp
+  fixes c :: int, x :: int
+  prop c > 0 --> 0 <= c * x <--> 0 <= x
+
+theorem int_simp_gt
+  fixes c :: int, x :: int
+  prop c > 0 --> c * x > 0 <--> x > 0
+
+theorem int_simp_geq
+  fixes c :: int, x :: int
+  prop c > 0 --> c * x >= 0 <--> x >= 0
+
+theorem int_simp_less
+  fixes c :: int, x :: int
+  prop c > 0 --> c * x < 0 <--> x < 0
+
+theorem int_simp_leq
+  fixes c :: int, x :: int
+  prop c > 0 --> c * x <= 0 <--> x <= 0
+
+theorem int_pos_neq_zero
+  fixes x :: int
+  prop x > 0 --> x = 0 <--> false
+
+theorem int_neg_neq_zero
+  fixes x :: int
+  prop x < 0 --> x = 0 <--> false
+
+theorem int_less_to_leq
+  fixes x :: int, y :: int
+  prop x < y <--> x <= y - 1
+
+theorem int_gt_to_geq
+  fixes x :: int, y :: int
+  prop x > y <--> x >= y + 1
+
+theorem int_geq_shift
+  fixes c :: int, x :: int
+  prop x + c >= 0 <--> x >= -c
+
+theorem int_leq_shift
+  fixes c :: int, x :: int
+  prop x + c <= 0 <--> x <= -c
+
+theorem int_neg_equal
+  fixes c :: int, x :: int
+  prop ~(x = c) <--> x > c | x < c
+
+theorem int_ite_tau
+  fixes P :: bool, x :: int, y :: int
+  prop ~P | x = (if P then x else y)
+
+theorem int_eq_move_left
+  fixes x :: int, y :: int
+  prop x = y <--> x - y = 0
+
+theorem int_ite01
+  fixes P :: bool, x :: int, y :: int, z :: int
+  prop x = (if P then y else z) <--> P & x = y | ~P & x = z
+
+theorem int_geq_leq_true
+  fixes x :: int, y :: int
+  prop (x <= y --> false) & (x >= y + 1 --> false) <--> false
+

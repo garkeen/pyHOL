@@ -1,0 +1,641 @@
+theory verit
+imports real
+description "Schematic verit proof rule."
+
+theorem forall_inst
+  fixes P :: 'a => bool, x :: 'a
+  prop ~(!x1. P x1) | P x
+
+theorem or_pos
+  fixes P :: bool
+  prop ~P | P
+
+theorem disj_swap_eq
+  fixes P :: bool, Q :: bool, R :: bool
+  prop P | Q | R <--> Q | P | R
+
+theorem equiv1
+  fixes P :: bool, Q :: bool
+  prop P <--> Q --> ~P | Q
+
+theorem equiv2
+  fixes P :: bool, Q :: bool
+  prop P <--> Q --> P | ~Q
+
+theorem not_equiv1
+  fixes P :: bool, Q :: bool
+  prop ~(P <--> Q) --> P | Q
+
+theorem not_equiv2
+  fixes P :: bool, Q :: bool
+  prop ~(P <--> Q) --> ~P | ~Q
+
+theorem equiv_pos1
+  fixes P :: bool, Q :: bool
+  prop ~(P <--> Q) | P | ~Q
+
+theorem equiv_pos2
+  fixes P :: bool, Q :: bool
+  prop ~(P <--> Q) | ~P | Q
+
+theorem equiv_neg1
+  fixes P :: bool, Q :: bool
+  prop (P <--> Q) | ~P | ~Q
+
+theorem equiv_neg2
+  fixes P :: bool, Q :: bool
+  prop (P <--> Q) | P | Q
+
+theorem tmp_LA_pre_int
+  fixes x :: int, y :: int
+  prop x = y <--> x <= y & y <= x
+
+theorem not_implies1
+  fixes P :: bool, Q :: bool
+  prop ~(P --> Q) --> P
+
+theorem not_implies2
+  fixes P :: bool, Q :: bool
+  prop ~(P --> Q) --> ~Q
+
+theorem verit_ite1
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (if P then Q else R) --> P | R
+
+theorem verit_ite2
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (if P then Q else R) --> ~P | Q
+
+theorem verit_not_ite1
+  fixes P :: bool, Q :: bool, R :: bool
+  prop ~(if P then Q else R) --> P | ~R
+
+theorem verit_not_ite2
+  fixes P :: bool, Q :: bool, R :: bool
+  prop ~(if P then Q else R) --> ~P | ~Q
+
+theorem la_disequality_int
+  fixes a :: int, b :: int
+  prop a = b | ~(a <= b) | ~(b <= a)
+
+theorem la_disequality_real
+  fixes a :: real, b :: real
+  prop a = b | ~(a <= b) | ~(b <= a)
+
+theorem neg_neg
+  fixes A :: bool
+  prop ~~~A | A
+
+fun let :: 'a ⇒ ('a ⇒ 'b) ⇒ 'b
+  | let s f = f s
+
+theorem connective_def1
+  fixes P :: bool, Q :: bool
+  prop (P <--> Q) <--> (P --> Q) & (Q --> P)
+
+theorem verit_ite_intro
+  fixes P :: bool, x :: 'a, y :: 'a
+  prop if P then x = (if P then x else y) else y = (if P then x else y)
+
+theorem verit_eq_conj
+  fixes P :: bool, Q :: bool
+  prop Q --> P <--> P & Q
+proof
+  ← introduction goal=0
+    #[1] Q
+    #[2] P ⟷ P ∧ Q
+  ← apply_backward_step iffI goal=2
+    #[3] P ⟶ P ∧ Q
+    #[4] P ∧ Q ⟶ P
+  ← introduction goal=3
+    #[5] P
+    #[6] P ∧ Q
+  ← apply_backward_step conjI goal=6 facts=[5]
+  ← introduction goal=4
+    #[7] P ∧ Q
+    #[8] P
+  ← apply_backward_step conjD1 goal=8 facts=[7]
+    #[9] P
+qed
+
+theorem verit_implies_neg1
+  fixes P :: bool, Q :: bool
+  prop (P --> Q) | P
+
+theorem verit_implies_neg2
+  fixes P :: bool, Q :: bool
+  prop (P --> Q) | ~Q
+
+theorem verit_not_simplify1
+  prop ~true <--> false
+
+theorem verit_not_simplify2
+  prop ~false <--> true
+
+theorem verit_minus_simplify_3_real
+  fixes t :: real
+  prop t = t - 0
+
+theorem verit_minus_simplify_3_int
+  fixes t :: int
+  prop t = t - 0
+
+theorem verit_minus_simplify_4_real
+  fixes t :: real
+  prop 0 - t = -t
+
+theorem verit_minus_simplify_4_int
+  fixes t :: int
+  prop 0 - t = -t
+
+theorem verit_bool_simplify1
+  fixes P :: bool, Q :: bool
+  prop ~(P --> Q) <--> P & ~Q
+
+theorem verit_bool_simplify4
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (P --> Q --> R) <--> (P & Q --> R)
+
+theorem verit_bool_simplify5
+  fixes P :: bool, Q :: bool
+  prop ((P --> Q) --> Q) <--> P | Q
+
+theorem verit_bool_simplify6
+  fixes P :: bool, Q :: bool
+  prop P & (P --> Q) <--> P & Q
+
+theorem verit_bool_simplify7
+  fixes P :: bool, Q :: bool
+  prop (P --> Q) & P <--> P & Q
+
+theorem verit_equiv_simplify1
+  fixes P :: bool, Q :: bool
+  prop (~P <--> ~Q) <--> P <--> Q
+
+theorem verit_equiv_simplify2
+  fixes P :: bool
+  prop (P <--> P) <--> true
+
+theorem verit_equiv_simplify3
+  fixes P :: bool
+  prop (P <--> ~P) <--> false
+
+theorem verit_equiv_simplify4
+  fixes P :: bool
+  prop (~P <--> P) <--> false
+
+theorem verit_equiv_simplify5
+  fixes P :: bool
+  prop (true <--> P) <--> P
+
+theorem verit_equiv_simplify6
+  fixes P :: bool
+  prop (P <--> true) <--> P
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] P ⟷ true ⟶ P
+    #[2] P ⟶ P ⟷ true
+  ← introduction goal=1
+    #[3] P ⟷ true
+    #[4] P
+  ← rewrite_goal_with_prev goal=4 facts=[3]
+    #[5] true
+  ← apply_backward_step trueI goal=5
+    #[6] true
+  ← introduction goal=2
+    #[7] P
+    #[8] P ⟷ true
+  ← apply_backward_step iffI goal=8
+    #[9] P ⟶ true
+    #[10] true ⟶ P
+  ← introduction goal=9
+    #[11] true
+  ← apply_backward_step trueI goal=11
+  ← introduction goal=10
+    #[12] true
+qed
+
+theorem verit_equiv_simplify7
+  fixes P :: bool
+  prop (false <--> P) <--> ~P
+
+theorem verit_equiv_simplify8
+  fixes P :: bool
+  prop (P <--> false) <--> ~P
+
+theorem verit_conj_pos_neg
+  fixes P :: bool
+  prop P & ~P --> false
+
+theorem verit_lw_rw_eq_real
+  fixes x :: real, y :: real
+  prop x = y <--> x <= y & y <= x
+proof
+  ← rewrite_goal real_le_antisym sym=false goal=0
+qed
+
+theorem verit_lw_rw_eq_int
+  fixes x :: int, y :: int
+  prop x = y <--> x <= y & y <= x
+
+theorem verit_ite_pos1
+  fixes P :: bool, Q :: bool, R :: bool
+  prop ~(if P then Q else R) | P | R
+
+theorem verit_ite_pos2
+  fixes P :: bool, Q :: bool, R :: bool
+  prop ~(if P then Q else R) | ~P | Q
+
+theorem verit_ite_neg1
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (if P then Q else R) | P | ~R
+
+theorem verit_ite_neg2
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (if P then Q else R) | ~P | ~Q
+
+theorem verit_bfun_elim_exists
+  fixes t :: bool => bool, x :: bool
+  prop (?x. t x) <--> t false | t true
+
+theorem verit_bfun_elim_forall
+  fixes t :: bool => bool, x :: bool
+  prop (!x. t x) <--> t false & t true
+
+theorem verit_bfun_elim
+  fixes f :: bool => 'a, t :: bool
+  prop f t = (if t then f true else f false)
+
+theorem verit_ite_apply
+  fixes P :: bool, f :: 'a => 'b, g :: 'a => 'b, x :: 'a
+  prop (if P then f else g) x = (if P then f x else g x)
+proof
+  ← rewrite_goal cond_rator sym=false goal=0
+qed
+
+theorem verit_la_generic_neg_greater_int1
+  fixes x :: int, y :: int
+  prop ~(x > y) <--> ~(y < x)
+
+theorem verit_la_generic_neg_greater_eq_int1
+  fixes x :: int, y :: int
+  prop ~(x >= y) <--> ~(y <= x)
+
+theorem verit_la_generic_neg_greater_int2
+  fixes x :: int, y :: int
+  prop ~(x > y) <--> x <= y
+
+theorem verit_la_generic_neg_greater_eq_int2
+  fixes x :: int, y :: int
+  prop ~(x >= y) <--> x < y
+
+theorem imp_false_false
+  fixes P :: bool
+  prop (P --> false) <--> ~P
+
+theorem zero_eq_mul_const
+  fixes c :: int, m :: int, n :: int
+  prop m = n --> c * m = c * n
+
+theorem add_equals
+  fixes a :: int, b :: int, x :: int, y :: int
+  prop x = y --> a = b --> x + a = y + b
+
+theorem add_eq_with_ge
+  fixes a :: int, b :: int, x :: int, y :: int
+  prop x = y --> a >= b --> x + a >= y + b
+
+theorem add_ge_with_eq
+  fixes a :: int, b :: int, x :: int, y :: int
+  prop x >= y --> a = b --> x + a >= y + b
+
+theorem add_ge_with_ge
+  fixes a :: int, b :: int, x :: int, y :: int
+  prop x >= y --> a >= b --> x + a >= y + b
+
+theorem verit_comp_simplify2
+  fixes x :: int
+  prop x < x <--> false
+
+theorem verit_comp_simplify4
+  fixes x :: int, y :: int
+  prop x <= x <--> true
+
+theorem verit_comp_simplify5
+  fixes x :: int, y :: int
+  prop x >= y <--> y <= x
+proof
+  ← rewrite_goal greater_eq_def sym=false goal=0
+qed
+
+theorem verit_comp_simplify6
+  fixes x :: int, y :: int
+  prop x < y <--> ~(y <= x)
+
+theorem verit_comp_simplify7
+  fixes x :: int, y :: int
+  prop x > y <--> ~(x <= y)
+
+theorem verit_comp_simplify2_real
+  fixes x :: real
+  prop x < x <--> false
+
+theorem verit_comp_simplify4_real
+  fixes x :: real, y :: real
+  prop x <= x <--> true
+
+theorem verit_comp_simplify5_real
+  fixes x :: real, y :: real
+  prop x >= y <--> y <= x
+
+theorem verit_comp_simplify6_real
+  fixes x :: real, y :: real
+  prop x < y <--> ~(y <= x)
+
+theorem verit_comp_simplify7_real
+  fixes x :: real, y :: real
+  prop x > y <--> ~(x <= y)
+
+theorem verit_la_disequality_int
+  fixes x :: int, y :: int
+  prop x = y | ~(x <= y) | ~(y <= x)
+
+theorem verit_ite_simplify1
+  fixes t1 :: 'a, t2 :: 'a
+  prop (if true then t1 else t2) = t1
+proof
+  ← rewrite_goal if_true sym=false goal=0
+qed
+
+theorem verit_ite_simplify2
+  fixes t1 :: 'a, t2 :: 'a
+  prop (if false then t1 else t2) = t2
+
+theorem verit_ite_simplify3
+  fixes P :: bool, t :: 'a
+  prop (if P then t else t) = t
+
+theorem verit_ite_simplify4
+  fixes P :: bool, t1 :: 'a, t2 :: 'a
+  prop (if ~P then t1 else t2) = (if P then t2 else t1)
+
+theorem verit_ite_simplify7
+  fixes P :: bool, t1 :: 'a, t2 :: 'a, t3 :: 'a
+  prop (if P then if P then t1 else t2 else t3) = (if P then t1 else t3)
+
+theorem verit_ite_simplify8
+  fixes P :: bool, t1 :: 'a, t2 :: 'a, t3 :: 'a
+  prop (if P then t1 else if P then t2 else t3) = (if P then t1 else t3)
+
+theorem verit_ite_simplify9
+  fixes P :: bool
+  prop (if P then true else false) <--> P
+
+theorem verit_ite_simplify10
+  fixes P :: bool
+  prop (if P then false else true) <--> ~P
+
+theorem verit_ite_simplify11
+  fixes P :: bool, Q :: bool
+  prop (if P then true else Q) <--> P | Q
+
+theorem verit_ite_simplify12
+  fixes P :: bool, Q :: bool
+  prop (if P then Q else false) <--> P & Q
+
+theorem verit_ite_simplify13
+  fixes P :: bool, Q :: bool
+  prop (if P then false else Q) <--> ~P & Q
+
+theorem verit_ite_simplify14
+  fixes P :: bool, Q :: bool
+  prop (if P then Q else true) <--> ~P | Q
+
+theorem verit_ite_simplify15
+  fixes P :: bool, Q :: bool
+  prop (if ~P then Q else true) <--> P | Q
+
+theorem verit_ite_simplify16
+  fixes P :: bool, Q :: bool
+  prop (if ~P then false else Q) <--> P & Q
+
+theorem verit_imp_simplify1
+  fixes P :: bool, Q :: bool
+  prop (~P --> ~Q) <--> (Q --> P)
+
+theorem verit_imp_simplify2
+  fixes P :: bool
+  prop (false --> P) <--> true
+
+theorem verit_imp_simplify3
+  fixes P :: bool
+  prop (P --> true) <--> true
+
+theorem verit_imp_simplify4
+  fixes P :: bool
+  prop (true --> P) <--> P
+
+theorem verit_imp_simplify5
+  fixes P :: bool
+  prop (P --> false) <--> ~P
+
+theorem verit_imp_simplify6
+  fixes P :: bool
+  prop (P --> P) <--> true
+
+theorem verit_imp_simplify7
+  fixes P :: bool
+  prop (~P --> P) <--> P
+
+theorem verit_imp_simplify8
+  fixes P :: bool
+  prop (P --> ~P) <--> ~P
+
+theorem verit_imp_simplify9
+  fixes P :: bool, Q :: bool
+  prop ((P --> Q) --> Q) <--> P | Q
+
+theorem verit_implies_pos
+  fixes P :: bool, Q :: bool
+  prop ~(P --> Q) | ~P | Q
+
+theorem verit_forall_conj
+  fixes P :: 'a => bool, Q :: 'a => bool, a :: 'a
+  prop (!a. P a) & (!a. Q a) <--> (!a. P a & Q a)
+
+theorem verit_exists_disj
+  fixes P :: 'a => bool, Q :: 'a => bool, a :: 'a
+  prop (?a. P a) | (?a. Q a) <--> (?a. P a | Q a)
+
+theorem verit_la_generic_neg_greater_real1
+  fixes x :: real, y :: real
+  prop ~(x > y) <--> ~(y < x)
+
+theorem verit_la_generic_neg_greater_eq_real1
+  fixes x :: real, y :: real
+  prop ~(x >= y) <--> ~(y <= x)
+
+theorem verit_la_generic_neg_greater_real2
+  fixes x :: real, y :: real
+  prop ~(x > y) <--> x <= y
+
+theorem verit_la_generic_neg_greater_eq_real2
+  fixes x :: real, y :: real
+  prop ~(x >= y) <--> x < y
+
+theorem verit_real_greater_eq_mul_const
+  fixes c :: real, x :: real
+  prop c > 0 --> x >= 0 --> c * x >= 0
+
+theorem verit_real_greater_mul_const
+  fixes c :: real, x :: real
+  prop c > 0 --> x > 0 --> c * x > 0
+
+theorem verit_real_add_eq_eq
+  fixes x :: real, y :: real
+  prop x = 0 --> y = 0 --> x + y = 0
+
+theorem verit_real_add_eq_gt
+  fixes x :: real, y :: real
+  prop x = 0 --> y > 0 --> x + y > 0
+
+theorem verit_real_add_eq_ge
+  fixes x :: real, y :: real
+  prop x = 0 --> y >= 0 --> x + y >= 0
+
+theorem verit_real_add_gt_gt
+  fixes x :: real, y :: real
+  prop x > 0 --> y > 0 --> x + y > 0
+
+theorem verit_real_add_gt_ge
+  fixes x :: real, y :: real
+  prop x > 0 --> y >= 0 --> x + y > 0
+
+theorem verit_real_add_ge_ge
+  fixes x :: real, y :: real
+  prop x >= 0 --> y >= 0 --> x + y >= 0
+
+theorem verit_la_disequality_real
+  fixes x :: real, y :: real
+  prop x = y | ~(x <= y) | ~(y <= x)
+
+theorem verit_xor_pos1
+  fixes P :: bool, Q :: bool
+  prop ~(xor P Q) | P | Q
+
+theorem verit_xor_pos2
+  fixes P :: bool, Q :: bool
+  prop ~(xor P Q) | ~P | ~Q
+
+theorem verit_xor_neg1
+  fixes P :: bool, Q :: bool
+  prop xor P Q | P | ~Q
+
+theorem verit_xor_neg2
+  fixes P :: bool, Q :: bool
+  prop xor P Q | ~P | Q
+
+theorem verit_some_eq_ex
+  fixes P :: 'a => bool
+  prop P (SOME x. P x) <--> (?x. P x)
+
+theorem verit_some_neg_eq_all
+  fixes P :: 'a => bool
+  prop P (SOME x. ~(P x)) <--> (!x. P x)
+
+theorem verit_connective_def1
+  fixes P :: bool, Q :: bool
+  prop xor P Q <--> ~P & Q | P & ~Q
+
+theorem verit_connective_def2
+  fixes P :: bool, Q :: bool
+  prop (P <--> Q) <--> (P --> Q) & (Q --> P)
+
+theorem verit_connective_def3
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (if P then Q else R) <--> (P --> Q) & (~P --> R)
+
+theorem verit_connective_def4
+  fixes P :: 'a => bool, a :: 'a
+  prop (?a. P a) <--> ~(!a. ~(P a))
+
+theorem verit_not_iff_eq
+  fixes A :: bool, B :: bool
+  prop ~(A <--> B) <--> A & ~B | ~A & B
+
+theorem verit_iff_eq
+  fixes A :: bool, B :: bool
+  prop (A <--> B) <--> (~A | B) & (~B | A)
+
+theorem verit_not_ite_eq
+  fixes P :: bool, Q :: bool, R :: bool
+  prop ~(if P then Q else R) <--> P & ~Q | ~P & R
+
+theorem verit_ite_eq
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (if P then Q else R) <--> (~P | Q) & (P | R)
+
+theorem verit_qnt_conj1
+  fixes P :: 'a => bool, Q :: bool
+  prop (!x. P x) & Q <--> (!x. P x & Q)
+
+theorem verit_qnt_conj2
+  fixes P :: bool, Q :: 'a => bool
+  prop P & (!x. Q x) <--> (!x. P & Q x)
+
+theorem verit_qnt_disj1
+  fixes P :: 'a => bool, Q :: bool
+  prop (!x. P x) | Q <--> (!x. P x | Q)
+
+theorem verit_qnt_disj2
+  fixes P :: bool, Q :: 'a => bool
+  prop P | (!x. Q x) <--> (!x. P | Q x)
+
+theorem verit_onepoint_forall
+  fixes P :: 'a => bool, t :: 'a
+  prop (!x. ~(x = t) | P x) <--> ~(t = t) | P t
+
+theorem verit_onepoint_forall_single
+  fixes t :: 'a
+  prop (!x. ~(x = t)) <--> ~(t = t)
+
+theorem verit_onepoint_exists
+  fixes P :: 'a => bool, t :: 'a
+  prop (?x. x = t & P x) <--> t = t & P t
+
+theorem verit_onepoint_exists_single
+  fixes t :: 'a
+  prop (?x. x = t) <--> t = t
+
+def store :: ('a ⇒ 'b) ⇒ 'a ⇒ 'b ⇒ 'a ⇒ 'b = store array i v = (λj. if j = i then v else array j)
+
+def select :: ('a ⇒ 'b) ⇒ 'a ⇒ 'b = select f a = f a
+
+theorem verit_eq_simplify
+  fixes t :: 'a
+  prop ~(t = t) <--> false
+
+theorem verit_rm_unused_forall
+  fixes P :: bool
+  prop (!x::'a. P) <--> P
+
+theorem verit_rm_unused_exists
+  fixes P :: bool
+  prop (?x::'a. P) <--> P
+
+theorem verit_int_add_gt_move_right
+  fixes c :: int, x :: int
+  prop c + x > 0 <--> x > -c
+
+theorem verit_int_add_ge_move_right
+  fixes c :: int, x :: int
+  prop c + x >= 0 <--> x >= -c
+
+theorem verit_int_add_eq_move_right
+  fixes c :: int, x :: int
+  prop c + x = 0 <--> x = -c
+
+theorem verit_round_lia_gcd
+  fixes c :: int, k :: int, lb :: int, x :: int
+  prop k > 0 --> k * x >= c --> k * lb < c --> k * lb + k > c --> k * x >= k * lb + k
+

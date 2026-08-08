@@ -1,0 +1,4018 @@
+theory realintegral
+imports realseries
+description "Integrals of real->real functions; measures of real set. Refer to realanalysis.ml from hol light."
+
+def evalat :: (real ⇒ real) ⇒ real ⇒ real ⇒ real = evalat f a b = f b - f a [hint_rewrite]
+
+const has_real_integral :: (real ⇒ real) ⇒ real ⇒ real set ⇒ bool
+
+def real_integrable_on :: (real ⇒ real) ⇒ real set ⇒ bool = real_integrable_on f i ⟷ (∃y. has_real_integral f y i) [hint_rewrite]
+
+def real_integral :: real set ⇒ (real ⇒ real) ⇒ real = real_integral i f = (THE y. has_real_integral f y i) [hint_rewrite]
+
+def real_negligible :: real set ⇒ bool = real_negligible s ⟷ (∀a. ∀b. has_real_integral (indicator s) 0 (real_closed_interval a b)) [hint_rewrite]
+
+def absolutely_real_integrable_on :: (real ⇒ real) ⇒ real set ⇒ bool = absolutely_real_integrable_on f s ⟷ real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s [hint_rewrite]
+
+def has_real_measure :: real set ⇒ real ⇒ bool = has_real_measure s m ⟷ has_real_integral (λx. 1) m s [hint_rewrite]
+
+def real_measurable :: real set ⇒ bool = real_measurable s ⟷ (∃m. has_real_measure s m) [hint_rewrite]
+
+def real_measure :: real set ⇒ real = real_measure s = (THE m. has_real_measure s m) [hint_rewrite]
+
+theorem real_integrable_integral
+  fixes f :: real => real, i :: real set
+  prop real_integrable_on f i --> has_real_integral f (real_integral i f) i
+  [hint_backward,hint_rewrite,hint_forward]
+
+theorem has_real_integral_integrable
+  fixes f :: real => real, i :: real, s :: real set
+  prop has_real_integral f i s --> real_integrable_on f s
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] has_real_integral f i s
+    #[2] real_integrable_on f s
+  ← rewrite_goal real_integrable_on_def goal=2
+    #[3] ∃y. has_real_integral f y s
+  ← apply_backward_step exI param_a=i goal=3
+qed
+
+theorem has_real_integral_integral
+  fixes f :: real => real, s :: real set
+  prop real_integrable_on f s <--> has_real_integral f (real_integral s f) s
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] real_integrable_on f s ⟶ has_real_integral f (real_integral s f) s
+    #[2] has_real_integral f (real_integral s f) s ⟶ real_integrable_on f s
+  ← introduction goal=1
+    #[3] real_integrable_on f s
+    #[4] has_real_integral f (real_integral s f) s
+  ← apply_backward_step real_integrable_integral goal=4
+  ← introduction goal=2
+    #[5] has_real_integral f (real_integral s f) s
+    #[6] real_integrable_on f s
+  ← apply_backward_step has_real_integral_integrable param_i="real_integral s f" goal=6
+qed
+
+theorem has_real_integral_unique
+  fixes f :: real => real, i :: real set, k1 :: real, k2 :: real
+  prop has_real_integral f k1 i --> has_real_integral f k2 i --> k1 = k2
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_integral_unique
+  fixes f :: real => real, k :: real set, y :: real
+  prop has_real_integral f y k --> real_integral k f = y
+  [hint_backward,hint_forward]
+
+theorem has_real_integral_integrable_integral
+  fixes f :: real => real, i :: real, s :: real set
+  prop has_real_integral f i s <--> real_integrable_on f s & real_integral s f = i
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] has_real_integral f i s ⟶ real_integrable_on f s ∧ real_integral s f = i
+    #[2] real_integrable_on f s ∧ real_integral s f = i ⟶ has_real_integral f i s
+  ← introduction goal=1
+    #[3] has_real_integral f i s
+    #[4] real_integrable_on f s ∧ real_integral s f = i
+  ← apply_backward_step conjI goal=4
+    #[5] real_integrable_on f s
+    #[6] real_integral s f = i
+  ← apply_backward_step has_real_integral_integrable param_i=i goal=5
+  ← apply_backward_step real_integral_unique goal=6
+  ← introduction goal=2
+    #[7] real_integrable_on f s ∧ real_integral s f = i
+    #[8] has_real_integral f i s
+  -> apply_forward_step conjD1 goal=8 facts=[7]
+    #[9] real_integrable_on f s
+  -> rewrite_fact real_integrable_on_def goal=8 facts=[9]
+    #[10] ∃y. has_real_integral f y s
+  -> apply_forward_step conjD2 goal=8 facts=[7]
+    #[11] real_integral s f = i
+  exists_elim j goal=8 facts=[10]
+    #[12] _VAR j
+    #[13] has_real_integral f j s
+    #[14] has_real_integral f i s
+  -> apply_forward_step real_integral_unique goal=14 facts=[13]
+    #[15] real_integral s f = j
+  -> rewrite_fact_with_prev goal=14 facts=[11,15]
+    #[16] i = j
+  ← rewrite_goal_with_prev goal=14 facts=[16]
+qed
+
+theorem real_integral_eq_has_integral
+  fixes f :: real => real, i :: real, s :: real set
+  prop real_integrable_on f s --> real_integral s f = i <--> has_real_integral f i s
+
+theorem has_real_integral_alt
+  fixes f :: real => real, i :: real, s :: real set
+  prop has_real_integral f i s <--> (!a. !b. real_integrable_on (%x. if x Mem s then f x else 0) (real_closed_interval a b)) & (!e. 0 < e --> (?B. 0 < B & (!a. !b. real_closed_interval (-B) B Sub real_closed_interval a b --> abs (real_integral (real_closed_interval a b) (%x. if x Mem s then f x else 0) - i) < e)))
+  [hint_rewrite]
+
+theorem has_real_integral_is_0
+  fixes f :: real => real, s :: real set
+  prop (!x. x Mem s --> f x = 0) --> has_real_integral f 0 s
+  [hint_backward,hint_forward]
+
+theorem has_real_integral_0
+  fixes s :: real set
+  prop has_real_integral (%x. 0) 0 s
+  [hint_backward,hint_resolve]
+proof
+  ← apply_backward_step has_real_integral_is_0 goal=0
+    #[1] ∀x. x ∈ s ⟶ (0::real) = 0
+  ← introduction x goal=1
+    #[2] _VAR x
+    #[3] x ∈ s
+    #[4] (0::real) = 0
+  ← apply_backward_step eq_refl goal=4
+    #[5] (0::real) = 0
+qed
+
+theorem has_real_integral_0_eq
+  fixes i :: real, s :: real set
+  prop has_real_integral (%x. 0) i s <--> i = 0
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] has_real_integral (λx. 0) i s ⟶ i = 0
+    #[2] i = 0 ⟶ has_real_integral (λx. 0) i s
+  ← introduction goal=1
+    #[3] has_real_integral (λx. 0) i s
+    #[4] i = 0
+  ← apply_backward_step has_real_integral_unique param_f="%x::real. (0::real)" param_i=s goal=4
+    #[5] has_real_integral (λx. 0) 0 s
+  ← apply_backward_step has_real_integral_0 goal=5
+    #[6] has_real_integral (λx. 0) 0 s
+  ← introduction goal=2
+    #[7] i = 0
+    #[8] has_real_integral (λx. 0) i s
+  ← rewrite_goal_with_prev goal=8 facts=[7]
+    #[9] has_real_integral (λx. 0) 0 s
+  ← apply_backward_step has_real_integral_0 goal=9
+qed
+
+theorem has_real_integral_lmul
+  fixes c :: real, f :: real => real, k :: real, s :: real set
+  prop has_real_integral f k s --> has_real_integral (%x. c * f x) (c * k) s
+  [hint_backward]
+
+theorem has_real_integral_rmul
+  fixes c :: real, f :: real => real, k :: real, s :: real set
+  prop has_real_integral f k s --> has_real_integral (%x. f x * c) (k * c) s
+proof
+  ← introduction goal=0
+    #[1] has_real_integral f k s
+    #[2] has_real_integral (λx. f x * c) (k * c) s
+  ← rewrite_goal real_mult_comm goal=2
+    #[3] has_real_integral (λx. c * f x) (c * k) s
+  ← apply_backward_step has_real_integral_lmul goal=3
+qed
+
+theorem has_real_integral_neg
+  fixes f :: real => real, k :: real, s :: real set
+  prop has_real_integral f k s --> has_real_integral (%x. -(f x)) (-k) s
+  [hint_backward]
+
+theorem has_real_integral_add
+  fixes f :: real => real, g :: real => real, k :: real, l :: real, s :: real set
+  prop has_real_integral f k s --> has_real_integral g l s --> has_real_integral (%x. f x + g x) (k + l) s
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_integral_sub
+  fixes f :: real => real, g :: real => real, k :: real, l :: real, s :: real set
+  prop has_real_integral f k s --> has_real_integral g l s --> has_real_integral (%x. f x - g x) (k - l) s
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] has_real_integral f k s
+    #[2] has_real_integral g l s
+    #[3] has_real_integral (λx. f x - g x) (k - l) s
+  ← rewrite_goal real_poly_neg2 sym=false goal=3
+    #[4] has_real_integral (λx. f x + -1 * g x) (k + -1 * l) s
+  ← apply_backward_step has_real_integral_add goal=4
+    #[5] has_real_integral (λx. -1 * g x) (-1 * l) s
+  ← apply_backward_step has_real_integral_lmul goal=5
+qed
+
+theorem real_integral_0
+  fixes s :: real set
+  prop real_integral s (%x. 0) = 0
+  [hint_rewrite]
+proof
+  ← apply_backward_step real_integral_unique goal=0
+    #[1] has_real_integral (λx. 0) 0 s
+  ← apply_backward_step has_real_integral_0 goal=1
+qed
+
+theorem real_integral_add
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on g s --> real_integral s (%x. f x + g x) = real_integral s (%x. f x) + real_integral s (%x. g x)
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integrable_on g s
+    #[3] real_integral s (λx. f x + g x) = real_integral s (λx. f x) + real_integral s (λx. g x)
+  ← apply_backward_step real_integral_unique goal=3
+    #[4] has_real_integral (λx. f x + g x) (real_integral s (λx. f x) + real_integral s (λx. g x)) s
+  -> apply_forward_step real_integrable_integral goal=4 facts=[1]
+    #[5] has_real_integral f (real_integral s f) s
+  -> apply_forward_step real_integrable_integral goal=4 facts=[2]
+    #[6] has_real_integral g (real_integral s g) s
+  ← apply_backward_step has_real_integral_add goal=4
+    #[7] has_real_integral f (real_integral s (λx. f x)) s
+    #[8] has_real_integral g (real_integral s (λx. g x)) s
+  ← rewrite_goal eta_conversion sym=false goal=7
+  ← rewrite_goal eta_conversion sym=false goal=8
+qed
+
+theorem real_integral_lmul
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integral s (%x. c * f x) = c * real_integral s (%x. f x)
+  [hint_forward,hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integral s (λx. c * f x) = c * real_integral s (λx. f x)
+  ← apply_backward_step real_integral_unique goal=2
+    #[3] has_real_integral (λx. c * f x) (c * real_integral s (λx. f x)) s
+  ← apply_backward_step has_real_integral_lmul goal=3
+    #[4] has_real_integral f (real_integral s (λx. f x)) s
+  ← rewrite_goal eta_conversion sym=false goal=4
+    #[5] has_real_integral f (real_integral s f) s
+  ← apply_backward_step real_integrable_integral goal=5
+qed
+
+theorem real_integral_lmul2
+  fixes c :: real, f :: real => real, g :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on g s --> real_integral s (%x. c * f x * g x) = c * real_integral s (%x. f x * g x)
+
+theorem real_integral_lmul3
+  fixes c :: real, f :: real => real, g :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on g s --> ~(c = 0) --> (!x. x Mem s --> ~(g x = 0)) --> real_integral s (%x. f x / (c * g x)) = 1 / c * real_integral s (%x. f x / g x)
+
+theorem real_integral_rmul
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integral s (%x. f x * c) = real_integral s (%x. f x) * c
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integral s (λx. f x * c) = real_integral s (λx. f x) * c
+  ← rewrite_goal real_mult_comm goal=2
+    #[3] real_integral s (λx. c * f x) = c * real_integral s (λx. f x)
+  ← apply_backward_step real_integral_lmul goal=3
+qed
+
+theorem real_integral_div
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_integrable_on f s --> ~(c = 0) --> real_integral s (%x. f x / c) = 1 / c * real_integral s f
+
+theorem real_integral_neg
+  fixes f :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integral s (%x. -(f x)) = -(real_integral s f)
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integral s (λx. -(f x)) = -(real_integral s f)
+  ← apply_backward_step real_integral_unique goal=2
+    #[3] has_real_integral (λx. -(f x)) (-(real_integral s f)) s
+  ← apply_backward_step has_real_integral_neg goal=3
+    #[4] has_real_integral f (real_integral s f) s
+  ← apply_backward_step real_integrable_integral goal=4
+qed
+
+theorem real_integral_sub
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on g s --> real_integral s (%x. f x - g x) = real_integral s f - real_integral s g
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integrable_on g s
+    #[3] real_integral s (λx. f x - g x) = real_integral s f - real_integral s g
+  ← apply_backward_step real_integral_unique goal=3
+    #[4] has_real_integral (λx. f x - g x) (real_integral s f - real_integral s g) s
+  ← apply_backward_step has_real_integral_sub goal=4
+    #[5] has_real_integral f (real_integral s f) s
+    #[6] has_real_integral g (real_integral s g) s
+  ← apply_backward_step real_integrable_integral goal=5
+  ← apply_backward_step real_integrable_integral goal=6
+qed
+
+theorem real_integrable_0
+  fixes s :: real set
+  prop real_integrable_on (%x. 0) s
+  [hint_resolve,hint_backward]
+proof
+  ← rewrite_goal real_integrable_on_def goal=0
+    #[1] ∃y. has_real_integral (λx. 0) y s
+  ← apply_backward_step exI param_a="(0::real)" goal=1
+    #[2] has_real_integral (λx. 0) 0 s
+  ← apply_backward_step has_real_integral_0 goal=2
+qed
+
+theorem real_integrable_add
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on g s --> real_integrable_on (%x. f x + g x) s
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integrable_on g s
+    #[3] real_integrable_on (λx. f x + g x) s
+  ← rewrite_goal real_integrable_on_def sym=false goal=3
+    #[4] ∃y. has_real_integral (λx. f x + g x) y s
+  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
+    #[5] ∃y. has_real_integral f y s
+  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
+    #[6] ∃y. has_real_integral g y s
+  exists_elim y1 goal=4 facts=[5]
+    #[7] _VAR y1
+    #[8] has_real_integral f y1 s
+    #[9] ∃y. has_real_integral (λx. f x + g x) y s
+    #[10] real_integrable_on (λx. f x + g x) s
+  exists_elim y2 goal=9 facts=[6]
+    #[11] _VAR y2
+    #[12] has_real_integral g y2 s
+    #[13] ∃y. has_real_integral (λx. f x + g x) y s
+    #[14] real_integrable_on (λx. f x + g x) s
+  ← inst_exists_goal "y1 + y2" goal=13
+    #[15] has_real_integral (λx. f x + g x) (y1 + y2) s
+  ← apply_backward_step has_real_integral_add goal=15
+qed
+
+theorem real_integrable_lmul
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on (%x. c * f x) s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integrable_on (λx. c * f x) s
+  ← rewrite_goal real_integrable_on_def goal=2
+    #[3] ∃y. has_real_integral (λx. c * f x) y s
+  -> rewrite_fact real_integrable_on_def goal=3 facts=[1]
+    #[4] ∃y. has_real_integral f y s
+  exists_elim y goal=3 facts=[4]
+    #[5] _VAR y
+    #[6] has_real_integral f y s
+    #[7] ∃y. has_real_integral (λx. c * f x) y s
+    #[8] real_integrable_on (λx. c * f x) s
+  ← apply_backward_step exI param_a="c * y" goal=7
+    #[9] has_real_integral (λx. c * f x) (c * y) s
+  ← apply_backward_step has_real_integral_lmul goal=9
+qed
+
+theorem real_integrable_rmul
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on (%x. f x * c) s
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integrable_on (λx. f x * c) s
+  ← rewrite_goal real_mult_comm goal=2
+    #[3] real_integrable_on (λx. c * f x) s
+  ← apply_backward_step real_integrable_lmul goal=3
+qed
+
+theorem real_integrable_lmul_eq
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_integrable_on (%x. c * f x) s <--> c = 0 | real_integrable_on f s
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] real_integrable_on (λx. c * f x) s ⟶ c = 0 ∨ real_integrable_on f s
+    #[2] c = 0 ∨ real_integrable_on f s ⟶ real_integrable_on (λx. c * f x) s
+  ← cases "c = 0" goal=1
+    #[3] c = 0 ⟶ real_integrable_on (λx. c * f x) s ⟶ c = 0 ∨ real_integrable_on f s
+    #[4] ¬(c = 0) ⟶ real_integrable_on (λx. c * f x) s ⟶ c = 0 ∨ real_integrable_on f s
+  ← introduction goal=3
+    #[5] c = 0
+    #[6] real_integrable_on (λx. c * f x) s
+    #[7] c = 0 ∨ real_integrable_on f s
+  ← apply_backward_step disjI1 goal=7 facts=[5]
+    #[8] c = 0 ∨ real_integrable_on f s
+  ← introduction goal=4
+    #[9] ¬(c = 0)
+    #[10] c = 0 ∨ real_integrable_on f s
+  -> apply_forward_step real_mul_linv goal=10 facts=[9]
+    #[11] real_inverse c * c = 1
+  -> apply_forward_step real_integrable_lmul param_c="real_inverse c" goal=10 facts=[6]
+    #[12] real_integrable_on (λx. real_inverse c * (c * f x)) s
+  -> rewrite_fact real_mult_assoc goal=10 facts=[12]
+    #[13] real_integrable_on (λx. real_inverse c * c * f x) s
+  -> rewrite_fact_with_prev goal=10 facts=[11,13]
+    #[14] real_integrable_on (λx. 1 * f x) s
+  -> rewrite_fact real_mul_lid goal=10 facts=[14]
+    #[15] real_integrable_on (λx. f x) s
+  ← apply_backward_step disjI2 goal=10
+    #[16] real_integrable_on f s
+  ← introduction goal=2
+    #[17] c = 0 ∨ real_integrable_on f s
+    #[18] real_integrable_on (λx. c * f x) s
+  ← apply_backward_step disjE goal=18 facts=[17]
+    #[19] c = 0 ⟶ real_integrable_on (λx. c * f x) s
+    #[20] real_integrable_on f s ⟶ real_integrable_on (λx. c * f x) s
+  ← introduction goal=19
+    #[21] real_integrable_on (λx. c * f x) s
+  ← rewrite_goal_with_prev goal=21 facts=[5]
+    #[22] real_integrable_on (λx. 0 * f x) s
+  ← introduction goal=20
+    #[23] real_integrable_on f s
+    #[24] real_integrable_on (λx. c * f x) s
+  ← apply_backward_step real_integrable_lmul goal=24
+  ← rewrite_goal real_mul_lzero goal=22
+    #[25] real_integrable_on (λx. 0) s
+  -> rewrite_fact eta_conversion goal=16 facts=[15]
+  ← apply_backward_step real_integrable_0 goal=25
+    #[26] real_integrable_on (λx. 0) s
+qed
+
+theorem real_integrable_rmul_eq
+  fixes c :: real, f :: real => real, s :: real set
+  prop real_integrable_on (%x. f x * c) s <--> c = 0 | real_integrable_on f s
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_mult_comm goal=0
+    #[1] real_integrable_on (λx. c * f x) s ⟷ c = 0 ∨ real_integrable_on f s
+  ← rewrite_goal real_integrable_lmul_eq goal=1
+qed
+
+theorem real_integrable_neg
+  fixes f :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on (%x. -(f x)) s
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integrable_on (λx. -(f x)) s
+  ← rewrite_goal real_integrable_on_def goal=2
+    #[3] ∃y. has_real_integral (λx. -(f x)) y s
+  -> rewrite_fact real_integrable_on_def goal=3 facts=[1]
+    #[4] ∃y. has_real_integral f y s
+  exists_elim y goal=3 facts=[4]
+    #[5] _VAR y
+    #[6] has_real_integral f y s
+    #[7] ∃y. has_real_integral (λx. -(f x)) y s
+    #[8] real_integrable_on (λx. -(f x)) s
+  ← apply_backward_step exI param_a=-y goal=7
+    #[9] has_real_integral (λx. -(f x)) (-y) s
+  ← apply_backward_step has_real_integral_neg goal=9
+qed
+
+theorem real_integrable_sub
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on g s --> real_integrable_on (%x. f x - g x) s
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integrable_on g s
+    #[3] real_integrable_on (λx. f x - g x) s
+  ← rewrite_goal real_integrable_on_def sym=false goal=3
+    #[4] ∃y. has_real_integral (λx. f x - g x) y s
+  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
+    #[5] ∃y. has_real_integral f y s
+  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
+    #[6] ∃y. has_real_integral g y s
+  exists_elim y1 goal=4 facts=[5]
+    #[7] _VAR y1
+    #[8] has_real_integral f y1 s
+    #[9] ∃y. has_real_integral (λx. f x - g x) y s
+    #[10] real_integrable_on (λx. f x - g x) s
+  exists_elim y2 goal=9 facts=[6]
+    #[11] _VAR y2
+    #[12] has_real_integral g y2 s
+    #[13] ∃y. has_real_integral (λx. f x - g x) y s
+    #[14] real_integrable_on (λx. f x - g x) s
+  ← inst_exists_goal "y1 - y2" goal=13
+    #[15] has_real_integral (λx. f x - g x) (y1 - y2) s
+  ← apply_backward_step has_real_integral_sub goal=15
+qed
+
+theorem has_real_integral_sum
+  fixes f :: 'a => real => real, i :: 'a => real, s :: real set, t :: 'a set
+  prop finite t --> (!a. a Mem t --> has_real_integral (f a) (i a) s) --> has_real_integral (%x. sum t (%a. f a x)) (sum t i) s
+  [hint_backward,hint_backward1]
+
+theorem real_integral_sum
+  fixes f :: 'a => real => real, s :: real set, t :: 'a set
+  prop finite t --> (!a. a Mem t --> real_integrable_on (f a) s) --> real_integral s (%x. sum t (%a. f a x)) = sum t (%a. real_integral s (f a))
+  [hint_backward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] finite t
+    #[2] ∀a. a ∈ t ⟶ real_integrable_on (f a) s
+    #[3] real_integral s (λx. sum t (λa. f a x)) = sum t (λa. real_integral s (f a))
+  ← apply_backward_step real_integral_unique goal=3
+    #[4] has_real_integral (λx. sum t (λa. f a x)) (sum t (λa. real_integral s (f a))) s
+  ← apply_backward_step has_real_integral_sum goal=4
+    #[5] ∀a. a ∈ t ⟶ has_real_integral (f a) (real_integral s (f a)) s
+  ← introduction a goal=5
+    #[6] _VAR a
+    #[7] a ∈ t
+    #[8] has_real_integral (f a) (real_integral s (f a)) s
+  -> apply_fact goal=8 facts=[2,7]
+    #[9] real_integrable_on (f a) s
+  ← apply_backward_step real_integrable_integral goal=8 facts=[9]
+    #[10] has_real_integral (f a) (real_integral s (f a)) s
+qed
+
+theorem real_integrable_sum
+  fixes f :: 'a => real => real, s :: real set, t :: 'a set
+  prop finite t --> (!a. a Mem t --> real_integrable_on (f a) s) --> real_integrable_on (%x. sum t (%a. f a x)) s
+  [hint_backward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] finite t
+    #[2] ∀a. a ∈ t ⟶ real_integrable_on (f a) s
+    #[3] real_integrable_on (λx. sum t (λa. f a x)) s
+  ← apply_backward_step has_real_integral_integrable param_i="sum t (λa. real_integral s (f a))" goal=3
+    #[4] has_real_integral (λx. sum t (λa. f a x)) (sum t (λa. real_integral s (f a))) s
+  ← apply_backward_step has_real_integral_sum goal=4
+    #[5] ∀a. a ∈ t ⟶ has_real_integral (f a) (real_integral s (f a)) s
+  ← introduction a goal=5
+    #[6] _VAR a
+    #[7] a ∈ t
+    #[8] has_real_integral (f a) (real_integral s (f a)) s
+  ← apply_backward_step real_integrable_integral goal=8
+    #[9] real_integrable_on (f a) s
+  ← apply_prev goal=9 facts=[2]
+qed
+
+theorem has_real_integral_eq
+  fixes f :: real => real, g :: real => real, k :: real, s :: real set
+  prop (!x. x Mem s --> f x = g x) --> has_real_integral f k s --> has_real_integral g k s
+  [hint_forward,hint_backward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] ∀x. x ∈ s ⟶ f x = g x
+    #[2] has_real_integral f k s
+    #[3] has_real_integral g k s
+  -> rewrite_fact real_sub_0 sym=true goal=3 facts=[1]
+    #[4] ∀x. x ∈ s ⟶ f x - g x = 0
+  -> apply_forward_step has_real_integral_is_0 goal=3 facts=[4]
+    #[5] has_real_integral (λx. f x - g x) 0 s
+  -> apply_forward_step has_real_integral_sub goal=3 facts=[2,5]
+    #[6] has_real_integral (λx. f x - (f x - g x)) (k - 0) s
+  -> rewrite_fact real_sub_rzero sym=false goal=3 facts=[6]
+    #[7] has_real_integral (λx. f x - (f x - g x)) k s
+  cut "(λx. f x - (f x - g x)) = g" goal=3
+    #[8] (λx. f x - (f x - g x)) = g
+  ← apply_backward_step extension goal=8
+    #[9] ∀x. f x - (f x - g x) = g x
+  ← z3 goal=9
+    #[10] ∀x. f x - (f x - g x) = g x
+  -> rewrite_fact_with_prev goal=3 facts=[8,7]
+qed
+
+theorem real_integrable_eq
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop (!x. x Mem s --> f x = g x) --> real_integrable_on f s --> real_integrable_on g s
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] ∀x. x ∈ s ⟶ f x = g x
+    #[2] real_integrable_on f s
+    #[3] real_integrable_on g s
+  ← rewrite_goal real_integrable_on_def sym=false goal=3
+    #[4] ∃y. has_real_integral g y s
+  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
+    #[5] ∃y. has_real_integral f y s
+  exists_elim y goal=4 facts=[5]
+    #[6] _VAR y
+    #[7] has_real_integral f y s
+    #[8] ∃y. has_real_integral g y s
+    #[9] real_integrable_on g s
+  ← inst_exists_goal y goal=8
+    #[10] has_real_integral g y s
+  ← apply_backward_step has_real_integral_eq goal=10 facts=[1,7]
+    #[11] has_real_integral g y s
+qed
+
+theorem has_real_integral_eq_eq
+  fixes f :: real => real, g :: real => real, k :: real, s :: real set
+  prop (!x. x Mem s --> f x = g x) --> has_real_integral f k s <--> has_real_integral g k s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] ∀x. x ∈ s ⟶ f x = g x
+    #[2] has_real_integral f k s ⟷ has_real_integral g k s
+  ← apply_backward_step iffI goal=2
+    #[3] has_real_integral f k s ⟶ has_real_integral g k s
+    #[4] has_real_integral g k s ⟶ has_real_integral f k s
+  ← introduction goal=3
+    #[5] has_real_integral f k s
+    #[6] has_real_integral g k s
+  ← apply_backward_step has_real_integral_eq goal=6 facts=[1,5]
+  ← introduction goal=4
+    #[7] has_real_integral g k s
+    #[8] has_real_integral f k s
+  -> rewrite_fact eq_sym_eq sym=false goal=8 facts=[1]
+    #[9] ∀x. x ∈ s ⟶ g x = f x
+  ← apply_backward_step has_real_integral_eq goal=8 facts=[9,7]
+qed
+
+theorem has_real_integral_null
+  fixes a :: real, b :: real, f :: real => real
+  prop b <= a --> has_real_integral f 0 (real_closed_interval a b)
+  [hint_backward,hint_forward]
+
+theorem has_real_integral_null_eq
+  fixes a :: real, b :: real, f :: real => real, i :: real
+  prop b <= a --> has_real_integral f i (real_closed_interval a b) <--> i = 0
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] b ≤ a
+    #[2] has_real_integral f i (real_closed_interval a b) ⟷ i = 0
+  -> apply_forward_step has_real_integral_null param_f=f goal=2 facts=[1]
+    #[3] has_real_integral f 0 (real_closed_interval a b)
+  -> apply_forward_step real_integral_unique goal=2 facts=[3]
+    #[4] real_integral (real_closed_interval a b) f = 0
+  ← apply_backward_step iffI goal=2
+    #[5] has_real_integral f i (real_closed_interval a b) ⟶ i = 0
+    #[6] i = 0 ⟶ has_real_integral f i (real_closed_interval a b)
+  ← introduction goal=5
+    #[7] has_real_integral f i (real_closed_interval a b)
+    #[8] i = 0
+  ← apply_backward_step has_real_integral_unique param_f=f param_i="real_closed_interval a b" goal=8
+  ← introduction goal=6
+    #[9] i = 0
+    #[10] has_real_integral f i (real_closed_interval a b)
+  ← rewrite_goal_with_prev goal=10 facts=[9]
+qed
+
+theorem real_integral_null
+  fixes a :: real, b :: real, f :: real => real
+  prop b <= a --> real_integral (real_closed_interval a b) f = 0
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] b ≤ a
+    #[2] real_integral (real_closed_interval a b) f = 0
+  ← apply_backward_step real_integral_unique goal=2
+    #[3] has_real_integral f 0 (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_null goal=3
+qed
+
+theorem real_integrable_on_null
+  fixes a :: real, b :: real, f :: real => real
+  prop b <= a --> real_integrable_on f (real_closed_interval a b)
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] b ≤ a
+    #[2] real_integrable_on f (real_closed_interval a b)
+  ← rewrite_goal real_integrable_on_def goal=2
+    #[3] ∃y. has_real_integral f y (real_closed_interval a b)
+  ← inst_exists_goal "(0::real)" goal=3
+    #[4] has_real_integral f 0 (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_null goal=4
+qed
+
+theorem has_real_integral_empty
+  fixes f :: real => real
+  prop has_real_integral f 0 {}
+  [hint_resolve,hint_rewrite,hint_backward]
+
+theorem has_real_integral_empty_eq
+  fixes f :: real => real, i :: real
+  prop has_real_integral f i {} <--> i = 0
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] has_real_integral f i ∅ ⟶ i = 0
+    #[2] i = 0 ⟶ has_real_integral f i ∅
+  ← introduction goal=1
+    #[3] has_real_integral f i ∅
+    #[4] i = 0
+  ← apply_backward_step has_real_integral_unique param_f=f param_i="({}::real set)" goal=4
+    #[5] has_real_integral f 0 ∅
+  ← apply_backward_step has_real_integral_empty goal=5
+    #[6] has_real_integral f 0 ∅
+  ← introduction goal=2
+    #[7] i = 0
+    #[8] has_real_integral f i ∅
+  ← rewrite_goal_with_prev goal=8 facts=[7]
+    #[9] has_real_integral f 0 ∅
+  ← apply_backward_step has_real_integral_empty goal=9
+qed
+
+theorem real_integrable_on_empty
+  fixes f :: real => real
+  prop real_integrable_on f {}
+  [hint_backward,hint_resolve]
+proof
+  ← rewrite_goal real_integrable_on_def goal=0
+    #[1] ∃y. has_real_integral f y ∅
+  ← rewrite_goal has_real_integral_empty_eq goal=1
+    #[2] ∃y::real. y = 0
+  ← inst_exists_goal "(0::real)" goal=2
+    #[3] (0::real) = 0
+  ← apply_backward_step eq_refl goal=3
+qed
+
+theorem real_integral_empty
+  fixes f :: real => real
+  prop real_integral {} f = 0
+  [hint_rewrite]
+proof
+  ← apply_backward_step real_integral_unique goal=0
+    #[1] has_real_integral f 0 ∅
+  ← rewrite_goal has_real_integral_empty_eq goal=1
+qed
+
+theorem has_real_integral_refl
+  fixes a :: real, f :: real => real
+  prop has_real_integral f 0 (real_closed_interval a a)
+  [hint_backward]
+proof
+  ← apply_backward_step has_real_integral_null goal=0
+    #[1] a ≤ a
+  ← apply_backward_step real_le_refl goal=1
+qed
+
+theorem real_integrable_on_refl
+  fixes a :: real, f :: real => real
+  prop real_integrable_on f (real_closed_interval a a)
+  [hint_backward]
+proof
+  ← apply_backward_step real_integrable_on_null goal=0
+    #[1] a ≤ a
+  ← apply_backward_step real_le_refl goal=1
+qed
+
+theorem real_integral_refl
+  fixes a :: real, f :: real => real
+  prop real_integral (real_closed_interval a a) f = 0
+  [hint_rewrite]
+proof
+  ← apply_backward_step real_integral_unique goal=0
+    #[1] has_real_integral f 0 (real_closed_interval a a)
+  ← apply_backward_step has_real_integral_refl goal=1
+qed
+
+theorem has_real_integral_const
+  fixes a :: real, b :: real, c :: real
+  prop a <= b --> has_real_integral (%x. c) (c * (b - a)) (real_closed_interval a b)
+  [hint_backward,hint_forward]
+
+theorem real_integrable_const
+  fixes a :: real, b :: real, c :: real
+  prop real_integrable_on (%x. c) (real_closed_interval a b)
+  [hint_backward]
+proof
+  ← rewrite_goal real_integrable_on_def goal=0
+    #[1] ∃y. has_real_integral (λx. c) y (real_closed_interval a b)
+  cut "a <= b | b <= a" goal=1
+    #[2] a ≤ b ∨ b ≤ a
+  ← apply_backward_step real_le_total goal=2
+  ← apply_backward_step disjE goal=1 facts=[2]
+    #[3] a ≤ b ⟶ (∃y. has_real_integral (λx. c) y (real_closed_interval a b))
+    #[4] b ≤ a ⟶ (∃y. has_real_integral (λx. c) y (real_closed_interval a b))
+  ← introduction goal=3
+    #[5] a ≤ b
+    #[6] ∃y. has_real_integral (λx. c) y (real_closed_interval a b)
+  ← inst_exists_goal "c * (b - a)" goal=6
+    #[7] has_real_integral (λx. c) (c * (b - a)) (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_const goal=7
+  ← introduction goal=4
+    #[8] b ≤ a
+    #[9] ∃y. has_real_integral (λx. c) y (real_closed_interval a b)
+  ← inst_exists_goal "(0::real)" goal=9
+    #[10] has_real_integral (λx. c) 0 (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_null goal=10
+qed
+
+theorem real_integral_const
+  fixes a :: real, b :: real, c :: real
+  prop a <= b --> real_integral (real_closed_interval a b) (%x. c) = c * (b - a)
+  [hint_rewrite]
+proof
+  ← introduction goal=0
+    #[1] a ≤ b
+    #[2] real_integral (real_closed_interval a b) (λx. c) = c * (b - a)
+  ← apply_backward_step real_integral_unique goal=2
+    #[3] has_real_integral (λx. c) (c * (b - a)) (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_const goal=3
+qed
+
+theorem real_integral_const_evalat
+  fixes a :: real, b :: real, c :: real
+  prop a <= b --> real_integral (real_closed_interval a b) (%x. c) = evalat (%x. c * x) a b
+proof
+  ← introduction goal=0
+    #[1] a ≤ b
+    #[2] real_integral (real_closed_interval a b) (λx. c) = evalat (λx. c * x) a b
+  ← rewrite_goal real_integral_const sym=false goal=2 facts=[1]
+    #[3] c * (b - a) = evalat (λx. c * x) a b
+  ← rewrite_goal evalat_def sym="" goal=3
+    #[4] c * (b - a) = c * b - c * a
+  real_norm goal=4
+    #[5] c * (b - a) = c * b - c * a
+qed
+
+theorem has_real_integral_bound
+  fixes B :: real, a :: real, b :: real, f :: real => real, i :: real
+  prop 0 <= B --> a <= b --> has_real_integral f i (real_closed_interval a b) --> (!x. x Mem real_closed_interval a b --> abs (f x) <= B) --> abs i <= B * (b - a)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_integral_le
+  fixes f :: real => real, g :: real => real, i :: real, j :: real, s :: real set
+  prop has_real_integral f i s --> has_real_integral g j s --> (!x. x Mem s --> f x <= g x) --> i <= j
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem real_integral_le
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on g s --> (!x. x Mem s --> f x <= g x) --> real_integral s f <= real_integral s g
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integrable_on g s
+    #[3] ∀x. x ∈ s ⟶ f x ≤ g x
+    #[4] real_integral s f ≤ real_integral s g
+  ← apply_backward_step has_real_integral_le param_f=f param_g=g param_s=s goal=4
+    #[5] has_real_integral f (real_integral s f) s
+    #[6] has_real_integral g (real_integral s g) s
+  ← apply_backward_step real_integrable_integral goal=5 facts=[1]
+    #[7] has_real_integral f (real_integral s f) s
+  ← apply_backward_step real_integrable_integral goal=6 facts=[2]
+    #[8] has_real_integral g (real_integral s g) s
+qed
+
+theorem has_real_integral_pos
+  fixes f :: real => real, i :: real, s :: real set
+  prop has_real_integral f i s --> (!x. x Mem s --> 0 <= f x) --> 0 <= i
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] has_real_integral f i s
+    #[2] ∀x. x ∈ s ⟶ 0 ≤ f x
+    #[3] 0 ≤ i
+  ← apply_backward_step has_real_integral_le param_f="(%x::real. (0::real))" param_g=f param_s=s goal=3
+    #[4] has_real_integral (λx. 0) 0 s
+  ← apply_backward_step has_real_integral_0 goal=4
+    #[5] has_real_integral (λx. 0) 0 s
+qed
+
+theorem real_integral_pos
+  fixes f :: real => real, s :: real set
+  prop real_integrable_on f s --> (!x. x Mem s --> 0 <= f x) --> 0 <= real_integral s f
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] ∀x. x ∈ s ⟶ 0 ≤ f x
+    #[3] 0 ≤ real_integral s f
+  ← apply_backward_step has_real_integral_pos param_f=f param_s=s goal=3
+    #[4] has_real_integral f (real_integral s f) s
+  ← apply_backward_step real_integrable_integral goal=4 facts=[1]
+    #[5] has_real_integral f (real_integral s f) s
+qed
+
+theorem has_real_integral_inneg
+  fixes f :: real => real, i :: real, s :: real set
+  prop has_real_integral f i s --> (!x. x Mem s --> f x <= 0) --> i <= 0
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] has_real_integral f i s
+    #[2] ∀x. x ∈ s ⟶ f x ≤ 0
+    #[3] i ≤ 0
+  ← apply_backward_step has_real_integral_le param_g="(%x::real. (0::real))" goal=3 facts=[1]
+    #[4] has_real_integral (λx. 0) 0 s
+  ← apply_backward_step has_real_integral_0 goal=4
+    #[5] has_real_integral (λx. 0) 0 s
+qed
+
+theorem has_real_integral_lbound
+  fixes B :: real, a :: real, b :: real, f :: real => real, i :: real
+  prop a <= b --> has_real_integral f i (real_closed_interval a b) --> (!x. x Mem real_closed_interval a b --> B <= f x) --> B * (b - a) <= i
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] a ≤ b
+    #[2] has_real_integral f i (real_closed_interval a b)
+    #[3] ∀x. x ∈ real_closed_interval a b ⟶ B ≤ f x
+    #[4] B * (b - a) ≤ i
+  ← apply_backward_step has_real_integral_le param_f="(%x::real. B)" param_g=f param_s="(real_closed_interval a b)" goal=4
+    #[5] has_real_integral (λx. B) (B * (b - a)) (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_const goal=5 facts=[1]
+    #[6] has_real_integral (λx. B) (B * (b - a)) (real_closed_interval a b)
+qed
+
+theorem has_real_integral_ubound
+  fixes B :: real, a :: real, b :: real, f :: real => real, i :: real
+  prop a <= b --> has_real_integral f i (real_closed_interval a b) --> (!x. x Mem real_closed_interval a b --> f x <= B) --> i <= B * (b - a)
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] a ≤ b
+    #[2] has_real_integral f i (real_closed_interval a b)
+    #[3] ∀x. x ∈ real_closed_interval a b ⟶ f x ≤ B
+    #[4] i ≤ B * (b - a)
+  ← apply_backward_step has_real_integral_le param_g="(%x::real. B)" goal=4 facts=[2]
+    #[5] has_real_integral (λx. B) (B * (b - a)) (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_const goal=5
+qed
+
+theorem real_integral_lbound
+  fixes B :: real, a :: real, b :: real, f :: real => real
+  prop a <= b --> real_integrable_on f (real_closed_interval a b) --> (!x. x Mem real_closed_interval a b --> B <= f x) --> B * (b - a) <= real_integral (real_closed_interval a b) f
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] a ≤ b
+    #[2] real_integrable_on f (real_closed_interval a b)
+    #[3] ∀x. x ∈ real_closed_interval a b ⟶ B ≤ f x
+    #[4] B * (b - a) ≤ real_integral (real_closed_interval a b) f
+  ← apply_backward_step has_real_integral_lbound param_f=f goal=4 facts=[1]
+    #[5] has_real_integral f (real_integral (real_closed_interval a b) f) (real_closed_interval a b)
+  ← apply_backward_step real_integrable_integral goal=5 facts=[2]
+    #[6] has_real_integral f (real_integral (real_closed_interval a b) f) (real_closed_interval a b)
+qed
+
+theorem real_integral_ubound
+  fixes B :: real, a :: real, b :: real, f :: real => real
+  prop a <= b --> real_integrable_on f (real_closed_interval a b) --> (!x. x Mem real_closed_interval a b --> f x <= B) --> real_integral (real_closed_interval a b) f <= B * (b - a)
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] a ≤ b
+    #[2] real_integrable_on f (real_closed_interval a b)
+    #[3] ∀x. x ∈ real_closed_interval a b ⟶ f x ≤ B
+    #[4] real_integral (real_closed_interval a b) f ≤ B * (b - a)
+  ← apply_backward_step has_real_integral_ubound param_f=f goal=4 facts=[1]
+    #[5] has_real_integral f (real_integral (real_closed_interval a b) f) (real_closed_interval a b)
+  ← apply_backward_step real_integrable_integral goal=5 facts=[2]
+    #[6] has_real_integral f (real_integral (real_closed_interval a b) f) (real_closed_interval a b)
+qed
+
+theorem real_integrable_uniform_limit
+  fixes a :: real, b :: real, f :: real => real
+  prop (!e. 0 < e --> (?g. (!x. x Mem real_closed_interval a b --> abs (f x - g x) <= e) & real_integrable_on g (real_closed_interval a b))) --> real_integrable_on f (real_closed_interval a b)
+  [hint_backward,hint_forward]
+
+theorem has_real_integral_negligible
+  fixes f :: real => real, s :: real set, t :: real set
+  prop real_negligible s --> (!x. x Mem diff t s --> f x = 0) --> has_real_integral f 0 t
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem has_real_integral_spike
+  fixes f :: real => real, g :: real => real, s :: real set, t :: real set, y :: real
+  prop real_negligible s --> (!x. x Mem diff t s --> g x = f x) --> has_real_integral f y t --> has_real_integral g y t
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_integral_spike_eq
+  fixes f :: real => real, g :: real => real, s :: real set, t :: real set, y :: real
+  prop real_negligible s --> (!x. x Mem diff t s --> g x = f x) --> has_real_integral f y t <--> has_real_integral g y t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_negligible s
+    #[2] ∀x. x ∈ diff t s ⟶ g x = f x
+    #[3] has_real_integral f y t ⟷ has_real_integral g y t
+  ← apply_backward_step iffI goal=3
+    #[4] has_real_integral f y t ⟶ has_real_integral g y t
+    #[5] has_real_integral g y t ⟶ has_real_integral f y t
+  ← introduction goal=4
+    #[6] has_real_integral f y t
+    #[7] has_real_integral g y t
+  ← apply_backward_step has_real_integral_spike goal=7 facts=[1,2,6]
+  ← introduction goal=5
+    #[8] has_real_integral g y t
+    #[9] has_real_integral f y t
+  -> rewrite_fact eq_sym_eq sym=false goal=9 facts=[2]
+    #[10] ∀x. x ∈ diff t s ⟶ f x = g x
+  ← apply_backward_step has_real_integral_spike goal=9 facts=[1,10,8]
+qed
+
+theorem real_integrable_spike
+  fixes f :: real => real, g :: real => real, s :: real set, t :: real set
+  prop real_negligible s --> (!x. x Mem diff t s --> g x = f x) --> real_integrable_on f t --> real_integrable_on g t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_negligible s
+    #[2] ∀x. x ∈ diff t s ⟶ g x = f x
+    #[3] real_integrable_on f t
+    #[4] real_integrable_on g t
+  ← rewrite_goal real_integrable_on_def sym=false goal=4
+    #[5] ∃y. has_real_integral g y t
+  -> rewrite_fact real_integrable_on_def sym=false goal=5 facts=[3]
+    #[6] ∃y. has_real_integral f y t
+  exists_elim y goal=5 facts=[6]
+    #[7] _VAR y
+    #[8] has_real_integral f y t
+    #[9] ∃y. has_real_integral g y t
+    #[10] real_integrable_on g t
+  ← inst_exists_goal y goal=9
+    #[11] has_real_integral g y t
+  ← apply_backward_step has_real_integral_spike goal=11 facts=[1,2,8]
+    #[12] has_real_integral g y t
+qed
+
+theorem real_integrable_spike_eq
+  fixes f :: real => real, g :: real => real, s :: real set, t :: real set
+  prop real_negligible s --> (!x. x Mem diff t s --> g x = f x) --> real_integrable_on f t <--> real_integrable_on g t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_negligible s
+    #[2] ∀x. x ∈ diff t s ⟶ g x = f x
+    #[3] real_integrable_on f t ⟷ real_integrable_on g t
+  ← apply_backward_step iffI goal=3
+    #[4] real_integrable_on f t ⟶ real_integrable_on g t
+    #[5] real_integrable_on g t ⟶ real_integrable_on f t
+  ← introduction goal=4
+    #[6] real_integrable_on f t
+    #[7] real_integrable_on g t
+  ← apply_backward_step real_integrable_spike goal=7 facts=[1,2,6]
+  ← introduction goal=5
+    #[8] real_integrable_on g t
+    #[9] real_integrable_on f t
+  -> rewrite_fact eq_sym_eq sym=false goal=9 facts=[2]
+    #[10] ∀x. x ∈ diff t s ⟶ f x = g x
+  ← apply_backward_step real_integrable_spike goal=9 facts=[1,10,8]
+qed
+
+theorem real_integral_spike
+  fixes f :: real => real, g :: real => real, s :: real set, t :: real set
+  prop real_negligible s --> (!x. x Mem diff t s --> g x = f x) --> real_integral t f = real_integral t g
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_negligible_subset
+  fixes s :: real set, t :: real set
+  prop real_negligible s --> t Sub s --> real_negligible t
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_negligible_diff
+  fixes s :: real set, t :: real set
+  prop real_negligible s --> real_negligible (diff s t)
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_negligible s
+    #[2] real_negligible (diff s t)
+  ← apply_backward_step real_negligible_subset param_s=s goal=2
+    #[3] diff s t ⊆ s
+  ← apply_backward_step subset_diff goal=3
+    #[4] diff s t ⊆ s
+qed
+
+theorem real_negligible_inter
+  fixes s :: real set, t :: real set
+  prop real_negligible s | real_negligible t --> real_negligible (s Int t)
+  [hint_backward,hint_forward]
+
+theorem real_negligible_union
+  fixes s :: real set, t :: real set
+  prop real_negligible s --> real_negligible t --> real_negligible (s Un t)
+  [hint_backward,hint_forward]
+
+theorem real_negligible_union_eq
+  fixes s :: real set, t :: real set
+  prop real_negligible (s Un t) <--> real_negligible s & real_negligible t
+  [hint_rewrite]
+
+theorem real_negligible_sing
+  fixes a :: real
+  prop real_negligible ({a})
+  [hint_backward]
+
+theorem real_negligible_insert
+  fixes a :: real, s :: real set
+  prop real_negligible (insert a s) <--> real_negligible s
+  [hint_rewrite]
+
+theorem real_negligible_empty
+  prop real_negligible {}
+  [hint_backward,hint_resolve]
+
+theorem real_negligible
+  fixes s :: real set
+  prop real_negligible s <--> (!t. has_real_integral (indicator s) 0 t)
+  [hint_rewrite]
+
+theorem real_negligible_finite
+  fixes s :: real set
+  prop finite s --> real_negligible s
+  [hint_backward]
+
+theorem real_negligible_unions
+  fixes s :: real set set
+  prop finite s --> (!t. t Mem s --> real_negligible t) --> real_negligible (UN s)
+  [hint_backward]
+
+theorem real_open_not_real_negligible
+  fixes s :: real set
+  prop real_open s --> ~(s = {}) --> ~(real_negligible s)
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem has_real_integral_spike_finite
+  fixes f :: real => real, g :: real => real, s :: real set, t :: real set, y :: real
+  prop finite s --> (!x. x Mem diff t s --> g x = f x) --> has_real_integral f y t --> has_real_integral g y t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite s
+    #[2] ∀x. x ∈ diff t s ⟶ g x = f x
+    #[3] has_real_integral f y t
+    #[4] has_real_integral g y t
+  ← apply_backward_step has_real_integral_spike param_f=f param_s=s goal=4
+    #[5] real_negligible s
+  ← apply_backward_step real_negligible_finite goal=5 facts=[1]
+    #[6] real_negligible s
+qed
+
+theorem has_real_integral_spike_finite_eq
+  fixes f :: real => real, g :: real => real, s :: real set, t :: real set, y :: real
+  prop finite s --> (!x. x Mem diff t s --> g x = f x) --> has_real_integral f y t <--> has_real_integral g y t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite s
+    #[2] ∀x. x ∈ diff t s ⟶ g x = f x
+    #[3] has_real_integral f y t ⟷ has_real_integral g y t
+  ← apply_backward_step has_real_integral_spike_eq param_s=s goal=3
+    #[4] real_negligible s
+  ← apply_backward_step real_negligible_finite goal=4 facts=[1]
+    #[5] real_negligible s
+qed
+
+theorem real_integrable_spike_finite
+  fixes f :: real => real, g :: real => real, s :: real set, t :: real set
+  prop finite s --> (!x. x Mem diff t s --> g x = f x) --> real_integrable_on f t --> real_integrable_on g t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite s
+    #[2] ∀x. x ∈ diff t s ⟶ g x = f x
+    #[3] real_integrable_on f t
+    #[4] real_integrable_on g t
+  ← apply_backward_step real_integrable_spike param_f=f param_s=s goal=4
+    #[5] real_negligible s
+  ← apply_backward_step real_negligible_finite goal=5 facts=[1]
+    #[6] real_negligible s
+qed
+
+theorem real_integrable_frontier_interval
+  fixes a :: real, b :: real
+  prop real_negligible (diff (real_closed_interval a b) (real_open_interval a b))
+  [hint_backward]
+
+theorem has_real_integral_spike_interior
+  fixes a :: real, b :: real, f :: real => real, g :: real => real, y :: real
+  prop (!x. x Mem real_open_interval a b --> g x = f x) --> has_real_integral f y (real_closed_interval a b) --> has_real_integral g y (real_closed_interval a b)
+  [hint_backward,hint_forward]
+
+theorem has_real_integral_spike_interior_eq
+  fixes a :: real, b :: real, f :: real => real, g :: real => real, y :: real
+  prop (!x. x Mem real_open_interval a b --> g x = f x) --> has_real_integral f y (real_closed_interval a b) <--> has_real_integral g y (real_closed_interval a b)
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] ∀x. x ∈ real_open_interval a b ⟶ g x = f x
+    #[2] has_real_integral f y (real_closed_interval a b) ⟷ has_real_integral g y (real_closed_interval a b)
+  ← apply_backward_step iffI goal=2
+    #[3] has_real_integral f y (real_closed_interval a b) ⟶ has_real_integral g y (real_closed_interval a b)
+    #[4] has_real_integral g y (real_closed_interval a b) ⟶ has_real_integral f y (real_closed_interval a b)
+  ← introduction goal=3
+    #[5] has_real_integral f y (real_closed_interval a b)
+    #[6] has_real_integral g y (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_spike_interior param_f=f goal=6
+  ← introduction goal=4
+    #[7] has_real_integral g y (real_closed_interval a b)
+    #[8] has_real_integral f y (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_spike_interior param_f=g goal=8
+    #[9] ∀x. x ∈ real_open_interval a b ⟶ f x = g x
+  -> rewrite_fact eq_sym_eq sym=false goal=9 facts=[1]
+    #[10] ∀x. x ∈ real_open_interval a b ⟶ f x = g x
+qed
+
+theorem real_integrable_spike_interior
+  fixes a :: real, b :: real, f :: real => real, g :: real => real
+  prop (!x. x Mem real_open_interval a b --> g x = f x) --> real_integrable_on f (real_closed_interval a b) --> real_integrable_on g (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] ∀x. x ∈ real_open_interval a b ⟶ g x = f x
+    #[2] real_integrable_on f (real_closed_interval a b)
+    #[3] real_integrable_on g (real_closed_interval a b)
+  ← rewrite_goal real_integrable_on_def sym=false goal=3
+    #[4] ∃y. has_real_integral g y (real_closed_interval a b)
+  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[2]
+    #[5] ∃y. has_real_integral f y (real_closed_interval a b)
+  exists_elim y goal=4 facts=[5]
+    #[6] _VAR y
+    #[7] has_real_integral f y (real_closed_interval a b)
+    #[8] ∃y. has_real_integral g y (real_closed_interval a b)
+    #[9] real_integrable_on g (real_closed_interval a b)
+  ← inst_exists_goal y goal=8
+    #[10] has_real_integral g y (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_spike_interior goal=10 facts=[1,7]
+    #[11] has_real_integral g y (real_closed_interval a b)
+qed
+
+theorem real_integral_eq
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop (!x. x Mem s --> f x = g x) --> real_integral s f = real_integral s g
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] ∀x. x ∈ s ⟶ f x = g x
+    #[2] real_integral s f = real_integral s g
+  ← apply_backward_step real_integral_spike param_s="({}::real set)" goal=2
+    #[3] real_negligible ∅
+    #[4] ∀x. x ∈ diff s ∅ ⟶ g x = f x
+  ← apply_backward_step real_negligible_empty goal=3
+    #[5] real_negligible ∅
+  ← introduction x goal=4
+    #[6] _VAR x
+    #[7] x ∈ diff s ∅
+    #[8] g x = f x
+  ← rewrite_goal eq_sym_eq sym=false goal=8
+    #[9] f x = g x
+  ← apply_prev goal=9 facts=[1]
+    #[10] x ∈ s
+  ← z3 goal=10 facts=[7]
+    #[11] x ∈ s
+qed
+
+theorem real_integral_eq_closed_interval
+  fixes a :: real, b :: real, f :: real => real, g :: real => real
+  prop a <= b --> (!x. x Mem real_open_interval a b --> f x = g x) --> real_integral (real_closed_interval a b) (%x. f x) = real_integral (real_closed_interval a b) (%x. g x)
+
+theorem real_integral_eq_0
+  fixes f :: real => real, s :: real set
+  prop (!x. x Mem s --> f x = 0) --> real_integral s f = 0
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] ∀x. x ∈ s ⟶ f x = 0
+    #[2] real_integral s f = 0
+  cut "0 = real_integral s (%x::real. (0::real))" goal=2
+    #[3] 0 = real_integral s (λx. 0)
+  ← rewrite_goal real_integral_0 goal=3
+    #[4] 0 = real_integral s (λx. 0)
+  ← rewrite_goal_with_prev goal=2 facts=[4]
+    #[5] real_integral s f = real_integral s (λx. 0)
+  ← apply_backward_step real_integral_eq goal=5
+qed
+
+theorem real_integrable_continuous
+  fixes a :: real, b :: real, f :: real => real
+  prop real_continuous_on f (real_closed_interval a b) --> real_integrable_on f (real_closed_interval a b)
+  [hint_backward,hint_forward]
+
+theorem real_fundamental_theorem_of_calculus
+  fixes a :: real, b :: real, f :: real => real, f1 :: real => real
+  prop a <= b --> (!x. x Mem real_closed_interval a b --> has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))) --> has_real_integral f1 (f b - f a) (real_closed_interval a b)
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem real_integrable_subinterval
+  fixes A :: real, B :: real, c :: real, d :: real, f :: real => real
+  prop real_integrable_on f (real_closed_interval A B) --> real_closed_interval c d Sub real_closed_interval A B --> real_integrable_on f (real_closed_interval c d)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_integral_combine
+  fixes a :: real, b :: real, c :: real, f :: real => real, i :: real, j :: real
+  prop a <= c --> c <= b --> has_real_integral f i (real_closed_interval a c) --> has_real_integral f j (real_closed_interval c b) --> has_real_integral f (i + j) (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_integral_combine
+  fixes a :: real, b :: real, c :: real, f :: real => real
+  prop a <= c --> c <= b --> real_integrable_on f (real_closed_interval a b) --> real_integral (real_closed_interval a c) f + real_integral (real_closed_interval c b) f = real_integral (real_closed_interval a b) f
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] a ≤ c
+    #[2] c ≤ b
+    #[3] real_integrable_on f (real_closed_interval a b)
+    #[4] real_integral (real_closed_interval a c) f + real_integral (real_closed_interval c b) f = real_integral (real_closed_interval a b) f
+  ← apply_backward_step has_real_integral_unique param_f=f param_i="(real_closed_interval a b)" goal=4
+    #[5] has_real_integral f (real_integral (real_closed_interval a c) f + real_integral (real_closed_interval c b) f) (real_closed_interval a b)
+    #[6] has_real_integral f (real_integral (real_closed_interval a b) f) (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_combine param_c=c goal=5
+    #[7] has_real_integral f (real_integral (real_closed_interval a c) f) (real_closed_interval a c)
+    #[8] has_real_integral f (real_integral (real_closed_interval c b) f) (real_closed_interval c b)
+  ← apply_backward_step real_integrable_integral goal=7
+    #[9] real_integrable_on f (real_closed_interval a c)
+  ← apply_backward_step real_integrable_subinterval param_A=a param_B=b goal=9
+    #[10] real_closed_interval a c ⊆ real_closed_interval a b
+  ← rewrite_goal real_closed_interval_def sym=false goal=10
+    #[11] {p. a ≤ p ∧ p ≤ c} ⊆ {p. a ≤ p ∧ p ≤ b}
+  ← z3 goal=11 facts=[1,2]
+    #[12] {p. a ≤ p ∧ p ≤ c} ⊆ {p. a ≤ p ∧ p ≤ b}
+  ← apply_backward_step real_integrable_integral goal=8
+    #[13] real_integrable_on f (real_closed_interval c b)
+  ← apply_backward_step real_integrable_subinterval param_A=a param_B=b goal=13
+    #[14] real_closed_interval c b ⊆ real_closed_interval a b
+  ← rewrite_goal real_closed_interval_def sym=false goal=14
+    #[15] {p. c ≤ p ∧ p ≤ b} ⊆ {p. a ≤ p ∧ p ≤ b}
+  ← z3 goal=15 facts=[1,2]
+    #[16] {p. c ≤ p ∧ p ≤ b} ⊆ {p. a ≤ p ∧ p ≤ b}
+  ← apply_backward_step real_integrable_integral goal=6
+qed
+
+theorem real_integrable_combine
+  fixes a :: real, b :: real, c :: real, f :: real => real
+  prop a <= c --> c <= b --> real_integrable_on f (real_closed_interval a c) --> real_integrable_on f (real_closed_interval c b) --> real_integrable_on f (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] a ≤ c
+    #[2] c ≤ b
+    #[3] real_integrable_on f (real_closed_interval a c)
+    #[4] real_integrable_on f (real_closed_interval c b)
+    #[5] real_integrable_on f (real_closed_interval a b)
+  ← rewrite_goal real_integrable_on_def sym=false goal=5
+    #[6] ∃y. has_real_integral f y (real_closed_interval a b)
+  -> rewrite_fact real_integrable_on_def sym=false goal=6 facts=[3]
+    #[7] ∃y. has_real_integral f y (real_closed_interval a c)
+  -> rewrite_fact real_integrable_on_def sym=false goal=6 facts=[4]
+    #[8] ∃y. has_real_integral f y (real_closed_interval c b)
+  exists_elim y1 goal=6 facts=[7]
+    #[9] _VAR y1
+    #[10] has_real_integral f y1 (real_closed_interval a c)
+    #[11] ∃y. has_real_integral f y (real_closed_interval a b)
+    #[12] real_integrable_on f (real_closed_interval a b)
+  exists_elim y2 goal=11 facts=[8]
+    #[13] _VAR y2
+    #[14] has_real_integral f y2 (real_closed_interval c b)
+    #[15] ∃y. has_real_integral f y (real_closed_interval a b)
+    #[16] real_integrable_on f (real_closed_interval a b)
+  ← inst_exists_goal "y1 + y2" goal=15
+    #[17] has_real_integral f (y1 + y2) (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_combine goal=17 facts=[1,2,10,14]
+    #[18] has_real_integral f (y1 + y2) (real_closed_interval a b)
+qed
+
+theorem real_integrable_on_little_subintervals
+  fixes a :: real, b :: real, f :: real => real
+  prop (!x. x Mem real_closed_interval a b --> (?d. 0 < d & (!u. !v. x Mem real_closed_interval u v --> (!y. y Mem real_closed_interval u v --> abs (y - x) < d & y Mem real_closed_interval a b) --> real_integrable_on f (real_closed_interval u v)))) --> real_integrable_on f (real_closed_interval a b)
+  [hint_backward]
+
+theorem real_integral_has_real_derivative_pointwise
+  fixes a :: real, b :: real, f :: real => real, x :: real
+  prop real_integrable_on f (real_closed_interval a b) --> x Mem real_closed_interval a b --> real_continuous f (within (atreal x) (real_closed_interval a b)) --> has_real_derivative (%u. real_integral (real_closed_interval a u) f) (f x) (within (atreal x) (real_closed_interval a b))
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem real_integral_has_real_derivative
+  fixes a :: real, b :: real, f :: real => real
+  prop real_continuous_on f (real_closed_interval a b) --> (!x. x Mem real_closed_interval a b --> has_real_derivative (%u. real_integral (real_closed_interval a u) f) (f x) (within (atreal x) (real_closed_interval a b)))
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_continuous_on f (real_closed_interval a b)
+    #[2] ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative (λu. real_integral (real_closed_interval a u) f) (f x) (within (atreal x) (real_closed_interval a b))
+  ← introduction x goal=2
+    #[3] _VAR x
+    #[4] x ∈ real_closed_interval a b
+    #[5] has_real_derivative (λu. real_integral (real_closed_interval a u) f) (f x) (within (atreal x) (real_closed_interval a b))
+  ← apply_backward_step real_integral_has_real_derivative_pointwise goal=5
+    #[6] real_integrable_on f (real_closed_interval a b)
+    #[7] real_continuous f (within (atreal x) (real_closed_interval a b))
+  ← apply_backward_step real_integrable_continuous goal=6 facts=[1]
+    #[8] real_integrable_on f (real_closed_interval a b)
+  -> rewrite_fact real_continuous_on_eq_continuous_within sym=false goal=7 facts=[1]
+    #[9] ∀x. x ∈ real_closed_interval a b ⟶ real_continuous f (within (atreal x) (real_closed_interval a b))
+  ← apply_prev goal=7 facts=[9]
+qed
+
+theorem real_antiderivative_continuous
+  fixes a :: real, b :: real, f :: real => real
+  prop real_continuous_on f (real_closed_interval a b) --> (?g. !x. x Mem real_closed_interval a b --> has_real_derivative g (f x) (within (atreal x) (real_closed_interval a b)))
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_continuous_on f (real_closed_interval a b)
+    #[2] ∃g. ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval a b))
+  ← inst_exists_goal "(λu. real_integral (real_closed_interval a u) f)" goal=2
+    #[3] ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative (λu. real_integral (real_closed_interval a u) f) (f x) (within (atreal x) (real_closed_interval a b))
+  ← apply_backward_step real_integral_has_real_derivative goal=3
+qed
+
+theorem real_antiderivative_integral_continuous
+  fixes a :: real, b :: real, f :: real => real
+  prop real_continuous_on f (real_closed_interval a b) --> (?g. !u. !v. u Mem real_closed_interval a b --> v Mem real_closed_interval a b --> u <= v --> has_real_integral f (g v - g u) (real_closed_interval u v))
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_continuous_on f (real_closed_interval a b)
+    #[2] ∃g. ∀u. ∀v. u ∈ real_closed_interval a b ⟶ v ∈ real_closed_interval a b ⟶ u ≤ v ⟶ has_real_integral f (g v - g u) (real_closed_interval u v)
+  -> apply_forward_step real_antiderivative_continuous goal=2 facts=[1]
+    #[3] ∃g. ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval a b))
+  exists_elim g goal=2 facts=[3]
+    #[4] _VAR g
+    #[5] ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval a b))
+    #[6] ∃g. ∀u. ∀v. u ∈ real_closed_interval a b ⟶ v ∈ real_closed_interval a b ⟶ u ≤ v ⟶ has_real_integral f (g v - g u) (real_closed_interval u v)
+  ← inst_exists_goal g goal=6
+    #[7] ∀u. ∀v. u ∈ real_closed_interval a b ⟶ v ∈ real_closed_interval a b ⟶ u ≤ v ⟶ has_real_integral f (g v - g u) (real_closed_interval u v)
+  ← introduction u,v goal=7
+    #[8] _VAR u
+    #[9] _VAR v
+    #[10] u ∈ real_closed_interval a b
+    #[11] v ∈ real_closed_interval a b
+    #[12] u ≤ v
+    #[13] has_real_integral f (g v - g u) (real_closed_interval u v)
+  ← apply_backward_step real_fundamental_theorem_of_calculus goal=13 facts=[12]
+    #[14] ∀x. x ∈ real_closed_interval u v ⟶ has_real_derivative g (f x) (within (atreal x) (real_closed_interval u v))
+  ← introduction x goal=14
+    #[15] _VAR x
+    #[16] x ∈ real_closed_interval u v
+    #[17] has_real_derivative g (f x) (within (atreal x) (real_closed_interval u v))
+  cut "real_closed_interval u v ⊆ real_closed_interval a b" goal=17
+    #[18] real_closed_interval u v ⊆ real_closed_interval a b
+  ← rewrite_goal real_closed_interval_def sym=false goal=18
+    #[19] {p. u ≤ p ∧ p ≤ v} ⊆ {p. a ≤ p ∧ p ≤ b}
+  -> rewrite_fact real_closed_interval_def sym=false goal=19 facts=[10]
+    #[20] u ∈ {p. a ≤ p ∧ p ≤ b}
+  -> rewrite_fact real_closed_interval_def sym=false goal=20 facts=[11]
+    #[21] v ∈ {p. a ≤ p ∧ p ≤ b}
+  ← z3 goal=19 facts=[21,20]
+    #[22] {p. u ≤ p ∧ p ≤ v} ⊆ {p. a ≤ p ∧ p ≤ b}
+  ← apply_backward_step has_real_derivative_within_subset param_s="real_closed_interval a b" goal=17
+    #[23] has_real_derivative g (f x) (within (atreal x) (real_closed_interval a b))
+  ← apply_prev goal=23 facts=[5]
+    #[24] x ∈ real_closed_interval a b
+  ← apply_backward_step subsetE goal=24 facts=[18,16]
+qed
+
+theorem has_real_integral_affinity
+  fixes a :: real, b :: real, c :: real, f :: real => real, i :: real, m :: real
+  prop has_real_integral f i (real_closed_interval a b) --> ~(m = 0) --> has_real_integral (%x. f (m * x + c)) (real_inverse (abs m) * i) (image (%x. real_inverse m * (x - c)) (real_closed_interval a b))
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem real_integrable_affinity
+  fixes a :: real, b :: real, c :: real, f :: real => real, m :: real
+  prop real_integrable_on f (real_closed_interval a b) --> ~(m = 0) --> real_integrable_on (%x. f (m * x + c)) (image (%x. real_inverse m * (x - c)) (real_closed_interval a b))
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f (real_closed_interval a b)
+    #[2] ¬(m = 0)
+    #[3] real_integrable_on (λx. f (m * x + c)) (image (λx. real_inverse m * (x - c)) (real_closed_interval a b))
+  ← rewrite_goal real_integrable_on_def sym=false goal=3
+    #[4] ∃y. has_real_integral (λx. f (m * x + c)) y (image (λx. real_inverse m * (x - c)) (real_closed_interval a b))
+  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
+    #[5] ∃y. has_real_integral f y (real_closed_interval a b)
+  exists_elim y goal=4 facts=[5]
+    #[6] _VAR y
+    #[7] has_real_integral f y (real_closed_interval a b)
+    #[8] ∃y. has_real_integral (λx. f (m * x + c)) y (image (λx. real_inverse m * (x - c)) (real_closed_interval a b))
+    #[9] real_integrable_on (λx. f (m * x + c)) (image (λx. real_inverse m * (x - c)) (real_closed_interval a b))
+  ← inst_exists_goal "(real_inverse (abs m) * y)" goal=8
+    #[10] has_real_integral (λx. f (m * x + c)) (real_inverse (abs m) * y) (image (λx. real_inverse m * (x - c)) (real_closed_interval a b))
+  ← apply_backward_step has_real_integral_affinity goal=10 facts=[7,2]
+    #[11] has_real_integral (λx. f (m * x + c)) (real_inverse (abs m) * y) (image (λx. real_inverse m * (x - c)) (real_closed_interval a b))
+qed
+
+theorem has_real_integral_stretch
+  fixes a :: real, b :: real, f :: real => real, i :: real, m :: real
+  prop has_real_integral f i (real_closed_interval a b) --> ~(m = 0) --> has_real_integral (%x. f (m * x)) (real_inverse (abs m) * i) (image (%x. real_inverse m * x) (real_closed_interval a b))
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] has_real_integral f i (real_closed_interval a b)
+    #[2] ¬(m = 0)
+    #[3] has_real_integral (λx. f (m * x)) (real_inverse (abs m) * i) (image (λx. real_inverse m * x) (real_closed_interval a b))
+  -> apply_forward_step has_real_integral_affinity param_c="(0::real)" goal=3 facts=[1,2]
+    #[4] has_real_integral (λx. f (m * x + 0)) (real_inverse (abs m) * i) (image (λx. real_inverse m * (x - 0)) (real_closed_interval a b))
+  -> rewrite_fact real_add_rid sym=false goal=3 facts=[4]
+    #[5] has_real_integral (λx. f (m * x)) (real_inverse (abs m) * i) (image (λx. real_inverse m * (x - 0)) (real_closed_interval a b))
+  -> rewrite_fact real_sub_rzero sym=false goal=3 facts=[5]
+qed
+
+theorem real_integrable_stretch
+  fixes a :: real, b :: real, f :: real => real, m :: real
+  prop real_integrable_on f (real_closed_interval a b) --> ~(m = 0) --> real_integrable_on (%x. f (m * x)) (image (%x. real_inverse m * x) (real_closed_interval a b))
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f (real_closed_interval a b)
+    #[2] ¬(m = 0)
+    #[3] real_integrable_on (λx. f (m * x)) (image (λx. real_inverse m * x) (real_closed_interval a b))
+  ← rewrite_goal real_integrable_on_def sym=false goal=3
+    #[4] ∃y. has_real_integral (λx. f (m * x)) y (image (λx. real_inverse m * x) (real_closed_interval a b))
+  -> rewrite_fact real_integrable_on_def sym=false goal=4 facts=[1]
+    #[5] ∃y. has_real_integral f y (real_closed_interval a b)
+  exists_elim i goal=4 facts=[5]
+    #[6] _VAR i
+    #[7] has_real_integral f i (real_closed_interval a b)
+    #[8] ∃y. has_real_integral (λx. f (m * x)) y (image (λx. real_inverse m * x) (real_closed_interval a b))
+    #[9] real_integrable_on (λx. f (m * x)) (image (λx. real_inverse m * x) (real_closed_interval a b))
+  ← inst_exists_goal "(real_inverse (abs m) * i)" goal=8
+    #[10] has_real_integral (λx. f (m * x)) (real_inverse (abs m) * i) (image (λx. real_inverse m * x) (real_closed_interval a b))
+  ← apply_backward_step has_real_integral_stretch goal=10 facts=[7,2]
+    #[11] has_real_integral (λx. f (m * x)) (real_inverse (abs m) * i) (image (λx. real_inverse m * x) (real_closed_interval a b))
+qed
+
+theorem has_real_integral_reflect_lemma
+  fixes a :: real, b :: real, f :: real => real, i :: real
+  prop has_real_integral f i (real_closed_interval a b) --> has_real_integral (%x. f (-x)) i (real_closed_interval (-b) (-a))
+  [hint_backward,hint_forward]
+
+theorem has_real_integral_reflect
+  fixes a :: real, b :: real, f :: real => real, i :: real
+  prop has_real_integral (%x. f (-x)) i (real_closed_interval (-b) (-a)) <--> has_real_integral f i (real_closed_interval a b)
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] has_real_integral (λx. f (-x)) i (real_closed_interval (-b) (-a)) ⟶ has_real_integral f i (real_closed_interval a b)
+    #[2] has_real_integral f i (real_closed_interval a b) ⟶ has_real_integral (λx. f (-x)) i (real_closed_interval (-b) (-a))
+  ← introduction goal=1
+    #[3] has_real_integral (λx. f (-x)) i (real_closed_interval (-b) (-a))
+    #[4] has_real_integral f i (real_closed_interval a b)
+  -> apply_forward_step has_real_integral_reflect_lemma goal=4 facts=[3]
+    #[5] has_real_integral (λx. f (--x)) i (real_closed_interval (--a) (--b))
+  -> rewrite_fact real_neg_neg goal=4 facts=[5]
+    #[6] has_real_integral (λx. f x) i (real_closed_interval a b)
+  -> rewrite_fact eta_conversion goal=4 facts=[6]
+  ← introduction goal=2
+    #[7] has_real_integral f i (real_closed_interval a b)
+    #[8] has_real_integral (λx. f (-x)) i (real_closed_interval (-b) (-a))
+  ← apply_backward_step has_real_integral_reflect_lemma goal=8
+qed
+
+theorem real_integrable_reflect
+  fixes a :: real, b :: real, f :: real => real
+  prop real_integrable_on (%x. f (-x)) (real_closed_interval (-b) (-a)) <--> real_integrable_on f (real_closed_interval a b)
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_integrable_on_def goal=0
+    #[1] (∃y. has_real_integral (λx. f (-x)) y (real_closed_interval (-b) (-a))) ⟷ (∃y. has_real_integral f y (real_closed_interval a b))
+  ← rewrite_goal has_real_integral_reflect goal=1
+qed
+
+theorem real_integral_reflect
+  fixes a :: real, b :: real, f :: real => real
+  prop real_integral (real_closed_interval (-b) (-a)) (%x. f (-x)) = real_integral (real_closed_interval a b) f
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_integral_def goal=0
+    #[1] (THE y. has_real_integral (λx. f (-x)) y (real_closed_interval (-b) (-a))) = (THE y. has_real_integral f y (real_closed_interval a b))
+  ← rewrite_goal has_real_integral_reflect goal=1
+qed
+
+theorem has_real_integral_reflect_gen
+  fixes f :: real => real, i :: real, s :: real set
+  prop has_real_integral (%x. f (-x)) i s <--> has_real_integral f i (image uminus s)
+  [hint_rewrite]
+
+theorem real_integrable_reflect_gen
+  fixes f :: real => real, s :: real set
+  prop real_integrable_on (%x. f (-x)) s <--> real_integrable_on f (image uminus s)
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_integrable_on_def goal=0
+    #[1] (∃y. has_real_integral (λx. f (-x)) y s) ⟷ (∃y. has_real_integral f y (image uminus s))
+  ← rewrite_goal has_real_integral_reflect_gen goal=1
+qed
+
+theorem real_integral_reflect_gen
+  fixes f :: real => real, s :: real set
+  prop real_integral s (%x. f (-x)) = real_integral (image uminus s) f
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_integral_def goal=0
+    #[1] (THE y. has_real_integral (λx. f (-x)) y s) = (THE y. has_real_integral f y (image uminus s))
+  ← rewrite_goal has_real_integral_reflect_gen goal=1
+qed
+
+theorem real_fundamental_theorem_of_calculus_interior
+  fixes a :: real, b :: real, f :: real => real, f1 :: real => real
+  prop a <= b --> real_continuous_on f (real_closed_interval a b) --> (!x. x Mem real_closed_interval a b --> has_real_derivative f (f1 x) (atreal x)) --> has_real_integral f1 (f b - f a) (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_fundamental_theorem_of_calculus_interior_strong
+  fixes a :: real, b :: real, f :: real => real, f1 :: real => real, s :: real set
+  prop countable s --> a <= b --> real_continuous_on f (real_closed_interval a b) --> (!x. x Mem diff (real_open_interval a b) s --> has_real_derivative f (f1 x) (atreal x)) --> has_real_integral f1 (f b - f a) (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_fundamental_theorem_of_calculus_strong
+  fixes a :: real, b :: real, f :: real => real, f1 :: real => real, s :: real set
+  prop countable s --> a <= b --> real_continuous_on f (real_closed_interval a b) --> (!x. x Mem diff (real_closed_interval a b) s --> has_real_derivative f (f1 x) (atreal x)) --> has_real_integral f1 (f b - f a) (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] countable s
+    #[2] a ≤ b
+    #[3] real_continuous_on f (real_closed_interval a b)
+    #[4] ∀x. x ∈ diff (real_closed_interval a b) s ⟶ has_real_derivative f (f1 x) (atreal x)
+    #[5] has_real_integral f1 (f b - f a) (real_closed_interval a b)
+  ← apply_backward_step real_fundamental_theorem_of_calculus_interior_strong goal=5 facts=[1,2,3]
+    #[6] ∀x. x ∈ diff (real_open_interval a b) s ⟶ has_real_derivative f (f1 x) (atreal x)
+  ← introduction x goal=6
+    #[7] _VAR x
+    #[8] x ∈ diff (real_open_interval a b) s
+    #[9] has_real_derivative f (f1 x) (atreal x)
+  ← apply_prev goal=9 facts=[4]
+    #[10] x ∈ diff (real_closed_interval a b) s
+  ← rewrite_goal real_closed_interval_def sym=false goal=10
+    #[11] x ∈ diff ({p. a ≤ p ∧ p ≤ b}) s
+  -> rewrite_fact real_open_interval_def sym=false goal=11 facts=[8]
+    #[12] x ∈ diff ({p. a < p ∧ p < b}) s
+  ← z3 goal=11 facts=[12]
+    #[13] x ∈ diff ({p. a ≤ p ∧ p ≤ b}) s
+qed
+
+theorem real_integral_id_evalat
+  fixes a :: real, b :: real
+  prop a <= b --> real_integral (real_closed_interval a b) (%x. x) = evalat (%x. x ^ (2::nat) / 2) a b
+proof
+  ← introduction goal=0
+    #[1] a ≤ b
+    #[2] real_integral (real_closed_interval a b) (λx. x) = evalat (λx. x ^ (2::nat) / 2) a b
+  ← rewrite_goal evalat_def sym=false goal=2
+    #[3] real_integral (real_closed_interval a b) (λx. x) = b ^ (2::nat) / 2 - a ^ (2::nat) / 2
+  ← apply_backward_step real_integral_unique goal=3
+    #[4] has_real_integral (λx. x) (b ^ (2::nat) / 2 - a ^ (2::nat) / 2) (real_closed_interval a b)
+  ← apply_backward_step real_fundamental_theorem_of_calculus_interior goal=4
+    #[5] real_continuous_on (λb1. b1 ^ (2::nat) / 2) (real_closed_interval a b)
+    #[6] ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative (λb1. b1 ^ (2::nat) / 2) x (atreal x)
+  ← apply_backward_step real_differentiable_on_imp_real_continuous_on goal=5
+    #[7] real_differentiable_on (λb1. b1 ^ (2::nat) / 2) (real_closed_interval a b)
+  ← apply_backward_step real_differentiable_on_div goal=7
+    #[8] real_differentiable_on (λx. x ^ (2::nat)) (real_closed_interval a b)
+    #[9] real_differentiable_on (λx. 2) (real_closed_interval a b)
+    #[10] ∀b1. b1 ∈ real_closed_interval a b ⟶ ¬((2::real) = 0)
+  ← apply_backward_step real_differentiable_on_pow goal=8
+    #[11] real_differentiable_on (λx. x) (real_closed_interval a b)
+  ← apply_backward_step real_differentiable_on_id goal=11
+    #[12] real_differentiable_on (λx. x) (real_closed_interval a b)
+  ← apply_backward_step real_differentiable_on_const goal=9
+    #[13] real_differentiable_on (λx. 2) (real_closed_interval a b)
+  ← z3 goal=10
+    #[14] ∀b1. b1 ∈ real_closed_interval a b ⟶ ¬((2::real) = 0)
+  ← introduction x goal=6
+    #[15] _VAR x
+    #[16] x ∈ real_closed_interval a b
+    #[17] has_real_derivative (λb. b ^ (2::nat) / 2) x (atreal x)
+  ← rewrite_goal real_divide_def sym=false goal=17
+    #[18] has_real_derivative (λb. b ^ (2::nat) * real_inverse 2) x (atreal x)
+  cut "has_real_derivative (λb1. b1 ^ (2::nat) * real_inverse 2) (2*x* real_inverse 2) (atreal x)" goal=18
+    #[19] has_real_derivative (λb1. b1 ^ (2::nat) * real_inverse 2) (2 * x * real_inverse 2) (atreal x)
+  ← apply_backward_step has_real_derivative_rmul_atreal goal=19
+    #[20] has_real_derivative (λx1. x1 ^ (2::nat)) (2 * x) (atreal x)
+  cut "has_real_derivative (λx1. x1 ^ (2::nat)) (of_nat 2 * x ^ ((2::nat) - 1) * 1) (atreal x)" goal=20
+    #[21] has_real_derivative (λx1. x1 ^ (2::nat)) (of_nat 2 * x ^ ((2::nat) - 1) * 1) (atreal x)
+  ← apply_backward_step has_real_derivative_pow_atreal goal=21
+    #[22] has_real_derivative (λx1. x1) 1 (atreal x)
+  ← apply_backward_step has_real_derivative_id goal=22
+    #[23] has_real_derivative (λx1. x1) 1 (atreal x)
+  -> rewrite_fact real_of_nat_id sym=false goal=20 facts=[21]
+    #[24] has_real_derivative (λx1. x1 ^ (2::nat)) (2 * x ^ ((2::nat) - 1) * 1) (atreal x)
+  -> rewrite_fact real_mul_rid sym=false goal=20 facts=[24]
+    #[25] has_real_derivative (λx1. x1 ^ (2::nat)) (2 * x ^ ((2::nat) - 1)) (atreal x)
+  cut "2-1=(1::nat)" goal=20
+    #[26] (2::nat) - 1 = 1
+  ← z3 goal=26
+    #[27] (2::nat) - 1 = 1
+  -> rewrite_fact_with_prev goal=20 facts=[27,25]
+    #[28] has_real_derivative (λx1. x1 ^ (2::nat)) (2 * x ^ (1::nat)) (atreal x)
+  -> rewrite_fact real_pow_1 sym=false goal=20 facts=[28]
+  -> rewrite_fact real_mult_comm sym=false goal=18 facts=[19]
+    #[29] has_real_derivative (λb1. real_inverse 2 * b1 ^ (2::nat)) (real_inverse 2 * (2 * x)) (atreal x)
+  -> rewrite_fact real_mult_assoc sym=false goal=18 facts=[29]
+    #[30] has_real_derivative (λb1. real_inverse 2 * b1 ^ (2::nat)) (real_inverse 2 * 2 * x) (atreal x)
+  cut "real_inverse 2 * 2 =1" goal=18
+    #[31] real_inverse 2 * 2 = 1
+  ← apply_backward_step real_mul_linv goal=31
+    #[32] ¬((2::real) = 0)
+  ← z3 goal=32
+    #[33] ¬((2::real) = 0)
+  -> rewrite_fact_with_prev goal=18 facts=[31,30]
+    #[34] has_real_derivative (λb1. real_inverse 2 * b1 ^ (2::nat)) (1 * x) (atreal x)
+  -> rewrite_fact real_mul_lid sym=false goal=18 facts=[34]
+    #[35] has_real_derivative (λb1. real_inverse 2 * b1 ^ (2::nat)) x (atreal x)
+  ← rewrite_goal real_mult_comm sym=false goal=18
+qed
+
+theorem real_integral_pow_evalat
+  fixes a :: real, b :: real, n :: nat
+  prop a <= b --> real_integral (real_closed_interval a b) (%x. x ^ n) = evalat (%x. x ^ (n + 1) / (of_nat n + 1)) a b
+
+theorem real_integral_real_pow_evalat
+  fixes a :: real, b :: real, p :: real
+  prop a <= b --> ~(p = -1) --> real_integral (real_closed_interval a b) (%x. x ^ p) = evalat (%x. x ^ (p + 1) / (p + 1)) a b
+
+theorem real_integral_inverse_pos_evalat
+  fixes a :: real, b :: real
+  prop a <= b --> 0 < a --> real_integral (real_closed_interval a b) (%x. x ^ -(1::real)) = evalat (%x. log x) a b
+
+theorem real_integral_inverse_neg_evalat
+  fixes a :: real, b :: real
+  prop a <= b --> b < 0 --> real_integral (real_closed_interval a b) (%x. x ^ -(1::real)) = evalat (%x. log (-x)) a b
+
+theorem real_integral_inverse_pow_evalat_pos
+  fixes a :: real, b :: real, n :: nat
+  prop a <= b --> 0 < a --> 1 < n --> real_integral (real_closed_interval a b) (%x. 1 / x ^ n) = evalat (%x. 1 / (-(of_nat n - 1) * x ^ (n - 1))) a b
+
+theorem real_integral_sin_evalat
+  fixes a :: real, b :: real
+  prop a <= b --> real_integral (real_closed_interval a b) (%x. sin x) = evalat (%x. -(cos x)) a b
+
+theorem real_integral_cos_evalat
+  fixes a :: real, b :: real
+  prop a <= b --> real_integral (real_closed_interval a b) (%x. cos x) = evalat (%x. sin x) a b
+
+theorem real_integral_exp_evalat
+  fixes a :: real, b :: real
+  prop a <= b --> real_integral (real_closed_interval a b) (%x. exp x) = evalat (%x. exp x) a b
+
+theorem real_integral_to_atn_evalat
+  fixes a :: real, b :: real
+  prop a <= b --> real_integral (real_closed_interval a b) (%x. (1 + x ^ (2::nat)) ^ -(1::real)) = evalat (%x. atn x) a b
+
+theorem real_integral_to_tan_evalat
+  fixes a :: real, b :: real
+  prop a <= b --> (!x. x Mem real_open_interval a b --> ~(cos x = 0)) --> real_integral (real_closed_interval a b) (%x. cos x ^ -(2::real)) = evalat (%x. tan x) a b
+
+theorem real_integral_to_cot_evalat
+  fixes a :: real, b :: real
+  prop a <= b --> (!x. x Mem real_open_interval a b --> ~(sin x = 0)) --> real_integral (real_closed_interval a b) (%x. sin x ^ -(2::real)) = evalat (%x. -(cot x)) a b
+
+theorem real_indefinite_integral_continuous_right
+  fixes a :: real, b :: real, f :: real => real
+  prop real_continuous_on f (real_closed_interval a b) --> real_continuous_on (%x. real_integral (real_closed_interval a x) f) (real_closed_interval a b)
+  [hint_backward,hint_forward]
+
+theorem real_indefinite_integral_continuous_left
+  fixes a :: real, b :: real, f :: real => real
+  prop real_continuous_on f (real_closed_interval a b) --> real_continuous_on (%x. real_integral (real_closed_interval x b) f) (real_closed_interval a b)
+  [hint_backward,hint_forward]
+
+theorem has_real_derivative_zero_uniqe_strong_interval
+  fixes a :: real, b :: real, f :: real => real, s :: real set, y :: real
+  prop countable s --> real_continuous_on f (real_closed_interval a b) --> f a = y --> (!x. x Mem diff (real_closed_interval a b) s --> has_real_derivative f 0 (within (atreal x) (real_closed_interval a b))) --> (!x. x Mem real_closed_interval a b --> f x = y)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_derivative_zero_uniqe_strong_convex
+  fixes c :: real, f :: real => real, k :: real set, s :: real set, y :: real
+  prop is_realinterval s --> countable k --> real_continuous_on f s --> c Mem s --> f c = y --> (!x. x Mem diff s k --> has_real_derivative f 0 (within (atreal x) s)) --> (!x. x Mem s --> f x = y)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_derivative_indefinite_integral
+  fixes a :: real, b :: real, f :: real => real
+  prop real_continuous_on f (real_closed_interval a b) --> (?k. real_negligible k & (!x. x Mem diff (real_closed_interval a b) k --> has_real_derivative (%x1. real_integral (real_closed_interval a x1) f) (f x) (within (atreal x) (real_closed_interval a b))))
+  [hint_backward]
+
+theorem has_real_integral_restrict
+  fixes f :: real => real, i :: real, s :: real set, t :: real set
+  prop s Sub t --> has_real_integral (%x. if x Mem s then f x else 0) i t <--> has_real_integral f i s
+  [hint_backward,hint_forward]
+
+theorem has_real_integral_restrict_univ
+  fixes f :: real => real, i :: real, s :: real set
+  prop has_real_integral (%x. if x Mem s then f x else 0) i univ <--> has_real_integral f i s
+  [hint_rewrite]
+proof
+  ← apply_backward_step has_real_integral_restrict goal=0
+    #[1] s ⊆ univ
+  ← apply_backward_step subset_univ goal=1
+qed
+
+theorem has_real_integral_spike_set_eq
+  fixes f :: real => real, s :: real set, t :: real set, y :: real
+  prop real_negligible (diff s t Un diff t s) --> has_real_integral f y s <--> has_real_integral f y t
+  [hint_backward,hint_forward]
+
+theorem has_real_integral_spike_set
+  fixes f :: real => real, s :: real set, t :: real set, y :: real
+  prop real_negligible (diff s t Un diff t s) --> has_real_integral f y s --> has_real_integral f y t
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] real_negligible (diff s t ∪ diff t s)
+    #[2] has_real_integral f y s
+    #[3] has_real_integral f y t
+  -> apply_forward_step has_real_integral_spike_set_eq param_f=f param_y=y goal=3 facts=[1]
+    #[4] has_real_integral f y s ⟷ has_real_integral f y t
+  -> rewrite_fact_with_prev goal=3 facts=[4,2]
+qed
+
+theorem real_integrable_spike_set
+  fixes f :: real => real, s :: real set, t :: real set
+  prop real_negligible (diff s t Un diff t s) --> real_integrable_on f s --> real_integrable_on f t
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_negligible (diff s t ∪ diff t s)
+    #[2] real_integrable_on f s
+    #[3] real_integrable_on f t
+  ← rewrite_goal real_integrable_on_def goal=3
+    #[4] ∃y. has_real_integral f y t
+  -> rewrite_fact real_integrable_on_def goal=4 facts=[2]
+    #[5] ∃y. has_real_integral f y s
+  exists_elim y goal=4 facts=[5]
+    #[6] _VAR y
+    #[7] has_real_integral f y s
+    #[8] ∃y. has_real_integral f y t
+    #[9] real_integrable_on f t
+  ← inst_exists_goal y goal=8
+    #[10] has_real_integral f y t
+  -> apply_forward_step has_real_integral_spike_set_eq param_f=f param_y=y goal=10 facts=[1]
+    #[11] has_real_integral f y s ⟷ has_real_integral f y t
+  -> rewrite_fact_with_prev goal=10 facts=[11,7]
+    #[12] has_real_integral f y t
+qed
+
+theorem real_integrable_spike_set_eq
+  fixes f :: real => real, s :: real set, t :: real set
+  prop real_negligible (diff s t Un diff t s) --> real_integrable_on f s <--> real_integrable_on f t
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_negligible (diff s t ∪ diff t s)
+    #[2] real_integrable_on f s ⟷ real_integrable_on f t
+  ← apply_backward_step iffI goal=2
+    #[3] real_integrable_on f s ⟶ real_integrable_on f t
+    #[4] real_integrable_on f t ⟶ real_integrable_on f s
+  ← introduction goal=3
+    #[5] real_integrable_on f s
+    #[6] real_integrable_on f t
+  ← apply_backward_step real_integrable_spike_set param_s=s goal=6
+  ← introduction goal=4
+    #[7] real_integrable_on f t
+    #[8] real_integrable_on f s
+  ← apply_backward_step real_integrable_spike_set param_s=t goal=8
+    #[9] real_negligible (diff t s ∪ diff s t)
+  ← rewrite_goal union_comm goal=9
+qed
+
+theorem real_integral_spike_set
+  fixes f :: real => real, s :: real set, t :: real set
+  prop real_negligible (diff s t Un diff t s) --> real_integral s f = real_integral t f
+  [hint_backward,hint_forward]
+
+theorem has_real_integral_open_interval
+  fixes a :: real, b :: real, f :: real => real, y :: real
+  prop has_real_integral f y (real_open_interval a b) <--> has_real_integral f y (real_closed_interval a b)
+  [hint_rewrite]
+
+theorem real_integrable_on_open_interval
+  fixes a :: real, b :: real, f :: real => real
+  prop real_integrable_on f (real_open_interval a b) <--> real_integrable_on f (real_closed_interval a b)
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_integrable_on_def goal=0
+    #[1] (∃y. has_real_integral f y (real_open_interval a b)) ⟷ (∃y. has_real_integral f y (real_closed_interval a b))
+  ← rewrite_goal has_real_integral_open_interval goal=1
+qed
+
+theorem real_integral_open_interval
+  fixes a :: real, b :: real, f :: real => real
+  prop real_integral (real_open_interval a b) f = real_integral (real_closed_interval a b) f
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_integral_def goal=0
+    #[1] (THE y. has_real_integral f y (real_open_interval a b)) = (THE y. has_real_integral f y (real_closed_interval a b))
+  ← rewrite_goal has_real_integral_open_interval goal=1
+qed
+
+theorem has_real_integral_on_superset
+  fixes f :: real => real, i :: real, s :: real set, t :: real set
+  prop (!x. ~(x Mem s) --> f x = 0) --> s Sub t --> has_real_integral f i s --> has_real_integral f i t
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] ∀x. ¬(x ∈ s) ⟶ f x = 0
+    #[2] s ⊆ t
+    #[3] has_real_integral f i s
+    #[4] has_real_integral f i t
+  ← rewrite_goal has_real_integral_restrict_univ sym=true goal=4
+    #[5] has_real_integral (λx. if x ∈ t then f x else 0) i univ
+  -> rewrite_fact has_real_integral_restrict_univ sym=true goal=5 facts=[3]
+    #[6] has_real_integral (λx. if x ∈ s then f x else 0) i univ
+  ← apply_backward_step has_real_integral_eq param_f="(λx. if x ∈ s then f x else 0)" goal=5
+    #[7] ∀x. x ∈ univ ⟶ (if x ∈ s then f x else 0) = (if x ∈ t then f x else 0)
+  ← introduction x goal=7
+    #[8] _VAR x
+    #[9] x ∈ univ
+    #[10] (if x ∈ s then f x else 0) = (if x ∈ t then f x else 0)
+  ← z3 goal=10 facts=[2,1]
+    #[11] (if x ∈ s then f x else 0) = (if x ∈ t then f x else 0)
+qed
+
+theorem real_integrable_on_superset
+  fixes f :: real => real, s :: real set, t :: real set
+  prop (!x. ~(x Mem s) --> f x = 0) --> s Sub t --> real_integrable_on f s --> real_integrable_on f t
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] ∀x. ¬(x ∈ s) ⟶ f x = 0
+    #[2] s ⊆ t
+    #[3] real_integrable_on f s
+    #[4] real_integrable_on f t
+  ← rewrite_goal real_integrable_on_def sym=false goal=4
+    #[5] ∃y. has_real_integral f y t
+  -> rewrite_fact real_integrable_on_def sym=false goal=5 facts=[3]
+    #[6] ∃y. has_real_integral f y s
+  exists_elim i goal=5 facts=[6]
+    #[7] _VAR i
+    #[8] has_real_integral f i s
+    #[9] ∃y. has_real_integral f y t
+    #[10] real_integrable_on f t
+  ← inst_exists_goal i goal=9
+    #[11] has_real_integral f i t
+  ← apply_backward_step has_real_integral_on_superset goal=11 facts=[1,2,8]
+    #[12] has_real_integral f i t
+qed
+
+theorem real_integrable_restrict_univ
+  fixes f :: real => real, s :: real set
+  prop real_integrable_on (%x. if x Mem s then f x else 0) univ <--> real_integrable_on f s
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_integrable_on_def goal=0
+    #[1] (∃y. has_real_integral (λx. if x ∈ s then f x else 0) y univ) ⟷ (∃y. has_real_integral f y s)
+  ← rewrite_goal has_real_integral_restrict_univ goal=1
+qed
+
+theorem real_integral_restrict
+  fixes f :: real => real, s :: real set, t :: real set
+  prop s Sub t --> real_integral t (%x. if x Mem s then f x else 0) = real_integral s f
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] s ⊆ t
+    #[2] real_integral t (λx. if x ∈ s then f x else 0) = real_integral s f
+  ← apply_backward_step real_integral_unique goal=2
+    #[3] has_real_integral (λx. if x ∈ s then f x else 0) (real_integral s f) t
+  -> apply_forward_step has_real_integral_restrict param_f=f param_i="(real_integral s f)" goal=3 facts=[1]
+    #[4] has_real_integral (λx. if x ∈ s then f x else 0) (real_integral s f) t ⟷ has_real_integral f (real_integral s f) s
+  ← rewrite_goal_with_prev goal=3 facts=[4]
+    #[5] has_real_integral f (real_integral s f) s
+  ← rewrite_goal real_integral_def goal=5
+    #[6] has_real_integral f (THE y. has_real_integral f y s) s
+qed
+
+theorem has_real_integral_restrict_inter
+  fixes f :: real => real, i :: real, s :: real set, t :: real set
+  prop has_real_integral (%x. if x Mem s then f x else 0) i t <--> has_real_integral f i (s Int t)
+  [hint_rewrite]
+proof
+  ← rewrite_goal has_real_integral_restrict_univ sym=true goal=0
+    #[1] has_real_integral (λx. if x ∈ t then if x ∈ s then f x else 0 else 0) i univ ⟷ has_real_integral (λx. if x ∈ s ∩ t then f x else 0) i univ
+  ← rewrite_goal member_inter_iff sym=false goal=1
+    #[2] has_real_integral (λx. if x ∈ t then if x ∈ s then f x else 0 else 0) i univ ⟷ has_real_integral (λx. if x ∈ s ∧ x ∈ t then f x else 0) i univ
+  ← apply_backward_step has_real_integral_eq_eq goal=2
+    #[3] ∀x. x ∈ univ ⟶ (if x ∈ t then if x ∈ s then f x else 0 else 0) = (if x ∈ s ∧ x ∈ t then f x else 0)
+  ← introduction x goal=3
+    #[4] _VAR x
+    #[5] x ∈ univ
+    #[6] (if x ∈ t then if x ∈ s then f x else 0 else 0) = (if x ∈ s ∧ x ∈ t then f x else 0)
+  ← z3 goal=6
+    #[7] (if x ∈ t then if x ∈ s then f x else 0 else 0) = (if x ∈ s ∧ x ∈ t then f x else 0)
+qed
+
+theorem real_integrable_restrict_inter
+  fixes f :: real => real, s :: real set, t :: real set
+  prop real_integrable_on (%x. if x Mem s then f x else 0) t <--> real_integrable_on f (s Int t)
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_integrable_on_def goal=0
+    #[1] (∃y. has_real_integral (λx. if x ∈ s then f x else 0) y t) ⟷ (∃y. has_real_integral f y (s ∩ t))
+  ← rewrite_goal has_real_integral_restrict_inter goal=1
+qed
+
+theorem real_negligible_on_interval
+  fixes s :: real set
+  prop real_negligible s <--> (!a. !b. real_negligible (s Int real_closed_interval a b))
+  [hint_rewrite]
+
+theorem has_real_integral_subset_le
+  fixes f :: real => real, i :: real, j :: real, s :: real set, t :: real set
+  prop s Sub t --> has_real_integral f i s --> has_real_integral f j t --> (!x. x Mem t --> 0 <= f x) --> i <= j
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem real_integral_subset_le
+  fixes f :: real => real, s :: real set, t :: real set
+  prop s Sub t --> real_integrable_on f s --> real_integrable_on f t --> (!x. x Mem t --> 0 <= f x) --> real_integral s f <= real_integral t f
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] s ⊆ t
+    #[2] real_integrable_on f s
+    #[3] real_integrable_on f t
+    #[4] ∀x. x ∈ t ⟶ 0 ≤ f x
+    #[5] real_integral s f ≤ real_integral t f
+  ← apply_backward_step has_real_integral_subset_le param_f=f param_s=s param_t=t goal=5
+    #[6] has_real_integral f (real_integral s f) s
+    #[7] has_real_integral f (real_integral t f) t
+  ← apply_backward_step real_integrable_integral goal=6 facts=[2]
+    #[8] has_real_integral f (real_integral s f) s
+  ← apply_backward_step real_integrable_integral goal=7 facts=[3]
+    #[9] has_real_integral f (real_integral t f) t
+qed
+
+theorem real_integrable_on_subinterval
+  fixes a :: real, b :: real, f :: real => real, s :: real set
+  prop real_integrable_on f s --> real_closed_interval a b Sub s --> real_integrable_on f (real_closed_interval a b)
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem real_integrable_on_subinterval_gen
+  fixes f :: real => real, s :: real set, t :: real set
+  prop real_integrable_on f s --> t Sub s --> is_realinterval t --> real_integrable_on f t
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem real_integrable_straddle
+  fixes f :: real => real, s :: real set
+  prop (!e. 0 < e --> (?g. ?h. ?i. ?j. has_real_integral g i s & has_real_integral h j s & abs (i - j) < e & (!x. x Mem s --> g x <= f x & f x <= h x))) --> real_integrable_on f s
+  [hint_backward]
+
+theorem has_real_integral_straddle_null
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop (!x. x Mem s --> 0 <= f x & f x <= g x) --> has_real_integral g 0 s --> has_real_integral f 0 s
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] ∀x. x ∈ s ⟶ 0 ≤ f x ∧ f x ≤ g x
+    #[2] has_real_integral g 0 s
+    #[3] has_real_integral f 0 s
+  ← rewrite_goal has_real_integral_integrable_integral sym=false goal=3
+    #[4] real_integrable_on f s ∧ real_integral s f = 0
+  ← apply_backward_step conjI goal=4
+    #[5] real_integrable_on f s
+    #[6] real_integral s f = 0
+  ← apply_backward_step real_integrable_straddle goal=5
+    #[7] ∀e. 0 < e ⟶ (∃g. ∃h. ∃i. ∃j. has_real_integral g i s ∧ has_real_integral h j s ∧ abs (i - j) < e ∧ (∀x. x ∈ s ⟶ g x ≤ f x ∧ f x ≤ h x))
+  ← introduction e goal=7
+    #[8] _VAR e
+    #[9] 0 < e
+    #[10] ∃g. ∃h. ∃i. ∃j. has_real_integral g i s ∧ has_real_integral h j s ∧ abs (i - j) < e ∧ (∀x. x ∈ s ⟶ g x ≤ f x ∧ f x ≤ h x)
+  ← inst_exists_goal "(%x::real. (0::real))" goal=10
+    #[11] ∃h. ∃i. ∃j. has_real_integral (λx. 0) i s ∧ has_real_integral h j s ∧ abs (i - j) < e ∧ (∀x. x ∈ s ⟶ 0 ≤ f x ∧ f x ≤ h x)
+  ← inst_exists_goal g goal=11
+    #[12] ∃i. ∃j. has_real_integral (λx. 0) i s ∧ has_real_integral g j s ∧ abs (i - j) < e ∧ (∀x. x ∈ s ⟶ 0 ≤ f x ∧ f x ≤ g x)
+  ← inst_exists_goal "(0::real)" goal=12
+    #[13] ∃j. has_real_integral (λx. 0) 0 s ∧ has_real_integral g j s ∧ abs (0 - j) < e ∧ (∀x. x ∈ s ⟶ 0 ≤ f x ∧ f x ≤ g x)
+  ← inst_exists_goal "(0::real)" goal=13
+    #[14] has_real_integral (λx. 0) 0 s ∧ has_real_integral g 0 s ∧ abs (0 - 0) < e ∧ (∀x. x ∈ s ⟶ 0 ≤ f x ∧ f x ≤ g x)
+  ← apply_backward_step conjI goal=14
+    #[15] has_real_integral (λx. 0) 0 s
+    #[16] has_real_integral g 0 s ∧ abs (0 - 0) < e ∧ (∀x. x ∈ s ⟶ 0 ≤ f x ∧ f x ≤ g x)
+  ← apply_backward_step has_real_integral_0 goal=15
+    #[17] has_real_integral (λx. 0) 0 s
+  ← apply_backward_step conjI goal=16
+    #[18] abs (0 - 0) < e ∧ (∀x. x ∈ s ⟶ 0 ≤ f x ∧ f x ≤ g x)
+  ← apply_backward_step conjI goal=18
+    #[19] abs (0 - 0) < e
+  ← z3 goal=19 facts=[9]
+    #[20] abs (0 - 0) < e
+  ← rewrite_goal real_le_antisym sym=true goal=6
+    #[21] real_integral s f ≤ 0 ∧ 0 ≤ real_integral s f
+  ← apply_backward_step conjI goal=21
+    #[22] real_integral s f ≤ 0
+    #[23] 0 ≤ real_integral s f
+  ← apply_backward_step has_real_integral_le param_f=f param_g=g param_s=s goal=22
+    #[24] has_real_integral f (real_integral s f) s
+    #[25] ∀x. x ∈ s ⟶ f x ≤ g x
+  ← apply_backward_step real_integrable_integral goal=24 facts=[5]
+  ← z3 goal=25 facts=[1]
+    #[26] ∀x. x ∈ s ⟶ f x ≤ g x
+  ← apply_backward_step has_real_integral_le param_f="(%x::real. (0::real))" param_g=f param_s=s goal=23
+    #[27] has_real_integral (λx. 0) 0 s
+    #[28] ∀x. x ∈ s ⟶ 0 ≤ f x
+  ← apply_backward_step has_real_integral_0 goal=27
+  ← z3 goal=28 facts=[1]
+    #[29] ∀x. x ∈ s ⟶ 0 ≤ f x
+qed
+
+theorem has_real_integral_union
+  fixes f :: real => real, i :: real, j :: real, s :: real set, t :: real set
+  prop has_real_integral f i s --> has_real_integral f j t --> real_negligible (s Int t) --> has_real_integral f (i + j) (s Un t)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_integral_unions
+  fixes f :: real => real, i :: real set => real, t :: real set set
+  prop finite t --> (!s. s Mem t --> has_real_integral f (i s) s) --> (!s. !s1. s Mem t --> s1 Mem t --> ~(s = s1) --> real_negligible (s Int s1)) --> has_real_integral f (sum t i) (UN t)
+  [hint_backward]
+
+theorem real_indefinite_integral_continuous
+  fixes a :: real, b :: real, c :: real, d :: real, e :: real, f :: real => real
+  prop real_integrable_on f (real_closed_interval a b) --> c Mem real_closed_interval a b --> d Mem real_closed_interval a b --> 0 < e --> (?k. 0 < k & (!c1. !d1. c1 Mem real_closed_interval a b --> d1 Mem real_closed_interval a b --> abs (c1 - c) <= k --> abs (d1 - d) <= k --> abs (real_integral (real_closed_interval c1 d1) f - real_integral (real_closed_interval c d) f) < e))
+  [hint_backward]
+
+theorem real_monotone_convergence_increasing
+  fixes f :: nat => real => real, g :: real => real, s :: real set
+  prop (!k. real_integrable_on (f k) s) --> (!k. !x. x Mem s --> f k x <= f (Suc k) x) --> (!x. x Mem s --> tendsto_real (%k. f k x) (g x) sequentially) --> real_bounded ({y. !k. y = real_integral s (f k)}) --> real_integrable_on g s & tendsto_real (%k. real_integral s (f k)) (real_integral s g) sequentially
+  [hint_backward]
+
+theorem real_monotone_convergence_decreasing
+  fixes f :: nat => real => real, g :: real => real, s :: real set
+  prop (!k. real_integrable_on (f k) s) --> (!k. !x. x Mem s --> f (Suc k) x <= f k x) --> (!x. x Mem s --> tendsto_real (%k. f k x) (g x) sequentially) --> real_bounded ({y. !k. y = real_integral s (f k)}) --> real_integrable_on g s & tendsto_real (%k. real_integral s (f k)) (real_integral s g) sequentially
+  [hint_backward]
+
+theorem real_beppo_levi_increasing
+  fixes f :: nat => real => real, s :: real set
+  prop (!k. real_integrable_on (f k) s) --> (!k. !x. x Mem s --> f k x <= f (Suc k) x) --> real_bounded ({y. !k. y = real_integral s (f k)}) --> (?g. ?k. real_negligible k & (!x. x Mem diff s k --> tendsto_real (%k1. f k1 x) (g x) sequentially))
+  [hint_backward]
+
+theorem real_beppo_levi_decreasing
+  fixes f :: nat => real => real, s :: real set
+  prop (!k. real_integrable_on (f k) s) --> (!k. !x. x Mem s --> f (Suc k) x <= f k x) --> real_bounded ({y. !k. y = real_integral s (f k)}) --> (?g. ?k. real_negligible k & (!x. x Mem diff s k --> tendsto_real (%k1. f k1 x) (g x) sequentially))
+  [hint_backward]
+
+theorem real_beppo_levi_monotone_convergence_increasing
+  fixes f :: nat => real => real, s :: real set
+  prop (!k. real_integrable_on (f k) s) --> (!k. !x. x Mem s --> f k x <= f (Suc k) x) --> real_bounded ({y. !k. y = real_integral s (f k)}) --> (?g. ?k. real_negligible k & (!x. x Mem diff s k --> tendsto_real (%k1. f k1 x) (g x) sequentially) & real_integrable_on g s & tendsto_real (%k1. real_integral s (f k1)) (real_integral s g) sequentially)
+  [hint_backward]
+
+theorem real_beppo_levi_monotone_convergence_decreasing
+  fixes f :: nat => real => real, s :: real set
+  prop (!k. real_integrable_on (f k) s) --> (!k. !x. x Mem s --> f (Suc k) x <= f k x) --> real_bounded ({y. !k. y = real_integral s (f k)}) --> (?g. ?k. real_negligible k & (!x. x Mem diff s k --> tendsto_real (%k1. f k1 x) (g x) sequentially) & real_integrable_on g s & tendsto_real (%k1. real_integral s (f k1)) (real_integral s g) sequentially)
+  [hint_backward]
+
+theorem real_integral_abs_bound_integral
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop real_integrable_on f s --> real_integrable_on g s --> (!x. x Mem s --> abs (f x) <= g x) --> abs (real_integral s f) <= real_integral s g
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_integrable_on f s
+    #[2] real_integrable_on g s
+    #[3] ∀x. x ∈ s ⟶ abs (f x) ≤ g x
+    #[4] abs (real_integral s f) ≤ real_integral s g
+  ← rewrite_goal real_abs_bounds sym=false goal=4
+    #[5] -(real_integral s g) ≤ real_integral s f ∧ real_integral s f ≤ real_integral s g
+  -> rewrite_fact real_abs_bounds sym=false goal=5 facts=[3]
+    #[6] ∀x. x ∈ s ⟶ -(g x) ≤ f x ∧ f x ≤ g x
+  ← apply_backward_step conjI goal=5
+    #[7] -(real_integral s g) ≤ real_integral s f
+    #[8] real_integral s f ≤ real_integral s g
+  ← apply_backward_step has_real_integral_le param_f="(%x. -g x)" param_g=f param_s=s goal=7
+    #[9] has_real_integral (λx. -(g x)) (-(real_integral s g)) s
+    #[10] has_real_integral f (real_integral s f) s
+    #[11] ∀x. x ∈ s ⟶ -(g x) ≤ f x
+  ← apply_backward_step has_real_integral_neg goal=9
+    #[12] has_real_integral g (real_integral s g) s
+  ← apply_backward_step real_integrable_integral goal=12 facts=[2]
+    #[13] has_real_integral g (real_integral s g) s
+  ← apply_backward_step real_integrable_integral goal=10 facts=[1]
+    #[14] has_real_integral f (real_integral s f) s
+  ← z3 goal=11 facts=[6]
+    #[15] ∀x. x ∈ s ⟶ -(g x) ≤ f x
+  ← apply_backward_step real_integral_le goal=8
+    #[16] ∀x. x ∈ s ⟶ f x ≤ g x
+  ← z3 goal=16 facts=[6]
+    #[17] ∀x. x ∈ s ⟶ f x ≤ g x
+qed
+
+theorem absolutely_real_integrable_le
+  fixes f :: real => real, s :: real set
+  prop absolutely_real_integrable_on f s --> abs (real_integral s f) <= real_integral s (%x. abs (f x))
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] absolutely_real_integrable_on f s
+    #[2] abs (real_integral s f) ≤ real_integral s (λx. abs (f x))
+  ← apply_backward_step real_integral_abs_bound_integral goal=2
+    #[3] real_integrable_on f s
+    #[4] real_integrable_on (λx. abs (f x)) s
+    #[5] ∀x. x ∈ s ⟶ abs (f x) ≤ abs (f x)
+  -> rewrite_fact absolutely_real_integrable_on_def goal=3 facts=[1]
+    #[6] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
+  ← apply_backward_step conjD1 goal=3 facts=[6]
+  ← apply_backward_step conjD2 goal=4 facts=[6]
+  ← z3 goal=5 facts=[6]
+qed
+
+theorem absolutely_real_integrable_0
+  fixes s :: real set
+  prop absolutely_real_integrable_on (%x. 0) s
+  [hint_backward]
+proof
+  ← rewrite_goal absolutely_real_integrable_on_def goal=0
+    #[1] real_integrable_on (λx. 0) s ∧ real_integrable_on (λx. abs 0) s
+  ← apply_backward_step conjI goal=1
+    #[2] real_integrable_on (λx. 0) s
+    #[3] real_integrable_on (λx. abs 0) s
+  ← apply_backward_step real_integrable_0 goal=2
+  ← rewrite_goal real_zero_def goal=3
+    #[4] real_integrable_on (λx. abs of_nat 0) s
+  ← rewrite_goal real_abs_nat goal=4
+    #[5] real_integrable_on (λx. of_nat 0) s
+  -> rewrite_fact real_zero_def goal=5 facts=[2]
+qed
+
+theorem absolutely_real_integrable_const
+  fixes a :: real, b :: real, c :: real
+  prop absolutely_real_integrable_on (%x. c) (real_closed_interval a b)
+  [hint_backward]
+proof
+  ← rewrite_goal absolutely_real_integrable_on_def goal=0
+    #[1] real_integrable_on (λx. c) (real_closed_interval a b) ∧ real_integrable_on (λx. abs c) (real_closed_interval a b)
+  ← apply_backward_step conjI goal=1
+    #[2] real_integrable_on (λx. c) (real_closed_interval a b)
+    #[3] real_integrable_on (λx. abs c) (real_closed_interval a b)
+  ← apply_backward_step real_integrable_const goal=2
+  ← apply_backward_step real_integrable_const goal=3
+qed
+
+theorem absolutely_real_integrable_lmul
+  fixes c :: real, f :: real => real, s :: real set
+  prop absolutely_real_integrable_on f s --> absolutely_real_integrable_on (%x. c * f x) s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] absolutely_real_integrable_on f s
+    #[2] absolutely_real_integrable_on (λx. c * f x) s
+  -> rewrite_fact absolutely_real_integrable_on_def goal=2 facts=[1]
+    #[3] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
+  ← rewrite_goal absolutely_real_integrable_on_def goal=2
+    #[4] real_integrable_on (λx. c * f x) s ∧ real_integrable_on (λx. abs (c * f x)) s
+  ← apply_backward_step conjI goal=4
+    #[5] real_integrable_on (λx. c * f x) s
+    #[6] real_integrable_on (λx. abs (c * f x)) s
+  ← apply_backward_step real_integrable_lmul goal=5
+    #[7] real_integrable_on f s
+  ← apply_backward_step conjD1 goal=7 facts=[3]
+  ← rewrite_goal real_abs_mul goal=6
+    #[8] real_integrable_on (λx. abs c * abs (f x)) s
+  ← apply_backward_step real_integrable_lmul goal=8
+    #[9] real_integrable_on (λx. abs (f x)) s
+  ← apply_backward_step conjD2 goal=9 facts=[3]
+qed
+
+theorem absolutely_real_integrable_neg
+  fixes f :: real => real, s :: real set
+  prop absolutely_real_integrable_on f s --> absolutely_real_integrable_on (%x. -(f x)) s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] absolutely_real_integrable_on f s
+    #[2] absolutely_real_integrable_on (λx. -(f x)) s
+  ← rewrite_goal absolutely_real_integrable_on_def goal=2
+    #[3] real_integrable_on (λx. -(f x)) s ∧ real_integrable_on (λx. abs (-(f x))) s
+  -> rewrite_fact absolutely_real_integrable_on_def goal=3 facts=[1]
+    #[4] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
+  ← apply_backward_step conjI goal=3
+    #[5] real_integrable_on (λx. -(f x)) s
+    #[6] real_integrable_on (λx. abs (-(f x))) s
+  ← apply_backward_step real_integrable_neg goal=5
+    #[7] real_integrable_on f s
+  ← apply_backward_step conjD1 goal=7 facts=[4]
+  ← rewrite_goal real_abs_neg goal=6
+    #[8] real_integrable_on (λx. abs (f x)) s
+  ← apply_backward_step conjD2 goal=8 facts=[4]
+qed
+
+theorem absolutely_real_integrable_abs
+  fixes f :: real => real, s :: real set
+  prop absolutely_real_integrable_on f s --> absolutely_real_integrable_on (%x. abs (f x)) s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] absolutely_real_integrable_on f s
+    #[2] absolutely_real_integrable_on (λx. abs (f x)) s
+  -> rewrite_fact absolutely_real_integrable_on_def goal=2 facts=[1]
+    #[3] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
+  ← rewrite_goal absolutely_real_integrable_on_def goal=2
+    #[4] real_integrable_on (λx. abs (f x)) s ∧ real_integrable_on (λx. abs (abs (f x))) s
+  ← rewrite_goal real_abs_abs goal=4
+    #[5] real_integrable_on (λx. abs (f x)) s ∧ real_integrable_on (λx. abs (f x)) s
+  ← apply_backward_step conjI goal=5
+    #[6] real_integrable_on (λx. abs (f x)) s
+  ← apply_backward_step conjD2 goal=6 facts=[3]
+qed
+
+theorem absolutely_real_integrable_on_subinterval
+  fixes a :: real, b :: real, f :: real => real, s :: real set
+  prop absolutely_real_integrable_on f s --> real_closed_interval a b Sub s --> absolutely_real_integrable_on f (real_closed_interval a b)
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] absolutely_real_integrable_on f s
+    #[2] real_closed_interval a b ⊆ s
+    #[3] absolutely_real_integrable_on f (real_closed_interval a b)
+  ← rewrite_goal absolutely_real_integrable_on_def sym=false goal=3
+    #[4] real_integrable_on f (real_closed_interval a b) ∧ real_integrable_on (λx. abs (f x)) (real_closed_interval a b)
+  -> rewrite_fact absolutely_real_integrable_on_def sym=false goal=4 facts=[1]
+    #[5] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
+  ← apply_backward_step conjI goal=4
+    #[6] real_integrable_on f (real_closed_interval a b)
+    #[7] real_integrable_on (λx. abs (f x)) (real_closed_interval a b)
+  -> apply_forward_step conjD1 goal=6 facts=[5]
+    #[8] real_integrable_on f s
+  ← apply_backward_step real_integrable_on_subinterval goal=6 facts=[8,2]
+  -> apply_forward_step conjD2 goal=7 facts=[5]
+    #[9] real_integrable_on (λx. abs (f x)) s
+  ← apply_backward_step real_integrable_on_subinterval goal=7 facts=[9,2]
+qed
+
+theorem absolutely_real_integrable_restrict_univ
+  fixes f :: real => real, s :: real set
+  prop absolutely_real_integrable_on (%x. if x Mem s then f x else 0) univ <--> absolutely_real_integrable_on f s
+  [hint_rewrite]
+
+theorem absolutely_real_integrable_add
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop absolutely_real_integrable_on f s --> absolutely_real_integrable_on g s --> absolutely_real_integrable_on (%x. f x + g x) s
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem absolutely_real_integrable_sub
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop absolutely_real_integrable_on f s --> absolutely_real_integrable_on g s --> absolutely_real_integrable_on (%x. f x - g x) s
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] absolutely_real_integrable_on f s
+    #[2] absolutely_real_integrable_on g s
+    #[3] absolutely_real_integrable_on (λx. f x - g x) s
+  ← rewrite_goal real_minus_def sym=false goal=3
+    #[4] absolutely_real_integrable_on (λx. f x + -(g x)) s
+  ← apply_backward_step absolutely_real_integrable_add goal=4 facts=[1]
+    #[5] absolutely_real_integrable_on (λx. -(g x)) s
+  ← apply_backward_step absolutely_real_integrable_neg goal=5
+qed
+
+theorem absolutely_real_integrable_sum
+  fixes f :: 'a => real => real, s :: real set, t :: 'a set
+  prop finite t --> (!a. a Mem t --> absolutely_real_integrable_on (f a) s) --> absolutely_real_integrable_on (%x. sum t (%a. f a x)) s
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem absolutely_real_integrable_max
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop absolutely_real_integrable_on f s --> absolutely_real_integrable_on g s --> absolutely_real_integrable_on (%x. max (f x) (g x)) s
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem absolutely_real_integrable_min
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop absolutely_real_integrable_on f s --> absolutely_real_integrable_on g s --> absolutely_real_integrable_on (%x. min (f x) (g x)) s
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem absolutely_real_integrable_imp_integrable
+  fixes f :: real => real, s :: real set
+  prop absolutely_real_integrable_on f s --> real_integrable_on f s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] absolutely_real_integrable_on f s
+    #[2] real_integrable_on f s
+  -> rewrite_fact absolutely_real_integrable_on_def goal=2 facts=[1]
+    #[3] real_integrable_on f s ∧ real_integrable_on (λx. abs (f x)) s
+  ← apply_backward_step conjD1 goal=2 facts=[3]
+qed
+
+theorem absolutely_real_integrable_continuous
+  fixes a :: real, b :: real, f :: real => real
+  prop real_continuous_on f (real_closed_interval a b) --> absolutely_real_integrable_on f (real_closed_interval a b)
+  [hint_backward,hint_forward]
+
+theorem monnegative_absolutely_real_integrable
+  fixes f :: real => real, s :: real set
+  prop (!x. x Mem s --> 0 <= f x) --> real_integrable_on f s --> absolutely_real_integrable_on f s
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem absolutely_real_integrable_integrable_bound
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop (!x. x Mem s --> abs (f x) <= g x) --> real_integrable_on f s --> real_integrable_on g s --> absolutely_real_integrable_on f s
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem absolutely_real_integrable_absolutely_real_integrable_bound
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop (!x. x Mem s --> abs (f x) <= abs (g x)) --> real_integrable_on f s --> absolutely_real_integrable_on g s --> absolutely_real_integrable_on f s
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] ∀x. x ∈ s ⟶ abs (f x) ≤ abs (g x)
+    #[2] real_integrable_on f s
+    #[3] absolutely_real_integrable_on g s
+    #[4] absolutely_real_integrable_on f s
+  ← apply_backward_step absolutely_real_integrable_integrable_bound goal=4 facts=[1,2]
+    #[5] real_integrable_on (λx. abs (g x)) s
+  -> rewrite_fact absolutely_real_integrable_on_def sym=false goal=5 facts=[3]
+    #[6] real_integrable_on g s ∧ real_integrable_on (λx. abs (g x)) s
+  ← apply_backward_step conjD2 goal=5 facts=[6]
+    #[7] real_integrable_on (λx. abs (g x)) s
+qed
+
+theorem absolutely_real_integrable_absolutely_real_integrable_ubound
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop (!x. x Mem s --> f x <= g x) --> real_integrable_on f s --> absolutely_real_integrable_on g s --> absolutely_real_integrable_on f s
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem absolutely_real_integrable_absolutely_real_integrable_lbound
+  fixes f :: real => real, g :: real => real, s :: real set
+  prop (!x. x Mem s --> f x <= g x) --> absolutely_real_integrable_on f s --> real_integrable_on g s --> absolutely_real_integrable_on g s
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem absolutely_real_integrable_inf
+  fixes fs :: real => 'a => real, k :: 'a set, s :: real set
+  prop finite k --> ~(k = {}) --> (!i. i Mem k --> absolutely_real_integrable_on (%x. fs x i) s) --> absolutely_real_integrable_on (%x. inf (image (fs x) k)) s
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem absolutely_real_integrable_sup
+  fixes fs :: real => 'a => real, k :: 'a set, s :: real set
+  prop finite k --> ~(k = {}) --> (!i. i Mem k --> absolutely_real_integrable_on (%x. fs x i) s) --> absolutely_real_integrable_on (%x. sup (image (fs x) k)) s
+  [hint_backward,hint_backward1]
+
+theorem real_dominated_convergence
+  fixes f :: nat => real => real, g :: real => real, h :: real => real, s :: real set
+  prop (!k. real_integrable_on (f k) s) --> real_integrable_on h s --> (!k. !x. x Mem s --> abs (f k x) <= h x) --> (!x. x Mem s --> tendsto_real (%k. f k x) (g x) sequentially) --> real_integrable_on g s & tendsto_real (%k. real_integral s (f k)) (real_integral s g) sequentially
+  [hint_backward,hint_backward1]
+
+theorem has_real_measure_mesure
+  fixes s :: real set
+  prop real_measurable s <--> has_real_measure s (real_measure s)
+  [hint_rewrite,hint_rewrite_sym]
+
+theorem has_real_measure_unique
+  fixes m1 :: real, m2 :: real, s :: real set
+  prop has_real_measure s m1 --> has_real_measure s m2 --> m1 = m2
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] has_real_measure s m1
+    #[2] has_real_measure s m2
+    #[3] m1 = m2
+  -> rewrite_fact has_real_measure_def sym=false goal=3 facts=[1]
+    #[4] has_real_integral (λx. 1) m1 s
+  -> rewrite_fact has_real_measure_def sym=false goal=3 facts=[2]
+    #[5] has_real_integral (λx. 1) m2 s
+  ← apply_backward_step has_real_integral_unique goal=3 facts=[4,5]
+qed
+
+theorem real_measure_unique
+  fixes m :: real, s :: real set
+  prop has_real_measure s m --> real_measure s = m
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] has_real_measure s m
+    #[2] real_measure s = m
+  ← apply_backward_step has_real_measure_unique param_s=s goal=2
+    #[3] has_real_measure s (real_measure s)
+  ← rewrite_goal has_real_measure_mesure sym=true goal=3
+    #[4] real_measurable s
+  ← rewrite_goal real_measurable_def sym=false goal=4
+    #[5] ∃m. has_real_measure s m
+  ← inst_exists_goal m goal=5
+qed
+
+theorem has_real_measure_real_measurable_real_measure
+  fixes m :: real, s :: real set
+  prop has_real_measure s m <--> real_measurable s & real_measure s = m
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] has_real_measure s m ⟶ real_measurable s ∧ real_measure s = m
+    #[2] real_measurable s ∧ real_measure s = m ⟶ has_real_measure s m
+  ← introduction goal=1
+    #[3] has_real_measure s m
+    #[4] real_measurable s ∧ real_measure s = m
+  ← rewrite_goal has_real_measure_mesure goal=4
+    #[5] has_real_measure s (real_measure s) ∧ real_measure s = m
+  ← rewrite_goal conj_comm goal=5
+    #[6] real_measure s = m ∧ has_real_measure s (real_measure s)
+  ← apply_backward_step conjI goal=6
+    #[7] real_measure s = m
+    #[8] has_real_measure s (real_measure s)
+  ← apply_backward_step real_measure_unique goal=7
+  ← rewrite_goal_with_prev goal=8 facts=[7]
+  ← introduction goal=2
+    #[9] real_measurable s ∧ real_measure s = m
+    #[10] has_real_measure s m
+  -> rewrite_fact has_real_measure_mesure goal=10 facts=[9]
+    #[11] has_real_measure s (real_measure s) ∧ real_measure s = m
+  -> rewrite_fact conj_comm goal=10 facts=[11]
+    #[12] real_measure s = m ∧ has_real_measure s (real_measure s)
+  -> apply_forward_step conjD1 goal=10 facts=[12]
+    #[13] real_measure s = m
+  -> apply_forward_step conjD2 goal=10 facts=[12]
+    #[14] has_real_measure s (real_measure s)
+  -> rewrite_fact_with_prev goal=10 facts=[13,14]
+qed
+
+theorem has_real_measure
+  fixes m :: real, s :: real set
+  prop has_real_measure s m <--> has_real_integral (%x. if x Mem s then 1 else 0) m univ
+  [hint_rewrite]
+
+theorem real_measurable
+  fixes s :: real set
+  prop real_measurable s <--> real_integrable_on (%x. 1) s
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_measurable_def goal=0
+    #[1] (∃m. has_real_measure s m) ⟷ real_integrable_on (λx. 1) s
+  ← rewrite_goal has_real_measure_def goal=1
+    #[2] (∃m. has_real_integral (λx. 1) m s) ⟷ real_integrable_on (λx. 1) s
+  ← rewrite_goal real_integrable_on_def goal=2
+qed
+
+theorem real_measurable_real_integrable
+  fixes s :: real set
+  prop real_measurable s <--> real_integrable_on (%x. if x Mem s then 1 else 0) univ
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_measurable_def goal=0
+    #[1] (∃m. has_real_measure s m) ⟷ real_integrable_on (λx. if x ∈ s then 1 else 0) univ
+  ← rewrite_goal real_integrable_on_def goal=1
+    #[2] (∃m. has_real_measure s m) ⟷ (∃y. has_real_integral (λx. if x ∈ s then 1 else 0) y univ)
+  ← rewrite_goal has_real_measure goal=2
+qed
+
+theorem real_measure_real_integral
+  fixes s :: real set
+  prop real_measurable s --> real_measure s = real_integral s (%x. 1)
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measure s = real_integral s (λx. 1)
+  ← apply_backward_step has_real_measure_unique param_s=s goal=2
+    #[3] has_real_measure s (real_measure s)
+    #[4] has_real_measure s (real_integral s (λx. 1))
+  ← rewrite_goal has_real_measure_mesure sym=true goal=3
+  ← rewrite_goal has_real_measure_def sym=false goal=4
+    #[5] has_real_integral (λx. 1) (real_integral s (λx. 1)) s
+  ← apply_backward_step real_integrable_integral goal=5
+    #[6] real_integrable_on (λx. 1) s
+  -> rewrite_fact real_measurable sym=false goal=6 facts=[1]
+qed
+
+theorem real_measure_real_integral_univ
+  fixes s :: real set
+  prop real_measurable s --> real_measure s = real_integral univ (%x. if x Mem s then 1 else 0)
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measure s = real_integral univ (λx. if x ∈ s then 1 else 0)
+  ← apply_backward_step has_real_measure_unique param_s=s goal=2
+    #[3] has_real_measure s (real_measure s)
+    #[4] has_real_measure s (real_integral univ (λx. if x ∈ s then 1 else 0))
+  ← rewrite_goal has_real_measure_mesure sym=true goal=3
+  ← rewrite_goal has_real_measure sym=false goal=4
+    #[5] has_real_integral (λx. if x ∈ s then 1 else 0) (real_integral univ (λx. if x ∈ s then 1 else 0)) univ
+  ← apply_backward_step real_integrable_integral goal=5
+    #[6] real_integrable_on (λx. if x ∈ s then 1 else 0) univ
+  -> rewrite_fact real_measurable_real_integrable sym=false goal=6 facts=[1]
+qed
+
+theorem real_integral_real_measure
+  fixes s :: real set
+  prop real_measurable s --> real_integral s (%x. 1) = real_measure s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_integral s (λx. 1) = real_measure s
+  -> apply_forward_step real_measure_real_integral goal=2 facts=[1]
+    #[3] real_measure s = real_integral s (λx. 1)
+  ← rewrite_goal_with_prev goal=2 facts=[3]
+qed
+
+theorem real_integral_real_measure_univ
+  fixes s :: real set
+  prop real_measurable s --> real_integral univ (%x. if x Mem s then 1 else 0) = real_measure s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_integral univ (λx. if x ∈ s then 1 else 0) = real_measure s
+  -> apply_forward_step real_measure_real_integral_univ goal=2 facts=[1]
+    #[3] real_measure s = real_integral univ (λx. if x ∈ s then 1 else 0)
+  ← rewrite_goal_with_prev goal=2 facts=[3]
+qed
+
+theorem has_real_measure_real_interval1
+  fixes a :: real, b :: real
+  prop has_real_measure (real_closed_interval a b) (max (b - a) 0)
+  [hint_backward]
+
+theorem has_real_measure_real_interval2
+  fixes a :: real, b :: real
+  prop has_real_measure (real_open_interval a b) (max (b - a) 0)
+  [hint_backward]
+
+theorem real_measurable_real_interval1
+  fixes a :: real, b :: real
+  prop real_measurable (real_closed_interval a b)
+  [hint_backward]
+proof
+  ← rewrite_goal real_measurable_def goal=0
+    #[1] ∃m. has_real_measure (real_closed_interval a b) m
+  ← inst_exists_goal "(max (b - a) 0)" goal=1
+    #[2] has_real_measure (real_closed_interval a b) (max (b - a) 0)
+  ← apply_backward_step has_real_measure_real_interval1 goal=2
+qed
+
+theorem real_measurable_real_interval2
+  fixes a :: real, b :: real
+  prop real_measurable (real_open_interval a b)
+  [hint_backward]
+proof
+  ← rewrite_goal real_measurable_def goal=0
+    #[1] ∃m. has_real_measure (real_open_interval a b) m
+  ← inst_exists_goal "(max (b - a) 0)" goal=1
+    #[2] has_real_measure (real_open_interval a b) (max (b - a) 0)
+  ← apply_backward_step has_real_measure_real_interval2 goal=2
+qed
+
+theorem real_measure_real_interval1
+  fixes a :: real, b :: real
+  prop real_measure (real_closed_interval a b) = max (b - a) 0
+  [hint_rewrite]
+proof
+  ← apply_backward_step real_measure_unique goal=0
+    #[1] has_real_measure (real_closed_interval a b) (max (b - a) 0)
+  ← apply_backward_step has_real_measure_real_interval1 goal=1
+qed
+
+theorem real_measure_real_interval2
+  fixes a :: real, b :: real
+  prop real_measure (real_open_interval a b) = max (b - a) 0
+  [hint_rewrite]
+proof
+  ← apply_backward_step real_measure_unique goal=0
+    #[1] has_real_measure (real_open_interval a b) (max (b - a) 0)
+  ← apply_backward_step has_real_measure_real_interval2 goal=1
+qed
+
+theorem real_measurable_inter
+  fixes s :: real set, t :: real set
+  prop real_measurable s --> real_measurable t --> real_measurable (s Int t)
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measurable t
+    #[3] real_measurable (s ∩ t)
+  ← rewrite_goal real_measurable_real_integrable sym=false goal=3
+    #[4] real_integrable_on (λx. if x ∈ s ∩ t then 1 else 0) univ
+  ← apply_backward_step absolutely_real_integrable_imp_integrable goal=4
+    #[5] absolutely_real_integrable_on (λx. if x ∈ s ∩ t then 1 else 0) univ
+  cut "(λx. if x ∈ s ∩ t then (1::real) else 0) = (λx. min (if x ∈ s then 1 else 0) (if x ∈ t then 1 else 0))" goal=5
+    #[6] (λx. if x ∈ s ∩ t then (1::real) else 0) = (λx. min (if x ∈ s then 1 else 0) (if x ∈ t then 1 else 0))
+  ← apply_backward_step extension goal=6
+    #[7] ∀x. (if x ∈ s ∩ t then (1::real) else 0) = min (if x ∈ s then 1 else 0) (if x ∈ t then 1 else 0)
+  ← z3 goal=7
+    #[8] ∀x. (if x ∈ s ∩ t then (1::real) else 0) = min (if x ∈ s then 1 else 0) (if x ∈ t then 1 else 0)
+  ← rewrite_goal_with_prev goal=5 facts=[6]
+    #[9] absolutely_real_integrable_on (λx. min (if x ∈ s then 1 else 0) (if x ∈ t then 1 else 0)) univ
+  ← apply_backward_step absolutely_real_integrable_min goal=9
+    #[10] absolutely_real_integrable_on (λx. if x ∈ s then 1 else 0) univ
+    #[11] absolutely_real_integrable_on (λx. if x ∈ t then 1 else 0) univ
+  ← apply_backward_step monnegative_absolutely_real_integrable goal=10
+    #[12] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ s then 1 else 0)
+    #[13] real_integrable_on (λx. if x ∈ s then 1 else 0) univ
+  ← z3 goal=12
+    #[14] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ s then 1 else 0)
+  -> rewrite_fact real_measurable_real_integrable sym=false goal=13 facts=[1]
+    #[15] real_integrable_on (λx. if x ∈ s then 1 else 0) univ
+  ← apply_backward_step monnegative_absolutely_real_integrable goal=11
+    #[16] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ t then 1 else 0)
+    #[17] real_integrable_on (λx. if x ∈ t then 1 else 0) univ
+  ← z3 goal=16
+    #[18] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ t then 1 else 0)
+  -> rewrite_fact real_measurable_real_integrable sym=false goal=17 facts=[2]
+    #[19] real_integrable_on (λx. if x ∈ t then 1 else 0) univ
+qed
+
+theorem real_measurable_union
+  fixes s :: real set, t :: real set
+  prop real_measurable s --> real_measurable t --> real_measurable (s Un t)
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measurable t
+    #[3] real_measurable (s ∪ t)
+  ← rewrite_goal real_measurable_real_integrable sym=false goal=3
+    #[4] real_integrable_on (λx. if x ∈ s ∪ t then 1 else 0) univ
+  ← apply_backward_step absolutely_real_integrable_imp_integrable goal=4
+    #[5] absolutely_real_integrable_on (λx. if x ∈ s ∪ t then 1 else 0) univ
+  cut "(λx. if x ∈ s ∪ t then (1::real) else 0) = (λx. max (if x ∈ s then 1 else 0) (if x ∈ t then 1 else 0))" goal=5
+    #[6] (λx. if x ∈ s ∪ t then (1::real) else 0) = (λx. max (if x ∈ s then 1 else 0) (if x ∈ t then 1 else 0))
+  ← apply_backward_step extension goal=6
+    #[7] ∀x. (if x ∈ s ∪ t then (1::real) else 0) = max (if x ∈ s then 1 else 0) (if x ∈ t then 1 else 0)
+  ← z3 goal=7
+    #[8] ∀x. (if x ∈ s ∪ t then (1::real) else 0) = max (if x ∈ s then 1 else 0) (if x ∈ t then 1 else 0)
+  ← rewrite_goal_with_prev goal=5 facts=[6]
+    #[9] absolutely_real_integrable_on (λx. max (if x ∈ s then 1 else 0) (if x ∈ t then 1 else 0)) univ
+  ← apply_backward_step absolutely_real_integrable_max goal=9
+    #[10] absolutely_real_integrable_on (λx. if x ∈ s then 1 else 0) univ
+    #[11] absolutely_real_integrable_on (λx. if x ∈ t then 1 else 0) univ
+  ← apply_backward_step monnegative_absolutely_real_integrable goal=10
+    #[12] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ s then 1 else 0)
+    #[13] real_integrable_on (λx. if x ∈ s then 1 else 0) univ
+  ← z3 goal=12
+    #[14] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ s then 1 else 0)
+  -> rewrite_fact real_measurable_real_integrable sym=false goal=13 facts=[1]
+    #[15] real_integrable_on (λx. if x ∈ s then 1 else 0) univ
+  ← apply_backward_step monnegative_absolutely_real_integrable goal=11
+    #[16] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ t then 1 else 0)
+    #[17] real_integrable_on (λx. if x ∈ t then 1 else 0) univ
+  ← z3 goal=16
+    #[18] ∀x. x ∈ univ ⟶ (0::real) ≤ (if x ∈ t then 1 else 0)
+  -> rewrite_fact real_measurable_real_integrable sym=false goal=17 facts=[2]
+    #[19] real_integrable_on (λx. if x ∈ t then 1 else 0) univ
+qed
+
+theorem has_real_measure_disjoint_union
+  fixes m1 :: real, m2 :: real, s1 :: real set, s2 :: real set
+  prop has_real_measure s1 m1 --> has_real_measure s2 m2 --> disjoint s1 s2 --> has_real_measure (s1 Un s2) (m1 + m2)
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem real_measure_disjoint_union
+  fixes s :: real set, t :: real set
+  prop real_measurable s --> real_measurable t --> disjoint s t --> real_measure (s Un t) = real_measure s + real_measure t
+  [hint_backward,hint_forward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measurable t
+    #[3] disjoint s t
+    #[4] real_measure (s ∪ t) = real_measure s + real_measure t
+  ← apply_backward_step real_measure_unique goal=4
+    #[5] has_real_measure (s ∪ t) (real_measure s + real_measure t)
+  ← apply_backward_step has_real_measure_disjoint_union goal=5
+    #[6] has_real_measure s (real_measure s)
+    #[7] has_real_measure t (real_measure t)
+  ← rewrite_goal has_real_measure_real_measurable_real_measure sym=false goal=6
+    #[8] real_measurable s ∧ real_measure s = real_measure s
+  ← apply_backward_step conjI goal=8
+    #[9] real_measure s = real_measure s
+  ← apply_backward_step eq_refl goal=9
+    #[10] real_measure s = real_measure s
+  ← rewrite_goal has_real_measure_real_measurable_real_measure sym=false goal=7
+    #[11] real_measurable t ∧ real_measure t = real_measure t
+  ← apply_backward_step conjI goal=11 facts=[2]
+    #[12] real_measure t = real_measure t
+  ← apply_backward_step eq_refl goal=12
+    #[13] real_measure t = real_measure t
+qed
+
+theorem has_real_measure_pos_le
+  fixes m :: real, s :: real set
+  prop has_real_measure s m --> 0 <= m
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] has_real_measure s m
+    #[2] 0 ≤ m
+  -> rewrite_fact has_real_measure_def goal=2 facts=[1]
+    #[3] has_real_integral (λx. 1) m s
+  ← apply_backward_step has_real_integral_pos param_f="(%x::real. (1::real))" param_s=s goal=2
+    #[4] ∀x. x ∈ s ⟶ (0::real) ≤ 1
+  ← introduction x goal=4
+    #[5] _VAR x
+    #[6] x ∈ s
+    #[7] (0::real) ≤ 1
+  ← z3 goal=7
+    #[8] (0::real) ≤ 1
+qed
+
+theorem real_measure_pos_le
+  fixes s :: real set
+  prop real_measurable s --> 0 <= real_measure s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] 0 ≤ real_measure s
+  ← apply_backward_step has_real_measure_pos_le param_s=s goal=2
+    #[3] has_real_measure s (real_measure s)
+  -> rewrite_fact has_real_measure_mesure goal=3 facts=[1]
+qed
+
+theorem has_real_measure_subset
+  fixes m1 :: real, m2 :: real, s1 :: real set, s2 :: real set
+  prop has_real_measure s1 m1 --> has_real_measure s2 m2 --> s1 Sub s2 --> m1 <= m2
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] has_real_measure s1 m1
+    #[2] has_real_measure s2 m2
+    #[3] s1 ⊆ s2
+    #[4] m1 ≤ m2
+  -> rewrite_fact has_real_measure_def sym=false goal=4 facts=[1]
+    #[5] has_real_integral (λx. 1) m1 s1
+  -> rewrite_fact has_real_measure_def sym=false goal=4 facts=[2]
+    #[6] has_real_integral (λx. 1) m2 s2
+  ← apply_backward_step has_real_integral_subset_le goal=4 facts=[3,5,6]
+    #[7] ∀x. x ∈ s2 ⟶ (0::real) ≤ 1
+  ← z3 goal=7
+    #[8] ∀x. x ∈ s2 ⟶ (0::real) ≤ 1
+qed
+
+theorem real_measure_subset
+  fixes s :: real set, t :: real set
+  prop real_measurable s --> real_measurable t --> s Sub t --> real_measure s <= real_measure t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measurable t
+    #[3] s ⊆ t
+    #[4] real_measure s ≤ real_measure t
+  ← apply_backward_step has_real_measure_subset param_s1=s param_s2=t goal=4
+    #[5] has_real_measure s (real_measure s)
+    #[6] has_real_measure t (real_measure t)
+  ← rewrite_goal has_real_measure_real_measurable_real_measure sym=false goal=5
+    #[7] real_measurable s ∧ real_measure s = real_measure s
+  ← apply_backward_step conjI goal=7
+    #[8] real_measure s = real_measure s
+  ← apply_backward_step eq_refl goal=8
+    #[9] real_measure s = real_measure s
+  ← rewrite_goal has_real_measure_real_measurable_real_measure sym=false goal=6
+    #[10] real_measurable t ∧ real_measure t = real_measure t
+  ← apply_backward_step conjI goal=10
+    #[11] real_measure t = real_measure t
+  ← apply_backward_step eq_refl goal=11
+    #[12] real_measure t = real_measure t
+qed
+
+theorem has_real_measure_0
+  fixes s :: real set
+  prop has_real_measure s 0 <--> real_negligible s
+  [hint_rewrite,hint_rewrite_sym]
+
+theorem real_measure_eq_0
+  fixes s :: real set
+  prop real_negligible s --> real_measure s = 0
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_negligible s
+    #[2] real_measure s = 0
+  ← apply_backward_step real_measure_unique goal=2
+    #[3] has_real_measure s 0
+  ← rewrite_goal has_real_measure_0 goal=3
+qed
+
+theorem has_real_measure_empty
+  prop has_real_measure {} 0
+  [hint_backward]
+proof
+  ← rewrite_goal has_real_measure_0 goal=0
+    #[1] real_negligible ∅
+  ← apply_backward_step real_negligible_empty goal=1
+qed
+
+theorem real_measure_empty
+  prop real_measure {} = 0
+  [hint_rewrite]
+proof
+  ← apply_backward_step real_measure_unique goal=0
+    #[1] has_real_measure ∅ 0
+  ← apply_backward_step has_real_measure_empty goal=1
+qed
+
+theorem real_measurable_empty
+  prop real_measurable {}
+  [hint_backward]
+proof
+  ← rewrite_goal real_measurable_def goal=0
+    #[1] ∃m. has_real_measure ∅ m
+  ← inst_exists_goal "(0::real)" goal=1
+    #[2] has_real_measure ∅ 0
+  ← apply_backward_step has_real_measure_empty goal=2
+qed
+
+theorem real_measurable_real_measure_eq_0
+  fixes s :: real set
+  prop real_measurable s --> real_measure s = 0 <--> real_negligible s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measure s = 0 ⟷ real_negligible s
+  cut "real_negligible s <--> has_real_measure s 0" goal=2
+    #[3] real_negligible s ⟷ has_real_measure s 0
+  ← rewrite_goal has_real_measure_0 goal=3
+    #[4] real_negligible s ⟷ has_real_measure s 0
+  ← rewrite_goal_with_prev goal=2 facts=[4]
+    #[5] real_measure s = 0 ⟷ has_real_measure s 0
+  ← apply_backward_step iffI goal=5
+    #[6] real_measure s = 0 ⟶ has_real_measure s 0
+    #[7] has_real_measure s 0 ⟶ real_measure s = 0
+  ← introduction goal=6
+    #[8] real_measure s = 0
+    #[9] has_real_measure s 0
+  -> rewrite_fact has_real_measure_mesure goal=9 facts=[1]
+    #[10] has_real_measure s (real_measure s)
+  -> rewrite_fact_with_prev goal=9 facts=[8,10]
+  ← introduction goal=7
+    #[11] has_real_measure s 0
+    #[12] real_measure s = 0
+  ← apply_backward_step real_measure_unique goal=12
+qed
+
+theorem real_measurable_real_measure_pos_lt
+  fixes s :: real set
+  prop real_measurable s --> 0 < real_measure s <--> ~(real_negligible s)
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] 0 < real_measure s ⟷ ¬(real_negligible s)
+  ← rewrite_goal real_lt_le goal=2
+    #[3] 0 ≤ real_measure s ∧ ¬(0 = real_measure s) ⟷ ¬(real_negligible s)
+  -> apply_forward_step real_measure_pos_le goal=3 facts=[1]
+    #[4] 0 ≤ real_measure s
+  ← apply_backward_step iffI goal=3
+    #[5] 0 ≤ real_measure s ∧ ¬(0 = real_measure s) ⟶ ¬(real_negligible s)
+    #[6] ¬(real_negligible s) ⟶ 0 ≤ real_measure s ∧ ¬(0 = real_measure s)
+  ← introduction goal=5
+    #[7] 0 ≤ real_measure s ∧ ¬(0 = real_measure s)
+    #[8] ¬(real_negligible s)
+  -> apply_forward_step real_measurable_real_measure_eq_0 goal=8 facts=[1]
+    #[9] real_measure s = 0 ⟷ real_negligible s
+  -> apply_forward_step conjD2 goal=8 facts=[7]
+    #[10] ¬(0 = real_measure s)
+  ← apply_backward_step negI goal=8
+    #[11] real_negligible s ⟶ false
+  ← introduction goal=11
+    #[12] real_negligible s
+    #[13] false
+  ← apply_backward_step negE param_A="real_measure s = 0" goal=13
+    #[14] ¬(real_measure s = 0)
+    #[15] real_measure s = 0
+  ← apply_backward_step ineq_sym goal=14
+  ← rewrite_goal_with_prev goal=15 facts=[9]
+  ← introduction goal=6
+    #[16] ¬(real_negligible s)
+    #[17] 0 ≤ real_measure s ∧ ¬(0 = real_measure s)
+  ← apply_backward_step conjI goal=17
+    #[18] ¬(0 = real_measure s)
+  ← apply_backward_step ineq_sym goal=18
+    #[19] ¬(real_measure s = 0)
+  ← apply_backward_step contrapositive goal=19 facts=[16]
+    #[20] ¬¬(real_measure s = 0) ⟶ ¬¬(real_negligible s)
+  ← introduction goal=20
+    #[21] ¬¬(real_measure s = 0)
+    #[22] ¬¬(real_negligible s)
+  ← rewrite_goal double_neg sym=false goal=22
+    #[23] real_negligible s
+  -> rewrite_fact double_neg sym=false goal=23 facts=[21]
+    #[24] real_measure s = 0
+  ← rewrite_goal has_real_measure_0 sym=true goal=23
+    #[25] has_real_measure s 0
+  ← rewrite_goal has_real_measure_real_measurable_real_measure sym=false goal=25
+    #[26] real_measurable s ∧ real_measure s = 0
+  ← apply_backward_step conjI goal=26
+qed
+
+theorem real_negligible_real_interval1
+  fixes a :: real, b :: real
+  prop real_negligible (real_closed_interval a b) <--> real_open_interval a b = {}
+  [hint_rewrite]
+
+theorem real_negligible_real_interval2
+  fixes a :: real, b :: real
+  prop real_negligible (real_open_interval a b) <--> real_open_interval a b = {}
+  [hint_rewrite]
+
+theorem real_measurable_unions
+  fixes f :: real set set
+  prop finite f --> (!s. s Mem f --> real_measurable s) --> real_measurable (UN f)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_measure_diff_subset
+  fixes m1 :: real, m2 :: real, s1 :: real set, s2 :: real set
+  prop has_real_measure s1 m1 --> has_real_measure s2 m2 --> s2 Sub s1 --> has_real_measure (diff s1 s2) (m1 - m2)
+  [hint_forward,hint_backward1,hint_backward]
+
+theorem real_measurable_diff
+  fixes s :: real set, t :: real set
+  prop real_measurable s --> real_measurable t --> real_measurable (diff s t)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measure_diff_subset
+  fixes s :: real set, t :: real set
+  prop real_measurable s --> real_measurable t --> t Sub s --> real_measure (diff s t) = real_measure s - real_measure t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measurable t
+    #[3] t ⊆ s
+    #[4] real_measure (diff s t) = real_measure s - real_measure t
+  ← apply_backward_step real_measure_unique goal=4
+    #[5] has_real_measure (diff s t) (real_measure s - real_measure t)
+  ← apply_backward_step has_real_measure_diff_subset goal=5
+    #[6] has_real_measure s (real_measure s)
+    #[7] has_real_measure t (real_measure t)
+  -> rewrite_fact has_real_measure_mesure sym=false goal=6 facts=[1]
+    #[8] has_real_measure s (real_measure s)
+  -> rewrite_fact has_real_measure_mesure sym=false goal=7 facts=[2]
+    #[9] has_real_measure t (real_measure t)
+qed
+
+theorem has_real_measure_union_real_negligible
+  fixes m :: real, s :: real set, t :: real set
+  prop has_real_measure s m --> real_negligible t --> has_real_measure (s Un t) m
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_measure_diff_real_negligible
+  fixes m :: real, s :: real set, t :: real set
+  prop has_real_measure s m --> real_negligible t --> has_real_measure (diff s t) m
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_measure_union_real_negligible_eq
+  fixes m :: real, s :: real set, t :: real set
+  prop real_negligible t --> has_real_measure (s Un t) m <--> has_real_measure s m
+  [hint_backward,hint_forward]
+
+theorem has_real_measure_diff_real_negligible_eq
+  fixes m :: real, s :: real set, t :: real set
+  prop real_negligible t --> has_real_measure (diff s t) m <--> has_real_measure s m
+  [hint_backward,hint_forward]
+
+theorem has_real_measure_almost
+  fixes m :: real, s :: real set, s1 :: real set, t :: real set
+  prop has_real_measure s m --> real_negligible t --> s Un t = s1 Un t --> has_real_measure s1 m
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_measure_almost_eq
+  fixes m :: real, s :: real set, s1 :: real set, t :: real set
+  prop real_negligible t --> s Un t = s1 Un t --> has_real_measure s m <--> has_real_measure s1 m
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_negligible t
+    #[2] s ∪ t = s1 ∪ t
+    #[3] has_real_measure s m ⟷ has_real_measure s1 m
+  ← apply_backward_step iffI goal=3
+    #[4] has_real_measure s m ⟶ has_real_measure s1 m
+    #[5] has_real_measure s1 m ⟶ has_real_measure s m
+  ← introduction goal=4
+    #[6] has_real_measure s m
+    #[7] has_real_measure s1 m
+  ← apply_backward_step has_real_measure_almost param_s=s param_t=t goal=7
+  ← introduction goal=5
+    #[8] has_real_measure s1 m
+    #[9] has_real_measure s m
+  ← apply_backward_step has_real_measure_almost param_s=s1 param_t=t goal=9
+    #[10] s1 ∪ t = s ∪ t
+  ← rewrite_goal_with_prev goal=10 facts=[2]
+    #[11] s1 ∪ t = s ∪ t
+qed
+
+theorem real_measurable_almost
+  fixes s :: real set, s1 :: real set, t :: real set
+  prop real_measurable s --> real_negligible t --> s Un t = s1 Un t --> real_measurable s1
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_negligible t
+    #[3] s ∪ t = s1 ∪ t
+    #[4] real_measurable s1
+  ← rewrite_goal real_measurable_def sym=false goal=4
+    #[5] ∃m. has_real_measure s1 m
+  -> rewrite_fact real_measurable_def sym=false goal=5 facts=[1]
+    #[6] ∃m. has_real_measure s m
+  exists_elim m goal=5 facts=[6]
+    #[7] _VAR m
+    #[8] has_real_measure s m
+    #[9] ∃m. has_real_measure s1 m
+    #[10] real_measurable s1
+  ← inst_exists_goal m goal=9
+    #[11] has_real_measure s1 m
+  ← apply_backward_step has_real_measure_almost param_s=s param_t=t goal=11
+qed
+
+theorem has_real_measure_real_negligible_union
+  fixes m1 :: real, m2 :: real, s1 :: real set, s2 :: real set
+  prop has_real_measure s1 m1 --> has_real_measure s2 m2 --> real_negligible (s1 Int s2) --> has_real_measure (s1 Un s2) (m1 + m2)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measure_real_negligible_union
+  fixes s :: real set, t :: real set
+  prop real_measurable s --> real_measurable t --> real_negligible (s Int t) --> real_measure (s Un t) = real_measure s + real_measure t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measurable t
+    #[3] real_negligible (s ∩ t)
+    #[4] real_measure (s ∪ t) = real_measure s + real_measure t
+  ← apply_backward_step real_measure_unique goal=4
+    #[5] has_real_measure (s ∪ t) (real_measure s + real_measure t)
+  ← apply_backward_step has_real_measure_real_negligible_union goal=5
+    #[6] has_real_measure s (real_measure s)
+    #[7] has_real_measure t (real_measure t)
+  -> rewrite_fact has_real_measure_mesure sym=false goal=6 facts=[1]
+    #[8] has_real_measure s (real_measure s)
+  -> rewrite_fact has_real_measure_mesure sym=false goal=7 facts=[2]
+    #[9] has_real_measure t (real_measure t)
+qed
+
+theorem has_real_measure_real_negligible_symdiff
+  fixes m :: real, s :: real set, t :: real set
+  prop has_real_measure s m --> real_negligible (diff s t Un diff t s) --> has_real_measure t m
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] has_real_measure s m
+    #[2] real_negligible (diff s t ∪ diff t s)
+    #[3] has_real_measure t m
+  ← apply_backward_step has_real_measure_almost goal=3 facts=[1,2]
+    #[4] s ∪ (diff s t ∪ diff t s) = t ∪ (diff s t ∪ diff t s)
+  ← z3 goal=4
+    #[5] s ∪ (diff s t ∪ diff t s) = t ∪ (diff s t ∪ diff t s)
+qed
+
+theorem real_measurable_real_negligible_symdiff
+  fixes s :: real set, t :: real set
+  prop real_measurable s --> real_negligible (diff s t Un diff t s) --> real_measurable t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_negligible (diff s t ∪ diff t s)
+    #[3] real_measurable t
+  ← rewrite_goal real_measurable_def sym=false goal=3
+    #[4] ∃m. has_real_measure t m
+  -> rewrite_fact real_measurable_def sym=false goal=4 facts=[1]
+    #[5] ∃m. has_real_measure s m
+  exists_elim m goal=4 facts=[5]
+    #[6] _VAR m
+    #[7] has_real_measure s m
+    #[8] ∃m. has_real_measure t m
+    #[9] real_measurable t
+  ← inst_exists_goal m goal=8
+    #[10] has_real_measure t m
+  ← apply_backward_step has_real_measure_real_negligible_symdiff goal=10 facts=[7,2]
+    #[11] has_real_measure t m
+qed
+
+theorem real_measure_real_negligible_symdiff
+  fixes s :: real set, t :: real set
+  prop real_measurable s | real_measurable t --> real_negligible (diff s t Un diff t s) --> real_measure s = real_measure t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s ∨ real_measurable t
+    #[2] real_negligible (diff s t ∪ diff t s)
+    #[3] real_measure s = real_measure t
+  ← apply_backward_step disjE goal=3 facts=[1]
+    #[4] real_measurable s ⟶ real_measure s = real_measure t
+    #[5] real_measurable t ⟶ real_measure s = real_measure t
+  ← introduction goal=4
+    #[6] real_measurable s
+    #[7] real_measure s = real_measure t
+  ← apply_backward_step real_measure_unique goal=7
+    #[8] has_real_measure s (real_measure t)
+  ← apply_backward_step has_real_measure_real_negligible_symdiff param_s=t goal=8
+    #[9] has_real_measure t (real_measure t)
+    #[10] real_negligible (diff t s ∪ diff s t)
+  -> apply_forward_step real_measurable_real_negligible_symdiff goal=9 facts=[6,2]
+    #[11] real_measurable t
+  -> rewrite_fact has_real_measure_mesure sym=false goal=9 facts=[11]
+    #[12] has_real_measure t (real_measure t)
+  ← rewrite_goal union_comm sym=false goal=10
+  ← introduction goal=5
+    #[13] real_measurable t
+    #[14] real_measure s = real_measure t
+  ← apply_backward_step real_measure_unique goal=14
+    #[15] has_real_measure s (real_measure t)
+  ← apply_backward_step has_real_measure_real_negligible_symdiff param_s=t goal=15
+    #[16] has_real_measure t (real_measure t)
+    #[17] real_negligible (diff t s ∪ diff s t)
+  -> rewrite_fact has_real_measure_mesure sym=false goal=16 facts=[13]
+    #[18] has_real_measure t (real_measure t)
+  ← rewrite_goal union_comm sym=false goal=17
+qed
+
+theorem has_real_measure_real_negligible_unions
+  fixes f :: real set set, m :: real set => real
+  prop finite f --> (!s. s Mem f --> has_real_measure s (m s)) --> (!s. !t. s Mem f --> t Mem f --> ~(s = t) --> real_negligible (s Int t)) --> has_real_measure (UN f) (sum f m)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measure_real_negligible_unions
+  fixes f :: real set set, m :: real set => real
+  prop finite f --> (!s. s Mem f --> has_real_measure s (m s)) --> (!s. !t. s Mem f --> t Mem f --> ~(s = t) --> real_negligible (s Int t)) --> real_measure (UN f) = sum f m
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite f
+    #[2] ∀s. s ∈ f ⟶ has_real_measure s (m s)
+    #[3] ∀s. ∀t. s ∈ f ⟶ t ∈ f ⟶ ¬(s = t) ⟶ real_negligible (s ∩ t)
+    #[4] real_measure (⋃f) = sum f m
+  ← apply_backward_step real_measure_unique goal=4
+    #[5] has_real_measure (⋃f) (sum f m)
+  ← apply_backward_step has_real_measure_real_negligible_unions goal=5 facts=[1,2,3]
+qed
+
+theorem has_real_measure_disjoint_unions
+  fixes f :: real set set, m :: real set => real
+  prop finite f --> (!s. s Mem f --> has_real_measure s (m s)) --> (!s. !t. s Mem f --> t Mem f --> ~(s = t) --> disjoint s t) --> has_real_measure (UN f) (sum f m)
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite f
+    #[2] ∀s. s ∈ f ⟶ has_real_measure s (m s)
+    #[3] ∀s. ∀t. s ∈ f ⟶ t ∈ f ⟶ ¬(s = t) ⟶ disjoint s t
+    #[4] has_real_measure (⋃f) (sum f m)
+  -> rewrite_fact disjoint_def sym=false goal=4 facts=[3]
+    #[5] ∀s. ∀t. s ∈ f ⟶ t ∈ f ⟶ ¬(s = t) ⟶ s ∩ t = ∅
+  ← apply_backward_step has_real_measure_real_negligible_unions goal=4 facts=[1,2]
+    #[6] ∀s. ∀t. s ∈ f ⟶ t ∈ f ⟶ ¬(s = t) ⟶ real_negligible (s ∩ t)
+  ← introduction s,t goal=6
+    #[7] _VAR s
+    #[8] _VAR t
+    #[9] s ∈ f
+    #[10] t ∈ f
+    #[11] ¬(s = t)
+    #[12] real_negligible (s ∩ t)
+  -> apply_fact goal=12 facts=[5,9,10,11]
+    #[13] s ∩ t = ∅
+  ← rewrite_goal_with_prev goal=12 facts=[13]
+    #[14] real_negligible ∅
+  ← apply_backward_step real_negligible_empty goal=14
+    #[15] real_negligible ∅
+qed
+
+theorem real_measure_disjoint_unions
+  fixes f :: real set set, m :: real set => real
+  prop finite f --> (!s. s Mem f --> has_real_measure s (m s)) --> (!s. !t. s Mem f --> t Mem f --> ~(s = t) --> disjoint s t) --> real_measure (UN f) = sum f m
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite f
+    #[2] ∀s. s ∈ f ⟶ has_real_measure s (m s)
+    #[3] ∀s. ∀t. s ∈ f ⟶ t ∈ f ⟶ ¬(s = t) ⟶ disjoint s t
+    #[4] real_measure (⋃f) = sum f m
+  ← apply_backward_step real_measure_unique goal=4
+    #[5] has_real_measure (⋃f) (sum f m)
+  ← apply_backward_step has_real_measure_disjoint_unions goal=5 facts=[1,2,3]
+qed
+
+theorem has_real_measure_real_negligible_unions_image
+  fixes f :: 'a => real set, s :: 'a set
+  prop finite s --> (!x. x Mem s --> real_measurable (f x)) --> (!x. !y. x Mem s --> y Mem s --> ~(x = y) --> real_negligible (f x Int f y)) --> has_real_measure (UN (image f s)) (sum s (%x. real_measure (f x)))
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measure_real_negligible_unions_image
+  fixes f :: 'a => real set, s :: 'a set
+  prop finite s --> (!x. x Mem s --> real_measurable (f x)) --> (!x. !y. x Mem s --> y Mem s --> ~(x = y) --> real_negligible (f x Int f y)) --> real_measure (UN (image f s)) = sum s (%x. real_measure (f x))
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite s
+    #[2] ∀x. x ∈ s ⟶ real_measurable (f x)
+    #[3] ∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ ¬(x = y) ⟶ real_negligible (f x ∩ f y)
+    #[4] real_measure (⋃(image f s)) = sum s (λx. real_measure (f x))
+  ← apply_backward_step real_measure_unique goal=4
+    #[5] has_real_measure (⋃(image f s)) (sum s (λx. real_measure (f x)))
+  ← apply_backward_step has_real_measure_real_negligible_unions_image goal=5 facts=[1,2,3]
+qed
+
+theorem has_real_measure_disjoint_unions_image
+  fixes f :: 'a => real set, s :: 'a set
+  prop finite s --> (!x. x Mem s --> real_measurable (f x)) --> (!x. !y. x Mem s --> y Mem s --> ~(x = y) --> disjoint (f x) (f y)) --> has_real_measure (UN (image f s)) (sum s (%x. real_measure (f x)))
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite s
+    #[2] ∀x. x ∈ s ⟶ real_measurable (f x)
+    #[3] ∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ ¬(x = y) ⟶ disjoint (f x) (f y)
+    #[4] has_real_measure (⋃(image f s)) (sum s (λx. real_measure (f x)))
+  ← apply_backward_step has_real_measure_real_negligible_unions_image goal=4 facts=[1,2]
+    #[5] ∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ ¬(x = y) ⟶ real_negligible (f x ∩ f y)
+  ← introduction x,y goal=5
+    #[6] _VAR x
+    #[7] _VAR y
+    #[8] x ∈ s
+    #[9] y ∈ s
+    #[10] ¬(x = y)
+    #[11] real_negligible (f x ∩ f y)
+  -> apply_fact goal=11 facts=[3,8,9,10]
+    #[12] disjoint (f x) (f y)
+  -> rewrite_fact disjoint_def sym=false goal=11 facts=[12]
+    #[13] f x ∩ f y = ∅
+  ← rewrite_goal_with_prev goal=11 facts=[13]
+    #[14] real_negligible ∅
+  ← apply_backward_step real_negligible_empty goal=14
+    #[15] real_negligible ∅
+qed
+
+theorem real_measure_disjoint_unions_image
+  fixes f :: 'a => real set, s :: 'a set
+  prop finite s --> (!x. x Mem s --> real_measurable (f x)) --> (!x. !y. x Mem s --> y Mem s --> ~(x = y) --> disjoint (f x) (f y)) --> real_measure (UN (image f s)) = sum s (%x. real_measure (f x))
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite s
+    #[2] ∀x. x ∈ s ⟶ real_measurable (f x)
+    #[3] ∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ ¬(x = y) ⟶ disjoint (f x) (f y)
+    #[4] real_measure (⋃(image f s)) = sum s (λx. real_measure (f x))
+  ← apply_backward_step real_measure_unique goal=4
+    #[5] has_real_measure (⋃(image f s)) (sum s (λx. real_measure (f x)))
+  ← apply_backward_step has_real_measure_disjoint_unions_image goal=5 facts=[1,2,3]
+qed
+
+theorem has_real_measure_real_negligible_unions_image_strong
+  fixes f :: 'a => real set, s :: 'a set
+  prop finite ({x. x Mem s & ~(f x = {})}) --> (!x. x Mem s --> real_measurable (f x)) --> (!x. !y. x Mem s --> y Mem s --> ~(x = y) --> real_negligible (f x Int f y)) --> has_real_measure (UN (image f s)) (sum s (%x. real_measure (f x)))
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measure_real_negligible_unions_image_strong
+  fixes f :: 'a => real set, s :: 'a set
+  prop finite ({x. x Mem s & ~(f x = {})}) --> (!x. x Mem s --> real_measurable (f x)) --> (!x. !y. x Mem s --> y Mem s --> ~(x = y) --> real_negligible (f x Int f y)) --> real_measure (UN (image f s)) = sum s (%x. real_measure (f x))
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite ({x. x ∈ s ∧ ¬(f x = ∅)})
+    #[2] ∀x. x ∈ s ⟶ real_measurable (f x)
+    #[3] ∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ ¬(x = y) ⟶ real_negligible (f x ∩ f y)
+    #[4] real_measure (⋃(image f s)) = sum s (λx. real_measure (f x))
+  ← apply_backward_step real_measure_unique goal=4
+    #[5] has_real_measure (⋃(image f s)) (sum s (λx. real_measure (f x)))
+  ← apply_backward_step has_real_measure_real_negligible_unions_image_strong goal=5 facts=[1,2,3]
+qed
+
+theorem has_real_measure_disjoint_unions_image_strong:
+  fixes f :: 'a => real set, s :: 'a set
+  prop finite ({x. x Mem s & ~(f x = {})}) --> (!x. x Mem s --> real_measurable (f x)) --> (!x. !y. x Mem s --> y Mem s --> ~(x = y) --> disjoint (f x) (f y)) --> has_real_measure (UN (image f s)) (sum s (%x. real_measure (f x)))
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite ({x. x ∈ s ∧ ¬(f x = ∅)})
+    #[2] ∀x. x ∈ s ⟶ real_measurable (f x)
+    #[3] ∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ ¬(x = y) ⟶ disjoint (f x) (f y)
+    #[4] has_real_measure (⋃(image f s)) (sum s (λx. real_measure (f x)))
+  ← apply_backward_step has_real_measure_real_negligible_unions_image_strong goal=4 facts=[1,2]
+    #[5] ∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ ¬(x = y) ⟶ real_negligible (f x ∩ f y)
+  ← introduction x,y goal=5
+    #[6] _VAR x
+    #[7] _VAR y
+    #[8] x ∈ s
+    #[9] y ∈ s
+    #[10] ¬(x = y)
+    #[11] real_negligible (f x ∩ f y)
+  -> apply_fact goal=11 facts=[3,8,9,10]
+    #[12] disjoint (f x) (f y)
+  -> rewrite_fact disjoint_def sym=false goal=11 facts=[12]
+    #[13] f x ∩ f y = ∅
+  ← rewrite_goal_with_prev goal=11 facts=[13]
+    #[14] real_negligible ∅
+  ← apply_backward_step real_negligible_empty goal=14
+    #[15] real_negligible ∅
+qed
+
+theorem real_measure_disjoint_unions_image_strong
+  fixes f :: 'a => real set, s :: 'a set
+  prop finite ({x. x Mem s & ~(f x = {})}) --> (!x. x Mem s --> real_measurable (f x)) --> (!x. !y. x Mem s --> y Mem s --> ~(x = y) --> disjoint (f x) (f y)) --> real_measure (UN (image f s)) = sum s (%x. real_measure (f x))
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] finite ({x. x ∈ s ∧ ¬(f x = ∅)})
+    #[2] ∀x. x ∈ s ⟶ real_measurable (f x)
+    #[3] ∀x. ∀y. x ∈ s ⟶ y ∈ s ⟶ ¬(x = y) ⟶ disjoint (f x) (f y)
+    #[4] real_measure (⋃(image f s)) = sum s (λx. real_measure (f x))
+  ← apply_backward_step real_measure_unique goal=4
+    #[5] has_real_measure (⋃(image f s)) (sum s (λx. real_measure (f x)))
+  ← apply_backward_step has_real_measure_disjoint_unions_image_strong: goal=5 facts=[1,2,3]
+qed
+
+theorem real_measure_union
+  fixes s :: real set, t :: real set
+  prop real_measurable s --> real_measurable t --> real_measure (s Un t) = real_measure s + real_measure t - real_measure (s Int t)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measure_union_le
+  fixes s :: real set, t :: real set
+  prop real_measurable s --> real_measurable t --> real_measure (s Un t) <= real_measure s + real_measure t
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measurable t
+    #[3] real_measure (s ∪ t) ≤ real_measure s + real_measure t
+  -> apply_forward_step real_measure_union goal=3 facts=[1,2]
+    #[4] real_measure (s ∪ t) = real_measure s + real_measure t - real_measure (s ∩ t)
+  ← rewrite_goal_with_prev goal=3 facts=[4]
+    #[5] real_measure s + real_measure t - real_measure (s ∩ t) ≤ real_measure s + real_measure t
+  cut "∀a::real. ∀b. a - b ≤ a ⟷ 0 ≤ b" goal=5
+    #[6] ∀a::real. ∀b. a - b ≤ a ⟷ 0 ≤ b
+  ← z3 goal=6
+    #[7] ∀a::real. ∀b. a - b ≤ a ⟷ 0 ≤ b
+  ← rewrite_goal_with_prev goal=5 facts=[7]
+    #[8] 0 ≤ real_measure (s ∩ t)
+  ← apply_backward_step real_measure_pos_le goal=8
+    #[9] real_measurable (s ∩ t)
+  ← apply_backward_step real_measurable_inter goal=9 facts=[1,2]
+qed
+
+theorem real_measure_unions_le
+  fixes f :: real set set
+  prop finite f --> (!s. s Mem f --> real_measurable s) --> real_measure (UN f) = sum f (%s. real_measure s)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measure_unions_le_image
+  fixes f :: 'a set, s :: 'a => real set
+  prop finite f --> (!a. a Mem f --> real_measurable (s a)) --> real_measure (UN (image s f)) = sum f (%a. real_measure (s a))
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_negligible_outer
+  fixes s :: real set
+  prop real_negligible s <--> (!e. 0 < e --> (?t. s Sub t & real_measurable t & real_measure t < e))
+  [hint_rewrite]
+
+theorem real_negligible_outer_le
+  fixes s :: real set
+  prop real_negligible s <--> (!e. 0 < e --> (?t. s Sub t & real_measurable t & real_measure t <= e))
+  [hint_rewrite]
+
+theorem real_measurable_inner_outer
+  fixes s :: real set
+  prop real_measurable s <--> (!e. 0 < e --> (?t. ?u. t Sub s & s Sub u & real_measurable t & real_measurable u & abs (real_measure t - real_measure u) < e))
+  [hint_rewrite]
+
+theorem has_real_measure_inner_outer
+  fixes m :: real, s :: real set
+  prop has_real_measure s m <--> (!e. 0 < e --> (?t. t Sub s & real_measurable t & m - e < real_measure t)) & (!e. 0 < e --> (?u. s Sub u & real_measurable u & real_measure u < m + e))
+  [hint_rewrite]
+
+theorem has_real_measure_inner_outer_le
+  fixes m :: real, s :: real set
+  prop has_real_measure s m <--> (!e. 0 < e --> (?t. t Sub s & real_measurable t & m - e <= real_measure t)) & (!e. 0 < e --> (?u. s Sub u & real_measurable u & real_measure u <= m + e))
+  [hint_rewrite]
+
+theorem has_real_measure_affinity
+  fixes c :: real, m :: real, s :: real set, y :: real
+  prop has_real_measure s y --> has_real_measure (image (%x. m * x + c) s) (abs m * y)
+  [hint_forward,hint_backward]
+
+theorem has_real_measure_scaling
+  fixes m :: real, s :: real set, y :: real
+  prop has_real_measure s y --> has_real_measure (image (%x. m * x) s) (abs m * y)
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] has_real_measure s y
+    #[2] has_real_measure (image (λx. m * x) s) (abs m * y)
+  -> apply_forward_step has_real_measure_affinity param_c="(0::real)" param_m=m goal=2 facts=[1]
+    #[3] has_real_measure (image (λx. m * x + 0) s) (abs m * y)
+  -> rewrite_fact real_add_rid goal=2 facts=[3]
+qed
+
+theorem has_real_measure_translation
+  fixes a :: real, m :: real, s :: real set
+  prop has_real_measure s m --> has_real_measure (image (%x. x + a) s) m
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] has_real_measure s m
+    #[2] has_real_measure (image (λx. x + a) s) m
+  -> apply_forward_step has_real_measure_affinity param_c=a param_m="(1::real)" goal=2 facts=[1]
+    #[3] has_real_measure (image (λx. 1 * x + a) s) (abs 1 * m)
+  -> rewrite_fact real_mul_lid goal=2 facts=[3]
+    #[4] has_real_measure (image (λx. x + a) s) (abs 1 * m)
+  cut "abs 1 * m = m" goal=2
+    #[5] abs 1 * m = m
+  ← z3 goal=5
+    #[6] abs 1 * m = m
+  -> rewrite_fact_with_prev goal=2 facts=[6,4]
+qed
+
+theorem real_negligible_translation
+  fixes a :: real, s :: real set
+  prop real_negligible s --> real_negligible (image (%x. x + a) s)
+  [hint_backward,hint_forward]
+
+theorem has_real_measure_translation_eq
+  fixes a :: real, m :: real, s :: real set
+  prop has_real_measure (image (%x. x + a) s) m <--> has_real_measure s m
+  [hint_rewrite]
+
+theorem real_negligible_translation_rev
+  fixes a :: real, s :: real set
+  prop real_negligible (image (%x. x + a) s) --> real_negligible s
+  [hint_backward,hint_forward]
+
+theorem real_negligible_translation_eq
+  fixes a :: real, s :: real set
+  prop real_negligible (image (%x. x + a) s) <--> real_negligible s
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] real_negligible (image (λx. x + a) s) ⟶ real_negligible s
+    #[2] real_negligible s ⟶ real_negligible (image (λx. x + a) s)
+  ← introduction goal=1
+    #[3] real_negligible (image (λx. x + a) s)
+    #[4] real_negligible s
+  ← apply_backward_step real_negligible_translation_rev param_a=a goal=4
+  ← introduction goal=2
+    #[5] real_negligible s
+    #[6] real_negligible (image (λx. x + a) s)
+  ← apply_backward_step real_negligible_translation goal=6
+qed
+
+theorem real_measurable_translation
+  fixes a :: real, s :: real set
+  prop real_measurable (image (%x. x + a) s) <--> real_measurable s
+  [hint_rewrite]
+proof
+  ← rewrite_goal real_measurable_def goal=0
+    #[1] (∃m. has_real_measure (image (λx. x + a) s) m) ⟷ (∃m. has_real_measure s m)
+  ← rewrite_goal has_real_measure_translation_eq goal=1
+qed
+
+theorem real_measure_translation
+  fixes a :: real, s :: real set
+  prop real_measurable s --> real_measure (image (%x. x + a) s) = real_measure s
+  [hint_forward,hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measure (image (λx. x + a) s) = real_measure s
+  -> rewrite_fact has_real_measure_mesure goal=2 facts=[1]
+    #[3] has_real_measure s (real_measure s)
+  ← apply_backward_step real_measure_unique goal=2
+    #[4] has_real_measure (image (λx. x + a) s) (real_measure s)
+  ← rewrite_goal has_real_measure_translation_eq goal=4
+qed
+
+theorem has_real_measure_scaling_eq
+  fixes c :: real, m :: real, s :: real set
+  prop ~(c = 0) --> has_real_measure (image (%x. c * x) s) (abs c * m) <--> has_real_measure s m
+  [hint_backward,hint_forward]
+
+theorem real_measurable_scaling
+  fixes c :: real, s :: real set
+  prop real_measurable s --> real_measurable (image (%x. c * x) s)
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measurable (image (λx. c * x) s)
+  ← rewrite_goal real_measurable_def goal=2
+    #[3] ∃m. has_real_measure (image (λx. c * x) s) m
+  -> rewrite_fact real_measurable_def goal=3 facts=[1]
+    #[4] ∃m. has_real_measure s m
+  exists_elim m goal=3 facts=[4]
+    #[5] _VAR m
+    #[6] has_real_measure s m
+    #[7] ∃m. has_real_measure (image (λx. c * x) s) m
+    #[8] real_measurable (image (λx. c * x) s)
+  -> apply_forward_step has_real_measure_scaling param_m=c goal=7 facts=[6]
+    #[9] has_real_measure (image (λx. c * x) s) (abs c * m)
+  ← apply_backward_step exI goal=7 facts=[9]
+    #[10] ∃m. has_real_measure (image (λx. c * x) s) m
+qed
+
+theorem real_measurable_scaling_eq
+  fixes c :: real, s :: real set
+  prop ~(c = 0) --> real_measurable (image (%x. c * x) s) <--> real_measurable s
+  [hint_backward,hint_forward]
+
+theorem real_measure_scaling
+  fixes c :: real, s :: real set
+  prop real_measurable s --> real_measure (image (%x. c * x) s) = abs c * real_measure s
+  [hint_backward,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_measurable s
+    #[2] real_measure (image (λx. c * x) s) = abs c * real_measure s
+  -> rewrite_fact has_real_measure_mesure goal=2 facts=[1]
+    #[3] has_real_measure s (real_measure s)
+  ← apply_backward_step real_measure_unique goal=2
+    #[4] has_real_measure (image (λx. c * x) s) (abs c * real_measure s)
+  ← apply_backward_step has_real_measure_scaling goal=4 facts=[3]
+qed
+
+theorem has_real_measure_nested_unions
+  fixes B :: real, s :: nat => real set
+  prop (!n. real_measurable (s n)) --> (!n. real_measure (s n) <= B) --> (!n. s n Sub s (Suc n)) --> real_measurable (UN ({y. ?n. y = s n})) & tendsto_real (%n. real_measure (s n)) (real_measure (UN ({y. ?n. y = s n}))) sequentially
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measurable_nested_unions
+  fixes B :: real, s :: nat => real set
+  prop (!n. real_measurable (s n)) --> (!n. real_measure (s n) <= B) --> (!n. s n Sub s (Suc n)) --> real_measurable (UN ({y. ?n. y = s n}))
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] ∀n. real_measurable (s n)
+    #[2] ∀n. real_measure (s n) ≤ B
+    #[3] ∀n. s n ⊆ s (Suc n)
+    #[4] real_measurable (⋃({y. ∃n. y = s n}))
+  -> apply_forward_step has_real_measure_nested_unions goal=4 facts=[1,2,3]
+    #[5] real_measurable (⋃({y. ∃n. y = s n})) ∧ tendsto_real (λn. real_measure (s n)) (real_measure (⋃({y. ∃n. y = s n}))) sequentially
+  ← apply_backward_step conjD1 goal=4 facts=[5]
+qed
+
+theorem has_real_measure_countable_real_negligible_unions
+  fixes B :: real, s :: nat => real set
+  prop (!n. real_measurable (s n)) --> (!m. !n. ~(m = n) --> real_negligible (s m Int s n)) --> (!n. sum ({0..n}) (%k. real_measure (s k)) <= B) --> real_measurable (UN ({y. ?n. y = s n})) & real_sums (%n. real_measure (s n)) (real_measure (UN ({y. ?n. y = s n}))) (from 0)
+  [hint_backward,hint_forward,hint_backward1]
+
+theorem real_negligible_countable_unions
+  fixes s :: nat => real set
+  prop (!n. real_negligible (s n)) --> real_negligible (UN ({y. ?n. y = s n}))
+  [hint_backward,hint_forward]
+
+theorem real_measurable_countable_unions_strong
+  fixes B :: real, s :: nat => real set
+  prop (!n. real_measurable (s n)) --> (!n. real_measure (UN ({y. ?k. y = s k & k <= n})) <= B) --> real_measurable (UN ({y. ?n. y = s n}))
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_measure_countable_real_negligible_unions_bounded
+  fixes s :: nat => real set
+  prop (!n. real_measurable (s n)) --> (!m. !n. ~(m = n) --> real_negligible (s m Int s n)) --> real_bounded (UN ({y. ?n. y = s n})) --> real_measurable (UN ({y. ?n. y = s n})) & real_sums (%n. real_measure (s n)) (real_measure (UN ({y. ?n. y = s n}))) (from 0)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measurable_countable_unions
+  fixes B :: real, s :: nat => real set
+  prop (!n. real_measurable (s n)) --> (!n. sum ({0..n}) (%k. real_measure (s k)) <= B) --> real_measurable (UN ({y. ?n. y = s n}))
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measurable_countable_unions_bounded
+  fixes s :: nat => real set
+  prop (!n. real_measurable (s n)) --> real_bounded (UN ({y. ?n. y = s n})) --> real_measurable (UN ({y. ?n. y = s n}))
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_measurable_countable_inters
+  fixes s :: nat => real set
+  prop (!n. real_measurable (s n)) --> real_measurable (INT ({y. ?n. y = s n}))
+  [hint_backward,hint_forward]
+
+theorem real_negligible_countable
+  fixes s :: real set
+  prop countable s --> real_negligible s
+  [hint_backward,hint_forward]
+
+theorem real_measurable_compact
+  fixes s :: real set
+  prop real_compact s --> real_measurable s
+  [hint_backward,hint_forward]
+
+theorem real_measurable_open
+  fixes s :: real set
+  prop real_bounded s --> real_open s --> real_measurable s
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_integral_negligible_eq
+  fixes f :: real => real, s :: real set
+  prop (!x. x Mem s --> 0 <= f x) --> has_real_integral f 0 s <--> real_negligible ({x. x Mem s & ~(f x = 0)})
+  [hint_backward,hint_forward]
+
+theorem real_integration_by_parts
+  fixes a :: real, b :: real, c :: real set, f :: real => real, f1 :: real => real, g :: real => real, g1 :: real => real, y :: real
+  prop a <= b --> countable c --> real_continuous_on (%x. f x * g x) (real_closed_interval a b) --> (!x. x Mem diff (real_open_interval a b) c --> has_real_derivative f (f1 x) (atreal x) & has_real_derivative g (g1 x) (atreal x)) --> has_real_integral (%x. f x * g1 x) (f b * g b - f a * g a - y) (real_closed_interval a b) --> has_real_integral (%x. f1 x * g x) y (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] a ≤ b
+    #[2] countable c
+    #[3] real_continuous_on (λx. f x * g x) (real_closed_interval a b)
+    #[4] ∀x. x ∈ diff (real_open_interval a b) c ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x)
+    #[5] has_real_integral (λx. f x * g1 x) (f b * g b - f a * g a - y) (real_closed_interval a b)
+    #[6] has_real_integral (λx. f1 x * g x) y (real_closed_interval a b)
+  -> apply_forward_step real_fundamental_theorem_of_calculus_interior_strong param_f1="(λx. f x * g1 x + f1 x * g x) " goal=6 facts=[2,1,3]
+    #[7] (∀x. x ∈ diff (real_open_interval a b) c ⟶ has_real_derivative (λx1. f x1 * g x1) (f x * g1 x + f1 x * g x) (atreal x)) ⟶ has_real_integral (λx. f x * g1 x + f1 x * g x) (f b * g b - f a * g a) (real_closed_interval a b)
+  cut "has_real_integral (λx. f x * g1 x + f1 x * g x) (f b * g b - f a * g a) (real_closed_interval a b)" goal=6
+    #[8] has_real_integral (λx. f x * g1 x + f1 x * g x) (f b * g b - f a * g a) (real_closed_interval a b)
+  ← apply_prev goal=8 facts=[7]
+    #[9] ∀x. x ∈ diff (real_open_interval a b) c ⟶ has_real_derivative (λx1. f x1 * g x1) (f x * g1 x + f1 x * g x) (atreal x)
+  ← introduction x goal=9
+    #[10] _VAR x
+    #[11] x ∈ diff (real_open_interval a b) c
+    #[12] has_real_derivative (λx1. f x1 * g x1) (f x * g1 x + f1 x * g x) (atreal x)
+  ← apply_backward_step has_real_derivative_mul_atreal goal=12
+    #[13] has_real_derivative f (f1 x) (atreal x)
+    #[14] has_real_derivative g (g1 x) (atreal x)
+  -> apply_fact goal=13 facts=[4,11]
+    #[15] has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x)
+  ← apply_backward_step conjD1 goal=13 facts=[15]
+    #[16] has_real_derivative f (f1 x) (atreal x)
+  ← apply_backward_step conjD2 goal=14 facts=[15]
+    #[17] has_real_derivative g (g1 x) (atreal x)
+  -> apply_forward_step has_real_integral_sub goal=6 facts=[8,5]
+    #[18] has_real_integral (λx. f x * g1 x + f1 x * g x - f x * g1 x) (f b * g b - f a * g a - (f b * g b - f a * g a - y)) (real_closed_interval a b)
+  cut "(λx. f x * g1 x + f1 x * g x - f x * g1 x) = (λx. f1 x * g x)" goal=6 facts=[18]
+    #[19] (λx. f x * g1 x + f1 x * g x - f x * g1 x) = (λx. f1 x * g x)
+  ← apply_backward_step extension goal=19
+    #[20] ∀x. f x * g1 x + f1 x * g x - f x * g1 x = f1 x * g x
+  ← z3 goal=20
+    #[21] ∀x. f x * g1 x + f1 x * g x - f x * g1 x = f1 x * g x
+  cut "f b * g b - f a * g a - (f b * g b - f a * g a - y) = y" goal=6
+    #[22] f b * g b - f a * g a - (f b * g b - f a * g a - y) = y
+  real_norm goal=22
+    #[23] f b * g b - f a * g a - (f b * g b - f a * g a - y) = y
+  -> rewrite_fact_with_prev goal=6 facts=[19,18]
+    #[24] has_real_integral (λx. f1 x * g x) (f b * g b - f a * g a - (f b * g b - f a * g a - y)) (real_closed_interval a b)
+  -> rewrite_fact_with_prev goal=6 facts=[23,24]
+qed
+
+theorem real_integration_by_parts_simple
+  fixes a :: real, b :: real, f :: real => real, f1 :: real => real, g :: real => real, g1 :: real => real, y :: real
+  prop a <= b --> (!x. x Mem real_closed_interval a b --> has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b)) & has_real_derivative g (g1 x) (within (atreal x) (real_closed_interval a b))) --> has_real_integral (%x. f x * g1 x) (f b * g b - f a * g a - y) (real_closed_interval a b) --> has_real_integral (%x. f1 x * g x) y (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_integration_by_parts_simple_evalat
+  fixes a :: real, b :: real, u :: real => real, v :: real => real
+  prop a <= b --> (!x. x Mem real_open_interval a b --> real_differentiable u (atreal x) & real_differentiable v (atreal x)) --> real_integral (real_closed_interval a b) (%x. u x * real_derivative v x) = evalat (%x. u x * v x) a b - real_integral (real_closed_interval a b) (%x. real_derivative u x * v x)
+
+theorem real_integrable_by_parts
+  fixes a :: real, b :: real, c :: real set, f :: real => real, f1 :: real => real, g :: real => real, g1 :: real => real
+  prop countable c --> real_continuous_on (%x. f x * g x) (real_closed_interval a b) --> (!x. x Mem diff (real_open_interval a b) c --> has_real_derivative f (f1 x) (atreal x) & has_real_derivative g (g1 x) (atreal x)) --> real_integrable_on (%x. f x * g1 x) (real_closed_interval a b) --> real_integrable_on (%x. f1 x * g x) (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] countable c
+    #[2] real_continuous_on (λx. f x * g x) (real_closed_interval a b)
+    #[3] ∀x. x ∈ diff (real_open_interval a b) c ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x)
+    #[4] real_integrable_on (λx. f x * g1 x) (real_closed_interval a b)
+    #[5] real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
+  cut "a <= b | b <= a" goal=5
+    #[6] a ≤ b ∨ b ≤ a
+  ← apply_backward_step real_le_total goal=6
+    #[7] a ≤ b ∨ b ≤ a
+  ← apply_backward_step disjE goal=5 facts=[7]
+    #[8] a ≤ b ⟶ real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
+    #[9] b ≤ a ⟶ real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
+  ← introduction goal=8
+    #[10] a ≤ b
+    #[11] real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
+  ← rewrite_goal real_integrable_on_def sym=false goal=11
+    #[12] ∃y. has_real_integral (λx. f1 x * g x) y (real_closed_interval a b)
+  -> rewrite_fact real_integrable_on_def sym=false goal=12 facts=[4]
+    #[13] ∃y. has_real_integral (λx. f x * g1 x) y (real_closed_interval a b)
+  exists_elim y goal=12 facts=[13]
+    #[14] _VAR y
+    #[15] has_real_integral (λx. f x * g1 x) y (real_closed_interval a b)
+    #[16] ∃y. has_real_integral (λx. f1 x * g x) y (real_closed_interval a b)
+    #[17] real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
+  ← inst_exists_goal "(f b * g b - f a * g a - y)" goal=16
+    #[18] has_real_integral (λx. f1 x * g x) (f b * g b - f a * g a - y) (real_closed_interval a b)
+  ← apply_backward_step real_integration_by_parts goal=18 facts=[10,1,2,3]
+    #[19] has_real_integral (λx. f x * g1 x) (f b * g b - f a * g a - (f b * g b - f a * g a - y)) (real_closed_interval a b)
+  cut "f b * g b - f a * g a - (f b * g b - f a * g a - y) = y" goal=19
+    #[20] f b * g b - f a * g a - (f b * g b - f a * g a - y) = y
+  real_norm goal=20
+    #[21] f b * g b - f a * g a - (f b * g b - f a * g a - y) = y
+  ← rewrite_goal_with_prev goal=19 facts=[21]
+  ← introduction goal=9
+    #[22] b ≤ a
+    #[23] real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
+  ← apply_backward_step real_integrable_on_null goal=23
+qed
+
+theorem real_integrable_by_parts_eq
+  fixes a :: real, b :: real, c :: real set, f :: real => real, f1 :: real => real, g :: real => real, g1 :: real => real
+  prop countable c --> real_continuous_on (%x. f x * g x) (real_closed_interval a b) --> (!x. x Mem diff (real_open_interval a b) c --> has_real_derivative f (f1 x) (atreal x) & has_real_derivative g (g1 x) (atreal x)) --> real_integrable_on (%x. f x * g1 x) (real_closed_interval a b) <--> real_integrable_on (%x. f1 x * g x) (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] countable c
+    #[2] real_continuous_on (λx. f x * g x) (real_closed_interval a b)
+    #[3] ∀x. x ∈ diff (real_open_interval a b) c ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x)
+    #[4] real_integrable_on (λx. f x * g1 x) (real_closed_interval a b) ⟷ real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
+  ← apply_backward_step iffI goal=4
+    #[5] real_integrable_on (λx. f x * g1 x) (real_closed_interval a b) ⟶ real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
+    #[6] real_integrable_on (λx. f1 x * g x) (real_closed_interval a b) ⟶ real_integrable_on (λx. f x * g1 x) (real_closed_interval a b)
+  ← introduction goal=5
+    #[7] real_integrable_on (λx. f x * g1 x) (real_closed_interval a b)
+    #[8] real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
+  ← apply_backward_step real_integrable_by_parts goal=8 facts=[1,2,3,7]
+  ← introduction goal=6
+    #[9] real_integrable_on (λx. f1 x * g x) (real_closed_interval a b)
+    #[10] real_integrable_on (λx. f x * g1 x) (real_closed_interval a b)
+  ← rewrite_goal real_mult_comm sym=false goal=10
+    #[11] real_integrable_on (λx. g1 x * f x) (real_closed_interval a b)
+  -> rewrite_fact real_mult_comm sym=false goal=11 facts=[2]
+    #[12] real_continuous_on (λx. g x * f x) (real_closed_interval a b)
+  -> rewrite_fact real_mult_comm sym=false goal=11 facts=[9]
+    #[13] real_integrable_on (λx. g x * f1 x) (real_closed_interval a b)
+  -> rewrite_fact conj_comm sym=false goal=11 facts=[3]
+    #[14] ∀x. x ∈ diff (real_open_interval a b) c ⟶ has_real_derivative g (g1 x) (atreal x) ∧ has_real_derivative f (f1 x) (atreal x)
+  ← apply_backward_step real_integrable_by_parts goal=11 facts=[1,12,14,13]
+qed
+
+theorem absolute_real_integration_by_parts
+  fixes a :: real, b :: real, f :: real => real, f1 :: real => real, g :: real => real, g1 :: real => real
+  prop a <= b --> absolutely_real_integrable_on f1 (real_closed_interval a b) --> absolutely_real_integrable_on g1 (real_closed_interval a b) --> (!x. x Mem real_closed_interval a b --> has_real_integral f1 (f x) (real_closed_interval a x)) --> (!x. x Mem real_closed_interval a b --> has_real_integral g1 (g x) (real_closed_interval a x)) --> absolutely_real_integrable_on (%x. f x * g1 x) (real_closed_interval a b) & absolutely_real_integrable_on (%x. f1 x * g x) (real_closed_interval a b) & real_integral (real_closed_interval a b) (%x. f x * g1 x) + real_integral (real_closed_interval a b) (%x. f1 x * g x) = f b * g b - f a * g a
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_integral_substitution_strong
+  fixes a :: real, b :: real, c :: real, d :: real, f :: real => real, g :: real => real, g1 :: real => real, k :: real set
+  prop countable k --> real_integrable_on f (real_closed_interval c d) --> real_continuous_on g (real_closed_interval a b) --> image g (real_closed_interval a b) Sub real_closed_interval c d --> (!x. x Mem diff (real_closed_interval a b) k --> has_real_derivative g (g1 x) (within (atreal x) (real_closed_interval a b)) & real_continuous f (within (atreal (g x)) (real_closed_interval c d))) --> a <= b --> c <= d --> g a <= g b --> has_real_integral (%x. f (g x) * g1 x) (real_integral (real_closed_interval (g a) (g b)) f) (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem has_real_integral_substitution
+  fixes a :: real, b :: real, c :: real, d :: real, f :: real => real, g :: real => real, g1 :: real => real, k :: real set
+  prop countable k --> real_continuous_on f (real_closed_interval c d) --> real_continuous_on g (real_closed_interval a b) --> image g (real_closed_interval a b) Sub real_closed_interval c d --> (!x. x Mem diff (real_closed_interval a b) k --> has_real_derivative g (g1 x) (atreal x)) --> a <= b --> c <= d --> g a <= g b --> has_real_integral (%x. f (g x) * g1 x) (real_integral (real_closed_interval (g a) (g b)) f) (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_integral_substitution
+  fixes a :: real, b :: real, c :: real, d :: real, f :: real => real, g :: real => real, g1 :: real => real, k :: real set
+  prop countable k --> real_continuous_on f (real_closed_interval c d) --> real_continuous_on g (real_closed_interval a b) --> image g (real_closed_interval a b) Sub real_closed_interval c d --> (!x. x Mem diff (real_closed_interval a b) k --> has_real_derivative g (g1 x) (atreal x)) --> a <= b --> c <= d --> g a <= g b --> real_integral (real_closed_interval a b) (%x. f (g x) * g1 x) = real_integral (real_closed_interval (g a) (g b)) f
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] countable k
+    #[2] real_continuous_on f (real_closed_interval c d)
+    #[3] real_continuous_on g (real_closed_interval a b)
+    #[4] image g (real_closed_interval a b) ⊆ real_closed_interval c d
+    #[5] ∀x. x ∈ diff (real_closed_interval a b) k ⟶ has_real_derivative g (g1 x) (atreal x)
+    #[6] a ≤ b
+    #[7] c ≤ d
+    #[8] g a ≤ g b
+    #[9] real_integral (real_closed_interval a b) (λx. f (g x) * g1 x) = real_integral (real_closed_interval (g a) (g b)) f
+  ← apply_backward_step real_integral_unique goal=9
+    #[10] has_real_integral (λx. f (g x) * g1 x) (real_integral (real_closed_interval (g a) (g b)) f) (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_substitution goal=10 facts=[1,2,3]
+qed
+
+theorem has_real_integral_substitution_simple
+  fixes a :: real, b :: real, c :: real, d :: real, f :: real => real, g :: real => real, g1 :: real => real
+  prop real_continuous_on f (real_closed_interval c d) --> (!x. x Mem real_closed_interval a b --> has_real_derivative g (g1 x) (within (atreal x) (real_closed_interval a b))) --> image g (real_closed_interval a b) Sub real_closed_interval c d --> a <= b --> c <= d --> g a <= g b --> has_real_integral (%x. f (g x) * g1 x) (real_integral (real_closed_interval (g a) (g b)) f) (real_closed_interval a b)
+  [hint_backward,hint_backward1,hint_forward]
+
+theorem real_integral_substitution_simple
+  fixes a :: real, b :: real, c :: real, d :: real, f :: real => real, g :: real => real, g1 :: real => real
+  prop real_continuous_on f (real_closed_interval c d) --> (!x. x Mem real_closed_interval a b --> has_real_derivative g (g1 x) (within (atreal x) (real_closed_interval a b))) --> image g (real_closed_interval a b) Sub real_closed_interval c d --> a <= b --> c <= d --> g a <= g b --> real_integral (real_closed_interval a b) (%x. f (g x) * g1 x) = real_integral (real_closed_interval (g a) (g b)) f
+  [hint_backward,hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] real_continuous_on f (real_closed_interval c d)
+    #[2] ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative g (g1 x) (within (atreal x) (real_closed_interval a b))
+    #[3] image g (real_closed_interval a b) ⊆ real_closed_interval c d
+    #[4] a ≤ b
+    #[5] c ≤ d
+    #[6] g a ≤ g b
+    #[7] real_integral (real_closed_interval a b) (λx. f (g x) * g1 x) = real_integral (real_closed_interval (g a) (g b)) f
+  ← apply_backward_step real_integral_unique goal=7
+    #[8] has_real_integral (λx. f (g x) * g1 x) (real_integral (real_closed_interval (g a) (g b)) f) (real_closed_interval a b)
+  ← apply_backward_step has_real_integral_substitution_simple goal=8 facts=[1,2]
+qed
+
+theorem real_integral_substitution_simple_incr
+  fixes a :: real, b :: real, f :: real => real, g :: real => real
+  prop real_continuous_on f (real_closed_interval (g a) (g b)) --> (!x. x Mem real_open_interval a b --> real_differentiable g (atreal x) & real_derivative g x >= 0) --> a <= b --> real_integral (real_closed_interval a b) (%x. f (g x) * real_derivative g x) = real_integral (real_closed_interval (g a) (g b)) f
+
+theorem real_integral_substitution_simple_decr
+  fixes a :: real, b :: real, f :: real => real, g :: real => real
+  prop real_continuous_on f (real_closed_interval (g a) (g b)) --> (!x. x Mem real_open_interval a b --> real_differentiable g (atreal x) & real_derivative g x <= 0) --> a <= b --> real_integral (real_closed_interval a b) (%x. f (g x) * real_derivative g x) = real_integral (real_closed_interval (g b) (g a)) (%x. -(f x))
+
+theorem real_monotone_convergence_increasing_ae
+  fixes f :: nat => real => real, g :: real => real, s :: real set
+  prop (!k. real_integrable_on (f k) s) --> (!k. !x. x Mem s --> f k x <= f (Suc k) x) --> (?t. real_negligible t & (!x. x Mem diff s t --> tendsto_real (%k. f k x) (g x) sequentially)) --> real_bounded ({y. ?k. y = real_integral s (f k)}) --> real_integrable_on g s & tendsto_real (%k. real_integral s (f k)) (real_integral s g) sequentially
+  [hint_backward,hint_backward1]
+
+theorem real_open_set_rational
+  fixes s :: real set
+  prop real_open s --> ~(s = {}) --> (?x. rational x & x Mem s)
+  [hint_backward,hint_backward1]
+
+theorem real_open_rational
+  fixes P :: real => bool
+  prop real_open ({x. P x}) --> (?x. P x) --> (?x. rational x & P x)
+  [hint_backward,hint_backward1]
+proof
+  ← introduction goal=0
+    #[1] real_open ({x. P x})
+    #[2] ∃x. P x
+    #[3] ∃x. rational x ∧ P x
+  -> apply_forward_step real_open_set_rational goal=3 facts=[1]
+    #[4] ¬({x. P x} = ∅) ⟶ (∃x. rational x ∧ x ∈ {x1. P x1})
+  -> rewrite_fact member_collect sym=false goal=3 facts=[4]
+    #[5] ¬({x. P x} = ∅) ⟶ (∃x. rational x ∧ P x)
+  ← apply_prev goal=3 facts=[5]
+    #[6] ¬({x. P x} = ∅)
+  ← z3 goal=6 facts=[2]
+    #[7] ¬({x. P x} = ∅)
+qed
+
+theorem real_open_set_exists_rational
+  fixes s :: real set
+  prop real_open s --> (?x. rational x & x Mem s) <--> (?x. x Mem s)
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_open s
+    #[2] (∃x. rational x ∧ x ∈ s) ⟷ (∃x. x ∈ s)
+  ← apply_backward_step iffI goal=2
+    #[3] (∃x. rational x ∧ x ∈ s) ⟶ (∃x. x ∈ s)
+    #[4] (∃x. x ∈ s) ⟶ (∃x. rational x ∧ x ∈ s)
+  ← introduction goal=3
+    #[5] ∃x. rational x ∧ x ∈ s
+    #[6] ∃x. x ∈ s
+  exists_elim x goal=6 facts=[5]
+    #[7] _VAR x
+    #[8] rational x ∧ x ∈ s
+    #[9] ∃x. x ∈ s
+  -> apply_forward_step conjD2 goal=9 facts=[8]
+    #[10] x ∈ s
+  ← apply_backward_step exI goal=9 facts=[10]
+    #[11] ∃x. x ∈ s
+  ← introduction goal=4
+    #[12] ∃x. x ∈ s
+    #[13] ∃x. rational x ∧ x ∈ s
+  ← apply_backward_step real_open_set_rational goal=13
+    #[14] ¬(s = ∅)
+  ← z3 goal=14 facts=[12]
+    #[15] ¬(s = ∅)
+qed
+
+theorem real_open_exists_rational
+  fixes P :: real => bool
+  prop real_open ({x. P x}) --> (?x. rational x & P x) <--> (?x. P x)
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] real_open ({x. P x})
+    #[2] (∃x. rational x ∧ P x) ⟷ (∃x. P x)
+  -> apply_forward_step real_open_set_exists_rational goal=2 facts=[1]
+    #[3] (∃x. rational x ∧ x ∈ {x1. P x1}) ⟷ (∃x. x ∈ {x1. P x1})
+  -> rewrite_fact member_collect sym=false goal=2 facts=[3]
+qed
+
+theorem real_continuous_on_const_dyadic_rationals
+  fixes a :: real, f :: real => real
+  prop real_continuous_on f univ --> (!x. integer x --> f x = a) --> (!x. f x = a --> f (x / 2) = a) --> (!x. f x = a)
+  [hint_backward,hint_backward1]
+
+theorem real_continuous_additive_imp_linear
+  fixes f :: real => real
+  prop real_continuous_on f univ --> (!x. !y. f (x + y) = f x + f y) --> (!a. !x. f (a * x) = a * f x)
+  [hint_backward,hint_backward1]
+
+theorem real_continuous_floor
+  fixes x :: real
+  prop ~(integer x) --> real_continuous floor (atreal x)
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] ¬(integer x)
+    #[2] real_continuous floor (atreal x)
+  ← rewrite_goal real_continuous_atreal1 sym=false goal=2
+    #[3] ∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x1. abs (x1 - x) < d ⟶ abs (floor x1 - floor x) < e))
+  ← introduction e goal=3
+    #[4] _VAR e
+    #[5] 0 < e
+    #[6] ∃d. 0 < d ∧ (∀x1. abs (x1 - x) < d ⟶ abs (floor x1 - floor x) < e)
+  ← inst_exists_goal "min (x - floor x) ((floor x + 1) - x)" goal=6
+    #[7] 0 < min (x - floor x) (floor x + 1 - x) ∧ (∀x1. abs (x1 - x) < min (x - floor x) (floor x + 1 - x) ⟶ abs (floor x1 - floor x) < e)
+  ← apply_backward_step conjI goal=7
+    #[8] 0 < min (x - floor x) (floor x + 1 - x)
+    #[9] ∀x1. abs (x1 - x) < min (x - floor x) (floor x + 1 - x) ⟶ abs (floor x1 - floor x) < e
+  ← rewrite_goal real_lt_min sym=false goal=8
+    #[10] 0 < x - floor x ∧ 0 < floor x + 1 - x
+  ← apply_backward_step conjI goal=10
+    #[11] 0 < x - floor x
+    #[12] 0 < floor x + 1 - x
+  ← rewrite_goal real_sub_lt sym=false goal=11
+    #[13] floor x < x
+  ← rewrite_goal real_floor_lt_refl sym=false goal=13
+  -> apply_forward_step floor param_x=x goal=12
+    #[14] integer (floor x) ∧ floor x ≤ x ∧ x < floor x + 1
+  ← rewrite_goal real_sub_lt sym=false goal=12
+    #[15] x < floor x + 1
+  -> apply_forward_step conjD2 goal=15 facts=[14]
+    #[16] floor x ≤ x ∧ x < floor x + 1
+  ← apply_backward_step conjD2 goal=15 facts=[16]
+    #[17] x < floor x + 1
+  ← introduction x1 goal=9
+    #[18] _VAR x1
+    #[19] abs (x1 - x) < min (x - floor x) (floor x + 1 - x)
+    #[20] abs (floor x1 - floor x) < e
+  cut "!x. !y. x = y --> abs (x-y) < e" goal=20
+    #[21] ∀x. ∀y. x = y ⟶ abs (x - y) < e
+  ← z3 goal=21 facts=[5]
+    #[22] ∀x. ∀y. x = y ⟶ abs (x - y) < e
+  ← apply_prev goal=20 facts=[22]
+    #[23] floor x1 = floor x
+  ← rewrite_goal floor_unique sym=true goal=23
+    #[24] integer (floor x) ∧ floor x ≤ x1 ∧ x1 < floor x + 1
+  ← apply_backward_step conjI goal=24
+    #[25] integer (floor x)
+    #[26] floor x ≤ x1 ∧ x1 < floor x + 1
+  ← apply_backward_step conjD1 goal=25 facts=[14]
+    #[27] integer (floor x)
+  ← apply_backward_step conjI goal=26
+    #[28] floor x ≤ x1
+    #[29] x1 < floor x + 1
+  -> rewrite_fact real_lt_min sym=false goal=28 facts=[19]
+    #[30] abs (x1 - x) < x - floor x ∧ abs (x1 - x) < floor x + 1 - x
+  -> apply_forward_step conjD1 goal=28 facts=[30]
+    #[31] abs (x1 - x) < x - floor x
+  cut "!y. abs(x1 -x) < x - y --> y <= x1" goal=28
+    #[32] ∀y. abs (x1 - x) < x - y ⟶ y ≤ x1
+  ← z3 goal=32
+    #[33] ∀y. abs (x1 - x) < x - y ⟶ y ≤ x1
+  ← apply_prev goal=28 facts=[33]
+  -> apply_forward_step conjD2 goal=29 facts=[30]
+    #[34] abs (x1 - x) < floor x + 1 - x
+  cut "∀y. abs (x1 - x) < y+1 - x ⟶ x1 < y + 1" goal=29
+    #[35] ∀y. abs (x1 - x) < y + 1 - x ⟶ x1 < y + 1
+  ← z3 goal=35
+    #[36] ∀y. abs (x1 - x) < y + 1 - x ⟶ x1 < y + 1
+  ← apply_prev goal=29 facts=[36]
+qed
+

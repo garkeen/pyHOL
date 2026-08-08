@@ -1,0 +1,24 @@
+theory topology
+imports set
+description "Basics of topological spaces"
+
+header "Basic definitions"
+
+type topology 'a
+
+const open_in :: 'a topology ⇒ 'a set ⇒ bool
+
+def top_total_space :: 'a topology ⇒ 'a set = top_total_space S = ⋃({U. open_in S U})
+
+def closed_in :: 'a set set ⇒ 'a set ⇒ bool = closed_in S A ⟷ ⋃S - A ∈ S
+
+def is_topology :: 'a topology ⇒ bool = is_topology S ⟷ (∀U. ∀V. open_in S U ⟶ open_in S V ⟶ open_in S (U ∪ V)) ∧ (∀K. (∀U. U ∈ K ⟶ open_in S U) ⟶ open_in S (⋃K))
+
+theorem open_empty
+  fixes S :: 'a topology
+  prop is_topology S --> open_in S {}
+
+theorem open_union
+  fixes S :: 'a topology, U :: 'a set, V :: 'a set
+  prop is_topology S --> open_in S U --> open_in S V --> open_in S (U Un V)
+

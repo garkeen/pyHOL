@@ -1,0 +1,1538 @@
+theory logic
+imports logic_base
+description "Basic results in logic"
+
+theorem conj_comm
+  fixes A :: bool, B :: bool
+  prop A & B <--> B & A
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ∧ B ⟶ B ∧ A
+    #[2] B ∧ A ⟶ A ∧ B
+  ← introduction goal=1
+    #[3] A ∧ B
+    #[4] B ∧ A
+  ← apply_backward_step conjI goal=4
+    #[5] B
+    #[6] A
+  ← apply_backward_step conjD2 goal=5 facts=[3]
+  ← apply_backward_step conjD1 goal=6 facts=[3]
+  ← introduction goal=2
+    #[7] B ∧ A
+    #[8] A ∧ B
+  ← apply_backward_step conjI goal=8
+    #[9] A
+    #[10] B
+  ← apply_backward_step conjD2 goal=9 facts=[7]
+  ← apply_backward_step conjD1 goal=10 facts=[7]
+qed
+
+theorem disj_comm
+  fixes A :: bool, B :: bool
+  prop A | B <--> B | A
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ∨ B ⟶ B ∨ A
+    #[2] B ∨ A ⟶ A ∨ B
+  ← introduction goal=1
+    #[3] A ∨ B
+    #[4] B ∨ A
+  ← apply_backward_step disjE goal=4 facts=[3]
+    #[5] A ⟶ B ∨ A
+    #[6] B ⟶ B ∨ A
+  ← introduction goal=5
+    #[7] A
+    #[8] B ∨ A
+  ← apply_backward_step disjI2 goal=8 facts=[7]
+    #[9] B ∨ A
+  ← introduction goal=6
+    #[10] B
+    #[11] B ∨ A
+  ← apply_backward_step disjI1 goal=11 facts=[10]
+    #[12] B ∨ A
+  ← introduction goal=2
+    #[13] B ∨ A
+    #[14] A ∨ B
+  ← apply_backward_step disjE goal=14 facts=[13]
+    #[15] B ⟶ A ∨ B
+    #[16] A ⟶ A ∨ B
+  ← introduction goal=15
+    #[17] A ∨ B
+  ← apply_backward_step disjI2 goal=17 facts=[10]
+    #[18] A ∨ B
+  ← introduction goal=16
+    #[19] A ∨ B
+  ← apply_backward_step disjI1 goal=19 facts=[7]
+    #[20] A ∨ B
+qed
+
+theorem conj_assoc
+  fixes A :: bool, B :: bool, C :: bool
+  prop A & B & C <--> (A & B) & C
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ∧ B ∧ C ⟶ (A ∧ B) ∧ C
+    #[2] (A ∧ B) ∧ C ⟶ A ∧ B ∧ C
+  ← introduction goal=1
+    #[3] A ∧ B ∧ C
+    #[4] (A ∧ B) ∧ C
+  ← apply_backward_step conjI goal=4
+    #[5] A ∧ B
+    #[6] C
+  ← apply_backward_step conjI goal=5
+    #[7] A
+    #[8] B
+  ← apply_backward_step conjD1 goal=7 facts=[3]
+  -> apply_forward_step conjD2 goal=8 facts=[3]
+    #[9] B ∧ C
+  ← apply_backward_step conjD1 goal=8 facts=[9]
+  ← apply_backward_step conjD2 goal=6 facts=[9]
+  ← introduction goal=2
+    #[10] (A ∧ B) ∧ C
+    #[11] A ∧ B ∧ C
+  ← apply_backward_step conjI goal=11
+    #[12] A
+    #[13] B ∧ C
+  -> apply_forward_step conjD1 goal=12 facts=[10]
+    #[14] A ∧ B
+  ← apply_backward_step conjD1 goal=12 facts=[14]
+  ← apply_backward_step conjI goal=13
+    #[15] B
+    #[16] C
+  ← apply_backward_step conjD2 goal=15 facts=[14]
+  ← apply_backward_step conjD2 goal=16 facts=[10]
+qed
+
+theorem disj_assoc
+  fixes A :: bool, B :: bool, C :: bool
+  prop A | B | C --> (A | B) | C
+proof
+  ← introduction goal=0
+    #[1] A ∨ B ∨ C
+    #[2] (A ∨ B) ∨ C
+  ← apply_backward_step disjE goal=2 facts=[1]
+    #[3] A ⟶ (A ∨ B) ∨ C
+    #[4] B ∨ C ⟶ (A ∨ B) ∨ C
+  ← introduction goal=3
+    #[5] A
+    #[6] (A ∨ B) ∨ C
+  ← apply_backward_step disjI1 goal=6
+    #[7] A ∨ B
+  ← apply_backward_step disjI1 goal=7 facts=[5]
+    #[8] A ∨ B
+  ← introduction goal=4
+    #[9] B ∨ C
+    #[10] (A ∨ B) ∨ C
+  ← apply_backward_step disjE goal=10 facts=[9]
+    #[11] B ⟶ (A ∨ B) ∨ C
+    #[12] C ⟶ (A ∨ B) ∨ C
+  ← introduction goal=11
+    #[13] B
+    #[14] (A ∨ B) ∨ C
+  ← apply_backward_step disjI1 goal=14
+    #[15] A ∨ B
+  ← apply_backward_step disjI2 goal=15 facts=[13]
+    #[16] A ∨ B
+  ← introduction goal=12
+    #[17] C
+    #[18] (A ∨ B) ∨ C
+  ← apply_backward_step disjI2 goal=18 facts=[17]
+    #[19] (A ∨ B) ∨ C
+qed
+
+theorem disj_assoc_eq
+  fixes A :: bool, B :: bool, C :: bool
+  prop A | B | C <--> (A | B) | C
+  [hint_rewrite,hint_rewrite_sym]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ∨ B ∨ C ⟶ (A ∨ B) ∨ C
+    #[2] (A ∨ B) ∨ C ⟶ A ∨ B ∨ C
+  ← introduction goal=1
+    #[3] A ∨ B ∨ C
+    #[4] (A ∨ B) ∨ C
+  ← apply_backward_step disj_assoc goal=4
+  ← introduction goal=2
+    #[5] (A ∨ B) ∨ C
+    #[6] A ∨ B ∨ C
+  ← apply_backward_step disjE goal=6 facts=[5]
+    #[7] A ∨ B ⟶ A ∨ B ∨ C
+    #[8] C ⟶ A ∨ B ∨ C
+  ← introduction goal=7
+    #[9] A ∨ B
+    #[10] A ∨ B ∨ C
+  ← apply_backward_step disjE goal=10 facts=[9]
+    #[11] A ⟶ A ∨ B ∨ C
+    #[12] B ⟶ A ∨ B ∨ C
+  ← introduction goal=11
+    #[13] A
+    #[14] A ∨ B ∨ C
+  ← apply_backward_step disjI1 goal=14
+  ← introduction goal=12
+    #[15] B
+    #[16] A ∨ B ∨ C
+  ← apply_backward_step disjI2 goal=16
+    #[17] B ∨ C
+  ← apply_backward_step disjI1 goal=17
+  ← introduction goal=8
+    #[18] C
+    #[19] A ∨ B ∨ C
+  ← apply_backward_step disjI2 goal=19
+    #[20] B ∨ C
+  ← apply_backward_step disjI2 goal=20
+qed
+
+theorem double_neg
+  fixes A :: bool
+  prop ~~A <--> A
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] ¬¬A ⟶ A
+    #[2] A ⟶ ¬¬A
+  ← introduction goal=1
+    #[3] ¬¬A
+    #[4] A
+  ← cases A goal=4
+    #[5] A ⟶ A
+    #[6] ¬A ⟶ A
+  ← introduction goal=6
+    #[7] ¬A
+    #[8] A
+  ← apply_backward_step negE_gen goal=8 facts=[3]
+  ← introduction goal=2
+    #[9] A
+    #[10] ¬¬A
+  ← apply_backward_step negI goal=10
+    #[11] ¬A ⟶ false
+  ← introduction goal=11
+    #[12] false
+  ← apply_backward_step negE goal=12 facts=[7]
+qed
+
+theorem disj_conv_imp
+  fixes A :: bool, B :: bool
+  prop ~A | B <--> (A --> B)
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] ¬A ∨ B ⟶ A ⟶ B
+    #[2] (A ⟶ B) ⟶ ¬A ∨ B
+  ← introduction goal=1
+    #[3] ¬A ∨ B
+    #[4] A
+    #[5] B
+  ← apply_backward_step disjE goal=5 facts=[3]
+    #[6] ¬A ⟶ B
+    #[7] B ⟶ B
+  ← introduction goal=6
+    #[8] ¬A
+    #[9] B
+  ← apply_backward_step negE_gen goal=9 facts=[8]
+  ← introduction goal=2
+    #[10] A ⟶ B
+    #[11] ¬A ∨ B
+  ← cases A goal=11
+    #[12] A ⟶ ¬A ∨ B
+    #[13] ¬A ⟶ ¬A ∨ B
+  ← introduction goal=12
+    #[14] ¬A ∨ B
+  ← apply_backward_step disjI2 goal=14
+    #[15] B
+  ← apply_prev goal=15 facts=[10]
+  ← introduction goal=13
+    #[16] ¬A ∨ B
+  ← apply_backward_step disjI1 goal=16
+qed
+
+theorem ex_conj_distrib
+  fixes A :: 'a => bool, B :: 'a => bool
+  prop (?x. A x & B x) --> (?x. A x) & (?x. B x)
+  [hint_backward]
+proof
+  ← introduction goal=0
+    #[1] ∃x. A x ∧ B x
+    #[2] (∃x. A x) ∧ (∃x. B x)
+  exists_elim x goal=2 facts=[1]
+    #[3] _VAR x
+    #[4] A x ∧ B x
+    #[5] (∃x. A x) ∧ (∃x. B x)
+  ← apply_backward_step conjI goal=5
+    #[6] ∃x. A x
+    #[7] ∃x. B x
+  -> apply_forward_step conjD1 goal=6 facts=[4]
+    #[8] A x
+  ← apply_backward_step exI goal=6 facts=[8]
+    #[9] ∃x. A x
+  -> apply_forward_step conjD2 goal=7 facts=[4]
+    #[10] B x
+  ← apply_backward_step exI goal=7 facts=[10]
+    #[11] ∃x. B x
+qed
+
+theorem all_conj_distrib
+  fixes A :: 'a => bool, B :: 'a => bool, x :: 'a
+  prop (!x. A x & B x) --> (!x. A x) & (!x. B x)
+  [hint_rewrite]
+proof
+  ← introduction goal=0
+    #[1] ∀x. A x ∧ B x
+    #[2] (∀x. A x) ∧ (∀x. B x)
+  ← apply_backward_step conjI goal=2
+    #[3] ∀x. A x
+    #[4] ∀x. B x
+  ← introduction x goal=3
+    #[5] _VAR x
+    #[6] A x
+  -> forall_elim x goal=6 facts=[1]
+    #[7] A x ∧ B x
+  ← apply_backward_step conjD1 goal=6 facts=[7]
+  ← introduction x goal=4
+    #[8] B x
+  -> forall_elim x goal=8 facts=[1]
+  ← apply_backward_step conjD2 goal=8 facts=[7]
+qed
+
+theorem conj_disj_distribL1
+  fixes A :: bool, B :: bool, C :: bool
+  prop A & (B | C) <--> A & B | A & C
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ∧ (B ∨ C) ⟶ A ∧ B ∨ A ∧ C
+    #[2] A ∧ B ∨ A ∧ C ⟶ A ∧ (B ∨ C)
+  ← introduction goal=1
+    #[3] A ∧ (B ∨ C)
+    #[4] A ∧ B ∨ A ∧ C
+  -> apply_forward_step conjD1 goal=4 facts=[3]
+    #[5] A
+  -> apply_forward_step conjD2 goal=4 facts=[3]
+    #[6] B ∨ C
+  ← apply_backward_step disjE goal=4 facts=[6]
+    #[7] B ⟶ A ∧ B ∨ A ∧ C
+    #[8] C ⟶ A ∧ B ∨ A ∧ C
+  ← introduction goal=7
+    #[9] B
+    #[10] A ∧ B ∨ A ∧ C
+  ← apply_backward_step disjI1 goal=10
+    #[11] A ∧ B
+  ← apply_backward_step conjI goal=11 facts=[5]
+  ← introduction goal=8
+    #[12] C
+    #[13] A ∧ B ∨ A ∧ C
+  ← apply_backward_step disjI2 goal=13
+    #[14] A ∧ C
+  ← apply_backward_step conjI goal=14 facts=[5]
+  ← introduction goal=2
+    #[15] A ∧ B ∨ A ∧ C
+    #[16] A ∧ (B ∨ C)
+  ← apply_backward_step disjE goal=16 facts=[15]
+    #[17] A ∧ B ⟶ A ∧ (B ∨ C)
+    #[18] A ∧ C ⟶ A ∧ (B ∨ C)
+  ← introduction goal=17
+    #[19] A ∧ B
+    #[20] A ∧ (B ∨ C)
+  ← apply_backward_step conjI goal=20
+    #[21] A
+    #[22] B ∨ C
+  ← apply_backward_step conjD1 goal=21 facts=[19]
+    #[23] A
+  ← apply_backward_step disjI1 goal=22
+    #[24] B
+  ← apply_backward_step conjD2 goal=24 facts=[19]
+    #[25] B
+  ← introduction goal=18
+    #[26] A ∧ C
+    #[27] A ∧ (B ∨ C)
+  ← apply_backward_step conjI goal=27
+    #[28] A
+    #[29] B ∨ C
+  ← apply_backward_step conjD1 goal=28 facts=[26]
+    #[30] A
+  ← apply_backward_step disjI2 goal=29
+    #[31] C
+  ← apply_backward_step conjD2 goal=31 facts=[26]
+    #[32] C
+qed
+
+theorem disj_conj_distribL1
+  fixes A :: bool, B :: bool, C :: bool
+  prop A | B & C <--> (A | B) & (A | C)
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ∨ B ∧ C ⟶ (A ∨ B) ∧ (A ∨ C)
+    #[2] (A ∨ B) ∧ (A ∨ C) ⟶ A ∨ B ∧ C
+  ← introduction goal=1
+    #[3] A ∨ B ∧ C
+    #[4] (A ∨ B) ∧ (A ∨ C)
+  ← apply_backward_step disjE goal=4 facts=[3]
+    #[5] A ⟶ (A ∨ B) ∧ (A ∨ C)
+    #[6] B ∧ C ⟶ (A ∨ B) ∧ (A ∨ C)
+  ← introduction goal=5
+    #[7] A
+    #[8] (A ∨ B) ∧ (A ∨ C)
+  ← apply_backward_step conjI goal=8
+    #[9] A ∨ B
+    #[10] A ∨ C
+  ← apply_backward_step disjI1 goal=9
+  ← apply_backward_step disjI1 goal=10
+  ← introduction goal=6
+    #[11] B ∧ C
+    #[12] (A ∨ B) ∧ (A ∨ C)
+  -> apply_forward_step conjD1 goal=12 facts=[11]
+    #[13] B
+  -> apply_forward_step conjD2 goal=12 facts=[11]
+    #[14] C
+  ← apply_backward_step conjI goal=12
+    #[15] A ∨ B
+    #[16] A ∨ C
+  ← apply_backward_step disjI2 goal=15
+  ← apply_backward_step disjI2 goal=16
+  ← introduction goal=2
+    #[17] (A ∨ B) ∧ (A ∨ C)
+    #[18] A ∨ B ∧ C
+  -> apply_forward_step conjD1 goal=18 facts=[17]
+    #[19] A ∨ B
+  -> apply_forward_step conjD2 goal=18 facts=[17]
+    #[20] A ∨ C
+  ← apply_backward_step disjE goal=18 facts=[19]
+    #[21] A ⟶ A ∨ B ∧ C
+    #[22] B ⟶ A ∨ B ∧ C
+  ← introduction goal=21
+    #[23] A ∨ B ∧ C
+  ← apply_backward_step disjI1 goal=23
+  ← introduction goal=22
+    #[24] B
+    #[25] A ∨ B ∧ C
+  ← apply_backward_step disjE goal=25 facts=[20]
+    #[26] C ⟶ A ∨ B ∧ C
+  ← introduction goal=26
+    #[27] C
+    #[28] A ∨ B ∧ C
+  ← apply_backward_step disjI2 goal=28
+    #[29] B ∧ C
+  ← apply_backward_step conjI goal=29
+qed
+
+theorem disj_conj_distribL2
+  fixes A :: bool, B :: bool, C :: bool
+  prop A & B | C <--> (A | C) & (B | C)
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ∧ B ∨ C ⟶ (A ∨ C) ∧ (B ∨ C)
+    #[2] (A ∨ C) ∧ (B ∨ C) ⟶ A ∧ B ∨ C
+  ← introduction goal=1
+    #[3] A ∧ B ∨ C
+    #[4] (A ∨ C) ∧ (B ∨ C)
+  ← apply_backward_step disjE goal=4 facts=[3]
+    #[5] A ∧ B ⟶ (A ∨ C) ∧ (B ∨ C)
+    #[6] C ⟶ (A ∨ C) ∧ (B ∨ C)
+  ← introduction goal=5
+    #[7] A ∧ B
+    #[8] (A ∨ C) ∧ (B ∨ C)
+  ← apply_backward_step conjI goal=8
+    #[9] A ∨ C
+    #[10] B ∨ C
+  -> apply_forward_step conjD1 goal=9 facts=[7]
+    #[11] A
+  ← apply_backward_step disjI1 goal=9 facts=[11]
+    #[12] A ∨ C
+  -> apply_forward_step conjD2 goal=10 facts=[7]
+    #[13] B
+  ← apply_backward_step disjI1 goal=10 facts=[13]
+    #[14] B ∨ C
+  ← introduction goal=6
+    #[15] C
+    #[16] (A ∨ C) ∧ (B ∨ C)
+  ← apply_backward_step conjI goal=16
+    #[17] A ∨ C
+    #[18] B ∨ C
+  ← apply_backward_step disjI2 goal=17 facts=[15]
+    #[19] A ∨ C
+  ← apply_backward_step disjI2 goal=18 facts=[15]
+    #[20] B ∨ C
+  ← introduction goal=2
+    #[21] (A ∨ C) ∧ (B ∨ C)
+    #[22] A ∧ B ∨ C
+  ← cases C goal=22
+    #[23] C ⟶ A ∧ B ∨ C
+    #[24] ¬C ⟶ A ∧ B ∨ C
+  ← introduction goal=23
+    #[25] A ∧ B ∨ C
+  ← introduction goal=24
+    #[26] ¬C
+    #[27] A ∧ B ∨ C
+  ← apply_backward_step disjI2 goal=25
+  ← apply_backward_step disjI1 goal=27
+    #[28] A ∧ B
+  -> apply_forward_step conjD1 goal=28 facts=[21]
+    #[29] A ∨ C
+  -> apply_forward_step conjD2 goal=28 facts=[21]
+    #[30] B ∨ C
+  -> rewrite_fact disj_comm sym=false goal=28 facts=[29]
+    #[31] C ∨ A
+  -> apply_forward_step resolution_left goal=28 facts=[31,26]
+    #[32] A
+  -> rewrite_fact disj_comm sym=false goal=28 facts=[30]
+    #[33] C ∨ B
+  -> apply_forward_step resolution_left goal=28 facts=[33,26]
+    #[34] B
+  ← apply_backward_step conjI goal=28 facts=[32,34]
+qed
+
+theorem de_morgan_thm1
+  fixes A :: bool, B :: bool
+  prop ~(A & B) <--> ~A | ~B
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] ¬(A ∧ B) ⟶ ¬A ∨ ¬B
+    #[2] ¬A ∨ ¬B ⟶ ¬(A ∧ B)
+  ← introduction goal=1
+    #[3] ¬(A ∧ B)
+    #[4] ¬A ∨ ¬B
+  ← cases A goal=4 facts=[3]
+    #[5] A ⟶ ¬A ∨ ¬B
+    #[6] ¬A ⟶ ¬A ∨ ¬B
+  ← introduction goal=5
+    #[7] A
+    #[8] ¬A ∨ ¬B
+  ← cases B goal=8
+    #[9] B ⟶ ¬A ∨ ¬B
+    #[10] ¬B ⟶ ¬A ∨ ¬B
+  ← introduction goal=9
+    #[11] B
+    #[12] ¬A ∨ ¬B
+  -> apply_forward_step conjI goal=12 facts=[7,11]
+    #[13] A ∧ B
+  ← apply_backward_step negE_gen goal=12 facts=[3,13]
+  ← introduction goal=10
+    #[14] ¬B
+    #[15] ¬A ∨ ¬B
+  ← apply_backward_step disjI2 goal=15 facts=[14]
+    #[16] ¬A ∨ ¬B
+  ← introduction goal=6
+    #[17] ¬A
+    #[18] ¬A ∨ ¬B
+  ← apply_backward_step disjI1 goal=18 facts=[17]
+    #[19] ¬A ∨ ¬B
+  ← introduction goal=2
+    #[20] ¬A ∨ ¬B
+    #[21] ¬(A ∧ B)
+  ← apply_backward_step negI goal=21
+    #[22] A ∧ B ⟶ false
+  ← introduction goal=22
+    #[23] A ∧ B
+    #[24] false
+  ← apply_backward_step disjE goal=24 facts=[20]
+    #[25] ¬A ⟶ false
+    #[26] ¬B ⟶ false
+  ← introduction goal=25
+    #[27] false
+  -> apply_forward_step conjD1 goal=25 facts=[23]
+    #[28] A
+  ← apply_backward_step negE goal=27 facts=[17,28]
+    #[29] false
+  -> apply_forward_step conjD2 goal=28 facts=[23]
+    #[30] B
+  ← introduction goal=26
+    #[31] false
+  ← apply_backward_step negE goal=31 facts=[14,30]
+    #[32] false
+qed
+
+theorem de_morgan_thm2
+  fixes A :: bool, B :: bool
+  prop ~(A | B) <--> ~A & ~B
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] ¬(A ∨ B) ⟶ ¬A ∧ ¬B
+    #[2] ¬A ∧ ¬B ⟶ ¬(A ∨ B)
+  ← introduction goal=1
+    #[3] ¬(A ∨ B)
+    #[4] ¬A ∧ ¬B
+  ← apply_backward_step conjI goal=4
+    #[5] ¬A
+    #[6] ¬B
+  ← cases A goal=5
+    #[7] A ⟶ ¬A
+    #[8] ¬A ⟶ ¬A
+  ← introduction goal=7
+    #[9] A
+    #[10] ¬A
+  cut "A ∨ B" goal=10 facts=[3]
+    #[11] A ∨ B
+  ← apply_backward_step disjI1 goal=11 facts=[9]
+    #[12] A ∨ B
+  ← apply_backward_step negE_gen goal=10 facts=[3,12]
+  ← cases B goal=6
+    #[13] B ⟶ ¬B
+    #[14] ¬B ⟶ ¬B
+  ← introduction goal=13
+    #[15] B
+    #[16] ¬B
+  cut "A ∨ B" goal=16 facts=[3]
+    #[17] A ∨ B
+  ← apply_backward_step disjI2 goal=17 facts=[15]
+    #[18] A ∨ B
+  ← apply_backward_step negE_gen goal=16 facts=[3,18]
+  ← introduction goal=2
+    #[19] ¬A ∧ ¬B
+    #[20] ¬(A ∨ B)
+  ← rewrite_goal disj_comm sym=false goal=20
+    #[21] ¬(B ∨ A)
+  ← cases "B ∨ A" goal=21
+    #[22] B ∨ A ⟶ ¬(B ∨ A)
+    #[23] ¬(B ∨ A) ⟶ ¬(B ∨ A)
+  ← introduction goal=22
+    #[24] B ∨ A
+    #[25] ¬(B ∨ A)
+  -> apply_forward_step conjD1 goal=22 facts=[19]
+    #[26] ¬A
+  -> apply_forward_step conjD2 goal=26 facts=[19]
+    #[27] ¬B
+  -> apply_forward_step resolution_left goal=25 facts=[24,27]
+    #[28] A
+  ← apply_backward_step negE_gen goal=25 facts=[26,28]
+qed
+
+theorem not_imp
+  fixes A :: bool, B :: bool
+  prop ~(A --> B) <--> A & ~B
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] ¬(A ⟶ B) ⟶ A ∧ ¬B
+    #[2] A ∧ ¬B ⟶ ¬(A ⟶ B)
+  ← introduction goal=1
+    #[3] ¬(A ⟶ B)
+    #[4] A ∧ ¬B
+  ← apply_backward_step conjI goal=4
+    #[5] A
+    #[6] ¬B
+  ← cases A goal=5
+    #[7] A ⟶ A
+    #[8] ¬A ⟶ A
+  ← introduction goal=8
+    #[9] ¬A
+    #[10] A
+  cut "A ⟶ B" goal=10
+    #[11] A ⟶ B
+  -> apply_forward_step negE_gen param_C=B goal=11 facts=[9]
+    #[12] A ⟶ B
+  ← apply_backward_step negE_gen goal=10 facts=[3,12]
+  ← cases B goal=6
+    #[13] B ⟶ ¬B
+    #[14] ¬B ⟶ ¬B
+  ← introduction goal=13
+    #[15] B
+    #[16] ¬B
+  -> apply_forward_step weakening param_B=A goal=16 facts=[15]
+    #[17] A ⟶ B
+  ← apply_backward_step negE_gen goal=16 facts=[3,17]
+  ← introduction goal=2
+    #[18] A ∧ ¬B
+    #[19] ¬(A ⟶ B)
+  -> apply_forward_step conjD1 goal=19 facts=[18]
+    #[20] A
+  -> apply_forward_step conjD2 goal=20 facts=[18]
+    #[21] ¬B
+  ← apply_backward_step negI goal=19
+    #[22] (A ⟶ B) ⟶ false
+  ← introduction goal=22
+    #[23] A ⟶ B
+    #[24] false
+  -> apply_fact goal=24 facts=[23,20]
+    #[25] B
+  ← apply_backward_step negE goal=24 facts=[21,25]
+qed
+
+theorem eq_true
+  fixes A :: bool
+  prop A <--> A <--> true
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ⟶ A ⟷ true
+    #[2] A ⟷ true ⟶ A
+  ← introduction goal=1
+    #[3] A
+    #[4] A ⟷ true
+  ← apply_backward_step iffI goal=4
+    #[5] A ⟶ true
+    #[6] true ⟶ A
+  ← introduction goal=5
+    #[7] true
+  ← apply_backward_step trueI goal=7
+    #[8] true
+  ← introduction goal=6
+    #[9] true
+  ← introduction goal=2
+    #[10] A ⟷ true
+    #[11] A
+  ← rewrite_goal_with_prev goal=11 facts=[10]
+    #[12] true
+  ← apply_backward_step trueI goal=12
+qed
+
+theorem eq_false
+  fixes A :: bool
+  prop ~A <--> A <--> false
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] ¬A ⟶ A ⟷ false
+    #[2] A ⟷ false ⟶ ¬A
+  ← introduction goal=1
+    #[3] ¬A
+    #[4] A ⟷ false
+  ← apply_backward_step iffI goal=4
+    #[5] A ⟶ false
+    #[6] false ⟶ A
+  ← introduction goal=5
+    #[7] A
+    #[8] false
+  ← apply_backward_step negE param_A=A goal=8
+  ← introduction goal=6
+    #[9] false
+    #[10] A
+  ← apply_resolve_step not_false_res goal=10 facts=[9]
+    #[11] A
+  ← introduction goal=2
+    #[12] A ⟷ false
+    #[13] ¬A
+  ← apply_backward_step negI goal=13
+    #[14] A ⟶ false
+  ← introduction goal=14
+    #[15] false
+  -> rewrite_fact_with_prev goal=15 facts=[12,7]
+qed
+
+theorem not_true
+  prop ~true <--> false
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] ¬true ⟶ false
+    #[2] false ⟶ ¬true
+  ← introduction goal=1
+    #[3] ¬true
+    #[4] false
+  insert trueI goal=4
+    #[5] true
+  ← apply_backward_step negE goal=4 facts=[3,5]
+  ← introduction goal=2
+    #[6] false
+    #[7] ¬true
+  ← apply_backward_step negI goal=7
+    #[8] true ⟶ false
+  ← apply_backward_step falseE goal=8 facts=[6]
+qed
+
+theorem not_false
+  prop ~false <--> true
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] ¬false ⟶ true
+    #[2] true ⟶ ¬false
+  ← introduction goal=1
+    #[3] ¬false
+    #[4] true
+  ← apply_backward_step trueI goal=4
+    #[5] true
+  ← introduction goal=2
+    #[6] true
+    #[7] ¬false
+  ← apply_backward_step negI goal=7
+    #[8] false ⟶ false
+qed
+
+theorem pierce
+  fixes A :: bool, B :: bool
+  prop ((A --> B) --> A) --> A
+proof
+  ← introduction goal=0
+    #[1] (A ⟶ B) ⟶ A
+    #[2] A
+  ← cases A goal=2
+    #[3] A ⟶ A
+    #[4] ¬A ⟶ A
+  ← introduction goal=4
+    #[5] ¬A
+    #[6] A
+  ← apply_prev goal=6 facts=[1]
+    #[7] A ⟶ B
+  ← introduction goal=7
+    #[8] A
+    #[9] B
+  ← apply_backward_step negE_gen goal=9 facts=[5]
+qed
+
+theorem not_all
+  fixes P :: 'a => bool
+  prop ~(!x. P x) <--> (?x. ~(P x))
+  [hint_rewrite]
+proof
+  ← z3 goal=0
+qed
+
+theorem not_exists
+  fixes P :: 'a => bool
+  prop ~(?x. P x) <--> (!x. ~(P x))
+  [hint_rewrite]
+proof
+  ← z3 goal=0
+qed
+
+theorem right_or_exists_thm
+  fixes P :: bool, Q :: 'a => bool
+  prop P | (?x. Q x) <--> (?x. P | Q x)
+  [hint_rewrite,hint_rewrite_sym]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] P ∨ (∃x. Q x) ⟶ (∃x. P ∨ Q x)
+    #[2] (∃x. P ∨ Q x) ⟶ P ∨ (∃x. Q x)
+  ← introduction goal=1
+    #[3] P ∨ (∃x. Q x)
+    #[4] ∃x. P ∨ Q x
+  ← apply_backward_step disjE goal=4 facts=[3]
+    #[5] P ⟶ (∃x. P ∨ Q x)
+    #[6] (∃x. Q x) ⟶ (∃x. P ∨ Q x)
+  ← introduction goal=5
+    #[7] P
+    #[8] ∃x. P ∨ Q x
+  new_var a 'a goal=8
+    #[9] _VAR a
+  ← inst_exists_goal a goal=8
+    #[10] P ∨ Q a
+  ← apply_backward_step disjI1 goal=10
+  ← introduction goal=6
+    #[11] ∃x. Q x
+    #[12] ∃x. P ∨ Q x
+  exists_elim x goal=12 facts=[11]
+    #[13] _VAR x
+    #[14] Q x
+    #[15] ∃x. P ∨ Q x
+  ← apply_backward_step exI param_a=x goal=15
+    #[16] P ∨ Q x
+  ← apply_backward_step disjI2 goal=16
+  ← introduction goal=2
+    #[17] ∃x. P ∨ Q x
+    #[18] P ∨ (∃x. Q x)
+  exists_elim x goal=18 facts=[17]
+    #[19] P ∨ Q x
+    #[20] P ∨ (∃x. Q x)
+  ← apply_backward_step disjE goal=20 facts=[19]
+    #[21] P ⟶ P ∨ (∃x. Q x)
+    #[22] Q x ⟶ P ∨ (∃x1. Q x1)
+  ← introduction goal=21
+    #[23] P ∨ (∃x. Q x)
+  ← apply_backward_step disjI1 goal=23
+  ← introduction goal=22
+    #[24] P ∨ (∃x. Q x)
+  ← apply_backward_step disjI2 goal=24
+    #[25] ∃x. Q x
+  ← apply_backward_step exI param_a=x goal=25
+qed
+
+theorem left_exists_and_thm
+  fixes P :: 'a => bool, Q :: bool
+  prop (?x. P x & Q) <--> (?x1. P x1) & Q
+  [hint_rewrite,hint_rewrite_sym]
+proof
+  ← z3 goal=0
+qed
+
+theorem left_imp_exists_thm
+  fixes P :: 'a => bool, Q :: bool
+  prop ((?x. P x) --> Q) <--> (!x. P x --> Q)
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] ((∃x. P x) ⟶ Q) ⟶ (∀x. P x ⟶ Q)
+    #[2] (∀x. P x ⟶ Q) ⟶ (∃x. P x) ⟶ Q
+  ← introduction goal=1
+    #[3] (∃x. P x) ⟶ Q
+    #[4] ∀x. P x ⟶ Q
+  ← introduction x goal=4
+    #[5] _VAR x
+    #[6] P x
+    #[7] Q
+  ← apply_prev goal=7 facts=[3]
+    #[8] ∃x. P x
+  ← inst_exists_goal x goal=8
+  ← introduction goal=2
+    #[9] ∀x. P x ⟶ Q
+    #[10] ∃x. P x
+    #[11] Q
+  exists_elim x goal=11 facts=[10]
+    #[12] Q
+  ← apply_prev param_x=x goal=12 facts=[9]
+qed
+
+theorem left_imp_forall_thm
+  fixes P :: 'a => bool, Q :: bool
+  prop ((!x. P x) --> Q) <--> (?x. P x --> Q)
+  [hint_rewrite]
+proof
+  cut "!A. !B. (A <--> B) <--> (~A <--> ~B)" goal=0
+    #[1] ∀A. ∀B. (A ⟷ B) ⟷ ¬A ⟷ ¬B
+  ← z3 goal=1
+  ← rewrite_goal_with_prev goal=0 facts=[1]
+    #[2] ¬((∀x. P x) ⟶ Q) ⟷ ¬(∃x. P x ⟶ Q)
+  ← rewrite_goal not_exists sym=false goal=2
+    #[3] ¬((∀x. P x) ⟶ Q) ⟷ (∀x. ¬(P x ⟶ Q))
+  ← rewrite_goal not_imp sym=false goal=3
+    #[4] (∀x. P x) ∧ ¬Q ⟷ (∀x. P x ∧ ¬Q)
+  ← z3 goal=4
+qed
+
+theorem left_exists_imp_thm
+  fixes P :: 'a => bool, Q :: bool
+  prop (?x. P x --> Q) <--> ((!x. P x) --> Q)
+  [hint_rewrite]
+proof
+  ← rewrite_goal left_imp_forall_thm sym=false goal=0
+qed
+
+theorem right_imp_exists_thm
+  fixes P :: bool, Q :: 'a => bool
+  prop (P --> (?x. Q x)) <--> (?x. P --> Q x)
+  [hint_rewrite]
+proof
+  ← z3 goal=0
+qed
+
+theorem right_exists_imp_thm
+  fixes P :: bool, Q :: 'a => bool
+  prop (?x. P --> Q x) <--> (P --> (?x. Q x))
+  [hint_rewrite]
+proof
+  ← rewrite_goal right_imp_exists_thm sym=false goal=0
+qed
+
+theorem drinker
+  fixes P :: 'a => bool
+  prop ?x. P x --> (!x1. P x1)
+proof
+  ← cases "!x. P x" goal=0
+    #[1] (∀x. P x) ⟶ (∃x. P x ⟶ (∀x1. P x1))
+    #[2] ¬(∀x. P x) ⟶ (∃x. P x ⟶ (∀x1. P x1))
+  ← introduction goal=1
+    #[3] ∀x. P x
+    #[4] ∃x. P x ⟶ (∀x1. P x1)
+  new_var x 'a goal=4
+    #[5] _VAR x
+  ← inst_exists_goal x goal=4
+    #[6] P x ⟶ (∀x1. P x1)
+  ← introduction goal=6
+    #[7] P x
+  ← introduction goal=2
+    #[8] ¬(∀x. P x)
+    #[9] ∃x. P x ⟶ (∀x1. P x1)
+  -> rewrite_fact not_all sym=false goal=9 facts=[8]
+    #[10] ∃x. ¬(P x)
+  exists_elim x goal=9 facts=[10]
+    #[11] ¬(P x)
+    #[12] ∃x. P x ⟶ (∀x1. P x1)
+  ← inst_exists_goal x goal=12
+    #[13] P x ⟶ (∀x1. P x1)
+  ← introduction goal=13
+    #[14] ∀x1. P x1
+  ← apply_backward_step negE_gen goal=14 facts=[11]
+qed
+
+theorem test
+  fixes a :: 'a, b :: 'a, p :: 'a => bool, q :: 'a => bool
+  prop p a | q b --> (!x. p x --> q x) --> (?x. q x)
+proof
+  ← introduction goal=0
+    #[1] p a ∨ q b
+    #[2] ∀x. p x ⟶ q x
+    #[3] ∃x. q x
+  ← apply_backward_step disjE goal=3 facts=[1]
+    #[4] p a ⟶ (∃x. q x)
+    #[5] q b ⟶ (∃x. q x)
+  ← introduction goal=4
+    #[6] p a
+    #[7] ∃x. q x
+  -> apply_fact goal=7 facts=[2,6]
+    #[8] q a
+  ← apply_backward_step exI goal=7 facts=[8]
+    #[9] ∃x. q x
+  ← introduction goal=5
+    #[10] q b
+    #[11] ∃x. q x
+  ← apply_backward_step exI goal=11 facts=[10]
+    #[12] ∃x. q x
+qed
+
+theorem forall_elim
+  fixes P :: 'a => bool, a :: 'a
+  prop (!x. P x) --> P a
+proof
+  ← introduction goal=0
+    #[1] ∀x. P x
+    #[2] P a
+  ← apply_prev goal=2 facts=[1]
+qed
+
+theorem quant_intro_forall
+  fixes P :: 'a => bool, Q :: 'a => bool, x :: 'a, y :: 'a
+  prop P = Q --> (!x1. P x1) <--> (!x2. Q x2)
+proof
+  ← introduction goal=0
+    #[1] P = Q
+    #[2] (∀x1. P x1) ⟷ (∀x2. Q x2)
+  ← rewrite_goal_with_prev goal=2 facts=[1]
+qed
+
+theorem quant_intro_exists
+  fixes P :: 'a => bool, Q :: 'a => bool
+  prop P = Q --> (?x1. P x1) <--> (?x2. Q x2)
+proof
+  ← introduction goal=0
+    #[1] P = Q
+    #[2] (∃x1. P x1) ⟷ (∃x2. Q x2)
+  ← rewrite_goal_with_prev goal=2 facts=[1]
+qed
+
+theorem skolem_thm
+  fixes P :: 'a => 'b => bool
+  prop (!x. ?y. P x y) <--> (?y. !x. P x (y x))
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] (∀x. ∃y. P x y) ⟶ (∃y. ∀x. P x (y x))
+    #[2] (∃y. ∀x. P x (y x)) ⟶ (∀x. ∃y. P x y)
+  ← introduction goal=1
+    #[3] ∀x. ∃y. P x y
+    #[4] ∃y. ∀x. P x (y x)
+  ← inst_exists_goal "(%x. Some (P x))" goal=4
+    #[5] ∀x. P x (Some (P x))
+  ← introduction x goal=5
+    #[6] _VAR x
+    #[7] P x (Some (P x))
+  -> forall_elim x goal=7 facts=[3]
+    #[8] ∃y. P x y
+  exists_elim y goal=7 facts=[8]
+    #[9] _VAR y
+    #[10] P x y
+    #[11] P x (Some (P x))
+  ← apply_backward_step some_AX goal=11 facts=[10]
+    #[12] P x (Some (P x))
+  ← introduction goal=2
+    #[13] ∃y. ∀x. P x (y x)
+    #[14] ∀x. ∃y. P x y
+  exists_elim y goal=14 facts=[13]
+    #[15] _VAR y
+    #[16] ∀x. P x (y x)
+    #[17] ∀x. ∃y. P x y
+  ← introduction x goal=17
+    #[18] ∃y. P x y
+  ← inst_exists_goal "y x" goal=18
+    #[19] P x (y x)
+  ← apply_prev goal=19 facts=[16]
+    #[20] P x (y x)
+qed
+
+theorem skolem_thm_gen
+  fixes P :: 'a => bool, R :: 'a => 'b => bool
+  prop (!x. P x --> (?y. R x y)) <--> (?f. !x. P x --> R x (f x))
+  [hint_rewrite]
+proof
+  ← rewrite_goal right_imp_exists_thm sym=false goal=0
+    #[1] (∀x. ∃y. P x ⟶ R x y) ⟷ (∃f. ∀x. P x ⟶ R x (f x))
+  ← rewrite_goal skolem_thm sym=false goal=1
+qed
+
+theorem iff_conv_conj_disj
+  fixes A :: bool, B :: bool
+  prop (A <--> B) <--> (A | ~B) & (~A | B)
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ⟷ B ⟶ (A ∨ ¬B) ∧ (¬A ∨ B)
+    #[2] (A ∨ ¬B) ∧ (¬A ∨ B) ⟶ A ⟷ B
+  ← introduction goal=1
+    #[3] A ⟷ B
+    #[4] (A ∨ ¬B) ∧ (¬A ∨ B)
+  ← cases A goal=4
+    #[5] A ⟶ (A ∨ ¬B) ∧ (¬A ∨ B)
+    #[6] ¬A ⟶ (A ∨ ¬B) ∧ (¬A ∨ B)
+  ← introduction goal=5
+    #[7] A
+    #[8] (A ∨ ¬B) ∧ (¬A ∨ B)
+  ← apply_backward_step conjI goal=8
+    #[9] A ∨ ¬B
+    #[10] ¬A ∨ B
+  ← apply_backward_step disjI1 goal=9
+  ← apply_backward_step disjI2 goal=10
+    #[11] B
+  -> rewrite_fact_with_prev goal=11 facts=[3,7]
+  ← introduction goal=6
+    #[12] ¬A
+    #[13] (A ∨ ¬B) ∧ (¬A ∨ B)
+  ← apply_backward_step conjI goal=13
+    #[14] A ∨ ¬B
+    #[15] ¬A ∨ B
+  ← apply_backward_step disjI2 goal=14
+    #[16] ¬B
+  -> rewrite_fact_with_prev goal=16 facts=[3,12]
+  ← apply_backward_step disjI1 goal=15
+  ← introduction goal=2
+    #[17] (A ∨ ¬B) ∧ (¬A ∨ B)
+    #[18] A ⟷ B
+  -> apply_forward_step conjD1 goal=18 facts=[17]
+    #[19] A ∨ ¬B
+  -> apply_forward_step conjD2 goal=18 facts=[17]
+    #[20] ¬A ∨ B
+  ← apply_backward_step iffI goal=18
+    #[21] A ⟶ B
+    #[22] B ⟶ A
+  ← introduction goal=21
+    #[23] B
+  ← apply_backward_step disjE goal=23 facts=[20]
+    #[24] ¬A ⟶ B
+    #[25] B ⟶ B
+  ← introduction goal=24
+    #[26] B
+  ← apply_backward_step negE_gen goal=26 facts=[12,7]
+    #[27] B
+  ← introduction goal=22
+    #[28] B
+    #[29] A
+  ← apply_backward_step disjE goal=29 facts=[19]
+    #[30] A ⟶ A
+    #[31] ¬B ⟶ A
+  ← introduction goal=31
+    #[32] ¬B
+    #[33] A
+  ← apply_backward_step negE_gen goal=33 facts=[32,28]
+    #[34] A
+qed
+
+theorem eq_imp_false
+  fixes A :: 'a, B :: 'a
+  prop (A = A --> false) --> false
+  [hint_rewrite]
+proof
+  ← introduction goal=0
+    #[1] A = A ⟶ false
+    #[2] false
+  ← apply_prev goal=2 facts=[1]
+    #[3] A = A
+  ← apply_backward_step eq_refl goal=3
+    #[4] A = A
+qed
+
+theorem disj_false_right
+  fixes A :: bool
+  prop A | false <--> A
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ∨ false ⟶ A
+    #[2] A ⟶ A ∨ false
+  ← introduction goal=1
+    #[3] A ∨ false
+    #[4] A
+  ← apply_backward_step disjE goal=4 facts=[3]
+    #[5] A ⟶ A
+    #[6] false ⟶ A
+  ← introduction goal=6
+    #[7] false
+    #[8] A
+  ← apply_resolve_step not_false_res goal=8 facts=[7]
+    #[9] A
+  ← introduction goal=2
+    #[10] A
+    #[11] A ∨ false
+  ← apply_backward_step disjI1 goal=11
+qed
+
+theorem disj_false_left
+  fixes A :: bool
+  prop false | A <--> A
+  [hint_rewrite]
+proof
+  ← rewrite_goal disj_comm sym=false goal=0
+    #[1] A ∨ false ⟷ A
+  ← rewrite_goal disj_false_right sym="" goal=1
+qed
+
+theorem force_disj_true1
+  fixes A :: bool, B :: bool
+  prop A | B --> ~B --> A
+  [hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] A ∨ B
+    #[2] ¬B
+    #[3] A
+  ← apply_backward_step disjE goal=3 facts=[1]
+    #[4] A ⟶ A
+    #[5] B ⟶ A
+  ← introduction goal=5
+    #[6] B
+    #[7] A
+  ← apply_backward_step negE_gen goal=7 facts=[2,6]
+    #[8] A
+qed
+
+theorem force_disj_true2
+  fixes A :: bool, B :: bool
+  prop A | ~B --> B --> A
+  [hint_backward1,hint_forward]
+proof
+  ← introduction goal=0
+    #[1] A ∨ ¬B
+    #[2] B
+    #[3] A
+  ← apply_backward_step force_disj_true1 goal=3 facts=[1]
+    #[4] ¬¬B
+  ← rewrite_goal double_neg sym=false goal=4
+qed
+
+theorem eq_mean_true
+  fixes A :: 'a
+  prop A = A <--> true
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A = A ⟶ true
+    #[2] true ⟶ A = A
+  ← introduction goal=1
+    #[3] A = A
+    #[4] true
+  ← apply_backward_step trueI goal=4
+    #[5] true
+  ← introduction goal=2
+    #[6] true
+    #[7] A = A
+  ← apply_backward_step eq_refl goal=7
+    #[8] A = A
+qed
+
+theorem conj_false_right
+  fixes P :: bool
+  prop false & P <--> false
+  [hint_rewrite]
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] false ∧ P ⟶ false
+    #[2] false ⟶ false ∧ P
+  ← introduction goal=1
+    #[3] false ∧ P
+    #[4] false
+  ← apply_backward_step conjD1 goal=4 facts=[3]
+  ← introduction goal=2
+    #[5] false
+    #[6] false ∧ P
+  ← apply_resolve_step not_false_res goal=6 facts=[5]
+qed
+
+theorem conj_false_left
+  fixes P :: bool
+  prop P & false <--> false
+proof
+  ← rewrite_goal conj_comm sym=false goal=0
+    #[1] false ∧ P ⟷ false
+  ← rewrite_goal conj_false_right sym=false goal=1
+qed
+
+theorem imply_neg
+  fixes P :: bool, Q :: bool
+  prop (P --> Q) <--> (~Q --> ~P)
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] (P ⟶ Q) ⟶ ¬Q ⟶ ¬P
+    #[2] (¬Q ⟶ ¬P) ⟶ P ⟶ Q
+  ← introduction goal=1
+    #[3] P ⟶ Q
+    #[4] ¬Q
+    #[5] ¬P
+  ← cases P goal=5
+    #[6] P ⟶ ¬P
+    #[7] ¬P ⟶ ¬P
+  ← introduction goal=6
+    #[8] P
+    #[9] ¬P
+  -> apply_fact goal=9 facts=[3,8]
+    #[10] Q
+  ← apply_backward_step negE_gen goal=9 facts=[4,10]
+  ← introduction goal=2
+    #[11] ¬Q ⟶ ¬P
+    #[12] Q
+  ← cases Q goal=12
+    #[13] Q ⟶ Q
+    #[14] ¬Q ⟶ Q
+  ← introduction goal=14
+    #[15] Q
+  -> apply_fact goal=15 facts=[11,4]
+    #[16] ¬P
+  ← apply_backward_step negE_gen goal=15 facts=[16,8]
+qed
+
+theorem not_or_elim1
+  fixes p :: bool, q :: bool
+  prop ~(p | q) --> ~p
+
+theorem not_or_elim2
+  fixes p :: bool, q :: bool
+  prop ~(p | q) --> ~q
+
+theorem conj_true_left
+  fixes P :: bool
+  prop true & P <--> P
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] true ∧ P ⟶ P
+    #[2] P ⟶ true ∧ P
+  ← introduction goal=1
+    #[3] true ∧ P
+    #[4] P
+  ← apply_backward_step conjD2 goal=4 facts=[3]
+  ← introduction goal=2
+    #[5] P
+    #[6] true ∧ P
+  ← apply_backward_step conjI goal=6
+    #[7] true
+  ← apply_backward_step trueI goal=7
+    #[8] true
+qed
+
+theorem conj_true_right
+  fixes P :: bool
+  prop P & true <--> P
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] P ∧ true ⟶ P
+    #[2] P ⟶ P ∧ true
+  ← introduction goal=1
+    #[3] P ∧ true
+    #[4] P
+  ← apply_backward_step conjD1 goal=4 facts=[3]
+  ← introduction goal=2
+    #[5] P
+    #[6] P ∧ true
+  ← apply_backward_step conjI goal=6
+    #[7] true
+  ← apply_backward_step trueI goal=7
+    #[8] true
+qed
+
+theorem disj_true_left
+  fixes P :: bool
+  prop true | P <--> true
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] true ∨ P ⟶ true
+    #[2] true ⟶ true ∨ P
+  ← introduction goal=1
+    #[3] true ∨ P
+    #[4] true
+  ← apply_backward_step trueI goal=4
+    #[5] true
+  ← introduction goal=2
+    #[6] true
+    #[7] true ∨ P
+  ← apply_backward_step disjI1 goal=7 facts=[6]
+qed
+
+theorem disj_true_right
+  fixes P :: bool
+  prop P | true <--> true
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] P ∨ true ⟶ true
+    #[2] true ⟶ P ∨ true
+  ← introduction goal=1
+    #[3] P ∨ true
+    #[4] true
+  ← apply_backward_step trueI goal=4
+    #[5] true
+  ← introduction goal=2
+    #[6] true
+    #[7] P ∨ true
+  ← apply_backward_step disjI2 goal=7 facts=[6]
+qed
+
+theorem conj_pos_neg
+  fixes P :: bool
+  prop P & ~P <--> false
+
+theorem conj_neg_pos
+  fixes P :: bool
+  prop ~P & P <--> false
+
+theorem conj_same_atom
+  fixes P :: bool
+  prop P & P <--> P
+
+theorem disj_pos_neg
+  fixes P :: bool
+  prop P | ~P <--> true
+
+theorem disj_neg_pos
+  fixes P :: bool
+  prop ~P | P <--> true
+
+theorem disj_same_atom
+  fixes P :: bool
+  prop P | P <--> P
+
+theorem neg_iff
+  fixes P :: bool, Q :: bool
+  prop ~(P <--> Q) <--> ~P <--> Q
+
+theorem neg_disj_pos_conj_other
+  fixes P :: bool, Q :: bool
+  prop ~P | Q & P <--> ~P | Q
+
+theorem neg_iff_both_sides
+  fixes P :: bool, Q :: bool
+  prop (P <--> Q) <--> ~P <--> ~Q
+
+theorem pos_eq_neg
+  fixes P :: bool
+  prop (P <--> ~P) <--> false
+
+theorem neg_eq_pos
+  fixes P :: bool
+  prop (~P <--> P) <--> false
+
+theorem ite_to_disj
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (if P then Q else R) <--> P & Q | ~P & R
+
+theorem ite_eq_value
+  fixes P :: bool, x :: 'a, y :: 'a, z :: 'a
+  prop (if P then x else y) = z <--> P & x = z | ~P & y = z
+
+theorem ite_cond_disj_to_conj
+  fixes P :: bool, Q :: bool, x :: 'a, y :: 'a
+  prop (if P | Q then x else y) = (if ~P & ~Q then y else x)
+
+theorem norm_neg_equality
+  fixes P :: bool, Q :: bool
+  prop (~P <--> Q) <--> P <--> ~Q
+
+theorem ite_elim_else_if
+  fixes P :: bool, Q :: bool, x :: 'a, y :: 'a
+  prop (if P then x else if Q then x else y) = (if P | Q then x else y)
+
+theorem conj_extend_exists
+  fixes P :: bool, Q :: 'a => bool, R :: 'a => bool, t :: 'a
+  prop P --> (?t. Q t & R t) --> (?t. Q t & P & R t)
+
+theorem exists_forall
+  fixes P :: 'a => bool, a :: 'a
+  prop (?a. P a) <--> ~(!a. ~(P a))
+
+theorem veriT_not_implies1
+  fixes P :: bool, Q :: bool
+  prop ~(P --> Q) --> P
+
+theorem veriT_not_implies2
+  fixes P :: bool, Q :: bool
+  prop ~(P --> Q) --> ~Q
+
+theorem conj_extend_exists1
+  fixes P :: 'a => bool, Q :: 'a => bool, R :: bool
+  prop R --> (?t. Q t --> P t) --> (?t. Q t --> R & P t)
+
+theorem implies_or_assm
+  fixes A :: bool, B :: bool
+  prop (A --> B) | A
+
+theorem implies_or_neg_concl
+  fixes A :: bool, B :: bool
+  prop (A --> B) | ~B
+
+theorem forall_exists
+  fixes P :: 'a => bool, t :: 'a
+  prop (!t. P t) <--> ~(?t1. ~(P t1))
+
+theorem imp_disj_eq
+  fixes A :: bool, B :: bool
+  prop (A --> B) <--> ~A | B
+
+theorem eq_implies1
+  fixes A :: bool, B :: bool
+  prop A <--> B --> A --> B
+
+def Let :: 'a ⇒ ('a ⇒ 'b) ⇒ 'b = Let s f = f s
+
+def xor :: bool ⇒ bool ⇒ bool = xor A B ⟷ A ∧ ¬B ∨ ¬A ∧ B
+
+theorem disjI1_syllogism
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (P | Q --> R) --> P --> R
+
+theorem disjI2_syllogism
+  fixes P :: bool, Q :: bool, R :: bool
+  prop (P | Q --> R) --> Q --> R
+
+header "Boolean simplification rules"
+
+theorem imp_false_iff
+  fixes P :: bool
+  prop (P --> false) <--> ~P
+  [hint_rewrite]
+
+theorem exists_false
+  fixes A :: 'a
+  prop (?x::'a. false) <--> false
+  [hint_rewrite]
+
+theorem exists_true
+  fixes A :: 'a
+  prop (?x::'a. true) <--> true
+  [hint_rewrite]
+
+theorem forall_true
+  fixes A :: 'a
+  prop (!x::'a. true) <--> true
+  [hint_rewrite]
+
+theorem forall_false
+  fixes A :: 'a
+  prop (!x::'a. false) <--> false
+  [hint_rewrite]
+
+theorem conj_iff_left
+  fixes P :: bool, Q :: bool
+  prop (P & Q <--> P) <--> (P --> Q)
+  [hint_rewrite]
+
+theorem disj_iff_left
+  fixes P :: bool, Q :: bool
+  prop (P | Q <--> P) <--> (Q --> P)
+  [hint_rewrite]
+
+theorem exists_eq
+  fixes P :: 'a => bool, x :: 'a
+  prop (?y. P y & x = y) <--> P x
+  [hint_rewrite]
+
+theorem exists_disj_distrib
+  fixes P :: 'a => bool, Q :: 'a => bool
+  prop (?x. P x | Q x) <--> (?x. P x) | (?x. Q x)
+  [hint_rewrite]
+
+theorem exists_eq_left
+  fixes P :: 'a => bool, a :: 'a
+  prop (?y. y = a & P y) <--> P a
+  [hint_rewrite]
+
+theorem exists_disj_conj_distrib
+  fixes P :: 'a => bool, Q :: 'a => bool, R :: 'a => bool
+  prop (?y. (P y | Q y) & R y) <--> (?y. P y & R y) | (?y. Q y & R y)
+  [hint_rewrite]
+
+theorem exists_flatten
+  fixes P :: 'a => bool, Q :: 'a => 'b, R :: 'b => bool
+  prop (?y. (?z. P z & y = Q z) & R y) <--> (?z. P z & R (Q z))
+  [hint_rewrite]
+
