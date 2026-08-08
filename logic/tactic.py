@@ -54,12 +54,51 @@ class MacroTactic(Tactic):
 
         return ProofTerm(self.macro, args, prevs)
 
+def _backward_rule(th_name, goal, inst, prevs):
+    """Backward application of a theorem to a goal. Shared logic for rule
+    and inst_exists_goal. NOT a Tactic -- a module helper, so calling it is
+    not a same-layer tactic call. Produces a ProofTerm proving goal by
+    applying th_name; unmatched assumptions become sorry subgoals. Returns
+    an apply_theorem / apply_theorem_for macro proof term (the macro does
+    the mechanical implies_elim chaining).
+    """
+    th = theory.get_theorem(th_name)
+    As, C = th.assums, th.concl
+    assert len(prevs) <= len(As), "_backward_rule: too many previous facts"
+    if inst is None:
+        inst = Inst()
+
+    # Match conclusion to goal and assumptions to prevs.
+    if matcher.is_pattern(C, []):
+        inst = matcher.first_order_match(C, goal.prop, inst)
+        for pat, prev in zip(As, prevs):
+            inst = matcher.first_order_match(pat, prev.prop, inst)
+    else:
+        for pat, prev in zip(As, prevs):
+            inst = matcher.first_order_match(pat, prev.prop, inst)
+        inst = matcher.first_order_match(C, goal.prop, inst)
+
+    unmatched_vars = [v.name for v in term.get_svars(As + [C]) if v.name not in inst]
+    if unmatched_vars:
+        raise theory.ParameterQueryException(list("param_" + name for name in unmatched_vars))
+
+    As, _ = th.prop.subst_norm(inst).strip_implies()
+    goal_Alen = len(goal.assums)
+    if goal_Alen > 0:
+        As = As[:-goal_Alen]
+    pts = prevs + [ProofTerm.sorry(Thm(A, goal.hyps)) for A in As[len(prevs):]]
+
+    if set(term.get_svars(th.assums)) != set(th.prop.get_svars()) or set(term.get_stvars(th.assums)) != set(th.prop.get_stvars()) or not matcher.is_pattern_list(th.assums, []):
+        return apply_theorem(th_name, *pts, inst=inst)
+    else:
+        return apply_theorem(th_name, *pts)
+
+
 class rule(Tactic):
     """Apply a theorem in the backward direction.
-    
+
     args is either a pair of theorem name and instantiation, or the
     theorem name alone.
-
     """
     def get_proof_term(self, *, args=None, prevs=None):
         goal = prevs[0].th
@@ -69,50 +108,9 @@ class rule(Tactic):
         else:
             th_name, inst = args, None
         assert isinstance(th_name, str), "rule: theorem name must be a string"
-
         if prevs is None:
             prevs = []
-        
-        th = theory.get_theorem(th_name)
-        As, C = th.assums, th.concl
-
-        # Length of prevs is at most length of As
-        assert len(prevs) <= len(As), "rule: too many previous facts"
-        if inst is None:
-            inst = Inst()
-
-        # Match the conclusion and assumptions. Either the conclusion
-        # or the list of assumptions must be a first-order pattern.
-        if matcher.is_pattern(C, []):
-            inst = matcher.first_order_match(C, goal.prop, inst)
-            for pat, prev in zip(As, prevs):
-                inst = matcher.first_order_match(pat, prev.prop, inst)
-        else:
-            for pat, prev in zip(As, prevs):
-                inst = matcher.first_order_match(pat, prev.prop, inst)
-            inst = matcher.first_order_match(C, goal.prop, inst)
-
-        # Check that every variable in the theorem has an instantiation.
-        unmatched_vars = [v.name for v in term.get_svars(As + [C]) if v.name not in inst]
-        if unmatched_vars:
-            raise theory.ParameterQueryException(list("param_" + name for name in unmatched_vars))
-
-        # Substitute and normalize
-        As, _ = th.prop.subst_norm(inst).strip_implies()
-        goal_Alen = len(goal.assums)
-        if goal_Alen > 0:
-            As = As[:-goal_Alen]
-
-        pts = prevs + [ProofTerm.sorry(Thm(A, goal.hyps)) for A in As[len(prevs):]]
-
-        # Determine whether it is necessary to provide instantiation
-        # to apply_theorem.
-        if set(term.get_svars(th.assums)) != set(th.prop.get_svars()) or \
-           set(term.get_stvars(th.assums)) != set(th.prop.get_stvars()) or \
-           not matcher.is_pattern_list(th.assums, []):
-            return apply_theorem(th_name, *pts, inst=inst)
-        else:
-            return apply_theorem(th_name, *pts)
+        return _backward_rule(th_name, goal, inst, prevs)
 
 class resolve(Tactic):
     """Given any goal, a theorem of the form ~A, and an existing fact A,
@@ -337,7 +335,6 @@ class inst_exists_goal(Tactic):
     """
     def get_proof_term(self, *, args=None, prevs=None):
         goal = prevs[0].th
-        prevs = prevs[1:]
         # args can be either a Term (the witness) or a tuple
         # (witness, exists_intro_thm_name) where exists_intro_thm_name
         # defaults to 'exI'.
@@ -355,7 +352,8 @@ class inst_exists_goal(Tactic):
             str(C.arg.var_T), str(argT)
         )
 
-        return rule().get_proof_term(args=(exists_intro_thm, Inst(P=C.arg, a=witness)), prevs=[ProofTerm.sorry(goal)])
+        # Apply exI backward via the shared helper (not a tactic call).
+        return _backward_rule(exists_intro_thm, goal, Inst(P=C.arg, a=witness), [])
 
 
 class assumption(Tactic):
