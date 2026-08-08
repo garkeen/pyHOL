@@ -121,7 +121,8 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 | `pprint.py` | 高亮打印的 AST 表示 |
 | `operator.py` | 运算符优先级与结合性表 |
 | `settings.py` | 全局设置（unicode、highlight、line_length） |
-| `pyhol.py` | `.pyhol` 格式的解析与导出 |
+| `pyhol.py` | `.pyhol` 格式的解析与导出（新 `#[N]` 稳定 ID 格式） |
+| `pyhol_new.py` | 新格式 proof body parser + replay |
 | `json_output.py` | JSON 输出 |
 
 ## 6. 应用层
@@ -129,7 +130,8 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 ### 6.1 Flask 后端（app/）
 
 - `app/app.py`：Flask 应用工厂（`create_app()`，CORS + 自定义 JSON provider）。
-- `app/ide.py`：理论编辑与证明接口（`/api/init-saved-proof`、`/api/forward-search`、`/api/backward-search`、`/api/apply-method`、`/api/load-json-file`、`/api/save-file`、`/api/validate-theory` 等）。
+- `app/ide.py`：理论编辑与文件管理接口（`/api/find-files`、`/api/save-file`、`/api/validate-theory` 等）。
+- `app/ide_v2.py`：新管线证明接口（`/api/v2/init-saved-proof`、`/api/v2/apply-method`、`/api/v2/backward-search`、`/api/v2/forward-search`）。
 - `app/imperative.py`：Hoare 逻辑程序验证接口（独立子模块，`.imp` 文件）。
 - `app/saint.py`：SAINT 符号积分 CAS 接口（独立子模块，`.calc` 文件）。
 - `app/saint_library.py`：SAINT 基础库（`base.calc`）编辑接口。

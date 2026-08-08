@@ -19,8 +19,8 @@ class Method:
 ```
 
 - `state`：当前证明状态（`ProofState`）。
-- `id`：当前目标行的 `ItemID`。
-- `prevs`：引用的事实行 `ItemID` 列表。
+- `id`：当前目标行的稳定 ID（int）。
+- `prevs`：引用的事实行稳定 ID 列表。
 - `data`：方法的参数字典（如 `{'theorem': 'conjI', 'sym': 'false'}`）。
 
 ## 2. ProofState
@@ -32,17 +32,13 @@ class ProofState:
     rpt: ProofReport      # 校验报告
 ```
 
-### 2.1 关键操作
+### 2.1 StableProofState
 
-| 方法 | 说明 |
-|---|---|
-| `get_vars(id)` | 取 `id` 处的上下文变量（按层级累积） |
-| `check_proof(compute_only=)` | 校验证明，更新 `rpt` |
-| `add_line_before(id, n)` | 在 `id` 前插入 n 行 |
-| `remove_line(id)` | 删除 `id` 行 |
-| `set_line(id, rule, args=, prevs=, th=)` | 设置 `id` 行内容 |
-| `replace_id(old, new)` | 用 `new` 行替换 `old` 行（删除 old，把引用 old 的改为 new） |
-| `find_goal(concl, goal_id)` | 查找已有证明项能否证明 `concl`（子集语义） |
+新管线使用 `StableProofState`（`server/stable_state.py`）包装旧的 `ProofState`：
+- 稳定 ID（`#[N]`，int）通过 `th -> sid` 映射追踪，**不随插入/删除漂移**
+- goal 变 fact 时 ID 不变
+- `apply_method_dict(step)`：接受稳定 ID 的步骤，翻译为位置 ID 调用底层 `ProofState`
+- 位置 ID 操作（`add_line_before`、`remove_line`、`replace_id`）仍在底层使用，但不暴露给 API
 
 ### 2.2 apply_tactic 流程
 
@@ -54,7 +50,9 @@ class ProofState:
 4. 否则 `new_prf = pt.export(prefix=id, subproof=False)`，插入新行。
 5. `check_proof(compute_only=True)` 校验。
 6. 对新 `sorry` 行调 `find_goal`：若已有证明能解，自动替换。
-7. 对新 `sorry` 行调 `trivial` 策略：构造成功则自动关闭（设为 `trivial` 规则）。
+7. 对新 `sorry` 行调 `trivial` 策略：构造成功则自动关闭。
+
+`StableProofState.apply_method_dict` 在此之上添加稳定 ID 管理：翻译 `goal=N`/`facts=[N]` 为位置 ID，调用 `apply_tactic`，然后为新 item 分配稳定 ID。
 
 ## 3. 四种分发模式
 
@@ -115,6 +113,7 @@ method.apply -> state.set_line(rule, args, prevs, th)
 | `sym` | `[]` | D | 翻转等式 `a=b -> b=a` |
 | `reflexive` | `[]` | A | 证明 `t = t` |
 | `equal_intr` | `[]` | A | 证明 `A = B`（拆两个方向） |
+| `prove_avalI` | `[s]` | A | 证明数组访问 `avalI s i v` |
 | `subst` | `[theorem]` | A | 用等式替换（`top_sweep_conv`） |
 | `unfold` | `[theorem]` | A | 展开定义（`top_conv` + β） |
 | `fold` | `[theorem]` | A | 折叠定义（反向 `top_conv`） |
@@ -132,6 +131,7 @@ method.apply -> state.set_line(rule, args, prevs, th)
 | `eval` | B | 计算，按类型选 nat/int/real |
 | `linarith` | B | 线性算术，按类型选 nat/real/int |
 | `z3` | C | Z3 SMT 求解器（oracle） |
+| `vcg` | A | Hoare 逻辑 VCG：将 `Valid P c Q` 分解为验证条件子目标 |
 
 ## 5. 属性系统
 
@@ -151,25 +151,43 @@ method.apply -> state.set_line(rule, args, prevs, th)
 
 ## 6. .pyhol step 格式
 
+新格式使用稳定 `#[N]` ID，无位置漂移：
+
 ```
-goal_id: method_name [positional_args] [@fact_ids] [param_key=value]
+[← |→ ] method_name [positional_args] [key=value ...] goal=N [facts=[N,...]]
+  #[N] proposition          # 派生注解（replay 不验证命题）
 ```
 
 | 部分 | 说明 | 示例 |
 |---|---|---|
-| `goal_id` | 层级 ID | `0`, `0.1`, `1.2.0` |
+| `←` / `→` | 方向标注 | `←`（逆向，消耗 goal），`→`（正向，消耗 fact） |
 | `method_name` | 方法名 | `apply_backward_step` |
 | `positional_args` | 位置参数 | `conjI` |
-| `@fact_ids` | 引用事实 | `@0.0`, `@1.0,1.1` |
-| `param_*` | 额外参数 | `param_A=true` |
+| `goal=N` | 操作的 goal/fact 稳定 ID | `goal=0`, `goal=3` |
+| `facts=[N,...]` | 引用事实的稳定 ID | `facts=[3]`, `facts=[1,2]` |
+| `#[N]` | 派生 item 注解 | `#[1] A ∧ B` |
 
-示例（来自 `library/nat.pyhol`）：
+- **#0** = 要证明的定理（隐含，不写）
+- **#[N]**（N≥1）= method 调用产生的 item（fact 或 subgoal）
+- 命题有蕴含时，第一步必须是 `← introduction goal=0` 显式拆分
+- `fixes` 变量在上下文中，不需要 `#[N]`
+- replay 时 `#[N]` 的 ID 用于引用映射，命题不验证
+
+示例：
 ```
-0: induction x nat_induct
-0: rewrite_goal nat_plus_def_1 sym=false
-1: introduction m
-1.2: rewrite_goal nat_plus_def_2 sym=false
-1.2: rewrite_goal_with_prev @1.1
+proof
+  ← apply_backward_step iffI goal=0
+    #[1] A ∧ B ⟶ B ∧ A
+    #[2] B ∧ A ⟶ A ∧ B
+  ← introduction goal=1
+    #[3] A ∧ B
+    #[4] B ∧ A
+  ← apply_backward_step conjI goal=4
+    #[5] B
+    #[6] A
+  ← apply_backward_step conjD2 goal=5 facts=[3]
+  ← apply_backward_step conjD1 goal=6 facts=[3]
+qed
 ```
 
 ## 7. 自动搜索（前端 forward/backward-search）
