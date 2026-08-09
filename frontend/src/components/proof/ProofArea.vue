@@ -14,7 +14,7 @@
         <div v-for="(line, idx) in proof" :key="line.sid || idx"
              class="proof-line-row" :class="{'line-goal': goal === idx, 'line-fact': facts.includes(idx)}">
           <ProofLine :line="line" :is_last_id="is_last_id(idx)" :is_goal="goal === idx"
-                     :is_fact="facts.includes(idx)" :can_select="can_select(goal, idx)"
+                     :is_fact="facts.includes(idx)" :can_select="can_select(idx)"
                      @select-fact="mark_fact(idx)"
                      @select-goal="mark_goal(idx)"/>
         </div>
@@ -319,11 +319,32 @@ const is_last_id = (idx) => {
   return idx === proof.value.length - 1
 }
 
-const can_select = (current_goal, idx) => {
-  if (!proof.value) return false
-  // Scope checking is handled by the server (stable ID layer).
-  // Frontend just prevents selecting the same line as both goal and fact.
-  if (current_goal === idx) return false
+const can_depend_on = (aIdStr, bIdStr) => {
+  // True if line a can depend on line b in the proof tree (ItemID
+  // semantics: same prefix, b strictly earlier at the last level).
+  const A = (aIdStr || '').split('.').map(Number)
+  const B = (bIdStr || '').split('.').map(Number)
+  if (!A.length || !B.length) return true  // no id available: allow
+  if (B.length > A.length) return false
+  if (A.slice(0, B.length - 1).join('.') !== B.slice(0, B.length - 1).join('.')) return false
+  return B[B.length - 1] < A[A.length - 1]
+}
+
+const can_select = (idx) => {
+  if (!proof.value || idx < 0 || idx >= proof.value.length) return false
+  const line = proof.value[idx]
+  if (!line) return false
+  // Same line cannot be both goal and fact
+  if (goal.value === idx) return false
+  if (goal.value !== -1) {
+    // Goal mode: anchor is the goal; fact must be usable by it.
+    return can_depend_on(proof.value[goal.value].id, line.id)
+  }
+  if (facts.value.length > 0) {
+    // Forward mode: anchor is the first selected fact
+    const anchor = proof.value[facts.value[0]]
+    return can_depend_on(line.id, anchor.id)
+  }
   return true
 }
 
@@ -344,7 +365,7 @@ const mark_fact = (line_no) => {
       match_thm()
       return
     }
-    if (!can_select(goal.value, line_no)) return
+    if (!can_select(line_no)) return
     facts.value.push(line_no)
   }
   match_thm()
@@ -582,7 +603,7 @@ const gotoStep = async (new_index, set_selected, update_history = false) => {
       if (hist_facts !== undefined) {
         for (let i = 0; i < hist_facts.length; i++) {
           const fact_no = get_line_no_from_sid(hist_facts[i])
-          if (can_select(goal.value, fact_no)) { facts.value.push(fact_no) }
+          if (can_select(fact_no)) { facts.value.push(fact_no) }
         }
       }
     }
