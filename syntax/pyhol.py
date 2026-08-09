@@ -948,8 +948,12 @@ def _parse_proof_block(lines, i):
         m_ann = re.match(r'^#\[(\d+)\]\s*(.*)$', stripped)
         if m_ann and current_step is not None:
             sid = int(m_ann.group(1))
-            current_step.setdefault('new_ids', []).append(sid)
-            current_step.setdefault('new_items', []).append({'sid': sid, 'prop': m_ann.group(2)})
+            current_step.setdefault('new_ids', [])
+            if sid not in current_step['new_ids']:
+                current_step['new_ids'].append(sid)
+            current_step.setdefault('new_items', [])
+            if not any(ni.get('sid') == sid for ni in current_step['new_items']):
+                current_step['new_items'].append({'sid': sid, 'prop': m_ann.group(2)})
             i += 1
             continue
         # Method call line (indented)
@@ -971,6 +975,10 @@ def _parse_step_line(line):
     """
     # Strip direction prefix
     direction = ''
+    # Strip legacy step-number prefix like "0: "
+    m_num = re.match(r'^(\d+):\s*(.*)$', line)
+    if m_num:
+        line = m_num.group(2)
     if line.startswith('← '):
         direction = '←'
         line = line[2:]
@@ -995,10 +1003,31 @@ def _parse_step_line(line):
         if m_goal:
             step['goal'] = int(m_goal.group(1))
             continue
+        if tok == 'goal=None':
+            # Forward step without a goal; same as omitting goal.
+            continue
         m_facts = re.match(r'^facts=\[([\d,\s]*)\]$', tok)
         if m_facts:
             fact_str = m_facts.group(1).strip()
             step['facts'] = [int(f.strip()) for f in fact_str.split(',')] if fact_str else []
+            continue
+        # Inline stable-ID metadata (backfill style, duplicated by the
+        # #[N] annotation lines below): parse as lists instead of strings.
+        m_newids = re.match(r'^new_ids=\[(.*)\]$', tok)
+        if m_newids:
+            ids_str = m_newids.group(1).strip()
+            step['new_ids'] = [int(s.strip()) for s in ids_str.split(',')] if ids_str else []
+            continue
+        m_newitems = re.match(r'^new_items=(.+)$', tok)
+        if m_newitems:
+            import ast
+            raw = m_newitems.group(1).strip()
+            if raw.startswith('"') and raw.endswith('"'):
+                raw = raw[1:-1]
+            try:
+                step['new_items'] = ast.literal_eval(raw)
+            except Exception:
+                step['new_items'] = []
             continue
         remaining.append(tok)
 

@@ -21,8 +21,10 @@ from server.methods.core import ProofState, apply_method, get_method_sig, get_me
 from server.methods import core as methods_core
 from logic import tactic, context
 
-# Items with these rules are internal, no stable ID
-_SKIP_RULES = {'intros'}
+# Items with these rules carry no new goal/fact content: they only
+# reference already-registered lines. They get a positional ItemID for
+# display, but no stable ID of their own.
+_SKIP_RULES = {'intros', 'close_by'}
 
 # Method direction classification
 BACKWARD = {
@@ -145,7 +147,13 @@ class StableProofState:
         sid2pos = {v: k for k, v in pos2sid.items()}
 
         # Translate stable IDs to positional
-        goal_pos = sid2pos.get(ns.goal)
+        goal = ns.goal
+        if goal is None:
+            # Forward step without a goal: insert at the first open goal
+            goal = self._find_insertion_point(list(ns.facts))
+            if goal is None:
+                return False
+        goal_pos = sid2pos.get(goal)
         if goal_pos is None:
             return False
 
@@ -192,7 +200,14 @@ class StableProofState:
         pos2sid = self._build_pos2sid()
         sid2pos = {v: k for k, v in pos2sid.items()}
 
-        goal_pos = sid2pos.get(step.get('goal', 0))
+        goal = step.get('goal')
+        if goal is None:
+            # Forward step without a goal: insert at the first open goal
+            # that can depend on all facts.
+            goal = self._find_insertion_point(step.get('facts', []))
+            if goal is None:
+                return False
+        goal_pos = sid2pos.get(goal)
         if goal_pos is None:
             return False
 
@@ -320,6 +335,28 @@ class StableProofState:
         """Export proof tree as flat list with stable IDs."""
         lines = []
         for item in _traverse(self.state.prf):
+            # Kernel auto-solves a leaf goal and records the closure as an
+            # 'intros' item whose prevs reference the proving lines. Surface
+            # it as an explicit close line (display only).
+            if item.rule == 'intros' and item.prevs:
+                try:
+                    prev_item = self.state.prf.find_item(item.prevs[0])
+                    witness = prev_item.th
+                except (ProofStateException, AttributeError):
+                    witness = None
+                if witness is not None:
+                    lines.append({
+                        'id': str(item.id),
+                        'sid': self._ensure_sid(item.th),
+                        'rule': 'close_by',
+                        'args': '',
+                        'prevs': [self._ensure_sid(witness)],
+                        'th': printer.print_term(item.th.prop),
+                        'is_goal': False,
+                        'indent': len(item.id.id),
+                    })
+                continue
+
             if not _trackable(item):
                 continue
             sid = self._ensure_sid(item.th)
@@ -336,6 +373,7 @@ class StableProofState:
                 th_str = printer.print_term(item.th.prop) if item.th else ''
 
             lines.append({
+                'id': str(item.id),
                 'sid': sid,
                 'rule': item.rule,
                 'args': self._serialize_args(item.args),

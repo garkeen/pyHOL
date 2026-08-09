@@ -124,8 +124,6 @@ theorem trivial
 proof
   ← introduction goal=0
     #[1] A
-  revert_intro goal=1 facts=[1]
-  ← introduction goal=0
 qed
 
 theorem syllogism
@@ -140,6 +138,7 @@ proof
   ← apply_prev goal=4 facts=[2]
     #[5] B
   ← apply_prev goal=5 facts=[1]
+    #[6] A
 qed
 
 theorem disjE2
@@ -152,6 +151,8 @@ proof
     #[3] A ∨ B
     #[4] C
   ← apply_backward_step disjE goal=4 facts=[3]
+    #[5] A ⟶ C
+    #[6] B ⟶ C
 qed
 
 theorem not_false_res
@@ -181,6 +182,8 @@ proof
   → apply_forward_step classical param_A=A goal=3
     #[4] A ∨ ¬A
   ← apply_backward_step disjE goal=3 facts=[4]
+    #[5] A ⟶ C
+    #[6] ¬A ⟶ C
 qed
 
 theorem negE_gen
@@ -225,6 +228,7 @@ proof
   → apply_fact goal=7 facts=[2,6]
     #[8] ¬P
   ← apply_backward_step negE_gen goal=7 facts=[8]
+    #[9] P
 qed
 
 theorem iffI
@@ -237,6 +241,8 @@ proof
     #[2] B ⟶ A
     #[3] A ⟷ B
   ← equal_intr goal=3
+    #[4] A ⟶ B
+    #[5] B ⟶ A
 qed
 
 theorem ineq_sym
@@ -369,6 +375,8 @@ proof
   cut "(THE x. P x) = a" goal=3
     #[4] (THE x. P x) = a
   ← apply_backward_step the_equality goal=4
+    #[5] P a
+    #[6] ∀x. P x ⟶ x = a
   ← rewrite_goal_with_prev goal=3 facts=[4]
 qed
 
@@ -396,6 +404,7 @@ proof
   → apply_fact goal=5 facts=[2,4]
     #[10] (SOME x. P x) = a
   ← rewrite_goal_with_prev goal=5 facts=[10]
+    #[11] ∀x. P x ⟶ x = a
 qed
 
 theorem theI'
@@ -480,6 +489,7 @@ proof
     #[5] ¬P
     #[6] (if ¬P then a else b) = b
   ← apply_backward_step negE_gen goal=6 facts=[5]
+    #[7] P
   ← introduction goal=4
     #[7] ¬¬P
     #[8] (if ¬P then a else b) = b
@@ -648,9 +658,11 @@ proof
   ← introduction goal=17
     #[19] if c then c else ¬c
   ← rewrite_goal if_P sym=false goal=19 facts=[8]
+    #[20] c
   ← introduction goal=18
     #[20] if c then c else ¬c
   ← rewrite_goal if_not_P sym=false goal=20 facts=[10]
+    #[22] ¬c
 qed
 
 theorem resolution_left
@@ -669,6 +681,7 @@ proof
     #[6] A
     #[7] B
   ← apply_backward_step negE_gen goal=7 facts=[2]
+    #[8] A
 qed
 
 theorem resolution_right
@@ -687,6 +700,7 @@ proof
     #[6] ¬A
     #[7] B
   ← apply_backward_step negE_gen goal=7 facts=[6]
+    #[8] A
 qed
 
 theorem resolution
@@ -755,5 +769,4 @@ proof
   ← introduction goal=0
     #[1] A
     #[2] B
-  ← apply_prev goal=3 facts=[1]
 qed

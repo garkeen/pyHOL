@@ -595,6 +595,11 @@ def get_all_statuses():
         return {}
     return thy.get_all_statuses()
 
+def get_all_errors():
+    if thy is None:
+        return {}
+    return thy.get_all_errors()
+
 
 """Global store of macros. Keys are names of the macros,
 values are the corresponding macro objects.

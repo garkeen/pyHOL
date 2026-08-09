@@ -596,12 +596,7 @@ const validate_all = async (force = false) => {
     thm_errors.value = resp.data.errors || {}
     const d = resp.data
     let msg = `Valid: ${d.valid} | Axiom: ${d.axiom} | Unproved: ${d.unproved} | Failed: ${d.failed} | Total: ${d.total}`
-    const failed = Object.entries(thm_errors.value).filter(([, e]) => e)
-    if (failed.length) {
-      msg += '\n' + failed.slice(0, 5).map(([n, e]) => `${n}: ${e}`).join('\n')
-      if (failed.length > 5) msg += `\n... and ${failed.length - 5} more`
-    }
-    toast({ type: failed.length ? 'error' : 'OK', data: msg })
+    toast({ type: d.failed ? 'error' : 'OK', data: msg })
   } catch (e) {
     toast({ type: 'error', data: 'Validation failed' })
   } finally {

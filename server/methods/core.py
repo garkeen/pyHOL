@@ -11,7 +11,7 @@ from kernel.thm import Thm, InvalidDerivationException
 from kernel import report
 from kernel.proof import ProofItem, ItemID, Proof, ProofStateException
 from kernel import theory
-from kernel.proofterm import ProofTerm
+from kernel.proofterm import ProofTerm, TacticException
 from logic import matcher
 from logic import logic
 from logic import context
@@ -167,19 +167,21 @@ class ProofState():
 
         pt = tactic.get_proof_term(args=args, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)
         
-        # When the tactic returns an atom, the fact directly proves the goal.
-        # Find the fact's proof item and replace the sorry with it.
+        # When the tactic returns an atom, the fact directly proves the
+        # goal. The goal line is rewritten in place as a close_by line
+        # (a witness line: same line, same count; no new goal/fact).
         if pt.rule == 'atom':
             fact_id = pt.args  # ItemID of the fact
-            # Set the sorry line's theorem to match, then replace
-            self.set_line(id, 'sorry', th=pt.th)
             fact_item = self.get_proof_item(fact_id)
             if fact_item.th is not None and fact_item.th.can_prove(cur_item.th):
-                self.replace_id(id, fact_id)
+                self.set_line(id, 'close_by', prevs=[fact_id], th=cur_item.th)
             return
         
         new_prf = pt.export(prefix=id, subproof=False)
 
+        # The exported lines occupy id .. id+len-1; the original goal
+        # line is covered by the last exported item (the conclusion),
+        # keeping the line count unchanged.
         self.add_line_before(id, len(new_prf.items) - 1)
         for i, item in enumerate(new_prf.items):
             cur_id = item.id
@@ -187,14 +189,14 @@ class ProofState():
             prf.items[cur_id.last()] = item
         self.check_proof(compute_only=True)
 
-        # Test if the goals are already proved:
+        # Explicit auto-close: every gap of the expansion that is already
+        # proved by a preceding line is closed by a visible close_by line
+        # (same line count as the previous gap line).
         for item in new_prf.items:
             if item.rule == 'sorry':
-                new_id = self.find_goal(self.get_proof_item(item.id).th, item.id)
-                if new_id is not None:
-                    self.replace_id(item.id, new_id)
+                self._find_and_close(item.id)
 
-        # Resolve trivial subgoals
+        # Explicit auto-close of trivial gaps: record a visible trivial line.
         for item in new_prf.items:
             if item.rule == 'sorry':
                 try:
@@ -202,6 +204,16 @@ class ProofState():
                     self.set_line(item.id, 'trivial', args=item.th.prop)
                 except AssertionError:
                     pass
+
+        return new_prf
+
+    def _find_and_close(self, id2):
+        """Explicit auto-close: if some preceding line proves the given
+        gap, record the closure as a visible close_by line."""
+        new_id = self.find_goal(self.get_proof_item(id2).th, id2)
+        if new_id is not None:
+            self.set_line(id2, 'close_by', prevs=[new_id],
+                          th=self.get_proof_item(id2).th)
 
 
 """Global store for methods."""
@@ -530,10 +542,7 @@ class rewrite_fact(Method):
             state.set_line(id, 'rewrite_fact', args=data['theorem'], prevs=prevs)
 
         id2 = id.incr_id(1)
-        new_id = state.find_goal(state.get_proof_item(id2).th, id2)
-        if new_id is not None:
-            state.replace_id(id2, new_id)
-
+        state._find_and_close(id2)
 
 @register_method('rewrite_fact_with_prev')
 class rewrite_fact_with_prev(Method):
@@ -564,9 +573,7 @@ class rewrite_fact_with_prev(Method):
         state.set_line(id, 'rewrite_fact_with_prev', prevs=prevs)
 
         id2 = id.incr_id(1)
-        new_id = state.find_goal(state.get_proof_item(id2).th, id2)
-        if new_id is not None:
-            state.replace_id(id2, new_id)
+        state._find_and_close(id2)
 
 
 @register_method('apply_forward_step')
@@ -621,9 +628,7 @@ class apply_forward_step(Method):
         state.set_line(id, pt.rule, args=pt.args, prevs=prevs)
 
         id2 = id.incr_id(1)
-        new_id = state.find_goal(state.get_proof_item(id2).th, id2)
-        if new_id is not None:
-            state.replace_id(id2, new_id)
+        state._find_and_close(id2)
 
 
 @register_method('apply_backward_step')
@@ -705,6 +710,52 @@ class apply_resolve_step(Method):
         state.apply_tactic(id, tactic.resolve(), args=data['theorem'], prevs=prevs)
 
 
+@register_method('accept')
+class accept_method(Method):
+    """Directly close the goal by referencing a theorem of the theory:
+    conclusion unified with the goal, premises matched with the goal's
+    assumptions, no subgoal produced. The closure is recorded as an
+    explicit line.
+    """
+    def __init__(self):
+        self.sig = ['theorem']
+        self.limit = None
+
+    def search(self, state: ProofState, id, prevs):
+        cur_item = state.get_proof_item(id)
+        results = []
+
+        def search_thm(th_name):
+            try:
+                pt = tactic.accept().get_proof_term(
+                    args=th_name, prevs=[ProofTerm.atom(id, cur_item.th)])
+                results.append({"theorem": th_name,
+                                "_goal": [gap.prop for gap in pt.gaps]})
+            except theory.ParameterQueryException as e:
+                results.append({"theorem": th_name,
+                                "_needs_params": list(e.params)})
+            except (AssertionError, matcher.MatchException, TacticException):
+                pass
+
+        for th_name in theory.thy.get_data("theorems"):
+            attrs = theory.thy.get_attributes(th_name)
+            if any(attr.startswith("hint_") for attr in attrs):
+                search_thm(th_name)
+
+        return sorted(results, key=lambda d: d['theorem'])
+
+    def display_step(self, state: ProofState, data):
+        return pprint.N("accept " + data['theorem'])
+
+    def apply(self, state: ProofState, id, data, prevs):
+        thm_name = data.get('theorem')
+        if not thm_name:
+            raise AssertionError("accept: theorem required")
+        # The expansion covers the goal line with the apply line (the
+        # conclusion), so the goal is closed by the exported lines.
+        state.apply_tactic(id, tactic.accept(), args=thm_name, prevs=prevs)
+
+
 @register_method('introduction')
 class introduction(Method):
     """Introducing variables and assumptions."""
@@ -764,11 +815,10 @@ class introduction(Method):
         cur_item.subproof = pt.export(prefix=id)
         state.check_proof(compute_only=True)
 
-        # Test if the goal is already proved
+        # Exhibit auto-close of the subgoal lines: those already proved
+        # by a preceding line are recorded as visible close_by lines.
         for item in cur_item.subproof.items:
-            new_id = state.find_goal(state.get_proof_item(item.id).th, item.id)
-            if new_id is not None:
-                state.replace_id(item.id, new_id)
+            state._find_and_close(item.id)
 
 
 @register_method('revert_intro')

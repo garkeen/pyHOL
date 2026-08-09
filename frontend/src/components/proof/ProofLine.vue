@@ -4,7 +4,7 @@
        :style="styleObject" 
        @mouseenter="hover = can_select"
        @mouseleave="hover = false">
-    <span style="display:inline-block;width:40px">#{{line.sid}}</span>
+    <span style="display:inline-block;width:40px">#{{line.id || line.sid}}</span>
     <span class="dir-mark" :class="dirClass">{{dirMark}}</span>
     <span class="item-text" v-html="indent"/>
     <span v-if="line.rule === 'assume'">

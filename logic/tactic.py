@@ -398,6 +398,76 @@ class trivial(Tactic):
         goal = prevs[0].th
         return ProofTerm('trivial', goal.prop, prevs[1:])
 
+class accept(Tactic):
+    """Close the goal by direct reference to a theorem of the theory.
+
+    The theorem's conclusion is unified (first-order matched) with the
+    goal, and each premise of the theorem must be matched with one of
+    the goal's assumptions. No subgoal (sorry) is produced: the goal is
+    closed outright, recorded as an explicit line.
+
+    This is the counterpart of HOL Light's MATCH_ACCEPT_TAC (a theorem
+    whose instantiation directly proves the goal is accepted without
+    going through backward chaining). It fails when the conclusion does
+    not match, or when some premise is not matched by any assumption.
+    """
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
+        assert isinstance(args, str), "accept: theorem name must be a string"
+        th_name = args
+        th = theory.get_theorem(th_name)
+        As, C = th.assums, th.concl
+
+        # First-order match the conclusion against the goal. Schematic
+        # variables of the conclusion that remain unbound are
+        # parameters: the goal is not an instance of the theorem.
+        inst = Inst()
+        try:
+            inst = matcher.first_order_match(C, goal.prop, inst)
+        except matcher.MatchException as e:
+            raise TacticException(
+                "accept: conclusion of %s does not match the goal: %s" % (th_name, e))
+
+        if any(v.name not in inst for v in term.get_svars(C)):
+            raise theory.ParameterQueryException(
+                list("param_" + v.name for v in term.get_svars(C) if v.name not in inst))
+
+        available = [h for h in goal.hyps]
+
+        # Match each premise with some assumption, extending the
+        # instantiation. Every premise must be matched: the goal should
+        # be directly provable from the given assumptions.
+        matched_hs = []
+        for A in As:
+            match_h = None
+            for h in available:
+                inst2 = copy(inst)
+                try:
+                    inst2 = matcher.first_order_match(A, h, inst2)
+                except matcher.MatchException:
+                    continue
+                match_h = h
+                inst = inst2
+                break
+            if match_h is None:
+                raise TacticException(
+                    "accept: premise of %s is not matched with any assumption: %s"
+                    % (th_name, str(A)))
+            matched_hs.append(match_h)
+
+        # All type variables must be determined.
+        unmatched_stvars = [v.name for v in th.prop.get_stvars()
+                            if v.name not in inst.tyinst]
+        if unmatched_stvars:
+            raise theory.ParameterQueryException(
+                list("param_" + name for name in unmatched_stvars))
+
+        # Return the theorem application with the matched assumptions
+        # recorded as premises. This expands to an explicit apply line.
+        assume_pts = [ProofTerm.assume(h) for h in matched_hs]
+        return ProofTerm('apply_theorem_for', (th_name, inst), assume_pts)
+
 class apply_theorem_forward(Tactic):
     """Forward: apply a theorem to facts to derive a new fact. No goal.
 
