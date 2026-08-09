@@ -1,2 +1,0 @@
-QF_LIA/nec-smt/
-QF_UFIDL/?
