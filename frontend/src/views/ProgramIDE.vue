@@ -4,11 +4,10 @@
     <nav class="navbar navbar-expand navbar-dark bg-dark">
       <div class="container-fluid">
         <span class="navbar-brand" style="padding-left: 44px">Program IDE</span>
-        <span v-if="status_msg" class="text-light ms-2" :class="status_err ? 'text-danger' : 'text-success'">{{ status_msg }}</span>
       </div>
     </nav>
 
-    <div class="main-content" :class="{'proving-mode': proving}">
+    <div class="main-content">
       <!-- Collapsible sidebar: file selection and management -->
       <FileSidebar
         title="Program Files"
@@ -20,93 +19,127 @@
         @rename="rename_file"
         @delete="delete_file"/>
 
-      <!-- Program panel -->
+      <!-- Program list -->
       <div class="program-panel">
         <div v-if="!current" class="empty-state"><p>Select or create a file</p></div>
         <div v-else>
-          <!-- Metadata -->
-          <div class="metadata-section">
-            <div class="meta-row">
-              <label class="meta-label">theory</label>
-              <input class="meta-input" v-model="theory_name" :disabled="!editing_meta" placeholder="theory name"/>
-              <label class="meta-label">imports</label>
-              <input class="meta-input" v-model="imports_text" :disabled="!editing_meta" placeholder="comma-separated"/>
-              <button class="btn btn-sm btn-outline-primary" @click="editing_meta = !editing_meta">{{ editing_meta ? 'Done' : 'Edit' }}</button>
+          <!-- File header: actions + metadata, like the main IDE -->
+          <div class="file-header">
+            <div class="file-header-row">
+              <button class="btn btn-sm btn-primary" @click="verify_all" :disabled="verifying">{{ verifying ? 'Verifying...' : 'Verify All' }}</button>
+              <span class="text-muted small" v-if="status_msg" :class="status_err ? 'text-danger' : 'text-success'">{{ status_msg }}</span>
+              <button class="btn btn-sm btn-success ms-auto" @click="add_program" title="Add a new program to this file">+ Add Program</button>
+            </div>
+            <div class="metadata-section">
+              <div class="meta-row"><label class="meta-label">theory</label><span class="meta-value">{{ theory_name }}</span></div>
+              <div class="meta-row"><label class="meta-label">imports</label><input class="meta-input" v-model="imports_text" placeholder="comma-separated"/></div>
             </div>
           </div>
 
-          <!-- Programs list -->
+          <!-- Programs list: name + pre/post only -->
           <div class="programs-list">
-            <div v-for="(prog, idx) in programs" :key="idx" class="program-block" :class="{'program-selected': selected === idx}">
-              <!-- Program header -->
-              <div class="program-header" @click="selected = idx">
-                <span class="prog-name">{{ prog.name }}</span>
-                <span class="prog-vars">{{ formatVars(prog.vars) }}</span>
-                <div class="prog-actions">
-                  <button class="btn btn-sm btn-outline-secondary" @click.stop="toggle_edit(idx)">{{ editing_prog === idx ? 'Close' : 'Edit' }}</button>
-                  <button class="btn btn-sm btn-outline-primary" @click.stop="verify_program(idx)" title="Verify this program">Verify</button>
-                  <button class="btn btn-sm btn-outline-warning" @click.stop="move_prog(idx, -1)" :disabled="idx === 0">↑</button>
-                  <button class="btn btn-sm btn-outline-warning" @click.stop="move_prog(idx, 1)" :disabled="idx === programs.length - 1">↓</button>
-                  <button class="btn btn-sm btn-outline-danger" @click.stop="remove_prog(idx)">✕</button>
-                </div>
-              </div>
-              <!-- Summary: pre / post -->
-              <div class="prog-summary">
-                <span class="prog-pre">pre: {{ prog.pre }}</span>
-                <span class="prog-post">post: {{ prog.post }}</span>
-              </div>
-
-              <!-- Inline edit form -->
-              <div v-if="editing_prog === idx" class="prog-edit">
-                <div class="edit-row"><label>name</label><input class="edit-input" v-model="prog.name"/></div>
-                <div class="edit-row"><label>vars</label><input class="edit-input" v-model="prog.vars_text" placeholder="x: nat, y: nat"/></div>
-                <div class="edit-row"><label>pre</label><input class="edit-input" v-model="prog.pre"/></div>
-                <div class="edit-row"><label>post</label><input class="edit-input" v-model="prog.post"/></div>
-                <div class="edit-row"><label>body</label><textarea class="edit-body" v-model="prog.body" spellcheck="false" rows="6"></textarea></div>
-                <div class="edit-actions">
-                  <button class="btn btn-sm btn-primary" @click="save_edit">Save</button>
-                  <button class="btn btn-sm btn-secondary" @click="editing_prog = -1">Cancel</button>
-                </div>
-              </div>
-
-              <!-- VCs for this program -->
-              <div v-if="vcs_by_program[prog.name]" class="vc-list">
-                <div v-for="vc in vcs_by_program[prog.name]" :key="vc.name"
-                     class="vc-row" :class="vc.proved ? 'vc-ok' : 'vc-bad'">
-                  <span class="vc-badge">{{ vc.proved ? '✓' : '✗' }}</span>
-                  <span class="vc-name">{{ vc.name }}</span>
-                  <span class="vc-prop">{{ vc.prop }}</span>
-                  <button v-if="!vc.proved" class="btn btn-sm btn-outline-danger vc-prove" @click.stop="prove_vc(vc, prog.name)">Prove</button>
-                </div>
+            <div v-for="(prog, idx) in programs" :key="idx"
+                 class="program-row" :class="{'program-selected': selected === idx, 'prog-ok': prog_status(prog) === 'ok', 'prog-bad': prog_status(prog) === 'bad'}"
+                 @click="open_prog(idx)">
+              <span class="prog-status" :title="prog_status_title(prog)">{{ prog_status_icon(prog) }}</span>
+              <span class="prog-name">{{ prog.name }}</span>
+              <span class="prog-sum">{{ prog.pre }}</span>
+              <span class="prog-sum prog-post">{{ prog.post }}</span>
+              <div class="prog-actions">
+                <button class="btn btn-sm btn-outline-secondary" @click.stop="open_prog(idx)" title="Edit">Edit</button>
+                <button class="btn btn-sm btn-outline-warning" @click.stop="move_prog(idx, -1)" :disabled="idx === 0" title="Move up">↑</button>
+                <button class="btn btn-sm btn-outline-warning" @click.stop="move_prog(idx, 1)" :disabled="idx === programs.length - 1" title="Move down">↓</button>
+                <button class="btn btn-sm btn-outline-danger" @click.stop="remove_prog(idx)" title="Delete">✕</button>
               </div>
             </div>
-          </div>
-
-          <!-- Add program + Verify buttons -->
-          <div class="bottom-actions">
-            <button class="btn btn-sm btn-success" @click="add_program">+ Add Program</button>
-            <button class="btn btn-sm btn-primary" @click="verify_all" :disabled="verifying">{{ verifying ? 'Verifying...' : 'Verify All' }}</button>
           </div>
         </div>
       </div>
 
-      <!-- Proof panel -->
-      <div v-if="proving && theorem_item" class="proof-panel">
-        <div class="proof-pane-header">
-          <span>Prove <b>{{ proving_vc_name }}</b></span>
-          <button class="btn btn-sm btn-outline-secondary" @click="proving = false">✕</button>
+      <!-- Right edit panel: code editing + verification (proof overlays inside) -->
+      <div v-if="panel_prog" class="edit-panel">
+        <div class="edit-pane-header">
+          <span class="edit-pane-title">Program <b class="prog-name-inline">{{ panel_prog.name }}</b></span>
+          <div class="edit-pane-btns">
+            <button class="btn btn-sm btn-primary" @click="save_verify" :disabled="verifying">{{ verifying ? 'Verifying...' : 'Verify' }}</button>
+            <button class="btn btn-sm btn-outline-secondary" @click="panel_idx = -1" title="Close">✕</button>
+          </div>
         </div>
-        <ProofArea
-          :key="'imp-proof-' + current + '-' + proving_vc_name"
-          :theory_name="current"
-          :thm_name="proving_vc_name"
-          :vars="theorem_item ? theorem_item.vars : {}"
-          :prop="theorem_item ? theorem_item.prop : ''"
-          :old_steps="theorem_item ? (theorem_item.steps || []) : []"
-          :editor="null"
-          @save-steps="save_proof"
-          @set-message="toast"
-          @query="handle_query"/>
+
+        <div class="edit-scroll">
+          <div class="prog-edit">
+            <div class="section-title">Program</div>
+            <div class="edit-grid">
+              <div class="edit-field">
+                <label>Name</label>
+                <input class="edit-input" v-model="panel_prog.name"/>
+              </div>
+              <div class="edit-field">
+                <label>Variables</label>
+                <input class="edit-input" v-model="panel_prog.vars_text" placeholder="x: nat, y: nat"/>
+              </div>
+              <div class="edit-field">
+                <label>Precondition</label>
+                <input class="edit-input" v-model="panel_prog.pre"/>
+              </div>
+              <div class="edit-field">
+                <label>Postcondition</label>
+                <input class="edit-input" v-model="panel_prog.post"/>
+              </div>
+            </div>
+
+            <div class="section-title mt-3">Body</div>
+            <div class="code-editor">
+              <pre ref="hlEl" class="code-hl" aria-hidden="true" v-html="bodyHtml"></pre>
+              <textarea
+                class="code-input" v-model="panel_prog.body" spellcheck="false" rows="12"
+                @scroll="syncHl"></textarea>
+            </div>
+
+            <div class="edit-actions">
+              <button class="btn btn-sm btn-primary" @click="save_edit">Save</button>
+              <button class="btn btn-sm btn-outline-secondary" @click="panel_idx = -1">Close</button>
+            </div>
+          </div>
+
+          <!-- VCs for this program -->
+          <div class="panel-vcs">
+            <div class="panel-vc-title">Verification conditions</div>
+            <div v-if="!vcs_by_program[panel_prog.name] || !vcs_by_program[panel_prog.name].length" class="vc-empty">No VCs yet, click Verify.</div>
+            <div v-for="vc in vcs_by_program[panel_prog.name] || []" :key="vc.name"
+                 class="vc-card" :class="vc.proved ? 'vc-ok' : 'vc-bad'">
+              <div class="vc-line">
+                <span class="vc-badge">{{ vc.proved ? '✓' : '✗' }}</span>
+                <span class="vc-name">{{ vc.name }}</span>
+                <button v-if="!vc.proved" class="btn btn-sm btn-outline-danger vc-prove" @click.stop="prove_vc(vc, panel_prog.name)">Prove</button>
+                <span v-else class="vc-proved-tag">proved</span>
+              </div>
+              <div class="vc-prop">{{ vc.prop }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Proof overlay: covers the edit panel instead of squeezing a new column -->
+        <div v-if="proving && theorem_item" class="proof-overlay">
+          <div class="proof-overlay-header">
+            <button class="btn btn-sm btn-outline-secondary" @click="proving = false" title="Back to edit">←</button>
+            <span>Prove <b>{{ proving_vc_name }}</b></span>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" @click="proving = false" title="Close">✕</button>
+          </div>
+          <div class="proof-overlay-body">
+            <ProofArea
+              :key="'imp-proof-' + current + '-' + proving_vc_name"
+              :theory_name="current"
+              :thm_name="proving_vc_name"
+              :vars="theorem_item ? theorem_item.vars : {}"
+              :prop="theorem_item ? theorem_item.prop : ''"
+              :old_steps="theorem_item ? (theorem_item.steps || []) : []"
+              :editor="null"
+              @save-steps="save_proof"
+              @set-message="toast"
+              @query="handle_query"/>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -146,9 +179,9 @@ const current = ref('')
 const theory_name = ref('')
 const imports_text = ref('')
 const programs = ref([])
-const editing_meta = ref(false)
-const editing_prog = ref(-1)
+const panel_idx = ref(-1)
 const selected = ref(-1)
+const hlEl = ref(null)
 const vcs = ref([])
 const verifying = ref(false)
 const proving = ref(false)
@@ -159,6 +192,48 @@ const query = ref(undefined)
 const status_msg = ref('')
 const status_err = ref(false)
 let toastTimer = null
+
+const panel_prog = computed(() => {
+  if (panel_idx.value < 0 || panel_idx.value >= programs.value.length) return null
+  return programs.value[panel_idx.value]
+})
+
+const escHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+const HIGHLIGHT_PATTERNS = [
+  { re: /\/\/[^\n]*|#[^\n]*/g, cls: 'tok-com', esc: true },
+  { re: /\b\d+\b/g, cls: 'tok-num', esc: false },
+  { re: /\b(skip|if|then|else|while|for|break|continue|assert|call|new|true|forall)\b/g, cls: 'tok-kw', esc: false },
+  { re: /(:=|==|!=|<=|>=|-->|\+\+|--|\+|-|\*|\/|=|<|>|&|\||~|!)/g, cls: 'tok-op', esc: true },
+]
+
+const bodyHtml = computed(() => {
+  const src = panel_prog.value ? panel_prog.value.body : ''
+  const toks = []
+  for (const p of HIGHLIGHT_PATTERNS) {
+    p.re.lastIndex = 0
+    let m
+    while ((m = p.re.exec(src))) toks.push({ s: m.index, e: m.index + m[0].length, text: m[0], p })
+  }
+  toks.sort((a, b) => a.s - b.s || a.e - b.e)
+  let out = ''
+  let last = 0
+  for (const t of toks) {
+    if (t.s < last) continue
+    out += escHtml(src.slice(last, t.s))
+    out += '<span class="' + t.p.cls + '">' + (t.p.esc ? escHtml(t.text) : t.text) + '</span>'
+    last = t.e
+  }
+  out += escHtml(src.slice(last))
+  return out + '\n'
+})
+
+const syncHl = (e) => {
+  if (hlEl.value) {
+    hlEl.value.scrollTop = e.target.scrollTop
+    hlEl.value.scrollLeft = e.target.scrollLeft
+  }
+}
 
 const toast = (msg) => {
   message.value = msg
@@ -180,6 +255,24 @@ const vcs_by_program = computed(() => {
   return map
 })
 
+const prog_status = (prog) => {
+  const prog_vcs = vcs_by_program.value[prog.name]
+  if (!prog_vcs || !prog_vcs.length) return 'none'
+  return prog_vcs.every(v => v.proved) ? 'ok' : 'bad'
+}
+
+const prog_status_icon = (prog) => ({
+  'ok': '✓', 'bad': '✗', 'none': '○'
+}[prog_status(prog)])
+
+const prog_status_title = (prog) => {
+  const prog_vcs = vcs_by_program.value[prog.name]
+  if (!prog_vcs || !prog_vcs.length) return 'Not verified'
+  const n = prog_vcs.length
+  const k = prog_vcs.filter(v => v.proved).length
+  return `${k}/${n} VCs proved`
+}
+
 const load_files = async () => {
   try {
     const res = await api.post('/imp-list')
@@ -192,6 +285,7 @@ const load_file = async (name) => {
   current.value = name
   vcs.value = []
   proving.value = false
+  panel_idx.value = -1
   try {
     const res = await api.post('/imp-load', { name })
     if (!res.data.ok) throw new Error(res.data.error)
@@ -253,6 +347,7 @@ const delete_file = async (name) => {
       programs.value = []
       vcs.value = []
       proving.value = false
+      panel_idx.value = -1
     }
     toast({ type: 'OK', data: 'File deleted' })
   } catch (e) {
@@ -260,29 +355,37 @@ const delete_file = async (name) => {
   }
 }
 
-const toggle_edit = (idx) => {
-  editing_prog.value = editing_prog.value === idx ? -1 : idx
+const open_prog = (idx) => {
+  panel_idx.value = idx
+  selected.value = idx
 }
 
 const save_edit = () => {
-  // Parse vars_text back to vars array
-  const prog = programs.value[editing_prog.value]
-  if (prog) {
-    prog.vars = prog.vars_text.split(',').map(s => {
-      const [nm, ty] = s.trim().split(':').map(x => x.trim())
-      return [nm, ty]
-    }).filter(v => v[0] && v[1])
-  }
-  editing_prog.value = -1
+  const prog = panel_prog.value
+  if (!prog) return
+  prog.vars = prog.vars_text.split(',').map(s => {
+    const [nm, ty] = s.trim().split(':').map(x => x.trim())
+    return [nm, ty]
+  }).filter(v => v[0] && v[1])
+}
+
+const save_verify = async () => {
+  save_edit()
+  selected.value = panel_idx.value
+  await verify_all()
 }
 
 const add_program = () => {
-  programs.value.push({ name: 'prog' + programs.value.length, vars: [], vars_text: 'x: nat', pre: 'true', post: 'true', body: 'skip' })
-  selected.value = programs.value.length - 1
+  const prog = { name: 'prog' + programs.value.length, vars: [], vars_text: 'x: nat', pre: 'true', post: 'true', body: 'skip' }
+  programs.value.push(prog)
+  panel_idx.value = programs.value.length - 1
+  selected.value = panel_idx.value
 }
 
 const remove_prog = (idx) => {
   programs.value.splice(idx, 1)
+  if (panel_idx.value === idx) panel_idx.value = -1
+  else if (panel_idx.value > idx) panel_idx.value -= 1
   if (selected.value >= programs.value.length) selected.value = programs.value.length - 1
 }
 
@@ -326,12 +429,6 @@ const verify_all = async () => {
   } finally {
     verifying.value = false
   }
-}
-
-const verify_program = async (idx) => {
-  // Compile all programs (VCG is fast), then highlight this program's VCs.
-  await verify_all()
-  selected.value = idx
 }
 
 const prove_vc = async (vc, progName) => {
@@ -389,48 +486,123 @@ onMounted(async () => {
 
 <style scoped>
 .program-ide { display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
-.file-select { min-width: 200px; max-width: 300px; }
 .main-content { display: flex; flex: 1; min-height: 0; }
-.program-panel { flex: 1; overflow-y: auto; padding: 8px; }
-.proving-mode .program-panel { flex: 55%; }
+
+.program-panel { flex: 1; overflow-y: auto; padding: 10px; min-width: 0; }
 .empty-state { text-align: center; padding: 40px; color: #999; }
 
+.file-header { margin-bottom: 12px; }
+.file-header-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .metadata-section { background: #f5f7fa; border: 1px solid #e1e5eb; border-radius: 4px; padding: 8px; margin-bottom: 12px; }
-.meta-row { display: flex; align-items: center; gap: 8px; }
-.meta-label { font-weight: 600; font-size: 12px; min-width: 50px; color: #555; }
+.meta-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.meta-row:last-child { margin-bottom: 0; }
+.meta-label { font-weight: 600; font-size: 12px; min-width: 70px; color: #555; }
+.meta-value { font-size: 13px; color: #212529; }
 .meta-input { flex: 1; padding: 3px 6px; font-size: 13px; border: 1px solid #ccc; border-radius: 3px; }
 
-.programs-list { display: flex; flex-direction: column; gap: 8px; }
-.program-block { border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden; }
-.program-selected { border-color: #0d6efd; }
-.program-header { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #f8f9fa; cursor: pointer; }
-.prog-name { font-weight: 600; font-size: 13px; min-width: 80px; }
-.prog-vars { font-size: 12px; color: #666; font-family: Consolas, monospace; flex: 1; }
-.prog-actions { display: flex; gap: 4px; }
-.prog-summary { display: flex; gap: 16px; padding: 4px 10px; font-size: 12px; color: #555; font-family: Consolas, monospace; background: #fff; }
-.prog-pre, .prog-post { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%; }
+.programs-list { display: flex; flex-direction: column; }
+.program-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  border-bottom: 1px solid #e8e8e8;
+  cursor: pointer;
+  font-size: 13px;
+}
+.program-row:hover { background: #f8f9fa; }
+.program-selected { background: #e8f0fe !important; }
+.prog-status { font-size: 14px; flex-shrink: 0; }
+.prog-ok .prog-status { color: #28a745; }
+.prog-bad .prog-status { color: #dc3545; }
+.prog-name { font-weight: 600; font-family: Consolas, monospace; min-width: 120px; flex-shrink: 0; }
+.prog-sum { color: #666; font-family: Consolas, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30%; }
+.prog-actions { margin-left: auto; display: flex; gap: 3px; flex-shrink: 0; }
+.prog-actions .btn { padding: 1px 7px; font-size: 11px; }
 
-.prog-edit { padding: 10px; background: #fff; border-top: 1px solid #e1e5eb; }
-.edit-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
-.edit-row label { font-weight: 600; font-size: 12px; min-width: 40px; padding-top: 5px; }
-.edit-input { flex: 1; padding: 4px 8px; font-size: 13px; border: 1px solid #ccc; border-radius: 3px; font-family: Consolas, monospace; }
-.edit-body { flex: 1; padding: 4px 8px; font-size: 13px; border: 1px solid #ccc; border-radius: 3px; font-family: Consolas, monospace; resize: vertical; }
-.edit-actions { display: flex; gap: 8px; margin-top: 8px; }
+/* Right edit panel: 60%, proof overlays inside instead of a new column */
+.edit-panel { position: relative; flex: 0 0 60%; min-width: 480px; border-left: 1px solid #dee2e6; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+.edit-pane-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid #e9ecef; font-size: 13px; flex-shrink: 0; background: #fafbfc; }
+.edit-pane-title { color: #495057; }
+.prog-name-inline { color: #1a73e8; }
+.edit-pane-btns { display: flex; gap: 6px; }
 
-.vc-list { padding: 4px 10px 8px; }
-.vc-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 8px; border-radius: 3px; margin-bottom: 4px; font-size: 12px; }
-.vc-ok { background: #f0faf0; border-left: 3px solid #28a745; }
-.vc-bad { background: #fdf0f0; border-left: 3px solid #dc3545; }
-.vc-badge { font-weight: 700; }
+.edit-scroll { flex: 1; overflow-y: auto; }
+.prog-edit { padding: 16px; }
+
+.section-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: #6c757d; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title::before { content: ''; width: 3px; height: 12px; background: #1a73e8; border-radius: 2px; }
+
+.edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.edit-field { display: flex; flex-direction: column; }
+.edit-field label { font-size: 11px; font-weight: 600; color: #6c757d; margin-bottom: 4px; }
+
+.edit-input {
+  width: 100%; padding: 7px 10px; font-size: 13px; font-family: Consolas, 'Courier New', monospace;
+  border: 1px solid #ced4da; border-radius: 6px; background: #fff; color: #212529;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.edit-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15); outline: none; }
+
+/* Body editor: white background with keyword highlighting */
+.code-editor {
+  position: relative;
+  background: #fff; border: 1px solid #ced4da; border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.code-editor:focus-within { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15); }
+.code-hl, .code-input {
+  margin: 0; padding: 12px;
+  font-family: Consolas, 'Courier New', monospace; font-size: 13px; line-height: 1.55;
+  letter-spacing: normal; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap;
+}
+.code-hl {
+  position: absolute; inset: 0; overflow: hidden;
+  color: #24292f; pointer-events: none; z-index: 0;
+}
+.code-hl ::selection { background: transparent; }
+.code-input {
+  position: relative; z-index: 1; display: block; width: 100%; box-sizing: border-box;
+  height: 220px; overflow: auto;
+  background: transparent; color: transparent; caret-color: #1a73e8;
+  border: none; outline: none; resize: none;
+}
+.code-input::selection { background: rgba(26, 115, 232, 0.25); color: transparent; }
+.tok-com { color: #6a737d; font-style: italic; }
+.tok-num { color: #b35900; }
+.tok-kw { color: #0550ae; font-weight: 600; }
+.tok-op { color: #a626a4; }
+
+.edit-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+/* VCs */
+.panel-vcs { border-top: 1px solid #e9ecef; padding: 12px 16px; background: #f6f8fa; }
+.panel-vc-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #6c757d; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.panel-vc-title::before { content: ''; width: 3px; height: 12px; background: #6c757d; border-radius: 2px; }
+.vc-empty { color: #999; font-size: 12px; font-style: italic; }
+.vc-card {
+  background: #fff; border: 1px solid #e5e9f0; border-left: 3px solid #adb5bd; border-radius: 6px;
+  padding: 8px 12px; margin-bottom: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.vc-card.vc-ok { border-left-color: #28a745; }
+.vc-card.vc-bad { border-left-color: #dc3545; }
+.vc-line { display: flex; align-items: center; gap: 8px; }
+.vc-badge { font-weight: 700; flex-shrink: 0; }
 .vc-ok .vc-badge { color: #28a745; }
 .vc-bad .vc-badge { color: #dc3545; }
-.vc-name { font-family: Consolas, monospace; color: #666; flex-shrink: 0; min-width: 120px; }
-.vc-prop { font-family: Consolas, monospace; color: #333; flex: 1; overflow-wrap: anywhere; }
-.vc-prove { flex-shrink: 0; }
+.vc-name { font-family: Consolas, monospace; color: #495057; flex-shrink: 0; font-weight: 600; }
+.vc-prop { font-family: Consolas, monospace; color: #666; margin-top: 4px; font-size: 11px; overflow-wrap: anywhere; }
+.vc-prove { margin-left: auto; }
+.vc-proved-tag { margin-left: auto; font-size: 11px; color: #28a745; font-weight: 600; }
 
-.bottom-actions { display: flex; gap: 8px; padding: 12px 0; }
-.proof-panel { width: 45%; min-width: 400px; border-left: 1px solid #dee2e6; display: flex; flex-direction: column; flex-shrink: 0; }
-.proof-pane-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid #dee2e6; font-size: 13px; flex-shrink: 0; }
+/* Proof overlay: covers the edit panel, back arrow returns to editing */
+.proof-overlay { position: absolute; inset: 0; background: #fff; display: flex; flex-direction: column; z-index: 5; }
+.proof-overlay-header { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid #dee2e6; font-size: 13px; flex-shrink: 0; background: #fafbfc; }
+.proof-overlay-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .modal-content { background: white; border-radius: 6px; width: 480px; max-width: 90vw; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }

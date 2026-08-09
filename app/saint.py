@@ -159,7 +159,13 @@ def saint_load():
                 'target': target_str, 'target_latex': target_latex,
             })
             continue
-    return jsonify({"items": items})
+    return jsonify({
+        "items": items,
+        "name": d.get('name', ''),
+        "theory": d.get('name', ''),
+        "imports": d.get('imports', []),
+        "description": d.get('description', ''),
+    })
 
 
 @app.route("/api/saint/parse", methods=['POST'])

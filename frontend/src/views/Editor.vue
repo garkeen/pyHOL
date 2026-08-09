@@ -4,22 +4,6 @@
     <nav class="navbar navbar-expand navbar-dark bg-dark">
       <div class="container-fluid">
         <span class="navbar-brand" style="padding-left: 44px">HOLPy</span>
-        <div class="navbar-nav">
-          <div class="nav-item dropdown" v-if="theory">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Items</a>
-            <ul class="dropdown-menu">
-              <li><h6 class="dropdown-header">Add</h6></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="add_item('thm')">Theorem</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="add_item('thm.ax')">Axiom</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="add_item('def')">Definition</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.ax')">Constant</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="add_item('type.ind')">Datatype</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.ind')">Fun</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.pred')">Inductive</a></li>
-              <li><a class="dropdown-item" href="#" @click.prevent="add_item('header')">Header</a></li>
-            </ul>
-          </div>
-        </div>
         <div class="ms-auto d-flex align-items-center gap-3">
           <span class="text-light" v-if="filename">{{ filename }}</span>
           <span class="text-light" v-if="saving">Saving...</span>
@@ -51,6 +35,22 @@
             <div class="file-header-row">
               <button class="btn btn-sm btn-primary" @click="validate_all(false)">Validate All</button>
               <button class="btn btn-sm btn-warning" @click="validate_all(true)" title="Ignore cache, re-validate everything">Force Validate</button>
+              <div class="dropdown ms-auto">
+                <button class="btn btn-sm btn-success dropdown-toggle" data-bs-toggle="dropdown"
+                        title="Add a new item to this theory">+ Add Item</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><h6 class="dropdown-header">New item</h6></li>
+                  <li><a class="dropdown-item" href="#" @click.prevent="add_item('thm')">Theorem</a></li>
+                  <li><a class="dropdown-item" href="#" @click.prevent="add_item('thm.ax')">Axiom</a></li>
+                  <li><a class="dropdown-item" href="#" @click.prevent="add_item('def')">Definition</a></li>
+                  <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.ax')">Constant</a></li>
+                  <li><a class="dropdown-item" href="#" @click.prevent="add_item('type.ind')">Datatype</a></li>
+                  <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.ind')">Fun</a></li>
+                  <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.pred')">Inductive</a></li>
+                  <li><hr class="dropdown-divider"/></li>
+                  <li><a class="dropdown-item" href="#" @click.prevent="add_item('header')">Section Header</a></li>
+                </ul>
+              </div>
             </div>
             <div class="metadata-section">
               <div class="meta-row"><label class="meta-label">theory</label><span class="meta-value">{{ theory.name }}</span></div>

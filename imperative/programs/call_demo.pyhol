@@ -1,0 +1,80 @@
+theory call_demo
+imports hoare
+description "translated from .imp"
+
+theorem double_vc_0
+  fixes x :: nat
+  prop ∀s. true ⟶ reg (Pair ((reg s)(0 := x + x)) (heap s)) 0 = x * 4
+proof
+  sorry goal=0
+qed
+
+theorem double
+  fixes x :: nat
+  prop Valid (λst. true) (AssignV (λst. 0) (λst. x + x)) (λst. reg st 0 = x * 4)
+proof
+  ← vcg goal=0
+  ← apply_backward_step double_vc_0 goal=1
+qed
+
+theorem inc_vc_0
+  fixes x :: nat
+  prop ∀s. true ⟶ reg (Pair ((reg s)(0 := x + 1)) (heap s)) 0 = x + 1
+proof
+  ← z3 goal=0
+qed
+
+theorem inc
+  fixes x :: nat
+  prop Valid (λst. true) (AssignV (λst. 0) (λst. x + 1)) (λst. reg st 0 = x + 1)
+proof
+  ← vcg goal=0
+  ← apply_backward_step inc_vc_0 goal=1
+qed
+
+theorem main_vc_0
+  fixes a :: nat
+  prop ∀s. a = 3 ⟶ (if true then if reg (Pair ((reg s)(0 := a * 4)) (heap s)) 0 = 6 then if true then reg (Pair ((reg (Pair ((reg s)(0 := a * 4)) (heap s)))(1 := reg (Pair ((reg s)(0 := a * 4)) (heap s)) 0 + 1)) (heap (Pair ((reg s)(0 := a * 4)) (heap s)))) 1 = 7 else false else false else false)
+proof
+  sorry goal=0
+qed
+
+theorem main_vc_1
+  fixes a :: nat
+  prop ∀s. false ∧ ¬true ⟶ (if reg s 0 = 6 then if true then reg (Pair ((reg s)(1 := reg s 0 + 1)) (heap s)) 1 = 7 else false else false)
+proof
+  ← z3 goal=0
+qed
+
+theorem main_vc_2
+  fixes a :: nat
+  prop ∀s::state. false ∧ true ⟶ false
+proof
+  ← z3 goal=0
+qed
+
+theorem main_vc_3
+  fixes a :: nat
+  prop ∀s. false ∧ ¬true ⟶ (if true then reg (Pair ((reg s)(1 := reg s 0 + 1)) (heap s)) 1 = 7 else false)
+proof
+  ← z3 goal=0
+qed
+
+theorem main_vc_4
+  fixes a :: nat
+  prop ∀s. false ∧ ¬true ⟶ reg s 1 = 7
+proof
+  ← z3 goal=0
+qed
+
+theorem main
+  fixes a :: nat
+  prop Valid (λst. a = 3) (Seq (Cond (λst. true) (AssignV (λst. 0) (λst. a * 4)) (While (λst. true) (λst. false) Skip)) (Seq (Cond (λst. reg st 0 = 6) Skip (While (λst. true) (λst. false) Skip)) (Cond (λst. true) (AssignV (λst. 1) (λst. reg st 0 + 1)) (While (λst. true) (λst. false) Skip)))) (λst. reg st 1 = 7)
+proof
+  ← vcg goal=0
+  ← apply_backward_step main_vc_0 goal=1
+  ← apply_backward_step main_vc_1 goal=2
+  ← apply_backward_step main_vc_2 goal=3
+  ← apply_backward_step main_vc_3 goal=4
+  ← apply_backward_step main_vc_4 goal=5
+qed

@@ -4,7 +4,7 @@ imports hoare
 program double
   vars: x: nat, r: nat
   pre: true
-  post: r == x * 2
+  post: r == x * 4
   body:
     r := x + x
 
