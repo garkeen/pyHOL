@@ -109,7 +109,6 @@
               <option value="rewrite_fact">rewrite_fact</option>
               <option value="forall_elim">forall_elim</option>
               <option value="exists_elim">exists_elim</option>
-              <option value="drule">drule</option>
               <option value="frule">frule</option>
             </optgroup>
             <optgroup label="← Backward (needs goal)">
@@ -121,7 +120,6 @@
               <option value="unfold">unfold</option>
               <option value="fold">fold</option>
               <option value="reflexive">reflexive</option>
-              <option value="sym">sym</option>
               <option value="subst">subst</option>
               <option value="introduction">introduction</option>
               <option value="inst_exists_goal">inst_exists_goal</option>
@@ -131,7 +129,6 @@
             <optgroup label="Structural">
               <option value="cut">cut</option>
               <option value="insert">insert</option>
-              <option value="thin">thin</option>
               <option value="new_var">new_var</option>
             </optgroup>
           </select>
@@ -216,7 +213,7 @@ const theorem_results = ref([])
 // Fields that are comma-separated lists (rendered as +/- dynamic inputs)
 const listFieldsFor = (mn) => new Set(method_list_params.value[mn] || [])
 
-const FORWARD_METHODS = new Set(['apply_forward_step', 'apply_fact', 'rewrite_fact', 'forall_elim', 'exists_elim', 'drule', 'frule'])
+const FORWARD_METHODS = new Set(['apply_forward_step', 'apply_fact', 'rewrite_fact', 'forall_elim', 'exists_elim', 'frule'])
 const REWRITE_FACT_METHODS = new Set(['rewrite_fact', 'rewrite_fact_with_prev'])
 const REWRITE_GOAL_METHODS = new Set(['rewrite_goal', 'rewrite_goal_with_prev'])
 // Methods whose params are instantiations (sent with param_ prefix for Inst).
@@ -227,10 +224,10 @@ const method_sig_map = {
   'introduction': [], 'apply_backward_step': ['theorem'], 'apply_forward_step': ['theorem'],
   'apply_prev': [], 'apply_fact': [], 'cut': ['cut_goal'], 'cases': ['case'], 'induction': ['theorem', 'var'],
   'forall_elim': ['s'], 'exists_elim': ['names'], 'inst_exists_goal': ['s'], 'new_var': ['name', 'type'],
-  'sym': [], 'subst': ['theorem'], 'reflexive': [],
+  'subst': ['theorem'], 'reflexive': [],
   'rewrite_goal': ['theorem', 'sym'], 'rewrite_fact': ['theorem', 'sym'],
   'unfold': ['theorem'], 'fold': ['theorem'], 'simp': [],
-  'insert': ['theorem'], 'thin': ['index'], 'drule': ['theorem'], 'frule': ['theorem'],
+  'insert': ['theorem'], 'frule': ['theorem'],
 }
 
 const method_params = computed(() => {

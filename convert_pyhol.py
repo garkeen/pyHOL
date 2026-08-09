@@ -36,9 +36,9 @@ BACKWARD = {
 }
 FORWARD = {
     'apply_forward_step', 'rewrite_fact', 'rewrite_fact_with_prev',
-    'apply_fact', 'forall_elim', 'drule', 'frule',
+    'apply_fact', 'forall_elim', 'frule',
 }
-# Structural: cut, new_var, thin, insert, sym, revert_intro, exists_elim
+# Structural: cut, new_var, insert, exists_elim
 
 def _dir_prefix(method_name):
     if method_name in BACKWARD:

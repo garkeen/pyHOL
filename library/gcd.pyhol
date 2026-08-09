@@ -1008,85 +1008,6 @@ theorem divides_cases
   fixes m :: nat, n :: nat
   prop divides n m --> m = 0 | m = n | 2 * n <= m
   [hint_backward]
-proof
-  ← introduction goal=0
-    #[1] divides n m
-    #[2] m = 0 ∨ m = n ∨ 2 * n ≤ m
-  cut "m = n | 2 * n <= m <--> m = n * 1 | n * 2 <= m" goal=2
-    #[3] m = n ∨ 2 * n ≤ m ⟷ m = n * 1 ∨ n * 2 ≤ m
-  ← z3 goal=3
-    #[4] m = n ∨ 2 * n ≤ m ⟷ m = n * 1 ∨ n * 2 ≤ m
-  ← rewrite_goal_with_prev goal=2 facts=[4]
-    #[5] m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  → rewrite_fact divides_def sym=false goal=5 facts=[1]
-    #[6] ∃k. m = n * k
-  exists_elim k goal=5 facts=[6]
-    #[7] _VAR k
-    #[8] m = n * k
-    #[9] m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-    #[10] m = 0 ∨ m = n ∨ 2 * n ≤ m
-  revert_intro goal=9 facts=[8]
-    #[11] m = n * k ⟶ m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  ← induction k nat_induct goal=11
-    #[12] m = n * 0 ⟶ m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-    #[13] ∀n1. (m = n * n1 ⟶ m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m) ⟶ m = n * Suc n1 ⟶ m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  ← introduction goal=12
-    #[14] m = n * 0
-    #[15] m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  ← apply_backward_step disjI1 goal=15
-    #[16] m = 0
-  ← rewrite_goal_with_prev goal=16 facts=[14]
-    #[17] n * 0 = 0
-  ← rewrite_goal mult_0_right sym=false goal=17
-    #[18] n * 0 = 0
-  ← introduction k goal=13
-    #[19] m = n * k ⟶ m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-    #[20] m = n * Suc k
-    #[21] m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  → rewrite_fact mult_Suc_right sym=false goal=21 facts=[20]
-    #[22] m = n + n * k
-  ← cases "k=0" goal=21 facts=[22]
-    #[23] k = 0 ⟶ m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-    #[24] ¬(k = 0) ⟶ m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  ← introduction goal=23
-    #[25] k = 0
-    #[26] m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  → rewrite_fact_with_prev goal=26 facts=[25,22]
-    #[27] m = n + n * 0
-  → rewrite_fact mult_0_right sym=false goal=26 facts=[27]
-    #[28] m = n + 0
-  → rewrite_fact add_0_right sym=false goal=26 facts=[28]
-    #[29] m = n
-  ← apply_backward_step disjI2 goal=26
-    #[30] m = n * 1 ∨ n * 2 ≤ m
-  ← apply_backward_step disjI1 goal=30
-    #[31] m = n * 1
-  ← rewrite_goal mult_1_right sym=false goal=31
-  ← introduction goal=24
-    #[32] ¬(k = 0)
-    #[33] m = 0 ∨ m = n * 1 ∨ n * 2 ≤ m
-  → apply_forward_step le_1_2 goal=33 facts=[32]
-    #[34] 1 ≤ k
-  ← apply_backward_step disjI2 goal=33
-    #[35] m = n * 1 ∨ n * 2 ≤ m
-  ← apply_backward_step disjI2 goal=35
-    #[36] n * 2 ≤ m
-  ← rewrite_goal_with_prev goal=36 facts=[22]
-    #[37] n * 2 ≤ n + n * k
-  ← apply_backward_step less_eq_trans param_m="n + n * 1" goal=37
-    #[38] n * 2 ≤ n + n * 1
-    #[39] n + n * 1 ≤ n + n * k
-  ← rewrite_goal mult_1_right sym=false goal=38
-    #[40] n * 2 ≤ n + n
-  ← rewrite_goal mult_comm sym=false goal=40
-    #[41] 2 * n ≤ n + n
-  ← rewrite_goal mult_2 sym=false goal=41
-    #[42] n + n ≤ n + n
-  ← apply_backward_step less_eq_refl goal=42
-    #[43] n + n ≤ n + n
-  ← z3 goal=39 facts=[34]
-    #[44] n + n * 1 ≤ n + n * k
-qed
 
 theorem divides_div_not
   fixes n :: nat, q :: nat, r :: nat, x :: nat
@@ -1197,38 +1118,6 @@ theorem divides_exp2
   fixes n :: nat, x :: nat, y :: nat
   prop ~(n = 0) --> divides (x ^ n) y --> divides x y
   [hint_backward,hint_backward1]
-proof
-  ← introduction goal=0
-    #[1] ¬(n = 0)
-    #[2] divides (x ^ n) y
-    #[3] divides x y
-  revert_intro goal=3 facts=[2]
-    #[4] divides (x ^ n) y ⟶ divides x y
-  revert_intro goal=4 facts=[1]
-  ← induction n nat_induct goal=0
-    #[5] ¬((0::nat) = 0) ⟶ divides (x ^ (0::nat)) y ⟶ divides x y
-    #[6] ∀n. (¬(n = 0) ⟶ divides (x ^ n) y ⟶ divides x y) ⟶ ¬(Suc n = 0) ⟶ divides (x ^ Suc n) y ⟶ divides x y
-  ← introduction goal=5
-    #[7] ¬((0::nat) = 0)
-    #[8] divides (x ^ (0::nat)) y
-    #[9] divides x y
-  → apply_forward_step le_1_1 goal=9 facts=[7]
-    #[10] (0::nat) < 0
-  → rewrite_fact nat_less_def_1 sym=false goal=9 facts=[10]
-    #[11] false
-  ← apply_resolve_step not_false_res goal=9 facts=[11]
-    #[12] divides x y
-  ← introduction n goal=6
-    #[13] _VAR n
-    #[14] ¬(n = 0) ⟶ divides (x ^ n) y ⟶ divides x y
-    #[15] ¬(Suc n = 0)
-    #[16] divides (x ^ Suc n) y
-    #[17] divides x y
-  → rewrite_fact nat_nat_power_def_2 sym=false goal=17 facts=[16]
-    #[18] divides (x * x ^ n) y
-  ← apply_backward_step divides_rmul2 goal=17 facts=[18]
-    #[19] divides x y
-qed
 
 theorem divides_exp_le_imp
   fixes m :: nat, n :: nat, p :: nat
@@ -1408,61 +1297,6 @@ theorem divides_fact
   fixes n :: nat, p :: nat
   prop 1 <= p --> p <= n --> divides p (fact n)
   [hint_backward,hint_backward1]
-proof
-  ← introduction goal=0
-    #[1] 1 ≤ p
-    #[2] p ≤ n
-    #[3] divides p (fact n)
-  revert_intro goal=3 facts=[2]
-    #[4] p ≤ n ⟶ divides p (fact n)
-  ← induction n nat_induct goal=4
-    #[5] p ≤ 0 ⟶ divides p (fact 0)
-    #[6] ∀n. (p ≤ n ⟶ divides p (fact n)) ⟶ p ≤ Suc n ⟶ divides p (fact (Suc n))
-  ← introduction goal=5
-    #[7] p ≤ 0
-    #[8] divides p (fact 0)
-  → rewrite_fact nat_less_eq_def_1 sym=false goal=8 facts=[7]
-    #[9] p = 0
-  → rewrite_fact_with_prev goal=8 facts=[9,1]
-    #[10] (1::nat) ≤ 0
-  ← apply_backward_step contrapositive goal=8 facts=[10]
-    #[11] ¬(divides p (fact 0)) ⟶ ¬((1::nat) ≤ 0)
-  ← introduction goal=11
-    #[12] ¬(divides p (fact 0))
-    #[13] ¬((1::nat) ≤ 0)
-  ← rewrite_goal not_le sym=false goal=13
-    #[14] (0::nat) < 1
-  ← apply_backward_step le_1_1 goal=14
-    #[15] ¬((1::nat) = 0)
-  nat_const_ineq goal=15
-    #[16] ¬((1::nat) = 0)
-  ← introduction n goal=6
-    #[17] _VAR n
-    #[18] p ≤ n ⟶ divides p (fact n)
-    #[19] p ≤ Suc n
-    #[20] divides p (fact (Suc n))
-  → rewrite_fact nat_less_eq_def_2 sym=false goal=20 facts=[19]
-    #[21] p = Suc n ∨ p ≤ n
-  ← rewrite_goal fact_def_2 sym=false goal=20
-    #[22] divides p (Suc n * fact n)
-  ← apply_backward_step disjE goal=22 facts=[21]
-    #[23] p = Suc n ⟶ divides p (Suc n * fact n)
-    #[24] p ≤ n ⟶ divides p (Suc n * fact n)
-  ← introduction goal=23
-    #[25] p = Suc n
-    #[26] divides p (Suc n * fact n)
-  ← rewrite_goal_with_prev goal=26 facts=[25]
-    #[27] divides (Suc n) (Suc n * fact n)
-  ← apply_backward_step divides_rmul goal=27
-    #[28] divides (Suc n) (Suc n)
-  ← apply_backward_step divides_self goal=28
-    #[29] divides (Suc n) (Suc n)
-  ← introduction goal=24
-    #[30] divides p (Suc n * fact n)
-  ← apply_backward_step divides_lmul goal=30
-    #[31] divides p (fact n)
-  ← apply_prev goal=31 facts=[18]
-qed
 
 theorem divides_2
   fixes n :: nat
@@ -1491,30 +1325,6 @@ theorem divides_rexp
   fixes n :: nat, x :: nat, y :: nat
   prop divides x y --> ~(n = 0) --> divides x (y ^ n)
   [hint_backward,hint_backward1]
-proof
-  ← introduction goal=0
-    #[1] divides x y
-    #[2] ¬(n = 0)
-    #[3] divides x (y ^ n)
-  revert_intro goal=3 facts=[2]
-    #[4] ¬(n = 0) ⟶ divides x (y ^ n)
-  ← induction n nat_induct goal=4
-    #[5] ¬((0::nat) = 0) ⟶ divides x (y ^ (0::nat))
-    #[6] ∀n. (¬(n = 0) ⟶ divides x (y ^ n)) ⟶ ¬(Suc n = 0) ⟶ divides x (y ^ Suc n)
-  ← introduction goal=5
-    #[7] ¬((0::nat) = 0)
-    #[8] divides x (y ^ (0::nat))
-  ← apply_backward_step negE_gen goal=8 facts=[7]
-    #[9] (0::nat) = 0
-  ← apply_backward_step eq_refl goal=9
-    #[10] (0::nat) = 0
-  ← introduction n goal=6
-    #[11] _VAR n
-    #[12] ¬(n = 0) ⟶ divides x (y ^ n)
-    #[13] ¬(Suc n = 0)
-    #[14] divides x (y ^ Suc n)
-  ← apply_backward_step divides_rexp_Suc goal=14
-qed
 
 theorem finite_divisors
   fixes n :: nat

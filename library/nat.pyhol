@@ -294,10 +294,6 @@ theorem add_cancel_left
   prop x + y = x + z --> y = z
   [hint_backward,hint_forward]
 proof
-  ← introduction goal=0
-    #[1] x + y = x + z
-    #[2] y = z
-  revert_intro goal=2 facts=[1]
   ← induction x nat_induct goal=0
     #[3] 0 + y = 0 + z ⟶ y = z
     #[4] ∀n. (n + y = n + z ⟶ y = z) ⟶ Suc n + y = Suc n + z ⟶ y = z
@@ -363,10 +359,6 @@ theorem add_is_zero
   prop x + y = 0 --> x = 0 & y = 0
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
-    #[1] x + y = 0
-    #[2] x = 0 ∧ y = 0
-  revert_intro goal=2 facts=[1]
   ← induction x nat_induct goal=0
     #[3] 0 + y = 0 ⟶ (0::nat) = 0 ∧ y = 0
     #[4] ∀n. (n + y = 0 ⟶ n = 0 ∧ y = 0) ⟶ Suc n + y = 0 ⟶ Suc n = 0 ∧ y = 0
@@ -423,10 +415,6 @@ theorem mult_nonzero
   prop x * y = 0 --> x = 0 | y = 0
   [hint_backward]
 proof
-  ← introduction goal=0
-    #[1] x * y = 0
-    #[2] x = 0 ∨ y = 0
-  revert_intro goal=2 facts=[1]
   ← induction x nat_induct goal=0
     #[3] 0 * y = 0 ⟶ (0::nat) = 0 ∨ y = 0
     #[4] ∀n. (n * y = 0 ⟶ n = 0 ∨ y = 0) ⟶ Suc n * y = 0 ⟶ Suc n = 0 ∨ y = 0
@@ -875,10 +863,6 @@ theorem lt_imp_le
   prop m < n --> m <= n
   [hint_backward,hint_forward]
 proof
-  ← introduction goal=0
-    #[1] m < n
-    #[2] m ≤ n
-  revert_intro goal=2 facts=[1]
   ← induction n nat_induct goal=0
     #[3] m < 0 ⟶ m ≤ 0
     #[4] ∀n. (m < n ⟶ m ≤ n) ⟶ m < Suc n ⟶ m ≤ Suc n
@@ -905,42 +889,37 @@ theorem le_1_1
   prop ~(n = 0) --> 0 < n
   [hint_backward,hint_forward]
 proof
-  ← introduction goal=0
-    #[1] ¬(n = 0)
-    #[2] 0 < n
-  revert_intro goal=2 facts=[1]
   ← induction n nat_induct goal=0
-    #[3] ¬((0::nat) = 0) ⟶ (0::nat) < 0
-    #[4] ∀n. (¬(n = 0) ⟶ 0 < n) ⟶ ¬(Suc n = 0) ⟶ 0 < Suc n
-  ← introduction goal=3
-    #[5] ¬((0::nat) = 0)
-    #[6] (0::nat) < 0
-  ← apply_backward_step negE_gen goal=6 facts=[5]
-    #[7] (0::nat) = 0
-  ← apply_backward_step eq_refl goal=7
-    #[8] (0::nat) = 0
-  ← introduction n goal=4
-    #[9] _VAR n
-    #[10] ¬(n = 0) ⟶ 0 < n
-    #[11] ¬(Suc n = 0)
-    #[12] 0 < Suc n
-  ← rewrite_goal less_Suc_lesseq sym=false goal=12
-    #[13] 0 ≤ n
-  ← cases "n = 0" goal=13
-    #[14] n = 0 ⟶ 0 ≤ n
-    #[15] ¬(n = 0) ⟶ 0 ≤ n
-  ← introduction goal=14
-    #[16] n = 0
+    #[1] ¬((0::nat) = 0) ⟶ (0::nat) < 0
+    #[2] ∀n. (¬(n = 0) ⟶ 0 < n) ⟶ ¬(Suc n = 0) ⟶ 0 < Suc n
+  ← introduction goal=1
+    #[3] ¬((0::nat) = 0)
+    #[4] (0::nat) < 0
+  ← apply_backward_step negE_gen goal=4 facts=[3]
+    #[5] (0::nat) = 0
+  ← apply_backward_step eq_refl goal=5
+  ← introduction n goal=2
+    #[6] _VAR n
+    #[7] ¬(n = 0) ⟶ 0 < n
+    #[8] ¬(Suc n = 0)
+    #[9] 0 < Suc n
+  ← rewrite_goal less_Suc_lesseq sym=false goal=9
+    #[10] 0 ≤ n
+  ← cases "n = 0" goal=10
+    #[11] n = 0 ⟶ 0 ≤ n
+    #[12] ¬(n = 0) ⟶ 0 ≤ n
+  ← introduction goal=11
+    #[13] n = 0
+    #[14] 0 ≤ n
+  ← rewrite_goal_with_prev goal=14 facts=[13]
+    #[15] (0::nat) ≤ 0
+  ← rewrite_goal nat_less_eq_def_1 sym=false goal=15
+    #[16] (0::nat) ≤ 0
+  ← introduction goal=12
     #[17] 0 ≤ n
-  ← rewrite_goal_with_prev goal=17 facts=[16]
-    #[18] (0::nat) ≤ 0
-  ← rewrite_goal nat_less_eq_def_1 sym=false goal=18
-    #[19] (0::nat) ≤ 0
-  ← introduction goal=15
-    #[20] 0 ≤ n
-  ← apply_backward_step lt_imp_le goal=20
-    #[21] 0 < n
-  ← apply_prev goal=21 facts=[10]
+  ← apply_backward_step lt_imp_le goal=17
+    #[18] 0 < n
+  ← apply_prev goal=18 facts=[7]
 qed
 
 theorem le_1_2
@@ -962,223 +941,11 @@ theorem less_eq_exist
   fixes m :: nat, n :: nat
   prop m <= n <--> (?p. n = m + p)
   [hint_rewrite]
-proof
-  ← induction n nat_induct goal=0
-    #[1] m ≤ 0 ⟷ (∃p. 0 = m + p)
-    #[2] ∀n. m ≤ n ⟷ (∃p. n = m + p) ⟶ m ≤ Suc n ⟷ (∃p. Suc n = m + p)
-  ← rewrite_goal nat_less_eq_def_1 sym=false goal=1
-    #[3] m = 0 ⟷ (∃p. 0 = m + p)
-  ← apply_backward_step iffI goal=3
-    #[4] m = 0 ⟶ (∃p. 0 = m + p)
-    #[5] (∃p. 0 = m + p) ⟶ m = 0
-  ← introduction goal=4
-    #[6] m = 0
-    #[7] ∃p. 0 = m + p
-  ← inst_exists_goal "(0::nat)" goal=7
-    #[8] 0 = m + 0
-  ← rewrite_goal_with_prev goal=8 facts=[6]
-    #[9] (0::nat) = 0 + 0
-  ← rewrite_goal nat_plus_def_1 sym=false goal=9
-    #[10] (0::nat) = 0 + 0
-  ← introduction goal=5
-    #[11] ∃p. 0 = m + p
-    #[12] m = 0
-  exists_elim p goal=12 facts=[11]
-    #[13] _VAR p
-    #[14] 0 = m + p
-    #[15] m = 0
-  → rewrite_fact eq_sym_eq sym=false goal=15 facts=[14]
-    #[16] m + p = 0
-  → apply_forward_step add_is_zero goal=15 facts=[16]
-    #[17] m = 0 ∧ p = 0
-  ← apply_backward_step conjD1 goal=15 facts=[17]
-    #[18] m = 0
-  ← introduction n goal=2
-    #[19] _VAR n
-    #[20] m ≤ n ⟷ (∃p. n = m + p)
-    #[21] m ≤ Suc n ⟷ (∃p. Suc n = m + p)
-  ← rewrite_goal nat_less_eq_def_2 sym=false goal=21
-    #[22] m = Suc n ∨ m ≤ n ⟷ (∃p. Suc n = m + p)
-  ← apply_backward_step iffI goal=22
-    #[23] m = Suc n ∨ m ≤ n ⟶ (∃p. Suc n = m + p)
-    #[24] (∃p. Suc n = m + p) ⟶ m = Suc n ∨ m ≤ n
-  ← introduction goal=23
-    #[25] m = Suc n ∨ m ≤ n
-    #[26] ∃p. Suc n = m + p
-  ← apply_backward_step disjE goal=26 facts=[25]
-    #[27] m = Suc n ⟶ (∃p. Suc n = m + p)
-    #[28] m ≤ n ⟶ (∃p. Suc n = m + p)
-  ← introduction goal=27
-    #[29] m = Suc n
-    #[30] ∃p. Suc n = m + p
-  ← inst_exists_goal "(0::nat)" goal=30
-    #[31] Suc n = m + 0
-  ← rewrite_goal_with_prev goal=31 facts=[29]
-    #[32] Suc n = Suc n + 0
-  ← rewrite_goal add_0_right sym=false goal=32
-    #[33] Suc n = Suc n + 0
-  ← rewrite_goal_with_prev goal=28 facts=[20]
-    #[34] (∃p. n = m + p) ⟶ (∃p. Suc n = m + p)
-  ← introduction goal=34
-    #[35] ∃p. n = m + p
-    #[36] ∃p. Suc n = m + p
-  exists_elim p goal=36 facts=[35]
-    #[37] n = m + p
-    #[38] ∃p. Suc n = m + p
-  ← inst_exists_goal "Suc p" goal=38
-    #[39] Suc n = m + Suc p
-  ← rewrite_goal_with_prev goal=39 facts=[37]
-    #[40] Suc (m + p) = m + Suc p
-  ← rewrite_goal add_Suc_right sym=false goal=40
-    #[41] Suc (m + p) = m + Suc p
-  ← introduction goal=24
-    #[42] ∃p. Suc n = m + p
-    #[43] m = Suc n ∨ m ≤ n
-  exists_elim p goal=43 facts=[42]
-    #[44] Suc n = m + p
-    #[45] m = Suc n ∨ m ≤ n
-  revert_intro goal=45 facts=[44]
-    #[46] Suc n = m + p ⟶ m = Suc n ∨ m ≤ n
-  ← induction p nat_induct goal=46
-    #[47] Suc n = m + 0 ⟶ m = Suc n ∨ m ≤ n
-    #[48] ∀n1. (Suc n = m + n1 ⟶ m = Suc n ∨ m ≤ n) ⟶ Suc n = m + Suc n1 ⟶ m = Suc n ∨ m ≤ n
-  ← introduction goal=47
-    #[49] Suc n = m + 0
-    #[50] m = Suc n ∨ m ≤ n
-  ← apply_backward_step disjI1 goal=50
-    #[51] m = Suc n
-  → rewrite_fact add_0_right sym=false goal=51 facts=[49]
-    #[52] Suc n = m
-  ← rewrite_goal eq_sym_eq sym=false goal=51
-  ← introduction p goal=48
-    #[53] Suc n = m + p ⟶ m = Suc n ∨ m ≤ n
-    #[54] Suc n = m + Suc p
-    #[55] m = Suc n ∨ m ≤ n
-  ← apply_backward_step disjI2 goal=55
-    #[56] m ≤ n
-  → rewrite_fact add_Suc_right sym=false goal=56 facts=[54]
-    #[57] Suc n = Suc (m + p)
-  ← rewrite_goal_with_prev goal=56 facts=[20]
-    #[58] ∃p. n = m + p
-  ← inst_exists_goal p goal=58
-    #[59] n = m + p
-  ← apply_backward_step nat_Suc_inject goal=59
-qed
 
 theorem less_exist
   fixes m :: nat, n :: nat
   prop m < n <--> (?d. n = m + Suc d)
   [hint_rewrite]
-proof
-  ← induction n nat_induct goal=0
-    #[1] m < 0 ⟷ (∃d. 0 = m + Suc d)
-    #[2] ∀n. m < n ⟷ (∃d. n = m + Suc d) ⟶ m < Suc n ⟷ (∃d. Suc n = m + Suc d)
-  ← apply_backward_step iffI goal=1
-    #[3] m < 0 ⟶ (∃d. 0 = m + Suc d)
-    #[4] (∃d. 0 = m + Suc d) ⟶ m < 0
-  ← introduction goal=3
-    #[5] m < 0
-    #[6] ∃d. 0 = m + Suc d
-  → rewrite_fact nat_less_def_1 sym=false goal=6 facts=[5]
-    #[7] false
-  ← apply_resolve_step not_false_res goal=6 facts=[7]
-  ← introduction goal=4
-    #[8] ∃d. 0 = m + Suc d
-    #[9] m < 0
-  exists_elim d goal=9 facts=[8]
-    #[10] _VAR d
-    #[11] 0 = m + Suc d
-    #[12] m < 0
-  → rewrite_fact eq_sym_eq sym=false goal=12 facts=[11]
-    #[13] m + Suc d = 0
-  → apply_forward_step add_is_zero goal=12 facts=[13]
-    #[14] m = 0 ∧ Suc d = 0
-  → apply_forward_step conjD2 goal=12 facts=[14]
-    #[15] Suc d = 0
-  ← apply_backward_step contrapositive goal=12 facts=[15]
-    #[16] ¬(m < 0) ⟶ ¬(Suc d = 0)
-  ← introduction goal=16
-    #[17] ¬(m < 0)
-    #[18] ¬(Suc d = 0)
-  ← apply_backward_step ineq_sym goal=18
-    #[19] ¬(0 = Suc d)
-  → apply_forward_step nat_zero_Suc_neq param_n=d goal=19
-    #[20] ¬(0 = Suc d)
-  ← introduction n goal=2
-    #[21] _VAR n
-    #[22] m < n ⟷ (∃d. n = m + Suc d)
-    #[23] m < Suc n ⟷ (∃d. Suc n = m + Suc d)
-  ← rewrite_goal nat_less_def_2 sym=false goal=23
-    #[24] m = n ∨ m < n ⟷ (∃d. Suc n = m + Suc d)
-  ← rewrite_goal_with_prev goal=24 facts=[22]
-    #[25] m = n ∨ (∃d. n = m + Suc d) ⟷ (∃d. Suc n = m + Suc d)
-  ← apply_backward_step iffI goal=25
-    #[26] m = n ∨ (∃d. n = m + Suc d) ⟶ (∃d. Suc n = m + Suc d)
-    #[27] (∃d. Suc n = m + Suc d) ⟶ m = n ∨ (∃d. n = m + Suc d)
-  ← introduction goal=26
-    #[28] m = n ∨ (∃d. n = m + Suc d)
-    #[29] ∃d. Suc n = m + Suc d
-  ← apply_backward_step disjE goal=29 facts=[28]
-    #[30] m = n ⟶ (∃d. Suc n = m + Suc d)
-    #[31] (∃d. n = m + Suc d) ⟶ (∃d. Suc n = m + Suc d)
-  ← introduction goal=30
-    #[32] m = n
-    #[33] ∃d. Suc n = m + Suc d
-  ← rewrite_goal_with_prev goal=33 facts=[32]
-    #[34] ∃d. Suc n = n + Suc d
-  ← inst_exists_goal "(0::nat)" goal=34
-    #[35] Suc n = n + Suc 0
-  ← rewrite_goal add_Suc_right sym=false goal=35
-    #[36] Suc n = Suc (n + 0)
-  ← rewrite_goal add_0_right sym=false goal=36
-    #[37] Suc n = Suc (n + 0)
-  ← introduction goal=31
-    #[38] ∃d. n = m + Suc d
-    #[39] ∃d. Suc n = m + Suc d
-  exists_elim d goal=39 facts=[38]
-    #[40] n = m + Suc d
-    #[41] ∃d. Suc n = m + Suc d
-  ← inst_exists_goal "Suc d" goal=41
-    #[42] Suc n = m + Suc (Suc d)
-  ← rewrite_goal_with_prev goal=42 facts=[40]
-    #[43] Suc (m + Suc d) = m + Suc (Suc d)
-  nat_norm goal=43
-    #[44] Suc (m + Suc d) = m + Suc (Suc d)
-  ← introduction goal=27
-    #[45] ∃d. Suc n = m + Suc d
-    #[46] m = n ∨ (∃d. n = m + Suc d)
-  exists_elim d goal=46 facts=[45]
-    #[47] Suc n = m + Suc d
-    #[48] m = n ∨ (∃d. n = m + Suc d)
-  revert_intro goal=48 facts=[47]
-    #[49] Suc n = m + Suc d ⟶ m = n ∨ (∃d1. n = m + Suc d1)
-  ← induction d nat_induct goal=49
-    #[50] Suc n = m + Suc 0 ⟶ m = n ∨ (∃d. n = m + Suc d)
-    #[51] ∀n1. (Suc n = m + Suc n1 ⟶ m = n ∨ (∃d. n = m + Suc d)) ⟶ Suc n = m + Suc (Suc n1) ⟶ m = n ∨ (∃d. n = m + Suc d)
-  ← introduction goal=50
-    #[52] Suc n = m + Suc 0
-    #[53] m = n ∨ (∃d. n = m + Suc d)
-  ← apply_backward_step disjI1 goal=53
-    #[54] m = n
-  → rewrite_fact add_Suc_right sym=false goal=54 facts=[52]
-    #[55] Suc n = Suc (m + 0)
-  → rewrite_fact add_0_right sym=false goal=54 facts=[55]
-    #[56] Suc n = Suc m
-  ← apply_backward_step nat_Suc_inject goal=54
-    #[57] Suc m = Suc n
-  ← rewrite_goal eq_sym_eq sym=false goal=57
-  ← introduction d goal=51
-    #[58] Suc n = m + Suc d ⟶ m = n ∨ (∃d1. n = m + Suc d1)
-    #[59] Suc n = m + Suc (Suc d)
-    #[60] m = n ∨ (∃d. n = m + Suc d)
-  ← apply_backward_step disjI2 goal=60
-    #[61] ∃d. n = m + Suc d
-  ← inst_exists_goal d goal=61
-    #[62] n = m + Suc d
-  → rewrite_fact add_Suc_right sym=false goal=62 facts=[59]
-    #[63] Suc n = Suc (m + Suc d)
-  ← apply_backward_step nat_Suc_inject goal=62
-qed
 
 theorem less_lesseq
   fixes m :: nat, n :: nat
@@ -1232,10 +999,6 @@ theorem Suc_Pre
   prop 0 < n --> Suc (Pre n) = n
   [hint_backward]
 proof
-  ← introduction goal=0
-    #[1] 0 < n
-    #[2] Suc (Pre n) = n
-  revert_intro goal=2 facts=[1]
   ← induction n nat_induct goal=0
     #[3] (0::nat) < 0 ⟶ Suc (Pre 0) = 0
     #[4] ∀n. (0 < n ⟶ Suc (Pre n) = n) ⟶ 0 < Suc n ⟶ Suc (Pre (Suc n)) = Suc n
@@ -1393,121 +1156,16 @@ theorem lt_trans
   fixes k :: nat, m :: nat, n :: nat
   prop k < m --> m < n --> k < n
   [hint_backward,hint_backward1]
-proof
-  ← introduction goal=0
-    #[1] k < m
-    #[2] m < n
-    #[3] k < n
-  revert_intro goal=3 facts=[2]
-    #[4] m < n ⟶ k < n
-  ← induction n nat_induct goal=4
-    #[5] m < 0 ⟶ k < 0
-    #[6] ∀n. (m < n ⟶ k < n) ⟶ m < Suc n ⟶ k < Suc n
-  ← introduction goal=5
-    #[7] m < 0
-    #[8] k < 0
-  → rewrite_fact nat_less_def_1 sym=false goal=8 facts=[7]
-    #[9] false
-  ← apply_resolve_step not_false_res goal=8 facts=[9]
-    #[10] k < 0
-  ← introduction n goal=6
-    #[11] _VAR n
-    #[12] m < n ⟶ k < n
-    #[13] m < Suc n
-    #[14] k < Suc n
-  ← rewrite_goal less_Suc_lesseq sym=false goal=14
-    #[15] k ≤ n
-  → rewrite_fact nat_less_def_2 sym=false goal=15 facts=[13]
-    #[16] m = n ∨ m < n
-  ← apply_backward_step disjE goal=15 facts=[16]
-    #[17] m = n ⟶ k ≤ n
-    #[18] m < n ⟶ k ≤ n
-  ← introduction goal=17
-    #[19] m = n
-    #[20] k ≤ n
-  → rewrite_fact_with_prev goal=20 facts=[19,1]
-    #[21] k < n
-  ← apply_backward_step lt_imp_le goal=20
-  ← introduction goal=18
-    #[22] k ≤ n
-  → apply_fact goal=22 facts=[12,2]
-    #[23] k < n
-  ← apply_backward_step lt_imp_le goal=22
-qed
 
 theorem let_trans
   fixes k :: nat, m :: nat, n :: nat
   prop k <= m --> m < n --> k < n
   [hint_backward,hint_backward1]
-proof
-  ← introduction goal=0
-    #[1] k ≤ m
-    #[2] m < n
-    #[3] k < n
-  revert_intro goal=3 facts=[2]
-    #[4] m < n ⟶ k < n
-  ← induction n nat_induct goal=4
-    #[5] m < 0 ⟶ k < 0
-    #[6] ∀n. (m < n ⟶ k < n) ⟶ m < Suc n ⟶ k < Suc n
-  ← rewrite_goal nat_less_def_1 sym=false goal=5
-    #[7] false ⟶ false
-  ← introduction n goal=6
-    #[8] _VAR n
-    #[9] m < n ⟶ k < n
-    #[10] m < Suc n
-    #[11] k < Suc n
-  ← rewrite_goal less_Suc_lesseq sym=false goal=11
-    #[12] k ≤ n
-  → rewrite_fact less_Suc_lesseq sym=false goal=12 facts=[10]
-    #[13] m ≤ n
-  ← apply_backward_step less_eq_trans goal=12 facts=[1,13]
-    #[14] k ≤ n
-qed
 
 theorem lte_trans
   fixes k :: nat, m :: nat, n :: nat
   prop k < m --> m <= n --> k < n
   [hint_backward,hint_backward1]
-proof
-  ← introduction goal=0
-    #[1] k < m
-    #[2] m ≤ n
-    #[3] k < n
-  revert_intro goal=3 facts=[2]
-    #[4] m ≤ n ⟶ k < n
-  ← induction n nat_induct goal=4
-    #[5] m ≤ 0 ⟶ k < 0
-    #[6] ∀n. (m ≤ n ⟶ k < n) ⟶ m ≤ Suc n ⟶ k < Suc n
-  ← rewrite_goal nat_less_eq_def_1 sym=false goal=5
-    #[7] m = 0 ⟶ k < 0
-  ← introduction goal=7
-    #[8] m = 0
-    #[9] k < 0
-  → rewrite_fact_with_prev goal=9 facts=[8,1]
-  ← introduction n goal=6
-    #[10] _VAR n
-    #[11] m ≤ n ⟶ k < n
-    #[12] m ≤ Suc n
-    #[13] k < Suc n
-  → rewrite_fact nat_less_eq_def_2 sym=false goal=13 facts=[12]
-    #[14] m = Suc n ∨ m ≤ n
-  ← apply_backward_step disjE goal=13 facts=[14]
-    #[15] m = Suc n ⟶ k < Suc n
-    #[16] m ≤ n ⟶ k < Suc n
-  ← introduction goal=15
-    #[17] m = Suc n
-    #[18] k < Suc n
-  → rewrite_fact_with_prev goal=18 facts=[17,1]
-    #[19] k < Suc n
-  ← introduction goal=16
-    #[20] k < Suc n
-  → apply_fact goal=20 facts=[11,2]
-    #[21] k < n
-  ← rewrite_goal less_Suc_lesseq sym=false goal=20
-    #[22] k ≤ n
-  ← apply_backward_step lt_imp_le goal=22 facts=[21]
-    #[23] k ≤ n
-qed
 
 theorem le_lt
   fixes m :: nat, n :: nat
@@ -4171,69 +3829,6 @@ theorem exp_mono_lt_imp
   fixes n :: nat, x :: nat, y :: nat
   prop x < y --> ~(n = 0) --> x ^ n < y ^ n
   [hint_backward,hint_backward1]
-proof
-  ← introduction goal=0
-    #[1] x < y
-    #[2] ¬(n = 0)
-    #[3] x ^ n < y ^ n
-  revert_intro goal=3 facts=[2]
-    #[4] ¬(n = 0) ⟶ x ^ n < y ^ n
-  ← induction n nat_induct goal=4
-    #[5] ¬((0::nat) = 0) ⟶ x ^ (0::nat) < y ^ (0::nat)
-    #[6] ∀n. (¬(n = 0) ⟶ x ^ n < y ^ n) ⟶ ¬(Suc n = 0) ⟶ x ^ Suc n < y ^ Suc n
-  ← introduction goal=5
-    #[7] ¬((0::nat) = 0)
-    #[8] x ^ (0::nat) < y ^ (0::nat)
-  ← apply_backward_step contrapositive goal=8 facts=[7]
-    #[9] ¬(x ^ (0::nat) < y ^ (0::nat)) ⟶ ¬¬((0::nat) = 0)
-  ← introduction goal=9
-    #[10] ¬(x ^ (0::nat) < y ^ (0::nat))
-    #[11] ¬¬((0::nat) = 0)
-  ← rewrite_goal double_neg sym=false goal=11
-    #[12] ¬¬((0::nat) = 0)
-  ← introduction n goal=6
-    #[13] _VAR n
-    #[14] ¬(n = 0) ⟶ x ^ n < y ^ n
-    #[15] ¬(Suc n = 0)
-    #[16] x ^ Suc n < y ^ Suc n
-  ← rewrite_goal nat_nat_power_def_2 sym=false goal=16
-    #[17] x * x ^ n < y * y ^ n
-  ← apply_backward_step let_trans param_m="x * y ^ n" goal=17
-    #[18] x * x ^ n ≤ x * y ^ n
-    #[19] x * y ^ n < y * y ^ n
-  ← rewrite_goal mult_comm sym=false goal=18
-    #[20] x ^ n * x ≤ y ^ n * x
-  ← rewrite_goal le_mult_rcancel sym=false goal=20
-    #[21] x ^ n ≤ y ^ n ∨ x = 0
-  ← apply_backward_step disjI1 goal=21
-    #[22] x ^ n ≤ y ^ n
-  ← apply_backward_step exp_mono_le_imp goal=22
-    #[23] x ≤ y
-  ← apply_backward_step lt_imp_le goal=23
-  ← rewrite_goal lt_mult_rcancel sym=false goal=19
-    #[24] x < y ∧ ¬(y ^ n = 0)
-  ← apply_backward_step conjI goal=24
-    #[25] ¬(y ^ n = 0)
-  ← rewrite_goal exp_eq_0 sym=false goal=25
-    #[26] ¬(y = 0 ∧ ¬(n = 0))
-  ← rewrite_goal de_morgan_thm1 sym=false goal=26
-    #[27] ¬(y = 0) ∨ ¬¬(n = 0)
-  ← apply_backward_step disjI1 goal=27
-    #[28] ¬(y = 0)
-  ← apply_backward_step contrapositive goal=28 facts=[1]
-    #[29] ¬¬(y = 0) ⟶ ¬(x < y)
-  ← introduction goal=29
-    #[30] ¬¬(y = 0)
-    #[31] ¬(x < y)
-  → rewrite_fact double_neg sym=false goal=31 facts=[30]
-    #[32] y = 0
-  ← rewrite_goal_with_prev goal=31 facts=[32]
-    #[33] ¬(x < 0)
-  ← rewrite_goal not_lt sym=false goal=33
-    #[34] 0 ≤ x
-  ← apply_backward_step le_0 goal=34
-    #[35] 0 ≤ x
-qed
 
 theorem exp_mono_le
   fixes n :: nat, x :: nat, y :: nat
@@ -4457,99 +4052,6 @@ qed
 theorem nat_MAX
   fixes P :: nat => bool
   prop (?x. P x) & (?M. !x. P x --> x <= M) <--> (?m. P m & (!x. P x --> x <= m))
-proof
-  ← apply_backward_step iffI goal=0
-    #[1] (∃x. P x) ∧ (∃M. ∀x. P x ⟶ x ≤ M) ⟶ (∃m. P m ∧ (∀x. P x ⟶ x ≤ m))
-    #[2] (∃m. P m ∧ (∀x. P x ⟶ x ≤ m)) ⟶ (∃x. P x) ∧ (∃M. ∀x. P x ⟶ x ≤ M)
-  ← introduction goal=1
-    #[3] (∃x. P x) ∧ (∃M. ∀x. P x ⟶ x ≤ M)
-    #[4] ∃m. P m ∧ (∀x. P x ⟶ x ≤ m)
-  → apply_forward_step conjD1 goal=4 facts=[3]
-    #[5] ∃x. P x
-  → apply_forward_step conjD2 goal=4 facts=[3]
-    #[6] ∃M. ∀x. P x ⟶ x ≤ M
-  exists_elim a goal=4 facts=[5]
-    #[7] _VAR a
-    #[8] P a
-    #[9] ∃m. P m ∧ (∀x. P x ⟶ x ≤ m)
-  → rewrite_fact nat_WOP sym="" goal=9 facts=[6]
-    #[10] ∃M. (∀x. P x ⟶ x ≤ M) ∧ (∀m. m < M ⟶ ¬(∀x. P x ⟶ x ≤ m))
-  exists_elim m goal=9 facts=[10]
-    #[11] _VAR m
-    #[12] (∀x. P x ⟶ x ≤ m) ∧ (∀m1. m1 < m ⟶ ¬(∀x. P x ⟶ x ≤ m1))
-    #[13] ∃m. P m ∧ (∀x. P x ⟶ x ≤ m)
-  ← inst_exists_goal m goal=13
-    #[14] P m ∧ (∀x. P x ⟶ x ≤ m)
-  → apply_forward_step conjD1 goal=14 facts=[12]
-    #[15] ∀x. P x ⟶ x ≤ m
-  ← apply_backward_step conjI goal=14
-    #[16] P m
-  revert_intro goal=16 facts=[12]
-    #[17] (∀x. P x ⟶ x ≤ m) ∧ (∀m1. m1 < m ⟶ ¬(∀x. P x ⟶ x ≤ m1)) ⟶ P m
-  ← induction m nat_induct goal=17
-    #[18] (∀x. P x ⟶ x ≤ 0) ∧ (∀m. m < 0 ⟶ ¬(∀x. P x ⟶ x ≤ m)) ⟶ P 0
-    #[19] ∀n. ((∀x. P x ⟶ x ≤ n) ∧ (∀m. m < n ⟶ ¬(∀x. P x ⟶ x ≤ m)) ⟶ P n) ⟶ (∀x. P x ⟶ x ≤ Suc n) ∧ (∀m. m < Suc n ⟶ ¬(∀x. P x ⟶ x ≤ m)) ⟶ P (Suc n)
-  ← introduction goal=18
-    #[20] (∀x. P x ⟶ x ≤ 0) ∧ (∀m. m < 0 ⟶ ¬(∀x. P x ⟶ x ≤ m))
-    #[21] P 0
-  → apply_forward_step conjD1 goal=21 facts=[20]
-    #[22] ∀x. P x ⟶ x ≤ 0
-  → rewrite_fact nat_less_eq_def_1 sym=false goal=21 facts=[22]
-    #[23] ∀x. P x ⟶ x = 0
-  → apply_fact goal=21 facts=[23,8]
-    #[24] a = 0
-  → rewrite_fact_with_prev goal=21 facts=[24,8]
-    #[25] P 0
-  ← introduction m goal=19
-    #[26] (∀x. P x ⟶ x ≤ m) ∧ (∀m1. m1 < m ⟶ ¬(∀x. P x ⟶ x ≤ m1)) ⟶ P m
-    #[27] (∀x. P x ⟶ x ≤ Suc m) ∧ (∀m1. m1 < Suc m ⟶ ¬(∀x. P x ⟶ x ≤ m1))
-    #[28] P (Suc m)
-  → apply_forward_step conjD2 goal=28 facts=[27]
-    #[29] ∀m1. m1 < Suc m ⟶ ¬(∀x. P x ⟶ x ≤ m1)
-  → forall_elim m goal=28 facts=[29]
-    #[30] m < Suc m ⟶ ¬(∀x. P x ⟶ x ≤ m)
-  cut "m < Suc m " goal=28 facts=[30]
-    #[31] m < Suc m
-  ← rewrite_goal less_Suc_lesseq sym=false goal=31
-    #[32] m ≤ m
-  ← apply_backward_step less_eq_refl goal=32
-    #[33] m ≤ m
-  → apply_fact goal=28 facts=[30,31]
-    #[34] ¬(∀x. P x ⟶ x ≤ m)
-  ← apply_backward_step contrapositive goal=28 facts=[34]
-    #[35] ¬(P (Suc m)) ⟶ ¬¬(∀x. P x ⟶ x ≤ m)
-  ← introduction goal=35
-    #[36] ¬(P (Suc m))
-    #[37] ¬¬(∀x. P x ⟶ x ≤ m)
-  ← rewrite_goal double_neg sym=false goal=37
-    #[38] ∀x. P x ⟶ x ≤ m
-  ← introduction p goal=38
-    #[39] _VAR p
-    #[40] P p
-    #[41] p ≤ m
-  → apply_forward_step conjD1 goal=41 facts=[27]
-    #[42] ∀x. P x ⟶ x ≤ Suc m
-  → forall_elim p goal=41 facts=[42]
-    #[43] P p ⟶ p ≤ Suc m
-  → apply_fact goal=41 facts=[43,40]
-    #[44] p ≤ Suc m
-  → rewrite_fact nat_less_eq_def_2 sym=false goal=41 facts=[44]
-    #[45] p = Suc m ∨ p ≤ m
-  ← apply_backward_step disjE goal=41 facts=[45]
-    #[46] p = Suc m ⟶ p ≤ m
-    #[47] p ≤ m ⟶ p ≤ m
-  ← introduction goal=46
-    #[48] p = Suc m
-    #[49] p ≤ m
-  → rewrite_fact_with_prev goal=49 facts=[48,40]
-    #[50] P (Suc m)
-  ← apply_backward_step negE_gen goal=49 facts=[36,50]
-    #[51] p ≤ m
-  ← introduction goal=2
-    #[52] ∃m. P m ∧ (∀x. P x ⟶ x ≤ m)
-    #[53] (∃x. P x) ∧ (∃M. ∀x. P x ⟶ x ≤ M)
-  ← apply_backward_step ex_conj_distrib goal=53 facts=[52]
-qed
 
 theorem divmod_exist
   fixes m :: nat, n :: nat
@@ -4865,128 +4367,6 @@ theorem divmod_uniq_lemma
   fixes m :: nat, n :: nat, q1 :: nat, q2 :: nat, r1 :: nat, r2 :: nat
   prop m = q1 * n + r1 --> r1 < n --> m = q2 * n + r2 --> r2 < n --> q1 = q2 & r1 = r2
   [hint_backward,hint_backward1]
-proof
-  ← introduction goal=0
-    #[1] m = q1 * n + r1
-    #[2] r1 < n
-    #[3] m = q2 * n + r2
-    #[4] r2 < n
-    #[5] q1 = q2 ∧ r1 = r2
-  cut "r1 = r2" goal=5
-    #[6] r1 = r2
-  → rewrite_fact_with_prev goal=6 facts=[1,3]
-    #[7] q1 * n + r1 = q2 * n + r2
-  → apply_forward_step le_cases param_m=q1 param_n=q2 goal=6
-    #[8] q1 ≤ q2 ∨ q2 ≤ q1
-  ← apply_backward_step disjE goal=6 facts=[8]
-    #[9] q1 ≤ q2 ⟶ r1 = r2
-    #[10] q2 ≤ q1 ⟶ r1 = r2
-  ← introduction goal=9
-    #[11] q1 ≤ q2
-    #[12] r1 = r2
-  → rewrite_fact less_eq_exist sym=false goal=12 facts=[11]
-    #[13] ∃p. q2 = q1 + p
-  exists_elim d goal=12 facts=[13]
-    #[14] _VAR d
-    #[15] q2 = q1 + d
-    #[16] r1 = r2
-  revert_intro goal=16 facts=[15]
-    #[17] q2 = q1 + d ⟶ r1 = r2
-  ← induction d nat_induct goal=17
-    #[18] q2 = q1 + 0 ⟶ r1 = r2
-    #[19] ∀n. (q2 = q1 + n ⟶ r1 = r2) ⟶ q2 = q1 + Suc n ⟶ r1 = r2
-  ← introduction goal=18
-    #[20] q2 = q1 + 0
-    #[21] r1 = r2
-  → rewrite_fact add_0_right sym=false goal=21 facts=[20]
-    #[22] q2 = q1
-  → rewrite_fact_with_prev goal=21 facts=[22,7]
-    #[23] q1 * n + r1 = q1 * n + r2
-  ← apply_backward_step add_cancel_left goal=21 facts=[23]
-    #[24] r1 = r2
-  ← introduction d goal=19
-    #[25] q2 = q1 + d ⟶ r1 = r2
-    #[26] q2 = q1 + Suc d
-    #[27] r1 = r2
-  → rewrite_fact_with_prev goal=27 facts=[26,7]
-    #[28] q1 * n + r1 = (q1 + Suc d) * n + r2
-  → rewrite_fact distrib_r sym=false goal=27 facts=[28]
-    #[29] q1 * n + r1 = q1 * n + Suc d * n + r2
-  → rewrite_fact add_assoc sym=false goal=27 facts=[29]
-    #[30] q1 * n + r1 = q1 * n + (Suc d * n + r2)
-  → apply_forward_step add_cancel_left goal=27 facts=[30]
-    #[31] r1 = Suc d * n + r2
-  cut "Suc d * n <= r1" goal=27 facts=[31]
-    #[32] Suc d * n ≤ r1
-  ← rewrite_goal_with_prev goal=32 facts=[31]
-    #[33] Suc d * n ≤ Suc d * n + r2
-  ← apply_backward_step le_add goal=33
-    #[34] Suc d * n ≤ Suc d * n + r2
-  → rewrite_fact nat_times_def_2 sym=false goal=27 facts=[32]
-    #[35] n + d * n ≤ r1
-  ← z3 goal=27 facts=[35,2]
-  ← introduction goal=10
-    #[36] q2 ≤ q1
-    #[37] r1 = r2
-  → rewrite_fact less_eq_exist sym=false goal=37 facts=[36]
-    #[38] ∃p. q1 = q2 + p
-  exists_elim d goal=37 facts=[38]
-    #[39] q1 = q2 + d
-    #[40] r1 = r2
-  revert_intro goal=40 facts=[39]
-    #[41] q1 = q2 + d ⟶ r1 = r2
-  ← induction d nat_induct goal=41
-    #[42] q1 = q2 + 0 ⟶ r1 = r2
-    #[43] ∀n. (q1 = q2 + n ⟶ r1 = r2) ⟶ q1 = q2 + Suc n ⟶ r1 = r2
-  ← introduction goal=42
-    #[44] q1 = q2 + 0
-    #[45] r1 = r2
-  → rewrite_fact add_0_right sym=false goal=45 facts=[44]
-    #[46] q1 = q2
-  → rewrite_fact_with_prev goal=45 facts=[46,7]
-    #[47] q2 * n + r1 = q2 * n + r2
-  ← apply_backward_step add_cancel_left goal=45 facts=[47]
-    #[48] r1 = r2
-  ← introduction d goal=43
-    #[49] q1 = q2 + d ⟶ r1 = r2
-    #[50] q1 = q2 + Suc d
-    #[51] r1 = r2
-  → rewrite_fact_with_prev goal=51 facts=[50,7]
-    #[52] (q2 + Suc d) * n + r1 = q2 * n + r2
-  → rewrite_fact distrib_r sym=false goal=51 facts=[52]
-    #[53] q2 * n + Suc d * n + r1 = q2 * n + r2
-  → rewrite_fact add_assoc sym=false goal=51 facts=[53]
-    #[54] q2 * n + (Suc d * n + r1) = q2 * n + r2
-  → apply_forward_step add_cancel_left goal=51 facts=[54]
-    #[55] Suc d * n + r1 = r2
-  cut "Suc d * n <= r2" goal=51
-    #[56] Suc d * n ≤ r2
-  → rewrite_fact eq_sym_eq sym=false goal=56 facts=[55]
-    #[57] r2 = Suc d * n + r1
-  ← rewrite_goal_with_prev goal=56 facts=[57]
-    #[58] Suc d * n ≤ Suc d * n + r1
-  ← apply_backward_step le_add goal=58
-    #[59] Suc d * n ≤ Suc d * n + r1
-  → rewrite_fact nat_times_def_2 sym=false goal=51 facts=[56]
-    #[60] n + d * n ≤ r2
-  ← z3 goal=51 facts=[60,4]
-  ← apply_backward_step conjI goal=5
-    #[61] q1 = q2
-  → rewrite_fact_with_prev goal=61 facts=[6,7]
-    #[62] q1 * n + r2 = q2 * n + r2
-  → apply_forward_step add_cancel_right goal=61 facts=[62]
-    #[63] q1 * n = q2 * n
-  → rewrite_fact eq_mult_rcancel sym=false goal=61 facts=[63]
-    #[64] n = 0 ∨ q1 = q2
-  ← apply_backward_step disjE goal=61 facts=[64]
-    #[65] n = 0 ⟶ q1 = q2
-    #[66] q1 = q2 ⟶ q1 = q2
-  ← introduction goal=65
-    #[67] n = 0
-    #[68] q1 = q2
-  ← z3 goal=68 facts=[67,2]
-    #[69] q1 = q2
-qed
 
 theorem divmod_uniq
   fixes m :: nat, n :: nat, q :: nat, r :: nat
@@ -5286,58 +4666,6 @@ theorem div_le
   fixes m :: nat, n :: nat
   prop m DIV n <= m
   [hint_backward]
-proof
-  ← cases "n=0" goal=0
-    #[1] n = 0 ⟶ m DIV n ≤ m
-    #[2] ¬(n = 0) ⟶ m DIV n ≤ m
-  ← introduction goal=1
-    #[3] n = 0
-    #[4] m DIV n ≤ m
-  ← rewrite_goal_with_prev goal=4 facts=[3]
-    #[5] m DIV 0 ≤ m
-  ← rewrite_goal div_zero sym=false goal=5
-    #[6] 0 ≤ m
-  ← apply_backward_step le_0 goal=6
-    #[7] 0 ≤ m
-  ← introduction goal=2
-    #[8] ¬(n = 0)
-    #[9] m DIV n ≤ m
-  → apply_forward_step division param_m=m goal=9 facts=[8]
-    #[10] m = m DIV n * n + m MOD n ∧ m MOD n < n
-  → apply_forward_step conjD1 goal=9 facts=[10]
-    #[11] m = m DIV n * n + m MOD n
-  ← rewrite_goal_with_prev goal=9 facts=[11]
-    #[12] (m DIV n * n + m MOD n) DIV n ≤ m DIV n * n + m MOD n
-  cut "(m DIV n * n + m MOD n) DIV n = m DIV n" goal=12
-    #[13] (m DIV n * n + m MOD n) DIV n = m DIV n
-  ← rewrite_goal division_simp1 sym=false goal=13
-    #[14] (m DIV n * n + m MOD n) DIV n = m DIV n
-  ← rewrite_goal_with_prev goal=12 facts=[14]
-    #[15] m DIV n ≤ m DIV n * n + m MOD n
-  revert_intro goal=15 facts=[8]
-    #[16] ¬(n = 0) ⟶ m DIV n ≤ m DIV n * n + m MOD n
-  ← induction n nat_induct goal=16
-    #[17] ¬((0::nat) = 0) ⟶ m DIV 0 ≤ m DIV 0 * 0 + m MOD 0
-    #[18] ∀n. (¬(n = 0) ⟶ m DIV n ≤ m DIV n * n + m MOD n) ⟶ ¬(Suc n = 0) ⟶ m DIV Suc n ≤ m DIV Suc n * Suc n + m MOD Suc n
-  ← introduction goal=17
-    #[19] ¬((0::nat) = 0)
-    #[20] m DIV 0 ≤ m DIV 0 * 0 + m MOD 0
-  ← apply_backward_step negE_gen goal=20 facts=[19]
-    #[21] (0::nat) = 0
-  ← apply_backward_step eq_refl goal=21
-    #[22] (0::nat) = 0
-  ← introduction n goal=18
-    #[23] _VAR n
-    #[24] ¬(n = 0) ⟶ m DIV n ≤ m DIV n * n + m MOD n
-    #[25] ¬(Suc n = 0)
-    #[26] m DIV Suc n ≤ m DIV Suc n * Suc n + m MOD Suc n
-  ← rewrite_goal mult_Suc_right sym=false goal=26
-    #[27] m DIV Suc n ≤ m DIV Suc n + m DIV Suc n * n + m MOD Suc n
-  ← rewrite_goal add_assoc sym=false goal=27
-    #[28] m DIV Suc n ≤ m DIV Suc n + (m DIV Suc n * n + m MOD Suc n)
-  ← apply_backward_step le_add goal=28
-    #[29] m DIV Suc n ≤ m DIV Suc n + (m DIV Suc n * n + m MOD Suc n)
-qed
 
 theorem div_mul_le
   fixes m :: nat, n :: nat

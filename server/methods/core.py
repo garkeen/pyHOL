@@ -821,34 +821,6 @@ class introduction(Method):
             state._find_and_close(item.id)
 
 
-@register_method('revert_intro')
-class revert_intro(Method):
-    """Reverse an introduction."""
-    def __init__(self):
-        self.sig = []
-        self.limit = None
-
-    def search(self, state: ProofState, id, prevs):
-        return []
-
-    def display_step(self, state: ProofState, data):
-        return pprint.N("revert intro")
-
-    def apply(self, state: ProofState, id, data, prevs):
-        cur_item = state.get_proof_item(id)
-        assert cur_item.rule == "sorry", "revert intro: id is not a gap"
-
-        assert len(prevs) == 1, "revert intro: prevs must have length one"
-
-        pt = state.get_proof_item(prevs[0])
-        assert pt.rule == 'assume', "revert_intro: prev is not assume"
-        state.set_line(id, 'sorry', th=Thm.implies_intr(pt.th.prop, cur_item.th))
-        item = state.get_proof_item(id.incr_id(1))
-        state.set_line(id.incr_id(1), item.rule, args=item.args,
-                       prevs=[p for p in item.prevs if p != prevs[0]], th=item.th)
-        state.remove_line(prevs[0])
-
-
 @register_method('exists_elim')
 class exists_elim(Method):
     """Make use of an exists fact."""
@@ -1281,33 +1253,6 @@ class eval_method(Method):
         raise AssertionError("eval: unsupported type %s or no evaluator available" % str(T))
 
 
-@register_method('sym')
-class sym_method(Method):
-    """Apply symmetry to an equality goal. If goal is a = b, produces b = a."""
-    def __init__(self):
-        self.sig = []
-        self.limit = None
-
-    def search(self, state, id, prevs):
-        if len(prevs) > 0:
-            return []
-        cur_item = state.get_proof_item(id)
-        if cur_item.th.prop.is_equals():
-            return [{}]
-        return []
-
-    def display_step(self, state, data):
-        return pprint.N("sym")
-
-    def apply(self, state, id, data, prevs):
-        cur_item = state.get_proof_item(id)
-        goal_th = cur_item.th
-        assert goal_th.prop.is_equals(), "sym: goal must be an equality"
-        a, b = goal_th.prop.args
-        new_prop = term.equals(a.get_type())(b, a)
-        state.set_line(id, 'sorry', th=Thm(new_prop, goal_th.hyps))
-
-
 @register_method('reflexive')
 class reflexive_method(Method):
     """Prove an equality goal t = t by reflexivity."""
@@ -1421,50 +1366,6 @@ class fold_method(Method):
         state.apply_tactic(id, tactic.rewrite_goal_with_conv(cv), prevs=prevs)
 
 
-@register_method('thin')
-class thin_method(Method):
-    """Weakening: remove an assumption from the goal.
-
-    If goal is A1, ..., An |- C, thin(i) removes Ai, giving
-    A1, ..., A(i-1), A(i+1), ..., An |- C.
-
-    This works because HOL's proof checker accepts a proof of H |- C
-    as also proving H' |- C when H' is a superset of H (hyps subset
-    semantics in can_prove). We create a sorry with fewer hypotheses,
-    then find_goal locates the original proof which can_prove accepts.
-    """
-    def __init__(self):
-        self.sig = ['index']
-        self.limit = None
-
-    def search(self, state, id, prevs):
-        return []
-
-    def display_step(self, state, data):
-        return pprint.N("thin " + str(data.get('index', '?')))
-
-    def apply(self, state, id, data, prevs):
-        idx = int(data.get('index', 0))
-        cur_item = state.get_proof_item(id)
-        goal_th = cur_item.th
-
-        if idx < 0 or idx >= len(goal_th.hyps):
-            raise AssertionError("thin: index %d out of range (0-%d)" % (idx, len(goal_th.hyps) - 1))
-
-        # Build new theorem with the idx-th hypothesis removed.
-        new_hyps = list(goal_th.hyps)
-        new_hyps.pop(idx)
-        new_th = Thm(goal_th.prop, *new_hyps)
-
-        # Set as sorry, then find an existing proof that can_prove it.
-        # can_prove accepts when the existing proof's hyps are a superset,
-        # so H |- C can prove H\{A} |- C automatically.
-        state.set_line(id, 'sorry', th=new_th)
-        proof_id = state.find_goal(new_th, id)
-        if proof_id is not None:
-            state.replace_id(id, proof_id)
-
-
 @register_method('insert')
 class insert_method(Method):
     """Insert a named theorem as a new line in the proof."""
@@ -1487,50 +1388,12 @@ class insert_method(Method):
         state.set_line(id, 'theorem', args=thm_name, prevs=[])
 
 
-@register_method('drule')
-class drule_method(Method):
-    """Forward reasoning: consume a fact to derive a new fact.
-
-    Given a theorem name and previous facts, applies the theorem in the
-    forward direction. The first fact (prevs[0]) is CONSUMED: its proof
-    line is replaced with the derived result. Use frule to preserve the
-    original fact.
-    """
-    def __init__(self):
-        self.sig = ['theorem']
-        self.limit = None
-
-    def search(self, state, id, prevs):
-        return []
-
-    def display_step(self, state, data):
-        return pprint.N("drule " + data.get('theorem', '?'))
-
-    def apply(self, state, id, data, prevs):
-        thm_name = data.get('theorem')
-        if not thm_name:
-            raise AssertionError("drule: theorem required")
-        if not prevs:
-            raise AssertionError("drule: at least one fact required")
-
-        thm = theory.thy.get_theorem(thm_name)
-        prev_pts = [ProofTerm.atom(p, state.get_proof_item(p).th) for p in prevs]
-        pt = tactic.apply_theorem_forward().get_proof_term(args=thm_name, prevs=prev_pts)
-
-        # drule consumes the first fact: replace the fact line with the result.
-        # This makes the original fact unavailable for later proof steps.
-        fact_id = prevs[0]
-        state.set_line(fact_id, pt.rule, args=pt.args, prevs=prevs, th=pt.th)
-        # Point the goal to reference the new result line
-        state.replace_id(id, fact_id)
-
-
 @register_method('frule')
 class frule_method(Method):
     """Forward reasoning: keep the fact and derive a new fact.
 
     Given a theorem name and previous facts, applies the theorem in the
-    forward direction. Unlike drule, the original facts are PRESERVED:
+    forward direction. The original facts are PRESERVED:
     a new line is inserted with the derived result, and the goal is
     updated to reference it.
     """

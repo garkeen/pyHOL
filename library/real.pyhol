@@ -2337,47 +2337,6 @@ theorem real_pow_lt2
   fixes n :: nat, x :: real, y :: real
   prop 0 <= x --> x < y --> ~(n = 0) --> x ^ n < y ^ n
   [hint_backward,hint_backward1,hint_forward]
-proof
-  ← introduction goal=0
-    #[1] 0 ≤ x
-    #[2] x < y
-    #[3] ¬(n = 0)
-    #[4] x ^ n < y ^ n
-  revert_intro goal=4 facts=[3]
-    #[5] ¬(n = 0) ⟶ x ^ n < y ^ n
-  ← induction n nat_induct goal=5
-    #[6] ¬((0::nat) = 0) ⟶ x ^ (0::nat) < y ^ (0::nat)
-    #[7] ∀n. (¬(n = 0) ⟶ x ^ n < y ^ n) ⟶ ¬(Suc n = 0) ⟶ x ^ Suc n < y ^ Suc n
-  ← z3 goal=6
-    #[8] ¬((0::nat) = 0) ⟶ x ^ (0::nat) < y ^ (0::nat)
-  ← introduction n goal=7
-    #[9] _VAR n
-    #[10] ¬(n = 0) ⟶ x ^ n < y ^ n
-    #[11] ¬(Suc n = 0)
-    #[12] x ^ Suc n < y ^ Suc n
-  ← rewrite_goal real_nat_power_def_2 sym=false goal=12
-    #[13] x * x ^ n < y * y ^ n
-  ← cases "n=0" goal=13
-    #[14] n = 0 ⟶ x * x ^ n < y * y ^ n
-    #[15] ¬(n = 0) ⟶ x * x ^ n < y * y ^ n
-  ← introduction goal=14
-    #[16] n = 0
-    #[17] x * x ^ n < y * y ^ n
-  ← rewrite_goal_with_prev goal=17 facts=[16]
-    #[18] x * x ^ (0::nat) < y * y ^ (0::nat)
-  ← rewrite_goal real_nat_power_def_1 sym=false goal=18
-    #[19] x * 1 < y * 1
-  ← rewrite_goal real_mult_comm sym=false goal=19
-    #[20] 1 * x < 1 * y
-  ← rewrite_goal real_mul_lid sym=false goal=20
-  ← introduction goal=15
-    #[21] x * x ^ n < y * y ^ n
-  ← apply_backward_step real_lt_mul2 goal=21
-    #[22] 0 ≤ x ^ n
-    #[23] x ^ n < y ^ n
-  ← apply_backward_step real_pow_le goal=22
-  ← apply_prev goal=23 facts=[10]
-qed
 
 theorem real_pow_lt_1
   fixes n :: nat, x :: real

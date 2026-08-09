@@ -37,7 +37,7 @@ BACKWARD = {
 }
 FORWARD = {
     'apply_forward_step', 'rewrite_fact', 'rewrite_fact_with_prev',
-    'apply_fact', 'forall_elim', 'drule', 'frule',
+    'apply_fact', 'forall_elim', 'frule',
 }
 
 

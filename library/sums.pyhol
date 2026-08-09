@@ -1271,36 +1271,6 @@ theorem nsum_clauses_right
   fixes f :: nat => nat, m :: nat, n :: nat
   prop 0 < n --> m <= n --> nsum ({m..n}) f = nsum ({m..n - 1}) f + f n
   [hint_backward,hint_backward1]
-proof
-  ← introduction goal=0
-    #[1] 0 < n
-    #[2] m ≤ n
-    #[3] nsum ({m..n}) f = nsum ({m..n - 1}) f + f n
-  revert_intro goal=3 facts=[2]
-    #[4] m ≤ n ⟶ nsum ({m..n}) f = nsum ({m..n - 1}) f + f n
-  revert_intro goal=4 facts=[1]
-  ← induction n nat_induct goal=0
-    #[5] (0::nat) < 0 ⟶ m ≤ 0 ⟶ nsum ({m..0}) f = nsum ({m..0 - 1}) f + f 0
-    #[6] ∀n. (0 < n ⟶ m ≤ n ⟶ nsum ({m..n}) f = nsum ({m..n - 1}) f + f n) ⟶ 0 < Suc n ⟶ m ≤ Suc n ⟶ nsum ({m..Suc n}) f = nsum ({m..Suc n - 1}) f + f (Suc n)
-  ← introduction goal=5
-    #[7] (0::nat) < 0
-    #[8] m ≤ 0
-    #[9] nsum ({m..0}) f = nsum ({m..0 - 1}) f + f 0
-  ← z3 goal=9 facts=[7]
-    #[10] nsum ({m..0}) f = nsum ({m..0 - 1}) f + f 0
-  ← introduction n goal=6
-    #[11] _VAR n
-    #[12] 0 < n ⟶ m ≤ n ⟶ nsum ({m..n}) f = nsum ({m..n - 1}) f + f n
-    #[13] 0 < Suc n
-    #[14] m ≤ Suc n
-    #[15] nsum ({m..Suc n}) f = nsum ({m..Suc n - 1}) f + f (Suc n)
-  ← rewrite_goal suc_sub1 sym=false goal=15
-    #[16] nsum ({m..Suc n}) f = nsum ({m..n}) f + f (Suc n)
-  ← rewrite_goal nsum_Suc_natseg sym=false goal=16
-    #[17] (if m ≤ Suc n then nsum ({m..n}) f + f (Suc n) else nsum ({m..n}) f) = nsum ({m..n}) f + f (Suc n)
-  ← rewrite_goal if_P sym=false goal=17 facts=[14]
-    #[18] (if m ≤ Suc n then nsum ({m..n}) f + f (Suc n) else nsum ({m..n}) f) = nsum ({m..n}) f + f (Suc n)
-qed
 
 theorem nsum_pair
   fixes f :: nat => nat, m :: nat, n :: nat
@@ -2942,36 +2912,6 @@ theorem sum_clauses_right
   fixes f :: nat => real, m :: nat, n :: nat
   prop 0 < n --> m <= n --> sum ({m..n}) f = sum ({m..n - 1}) f + f n
   [hint_backward,hint_backward1]
-proof
-  ← introduction goal=0
-    #[1] 0 < n
-    #[2] m ≤ n
-    #[3] sum ({m..n}) f = sum ({m..n - 1}) f + f n
-  revert_intro goal=3 facts=[2]
-    #[4] m ≤ n ⟶ sum ({m..n}) f = sum ({m..n - 1}) f + f n
-  revert_intro goal=4 facts=[1]
-  ← induction n nat_induct goal=0
-    #[5] (0::nat) < 0 ⟶ m ≤ 0 ⟶ sum ({m..0}) f = sum ({m..0 - 1}) f + f 0
-    #[6] ∀n. (0 < n ⟶ m ≤ n ⟶ sum ({m..n}) f = sum ({m..n - 1}) f + f n) ⟶ 0 < Suc n ⟶ m ≤ Suc n ⟶ sum ({m..Suc n}) f = sum ({m..Suc n - 1}) f + f (Suc n)
-  ← introduction goal=5
-    #[7] (0::nat) < 0
-    #[8] m ≤ 0
-    #[9] sum ({m..0}) f = sum ({m..0 - 1}) f + f 0
-  ← z3 goal=9 facts=[7]
-    #[10] sum ({m..0}) f = sum ({m..0 - 1}) f + f 0
-  ← introduction n goal=6
-    #[11] _VAR n
-    #[12] 0 < n ⟶ m ≤ n ⟶ sum ({m..n}) f = sum ({m..n - 1}) f + f n
-    #[13] 0 < Suc n
-    #[14] m ≤ Suc n
-    #[15] sum ({m..Suc n}) f = sum ({m..Suc n - 1}) f + f (Suc n)
-  ← rewrite_goal suc_sub1 sym=false goal=15
-    #[16] sum ({m..Suc n}) f = sum ({m..n}) f + f (Suc n)
-  ← rewrite_goal sum_Suc_natseg sym=false goal=16
-    #[17] (if m ≤ Suc n then sum ({m..n}) f + f (Suc n) else sum ({m..n}) f) = sum ({m..n}) f + f (Suc n)
-  ← rewrite_goal if_P sym=false goal=17 facts=[14]
-    #[18] (if m ≤ Suc n then sum ({m..n}) f + f (Suc n) else sum ({m..n}) f) = sum ({m..n}) f + f (Suc n)
-qed
 
 theorem sum_pair
   fixes f :: nat => real, m :: nat, n :: nat
