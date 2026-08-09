@@ -3,15 +3,8 @@
     <!-- Top menu bar -->
     <nav class="navbar navbar-expand navbar-dark bg-dark">
       <div class="container-fluid">
-        <span class="navbar-brand">HOLPy</span>
+        <span class="navbar-brand" style="padding-left: 44px">HOLPy</span>
         <div class="navbar-nav">
-          <div class="nav-item d-flex align-items-center me-2">
-            <select class="form-select form-select-sm file-select" :value="filename" @change="open_file($event.target.value)">
-              <option value="">-- file --</option>
-              <option v-for="f in filelist" :key="f" :value="f">{{ f }}</option>
-            </select>
-          </div>
-          <button class="btn btn-sm btn-outline-light ms-1" @click="create_file">New</button>
           <div class="nav-item dropdown" v-if="theory">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Items</a>
             <ul class="dropdown-menu">
@@ -37,6 +30,17 @@
 
     <!-- Main content -->
     <div class="main-content" :class="{'proving-mode': proving >= 0}">
+      <!-- Collapsible sidebar: file selection and management -->
+      <FileSidebar
+        title="Theory Files"
+        :files="filelist"
+        :active="filename"
+        :show-create="true"
+        @open="open_file"
+        @create="create_file"
+        @rename="rename_file"
+        @delete="delete_file"/>
+
       <!-- Theory list (full width when not proving, 30% when proving) -->
       <div class="theory-panel">
         <div v-if="loading" class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
@@ -45,7 +49,6 @@
           <!-- File header -->
           <div class="file-header">
             <div class="file-header-row">
-              <button class="btn btn-sm btn-danger" @click="delete_file">Delete File</button>
               <button class="btn btn-sm btn-primary" @click="validate_all(false)">Validate All</button>
               <button class="btn btn-sm btn-warning" @click="validate_all(true)" title="Ignore cache, re-validate everything">Force Validate</button>
             </div>
@@ -219,6 +222,7 @@ import HeaderEdit from '../components/items/HeaderEdit.vue'
 import AxTypeEdit from '../components/items/AxTypeEdit.vue'
 import ProofArea from '../components/proof/ProofArea.vue'
 import ProofQuery from '../components/proof/ProofQuery.vue'
+import FileSidebar from '../components/FileSidebar.vue'
 
 // ==================== State ====================
 const filelist = ref([])
@@ -353,13 +357,36 @@ const create_file = async () => {
   }
 }
 
-const delete_file = async () => {
-  if (!filename.value) return
-  if (!confirm(`Delete file "${filename.value}"? This cannot be undone.`)) return
+const rename_file = async (oldName) => {
+  if (!oldName) return
+  const newName = prompt(`Rename file "${oldName}" to:`, oldName)
+  if (!newName || newName === oldName) return
   try {
-    await api.put('/remove-file', { filename: filename.value })
-    filename.value = null
-    theory.value = null
+    const res = await api.post('/rename-file', { old: oldName, new: newName })
+    if (!res.data.ok) {
+      toast({ type: 'error', data: res.data.error || 'Rename failed' })
+      return
+    }
+    await load_files()
+    if (filename.value === oldName) {
+      await open_file(newName)
+    }
+    toast({ type: 'OK', data: `Renamed to ${newName}` })
+  } catch (e) {
+    toast({ type: 'error', data: 'Rename failed' })
+  }
+}
+
+const delete_file = async (name = null) => {
+  const target = name || filename.value
+  if (!target) return
+  if (!confirm(`Delete file "${target}"? This cannot be undone.`)) return
+  try {
+    await api.put('/remove-file', { filename: target })
+    if (target === filename.value) {
+      filename.value = null
+      theory.value = null
+    }
     await load_files()
     toast({ type: 'OK', data: 'File deleted' })
   } catch (e) {

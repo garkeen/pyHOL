@@ -3,17 +3,23 @@
     <!-- Top bar -->
     <nav class="navbar navbar-expand navbar-dark bg-dark">
       <div class="container-fluid">
-        <span class="navbar-brand">Program IDE</span>
-        <select class="form-select form-select-sm file-select" :value="current" @change="load_file($event.target.value)">
-          <option value="">-- file --</option>
-          <option v-for="f in files" :key="f.name" :value="f.name">{{ f.name }}</option>
-        </select>
-        <button class="btn btn-sm btn-outline-light ms-1" @click="new_file">New</button>
+        <span class="navbar-brand" style="padding-left: 44px">Program IDE</span>
         <span v-if="status_msg" class="text-light ms-2" :class="status_err ? 'text-danger' : 'text-success'">{{ status_msg }}</span>
       </div>
     </nav>
 
     <div class="main-content" :class="{'proving-mode': proving}">
+      <!-- Collapsible sidebar: file selection and management -->
+      <FileSidebar
+        title="Program Files"
+        :files="files.map(f => f.name)"
+        :active="current"
+        :show-create="true"
+        @open="load_file"
+        @create="new_file"
+        @rename="rename_file"
+        @delete="delete_file"/>
+
       <!-- Program panel -->
       <div class="program-panel">
         <div v-if="!current" class="empty-state"><p>Select or create a file</p></div>
@@ -133,6 +139,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '../api'
 import ProofArea from '../components/proof/ProofArea.vue'
 import ProofQuery from '../components/proof/ProofQuery.vue'
+import FileSidebar from '../components/FileSidebar.vue'
 
 const files = ref([])
 const current = ref('')
@@ -213,6 +220,44 @@ const new_file = async () => {
   current.value = name
   await verify_all()
   await load_files()
+}
+
+const rename_file = async (oldName) => {
+  if (!oldName) return
+  const newName = prompt(`Rename file "${oldName}" to:`, oldName)
+  if (!newName || newName === oldName) return
+  try {
+    const res = await api.post('/rename-file', { old: oldName, new: newName })
+    if (!res.data.ok) {
+      toast({ type: 'error', data: res.data.error || 'Rename failed' })
+      return
+    }
+    await load_files()
+    if (current.value === oldName) {
+      await load_file(newName)
+    }
+    toast({ type: 'OK', data: `Renamed to ${newName}` })
+  } catch (e) {
+    toast({ type: 'error', data: 'Rename failed' })
+  }
+}
+
+const delete_file = async (name) => {
+  if (!name) return
+  if (!confirm(`Delete file "${name}"? This cannot be undone.`)) return
+  try {
+    await api.put('/remove-file', { filename: name })
+    await load_files()
+    if (current.value === name) {
+      current.value = ''
+      programs.value = []
+      vcs.value = []
+      proving.value = false
+    }
+    toast({ type: 'OK', data: 'File deleted' })
+  } catch (e) {
+    toast({ type: 'error', data: 'Failed to delete file' })
+  }
 }
 
 const toggle_edit = (idx) => {

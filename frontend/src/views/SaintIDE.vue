@@ -1,20 +1,21 @@
 <template>
   <div class="saint-container">
     <nav class="navbar navbar-dark bg-dark">
-      <span class="navbar-brand">SAINT</span>
+      <span class="navbar-brand" style="padding-left: 44px">SAINT</span>
       <span class="text-light small">{{ currentFile || 'Interactive Integral CAS' }}</span>
       <button v-if="dirty" class="btn btn-warning btn-sm ms-2" @click="saveFile">Save</button>
     </nav>
     <div class="saint-body">
-      <!-- Left: file list -->
-      <div class="saint-files">
-        <h6>Files</h6>
-        <ul class="file-list">
-          <li v-for="f in files" :key="f" @click="openFile(f)" :class="{active: currentFile === f}">{{ f }}</li>
-        </ul>
-      </div>
+      <!-- Collapsible sidebar: file selection -->
+      <FileSidebar
+        title="SAINT Files"
+        :files="files"
+        :active="currentFile"
+        @open="openFile"
+        @rename="renameFile"
+        @delete="deleteFile"/>
 
-      <!-- Right: items or calculation -->
+      <!-- Main content: items or calculation -->
       <div class="saint-main">
         <!-- Calculation workspace -->
         <div v-if="computing" class="calc-workspace">
@@ -153,6 +154,7 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '../api'
 import MathEquation from '../components/util/MathEquation.vue'
+import FileSidebar from '../components/FileSidebar.vue'
 
 const RULES = [
   { name: 'simplify', label: 'Simplify', params: [] },
@@ -234,6 +236,46 @@ async function openFile(name) {
   editIdx.value = -1
   const res = await api.post('/saint/load', { filename: name })
   fileItems.value = res.data.items
+}
+
+async function refreshFileList() {
+  const res = await api.post('/saint/files')
+  files.value = res.data.files
+  if (!currentFile.value) return
+  if (!files.value.includes(currentFile.value)) {
+    currentFile.value = ''
+    fileItems.value = []
+    computing.value = false
+  }
+}
+
+async function renameFile(oldName) {
+  const newName = prompt(`Rename file "${oldName}" to:`, oldName)
+  if (!newName || newName === oldName) return
+  try {
+    const res = await api.post('/rename-file', { old: oldName, new: newName })
+    if (!res.data.ok) {
+      console.error('Rename failed:', res.data.error)
+      return
+    }
+    await refreshFileList()
+    if (currentFile.value === oldName) {
+      await openFile(newName)
+    }
+  } catch (e) { console.error('Rename:', e) }
+}
+
+async function deleteFile(name) {
+  if (!confirm(`Delete file "${name}"? This cannot be undone.`)) return
+  try {
+    await api.put('/remove-file', { filename: name })
+    await refreshFileList()
+    if (currentFile.value === name) {
+      currentFile.value = ''
+      fileItems.value = []
+      computing.value = false
+    }
+  } catch (e) { console.error('Delete:', e) }
 }
 
 // Item editing

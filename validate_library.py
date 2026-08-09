@@ -1,4 +1,15 @@
-"""Validate library theorems using the unified validate_theory function."""
+"""
+Every time you motherfucker run all the library test wastes lot of time!!!!!
+Its expensive!!!!!
+Don't fucking run this code without the permission of the user!!!!!!
+"""
+
+
+"""
+Validate library theorems using the unified validate_theory function.
+"""
+
+
 
 import sys
 import os

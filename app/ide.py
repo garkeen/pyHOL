@@ -238,25 +238,94 @@ def check_modify():
     })
 
 
+def _resolve_file_path(filename, require_exists=True):
+    """Resolve a filename to an absolute path, dispatching on its extension.
+
+    Names may or may not carry an extension:
+    * .pyhol / .json (or bare): theory files managed by logic.basic.
+    * .imp (or bare): imperative program files under imperative/programs.
+    * .calc (or bare, possibly with subdirectory): SAINT examples.
+
+    With require_exists=False, returns the first plausible path even if
+    the file does not exist yet (used when computing the target of a
+    rename). Returns None if no candidate matches.
+
+    """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    candidates = []
+    if filename.endswith(('.pyhol', '.json')):
+        candidates.append(basic.user_file(filename))
+    elif filename.endswith('.imp'):
+        candidates.append(os.path.join(base_dir, 'imperative', 'programs', filename))
+    elif filename.endswith('.calc'):
+        candidates.append(os.path.join(base_dir, 'SAINT', 'examples', filename))
+    else:
+        # Bare name: could be a theory, an .imp program, or a .calc example.
+        candidates.append(basic.user_file(filename))
+        candidates.append(os.path.join(base_dir, 'imperative', 'programs', filename + '.imp'))
+        candidates.append(os.path.join(base_dir, 'SAINT', 'examples', filename + '.calc'))
+    for candidate in candidates:
+        if require_exists and not os.path.exists(candidate):
+            continue
+        return candidate
+    return None
+
+
 @app.route('/api/remove-file', methods=['PUT'])
 def remove_file():
     """Remove file with the given name.
-    
+
     Input:
     * filename: name of the file.
 
     """
     data = json.loads(request.get_data().decode("utf-8"))
     filename = data['filename']
-    filepath = basic.user_file(filename)
-    if os.path.exists(filepath):
+
+    filepath = _resolve_file_path(filename)
+    if filepath and os.path.exists(filepath):
         os.remove(filepath)
 
-    # Invalidate cache
+    # Invalidate cache for theory files
     if filename in basic.theory_cache:
         del basic.theory_cache[filename]
 
     return jsonify({})
+
+
+@app.route('/api/rename-file', methods=['POST'])
+def rename_file():
+    """Rename file from old name to new name.
+
+    Input:
+    * old: current name of the file.
+    * new: new name of the file.
+    * overwrite: (optional) whether overwriting an existing file is allowed.
+
+    """
+    data = json.loads(request.get_data().decode("utf-8"))
+    old = data['old']
+    new = data['new']
+
+    if not old or not new:
+        return jsonify({'ok': False, 'error': 'old and new names are required'})
+
+    old_path = _resolve_file_path(old)
+    new_path = _resolve_file_path(new, require_exists=False)
+    if not old_path or not new_path:
+        return jsonify({'ok': False, 'error': 'unsupported file type'})
+    if not os.path.exists(old_path):
+        return jsonify({'ok': False, 'error': 'file not found: %s' % old})
+    if os.path.exists(new_path) and not data.get('overwrite'):
+        return jsonify({'ok': False, 'error': 'file already exists: %s' % new})
+
+    os.rename(old_path, new_path)
+
+    # Invalidate theory cache for the old name
+    if old in basic.theory_cache:
+        del basic.theory_cache[old]
+
+    return jsonify({'ok': True})
 
 
 @app.route('/api/find-link', methods=['POST'])
