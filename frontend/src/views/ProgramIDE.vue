@@ -572,10 +572,10 @@ onMounted(async () => {
   border: none; outline: none; resize: none;
 }
 .code-input::selection { background: rgba(26, 115, 232, 0.25); color: transparent; }
-.tok-com { color: #6a737d; font-style: italic; }
-.tok-num { color: #b35900; }
-.tok-kw { color: #0550ae; font-weight: 600; }
-.tok-op { color: #a626a4; }
+.code-hl :deep(.tok-com) { color: #6a737d; font-style: italic; }
+.code-hl :deep(.tok-num) { color: #b35900; }
+.code-hl :deep(.tok-kw) { color: #0550ae; font-weight: 600; }
+.code-hl :deep(.tok-op) { color: #a626a4; }
 
 .edit-actions { display: flex; gap: 8px; margin-top: 12px; }
 
