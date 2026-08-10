@@ -74,8 +74,10 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 - **A 策略路径**：`apply_backward_step` / `introduction` / `cases` / `rewrite_goal` / `induction` / ...
 - **B 可信宏求值**：`norm` / `eval` / `linarith`
-- **C 宏直接路径**：`apply_forward_step` / `rewrite_fact` / `apply_fact` / `drule` / `frule`
-- **D 直接操作**：`cut` / `new_var` / `thin` / `insert` / `sym` / `exists_elim`
+- **C 正向路径**：`apply_forward_step` / `rewrite_fact` / `apply_fact` / `frule` / `forall_elim`
+- **D 直接操作**：`cut` / `new_var` / `insert` / `exists_elim` / `z3`
+
+> 行不可变：fact/goal 生成后不可改写，已移除 `thin` / `sym` / `revert_intro` / `drule` 等行改写方法。
 
 ### 属性
 

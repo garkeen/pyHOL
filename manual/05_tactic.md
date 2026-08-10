@@ -46,6 +46,7 @@ class Tactic:
 | `reflexive()` | - | 0 | 证明 `t = t` |
 | `equal_intr()` | - | 2 | 证明 `A = B`，拆为 `A⟶B` 与 `B⟶A` |
 | `trivial()` | - | 0 | 探测 trivial 目标（`A_1 ⟶ … ⟶ A_n ⟶ B` 其中 `B` 与某 `A_i` 相同）；构造失败则抛异常 |
+| `accept()` | `th_name` | 0 | 直接用定理关闭目标：结论一阶匹配 goal，前提逐一匹配 goal 的假设；不产 sorry（HOL Light `MATCH_ACCEPT_TAC` 对应） |
 
 ### rule 详解
 

@@ -98,14 +98,16 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 | 模块 | 职责 |
 |---|---|
-| `prover/auto/auto.py` | best-first search 自动证明 |
-| `prover/omega.py` | 自然数线性算术 |
+| `prover/omega.py` | 自然数线性算术（Omega Test 决策过程） |
 | `prover/simplex.py` / `simplex_strict.py` | Simplex 算法（实数/整数） |
 | `prover/tseitin.py` | Tseitin 编码（命题公式 -> CNF） |
-| `prover/sat/zchaff.py` | DPLL SAT 求解 |
+| `prover/sat.py` | DPLL SAT 求解（单文件） |
+| `prover/congc.py` | 同余闭包（congruence closure）算法 |
+| `prover/sympywrapper.py` | 用 sympy solveset 判定区间上的实数不等式 |
 | `prover/proofrec.py` | Z3 proof reconstruction |
 | `prover/fologic.py` | 一阶逻辑简化 |
-| `smt/veriT/` | veriT SMT 集成 |
+
+> `sat/` 与 `smt/`（veriT 集成）已移除；自动证明的 best-first 搜索在 `logic/auto.py`（见 §4.1）。
 
 ### 4.4 方法层自动化
 
@@ -208,9 +210,7 @@ SAINT（`SAINT/`）是与 HOL 内核**互相独立**的符号计算 CAS，专精
 | `domains/` | 领域扩展包（nat/real/integer/function/expr） |
 | `server/` | 方法层与证明状态（ProofState/Method/Items/Monitor） |
 | `syntax/` | 解析、打印、设置、`.pyhol` 格式 |
-| `prover/` | 外部求解器与自动证明（Z3/Omega/Simplex/Tseitin/SAT/Auto） |
-| `smt/` | SMT 集成（veriT） |
-| `sat/` | SAT 求解器 |
+| `prover/` | 外部求解器与自动证明（Z3/Omega/Simplex/Tseitin/SAT/Congc/Sympy） |
 | `app/` | Flask 后端 API |
 | `frontend/` | Vue 3 前端 |
 | `library/` | 理论库（`.pyhol` 文件） |

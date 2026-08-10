@@ -77,13 +77,15 @@ method.apply -> tactic.X_forward().get_proof_term(args, prevs) -> ProofTerm
 ```
 正向方法不走 `apply_tactic`（那需要 sorry goal），而是直接调正向策略获取 ProofTerm，再手动插入新行。推理（匹配、效果检查）在策略层完成。
 
-典型：`apply_forward_step`、`rewrite_fact`、`rewrite_fact_with_prev`、`apply_fact`、`forall_elim`、`drule`、`frule`。
+典型：`apply_forward_step`、`rewrite_fact`、`rewrite_fact_with_prev`、`apply_fact`、`forall_elim`、`frule`。
 
 ### 模式 D：直接操作
 ```
 method.apply -> state.set_line(rule, args, prevs, th)
 ```
-典型：`cut`、`new_var`、`thin`、`insert`、`sym`、`revert_intro`、`exists_elim`。
+典型：`cut`、`new_var`、`insert`、`exists_elim`、`z3`。
+
+> **行不可变约束**：已删除所有"改写已有行"的方法（`thin` / `sym` / `revert_intro` / `drule`）。fact 与 goal 一旦生成不可变：向后推理通过证明项展开覆盖 goal 行、以新 sorry 行产生子目标；正向推理只插入新事实行。`add_line_before` / `remove_line` / `replace_id` / `set_line` 仍在底层保留，但只用于 IDE 结构性编辑与上述路径，不用于改写已存在行的命题。
 
 
 ## 4. 方法目录
@@ -102,24 +104,21 @@ method.apply -> state.set_line(rule, args, prevs, th)
 | `apply_forward_step` | `[theorem]` | C | 向前应用定理推新事实 |
 | `apply_backward_step` | `[theorem]` | A | **最常用**：向后应用定理分解目标 |
 | `apply_resolve_step` | `[theorem]` | A | 消解（`~A` + `A` -> 任意目标） |
+| `accept` | `[theorem]` | A | 直接用定理关闭：结论匹配 goal、前提匹配假设，无子目标 |
+| `call_tactic` | `[tactic_name]` | A | 逃生舱：按名直接调用策略（rule/rewrite_goal/apply_prev/intros/assumption/resolve/cases） |
 | `introduction` | `[names]` | A | 引入变量与假设 |
-| `revert_intro` | `[]` | D | 撤销引入 |
 | `exists_elim` | `[names]` | D | 消除存在量词事实 |
 | `forall_elim` | `[s]` | C | 实例化全称量词 |
 | `inst_exists_goal` | `[s]` | A | 用见证实例化存在目标 |
 | `induction` | `[theorem, var]` | A | 结构归纳 |
 | `new_var` | `[name, type]` | D | 声明新变量 |
 | `apply_fact` | `[]` | C | 应用 forall/implies 事实 |
-| `sym` | `[]` | D | 翻转等式 `a=b -> b=a` |
 | `reflexive` | `[]` | A | 证明 `t = t` |
 | `equal_intr` | `[]` | A | 证明 `A = B`（拆两个方向） |
-| `prove_avalI` | `[s]` | A | 证明数组访问 `avalI s i v` |
 | `subst` | `[theorem]` | A | 用等式替换（`top_sweep_conv`） |
 | `unfold` | `[theorem]` | A | 展开定义（`top_conv` + β） |
 | `fold` | `[theorem]` | A | 折叠定义（反向 `top_conv`） |
-| `thin` | `[index]` | D | 删除假设（weakening，子集语义） |
 | `insert` | `[theorem]` | D | 插入定理作为新行 |
-| `drule` | `[theorem]` | C | 向前推理，**消耗**首个 fact |
 | `frule` | `[theorem]` | C | 向前推理，**保留**所有 fact |
 
 ### 4.2 自动化方法
@@ -130,8 +129,11 @@ method.apply -> state.set_line(rule, args, prevs, th)
 | `norm` | B | 归一化，按类型选 nat/real |
 | `eval` | B | 计算，按类型选 nat/int/real |
 | `linarith` | B | 线性算术，按类型选 nat/real/int |
-| `z3` | C | Z3 SMT 求解器（oracle） |
+| `eval_Sem` | B | 计算命令式程序小步语义 `Sem com st st2`（imperative） |
+| `z3` | D | Z3 SMT 求解器（oracle 宏行，直接 `set_line`） |
 | `vcg` | A | Hoare 逻辑 VCG：将 `Valid P c Q` 分解为验证条件子目标 |
+
+领域包还直接注册了无参宏方法（模式 B，`MacroTactic` 包装）：`nat_norm`、`real_norm`、`nat_const_ineq`（nat 常量不等式）、`prove_avalI`（数组访问求值）。
 
 ## 5. 属性系统
 
