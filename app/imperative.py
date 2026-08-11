@@ -13,9 +13,7 @@ from app.app import app
 
 def _programs_dir():
     """Directory containing .imp files."""
-    import os
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base_dir, 'imperative', 'programs')
+    return basic.program_dir()
 
 
 
@@ -100,8 +98,9 @@ def imp_compile():
     * name: name of the program.
     * text: (optional) updated .imp text to save.
 
-    Compiles to library/<name>.pyhol, returns the verification
-    conditions (from the kernel vcg) together with their z3 verdict.
+    Compiles to imperative/programs/<name>.pyhol (never library/),
+    returns the verification conditions (from the kernel vcg)
+    together with their z3 verdict.
 
     Returns:
     * ok: whether the compilation succeeded.
@@ -137,9 +136,10 @@ def imp_compile():
         with open(pyhol_path, 'w', encoding='utf-8') as f:
             f.write(pyhol)
 
-        # Refresh metadata so that newly written files are visible to
-        # load-json-file / validate-theory immediately.
-        basic.load_metadata()
+        # Refresh metadata so that the generated file is visible to
+        # load-json-file / validate-theory immediately, without
+        # polluting the main IDE's library file list.
+        basic.inject_program_metadata(name)
     except Exception as e:
         return jsonify({'ok': False, 'error': '%s: %s' % (e.__class__.__name__, str(e))})
 

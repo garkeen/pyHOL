@@ -187,7 +187,7 @@ def save_file():
     filename = data['filename']
 
     s = pyhol.export_pyhol(data['content'])
-    with open(basic.user_file(filename), 'w+', encoding='utf-8') as f:
+    with open(basic.save_user_file(filename), 'w+', encoding='utf-8') as f:
         f.write(s)
 
     # Invalidate cache for this file

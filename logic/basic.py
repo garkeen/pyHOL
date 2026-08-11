@@ -38,11 +38,22 @@ item_index = dict()
 dirname = os.path.dirname(__file__)
 
 def _lib_dirs():
-    """All directories that may contain .pyhol theory files (search order)."""
+    """Directories holding hand-written theory files (search order).
+
+    Deliberately excludes imperative/programs/: auto-generated .pyhol
+    from program verification must stay isolated from the main IDE and
+    from library validation.  They are only reachable on demand through
+    program_dir() (see inject_program_metadata / save_user_file).
+    """
     return [
         os.path.join(dirname, '../library/'),
-        os.path.join(dirname, '../imperative/programs/'),
     ]
+
+def program_dir():
+    """Directory holding imperative program sources (.imp) and their
+    auto-generated verification .pyhol.  Nothing here is part of the
+    theory library or shown by the main IDE."""
+    return os.path.join(dirname, '../imperative/programs/')
 
 def user_dir():
     """Returns the primary library directory (backward compat)."""
@@ -51,14 +62,45 @@ def user_dir():
 def user_file(filename):
     """Return pyhol file path for the given theory name.
 
-    Searches library/ first, then imperative/programs/.  If the file
-    does not exist yet, defaults to library/ (for new file creation).
+    Searches library/ first, then imperative/programs/ (so the program
+    IDE can load auto-generated .pyhol).  If the file does not exist
+    yet, defaults to library/ (for new file creation).
     """
-    for d in _lib_dirs():
+    for d in _lib_dirs() + [program_dir()]:
         path = os.path.join(d, filename + '.pyhol')
         if os.path.exists(path):
             return path
     return os.path.join(dirname, '../library/' + filename + '.pyhol')
+
+def save_user_file(filename):
+    """Return the write path for the given theory name.
+
+    Auto-generated program .pyhol must never land in library/: if a
+    matching file already exists in imperative/programs/ (or the
+    corresponding .imp program exists), the write goes there.  Only
+    genuinely new files fall back to library/.
+    """
+    prog_path = os.path.join(program_dir(), filename + '.pyhol')
+    if os.path.exists(prog_path) or os.path.exists(prog_path[:-6] + '.imp'):
+        return prog_path
+    return user_file(filename)
+
+def inject_program_metadata(filename):
+    """Register metadata for an imperative/programs .pyhol on demand.
+
+    Keeps auto-generated program theories out of load_metadata() (and
+    therefore out of the main IDE file list and library validation),
+    while still allowing the program IDE to load and prove them
+    through the regular theory-cache APIs.
+    """
+    path = os.path.join(program_dir(), filename + '.pyhol')
+    if os.path.exists(path) and filename not in theory_cache:
+        data = load_pyhol_data(filename)
+        theory_cache[filename] = {
+            'imports': data['imports'],
+            'domains': data.get('domains', []),
+            'description': data['description']
+        }
 
 def status_cache_file(filename):
     """Return .json cache path, next to the .pyhol source."""
@@ -182,6 +224,11 @@ def load_theory_cache(filename):
     """
     if not theory_cache:
         load_metadata()
+
+    if filename not in theory_cache:
+        inject_program_metadata(filename)
+    if filename not in theory_cache:
+        raise TheoryException("theory %s not found (not in library/ or imperative/programs/)" % filename)
 
     cache = theory_cache[filename]
     timestamp = os.path.getmtime(user_file(filename))

@@ -142,7 +142,7 @@ def check_theory(filename, rewrite=False):
 
     if rewrite:
         data['content'] = content
-        with open(basic.user_file(filename), 'w+', encoding='utf-8') as f:
+        with open(basic.save_user_file(filename), 'w+', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False, sort_keys=True)
 
     stat['exec_time'] = time.perf_counter() - start_time

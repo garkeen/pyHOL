@@ -16,15 +16,40 @@ from logic import basic, context
 from server.stable_state import StableProofState, BACKWARD, FORWARD
 
 
-def _load_theory(thy_name, thm_name, vars):
-    """Set up theory context for proof operations."""
+def _load_theory(thy_name, thm_name, prop, vars):
+    """Set up theory context for proof operations.
+
+    Returns the canonical (prop, vars) for StableProofState.create.
+
+    The display format served by load-json-file is NOT valid proof
+    input: when the proposition exceeds line_length, its prop field is
+    a list of wrapped display lines, so feeding it back to
+    init-saved-proof fails with 'Thm expects Term but got list' even
+    though the same proof validates fine (validation reads .pyhol
+    directly).  Prefer the parsed item from the theory cache whenever
+    possible, and only fall back to the client-supplied input.
+    """
     if thm_name:
         try:
-            context.set_context(thy_name, limit=('thm', thm_name), vars=vars)
-            return
+            cache = basic.load_theory_cache(thy_name)
+            item = None
+            for it in cache['content']:
+                if it.ty == 'thm' and it.name == thm_name and it.error is None:
+                    item = it
+                    break
+            if item is not None:
+                vars = dict(item.vars)
+                try:
+                    context.set_context(thy_name, limit=('thm', thm_name), vars=vars)
+                    return item.prop, vars
+                except TheoryException:
+                    pass
         except TheoryException:
             pass
     context.set_context(thy_name, vars=vars)
+    if isinstance(prop, list):
+        prop = ' '.join(str(line) for line in prop)
+    return prop, vars
 
 
 @app.route('/api/v2/init-saved-proof', methods=['POST'])
@@ -45,8 +70,9 @@ def v2_init_saved_proof():
 
     with theory.fresh_theory():
         try:
-            _load_theory(data['theory_name'], data.get('thm_name'), data.get('vars', {}))
-            sps = StableProofState.create(data['prop'], data.get('vars', {}))
+            prop, vars = _load_theory(data['theory_name'], data.get('thm_name'),
+                                      data.get('prop'), data.get('vars', {}))
+            sps = StableProofState.create(prop, vars)
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
@@ -91,8 +117,9 @@ def v2_apply_method():
 
     with theory.fresh_theory():
         try:
-            _load_theory(data['theory_name'], data.get('thm_name'), data.get('vars', {}))
-            sps = StableProofState.create(data['prop'], data.get('vars', {}))
+            prop, vars = _load_theory(data['theory_name'], data.get('thm_name'),
+                                      data.get('prop'), data.get('vars', {}))
+            sps = StableProofState.create(prop, vars)
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
@@ -120,7 +147,7 @@ def v2_apply_method():
             # Check if it's a parameter query
             try:
                 # Re-apply to catch the exception
-                sps2 = StableProofState.create(data['prop'], data.get('vars', {}))
+                sps2 = StableProofState.create(prop, vars)
                 for s in steps[:index]:
                     sps2.apply_method_dict(s)
                 pos2sid = sps2._build_pos2sid()
@@ -162,8 +189,9 @@ def v2_backward_search():
 
     with theory.fresh_theory():
         try:
-            _load_theory(data['theory_name'], data.get('thm_name'), data.get('vars', {}))
-            sps = StableProofState.create(data['prop'], data.get('vars', {}))
+            prop, vars = _load_theory(data['theory_name'], data.get('thm_name'),
+                                      data.get('prop'), data.get('vars', {}))
+            sps = StableProofState.create(prop, vars)
             for step in data.get('steps', [])[:data.get('index', 0)]:
                 sps.apply_method_dict(step)
         except Exception as e:
@@ -186,8 +214,9 @@ def v2_forward_search():
 
     with theory.fresh_theory():
         try:
-            _load_theory(data['theory_name'], data.get('thm_name'), data.get('vars', {}))
-            sps = StableProofState.create(data['prop'], data.get('vars', {}))
+            prop, vars = _load_theory(data['theory_name'], data.get('thm_name'),
+                                      data.get('prop'), data.get('vars', {}))
+            sps = StableProofState.create(prop, vars)
             for step in data.get('steps', [])[:data.get('index', 0)]:
                 sps.apply_method_dict(step)
         except Exception as e:
