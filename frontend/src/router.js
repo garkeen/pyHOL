@@ -12,11 +12,6 @@ const routes = [
     component: () => import('./views/Editor.vue')
   },
   {
-    path: '/saint',
-    name: 'saint',
-    component: () => import('./views/SaintIDE.vue')
-  },
-  {
     path: '/program',
     name: 'program',
     component: () => import('./views/ProgramIDE.vue')

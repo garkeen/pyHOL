@@ -244,7 +244,6 @@ def _resolve_file_path(filename, require_exists=True):
     Names may or may not carry an extension:
     * .pyhol / .json (or bare): theory files managed by logic.basic.
     * .imp (or bare): imperative program files under imperative/programs.
-    * .calc (or bare, possibly with subdirectory): SAINT examples.
 
     With require_exists=False, returns the first plausible path even if
     the file does not exist yet (used when computing the target of a
@@ -257,13 +256,10 @@ def _resolve_file_path(filename, require_exists=True):
         candidates.append(basic.user_file(filename))
     elif filename.endswith('.imp'):
         candidates.append(os.path.join(base_dir, 'imperative', 'programs', filename))
-    elif filename.endswith('.calc'):
-        candidates.append(os.path.join(base_dir, 'SAINT', 'examples', filename))
     else:
-        # Bare name: could be a theory, an .imp program, or a .calc example.
+        # Bare name: could be a theory or an .imp program.
         candidates.append(basic.user_file(filename))
         candidates.append(os.path.join(base_dir, 'imperative', 'programs', filename + '.imp'))
-        candidates.append(os.path.join(base_dir, 'SAINT', 'examples', filename + '.calc'))
     for candidate in candidates:
         if require_exists and not os.path.exists(candidate):
             continue

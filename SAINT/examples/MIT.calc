@@ -1,6 +1,0 @@
-theory  MIT Integration Bee
-imports  base
-
-header  "2019"  level = 1
-calculation  "Problem 1"
-  goal  INT x:[0,pi/100]. (sin(20*x)+sin(19*x)) / (cos(20*x)+cos(19*x))

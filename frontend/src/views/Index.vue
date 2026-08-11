@@ -20,16 +20,6 @@
       <div class="col-md-4">
         <div class="card h-100 shadow-sm">
           <div class="card-body d-flex flex-column">
-            <h2 class="h5 mb-2">SAINT Integral CAS</h2>
-            <p class="text-secondary flex-grow-1 mb-3">Interactive differential-calculus workbench for SAINT-style symbolic integration demonstrations.</p>
-            <router-link :to="{name: 'saint'}" class="btn btn-primary">SAINT Integral CAS</router-link>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body d-flex flex-column">
             <h2 class="h5 mb-2">Program Verification</h2>
             <p class="text-secondary flex-grow-1 mb-3">Verify imperative programs against Hoare-style specifications with the built-in prover.</p>
             <router-link :to="{name: 'program'}" class="btn btn-primary">Program Verification</router-link>
