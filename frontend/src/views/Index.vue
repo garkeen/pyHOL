@@ -26,6 +26,16 @@
           </div>
         </div>
       </div>
+
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body d-flex flex-column">
+            <h2 class="h5 mb-2">Manual</h2>
+            <p class="text-secondary flex-grow-1 mb-3">Read the holpy documentation: HOL logic, kernel, macros, tactics, methods and system overview.</p>
+            <router-link :to="{name: 'manual'}" class="btn btn-primary">Read the manual</router-link>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

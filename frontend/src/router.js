@@ -15,6 +15,11 @@ const routes = [
     path: '/program',
     name: 'program',
     component: () => import('./views/ProgramIDE.vue')
+  },
+  {
+    path: '/manual',
+    name: 'manual',
+    component: () => import('./views/Manual.vue')
   }
 ]
 

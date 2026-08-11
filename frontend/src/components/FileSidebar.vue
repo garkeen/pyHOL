@@ -24,7 +24,7 @@
           <li v-for="f in files" :key="f" :class="{ 'fs-active': f === active }"
               @click="open = false; $emit('open', f)" :title="f">
             <span class="fs-name">{{ f }}</span>
-            <span class="fs-item-actions" @click.stop>
+            <span v-if="showActions" class="fs-item-actions" @click.stop>
               <button class="fs-act" title="Rename" @click="$emit('rename', f)">✎</button>
               <button class="fs-act fs-act-danger" title="Delete" @click="$emit('delete', f)">✕</button>
             </span>
@@ -43,7 +43,8 @@ defineProps({
   title: { type: String, default: 'Files' },
   files: { type: Array, default: () => [] },
   active: { type: String, default: null },
-  showCreate: { type: Boolean, default: false }
+  showCreate: { type: Boolean, default: false },
+  showActions: { type: Boolean, default: true }
 })
 
 defineEmits(['open', 'create', 'rename', 'delete'])
