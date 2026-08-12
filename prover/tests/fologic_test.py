@@ -3,10 +3,10 @@
 import unittest
 
 from kernel.type import BoolType, TFun, TVar
-from logic import basic
+from framework import basic
 from prover.fologic import simplify, nnf
 from syntax import parser
-from logic import context
+from framework import context
 from prover import fologic
 
 

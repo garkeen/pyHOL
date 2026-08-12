@@ -7,7 +7,7 @@ from kernel.type import STVar, TFun, TyInst
 from kernel.term import Term
 from kernel import term
 from kernel import theory
-from logic import context
+from framework import context
 from util import unionfind
 
 
@@ -249,7 +249,7 @@ def infer_printed_type(t):
     4. Repeat until no internal type variables appear.
     
     """
-    from logic.context import Context
+    from framework.context import Context
 
     def clear_const_type(t):
         if t.is_const() and not hasattr(t, "print_type"):

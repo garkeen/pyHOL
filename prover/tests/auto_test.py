@@ -2,7 +2,7 @@
 
 import unittest
 
-from logic import basic
+from framework import basic
 from prover.auto import auto
 
 

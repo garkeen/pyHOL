@@ -24,7 +24,7 @@ def main():
     # instead of returning stale cached results.
     force = '--force' in sys.argv
 
-    from logic import basic
+    from framework import basic
     from server.monitor import validate_theory
 
     basic.load_metadata()

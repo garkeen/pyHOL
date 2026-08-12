@@ -5,8 +5,8 @@ import sympy
 from sympy import Symbol, sqrt, sin, cos
 from sympy.abc import x
 
-from logic import context
-from logic.tests.logic_test import test_macro
+from framework import context
+from domains.logic.tests.logic_test import test_macro
 from syntax import parser
 from prover import sympywrapper
 

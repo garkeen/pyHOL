@@ -8,9 +8,9 @@ from kernel.thm import Thm
 from kernel.proof import Proof, ProofItem, ItemID
 from kernel import theory
 from kernel.proofterm import ProofTerm
-from logic import basic
-from logic import tactic
-from logic import context
+from framework import basic
+from framework import tactic
+from framework import context
 from syntax import parser
 
 

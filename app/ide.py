@@ -12,8 +12,8 @@ from kernel.theory import TheoryException
 from syntax import parser, printer, settings, pprint
 from server import server, methods as method
 from kernel.proof import ItemID
-from logic import basic
-from logic import context
+from framework import basic
+from framework import context
 from server import monitor
 from server import items
 from app.app import app
@@ -134,7 +134,7 @@ def load_json_file():
     }
     with theory.fresh_theory():
         basic.load_theory(filename, limit='start')
-        from logic import context as _context
+        from framework import context as _context
         for item in cache['content']:
             if item.error is None:
                 try:

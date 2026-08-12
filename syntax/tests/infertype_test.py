@@ -4,11 +4,11 @@ import unittest
 
 from kernel.type import TVar, TFun, BoolType, NatType
 from kernel.term import Term, Var, Const, Comb, Abs, Bound, Implies, Lambda, Eq
-from logic import basic
-from logic import logic
+from framework import basic
+from framework import logic
 from domains.nat import util_nat as nat
 from util.list import ListType, cons, mk_append, nil
-from logic import context
+from framework import context
 from syntax.infertype import type_infer, infer_printed_type, TypeInferenceException
 
 Ta = TVar("a")

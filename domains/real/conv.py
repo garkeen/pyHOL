@@ -17,12 +17,12 @@ from kernel import term_ord
 from domains.nat import util_nat as nat
 from domains.integer import util_integer as integer
 from util.set import setT
-from logic import basic
-from logic import logic
-from logic import auto
-from logic import matcher
-from logic.conv import rewr_conv, binop_conv, arg1_conv, arg_conv, try_conv, Conv, ConvException, top_conv
-from logic.tactic import MacroTactic
+from framework import basic
+from framework import logic
+from framework import auto
+from framework import matcher
+from framework.conv import rewr_conv, binop_conv, arg1_conv, arg_conv, try_conv, Conv, ConvException, top_conv
+from framework.tactic import MacroTactic
 from kernel.proofterm import refl, ProofTerm
 from syntax import pprint
 from server.methods.core import Method, register_method

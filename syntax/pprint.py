@@ -269,12 +269,12 @@ def get_ast_term(t):
     var_names = [v.name for v in t.get_vars()]
 
     # Import modules for custom parsed data
-    from logic import logic
+    from framework import logic
     from domains.nat import util_nat as nat
     from util import list
     from util import set
     from util import function
-    from logic.conv import interval
+    from domains.nat import interval
     from util import string
 
     def get_priority_pair(t):

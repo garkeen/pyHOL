@@ -12,7 +12,8 @@ from kernel import theory
 from kernel.theory import TheoryException
 from syntax import parser, printer
 from syntax.settings import global_setting
-from logic import basic, context
+from framework import basic
+from framework import context
 from server.stable_state import StableProofState, BACKWARD, FORWARD
 
 

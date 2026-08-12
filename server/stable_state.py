@@ -19,7 +19,8 @@ from syntax import parser, printer
 from syntax.settings import global_setting
 from server.methods.core import ProofState, apply_method, get_method_sig, get_method_list_params
 from server.methods import core as methods_core
-from logic import tactic, context
+from framework import tactic
+from framework import context
 
 # Items with these rules carry no new goal/fact content: they only
 # reference already-registered lines. They get a positional ItemID for

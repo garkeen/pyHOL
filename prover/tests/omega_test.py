@@ -1,7 +1,7 @@
 import unittest
 from kernel import term
 from kernel.type import IntType
-from logic import context
+from framework import context
 # from prover.omega import Factoid, negate_key, combine_real_factoid, combine_dark_factoid, factoid_gcd,\
 #     dest_plus, dest_times, term_to_factoid, database
 from prover.omega import *

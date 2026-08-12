@@ -6,7 +6,6 @@ from typing import List, Optional, Dict, Union
 from kernel.term import Var
 from kernel.type import Type
 from kernel.theory import Theory
-from logic import basic
 from syntax import parser
 
 
@@ -85,6 +84,7 @@ def set_context(thy_name: Optional[str], *, limit=None, svars=None, vars=None, d
     """
     # Set theory
     if thy_name is not None:
+        from framework import basic
         basic.load_theory(thy_name, limit=limit)
 
     # Set context

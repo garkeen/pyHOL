@@ -8,11 +8,11 @@ from kernel.term import Term, Implies, Not, Lambda, Inst
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import theory
 from kernel.proofterm import ProofTerm, TacticException
-from logic import logic
-from logic import matcher
-from logic.conv import then_conv, top_conv, rewr_conv, beta_conv, beta_norm_conv, \
+from framework import logic
+from framework import matcher
+from framework.conv import then_conv, top_conv, rewr_conv, beta_conv, beta_norm_conv, \
     top_sweep_conv, has_rewrite
-from logic.logic import apply_theorem
+from framework.logic import apply_theorem
 
 
 class Tactic:

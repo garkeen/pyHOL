@@ -9,10 +9,10 @@ from kernel.term import Term, Var, Const
 from kernel.thm import Thm
 from kernel import theory
 from kernel.report import ProofReport
-from logic import logic
-from logic import basic
-from logic import context
-from logic import tactic
+from framework import logic
+from framework import basic
+from framework import context
+from framework import tactic
 from server import methods as method, server
 from syntax import parser
 

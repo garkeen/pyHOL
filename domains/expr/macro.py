@@ -5,7 +5,7 @@ from kernel.term import Term, Const, Nat
 from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
-from logic.logic import apply_theorem
+from framework.logic import apply_theorem
 from domains.nat import util_nat as nat
 from domains.function.conv import fun_upd_eval_conv
 from util.expr import N, V, Plus, Times, avalI

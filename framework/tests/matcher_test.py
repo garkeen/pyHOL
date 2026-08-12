@@ -4,11 +4,11 @@ import unittest
 
 from kernel.type import TVar, Type, NatType, TyInst
 from kernel.term import Var, Const, Abs, Term, Inst
-from logic import basic
-from logic import matcher
-from logic.matcher import first_order_match, MatchException
+from framework import basic
+from framework import matcher
+from framework.matcher import first_order_match, MatchException
 from syntax import parser
-from logic import context
+from framework import context
 
 
 class MatcherTest(unittest.TestCase):

@@ -1,8 +1,9 @@
-# logic/conv/interval.py - Interval conversions
+# domains/nat/interval.py - Interval conversions
+# Domain-dependent: hardcodes nat.pyhol theorem names (natseg_emptyI, natseg_lrec)
 
 from kernel.type import TFun, NatType
 from kernel.term import Const
-from logic.conv import Conv, rewr_conv, refl, arg_conv, arg1_conv
+from framework.conv import Conv, rewr_conv, refl, arg_conv, arg1_conv
 
 
 def setT(T):
@@ -13,6 +14,7 @@ def setT(T):
 
 def mk_interval(m, n):
     return Const("nat_interval", TFun(NatType, NatType, setT(NatType)))(m, n)
+
 
 def is_interval(t):
     return t.is_comb('nat_interval', 2)

@@ -35,7 +35,7 @@ A mapping from (ty, name) to (theory_name, timestamp, index).
 """
 item_index = dict()
 
-dirname = os.path.dirname(__file__)
+dirname = os.path.dirname(os.path.dirname(__file__))  # project root
 
 def _lib_dirs():
     """Directories holding hand-written theory files (search order).
@@ -46,18 +46,18 @@ def _lib_dirs():
     program_dir() (see inject_program_metadata / save_user_file).
     """
     return [
-        os.path.join(dirname, '../library/'),
+        os.path.join(dirname, 'library/'),
     ]
 
 def program_dir():
     """Directory holding imperative program sources (.imp) and their
     auto-generated verification .pyhol.  Nothing here is part of the
     theory library or shown by the main IDE."""
-    return os.path.join(dirname, '../imperative/programs/')
+    return os.path.join(dirname, 'imperative/programs/')
 
 def user_dir():
     """Returns the primary library directory (backward compat)."""
-    return os.path.join(dirname, '../library/')
+    return os.path.join(dirname, 'library/')
 
 def user_file(filename):
     """Return pyhol file path for the given theory name.
@@ -70,7 +70,7 @@ def user_file(filename):
         path = os.path.join(d, filename + '.pyhol')
         if os.path.exists(path):
             return path
-    return os.path.join(dirname, '../library/' + filename + '.pyhol')
+    return os.path.join(dirname, 'library/' + filename + '.pyhol')
 
 def save_user_file(filename):
     """Return the write path for the given theory name.
@@ -238,12 +238,14 @@ def load_theory_cache(filename):
         return cache
 
     # Load all required macros and methods for this file.
-    # Core macros are always loaded.
-    from logic.macros import core  # Always load core macros
+    # Core macros (and the z3 oracle macro) are always loaded.
+    from framework.macros import core, z3  # noqa: F401
 
     # Load domain packages declared in the .pyhol header.
     # Domain packages live in domains/<name>/ and register their
-    # conv/macro/method via decorators on import.
+    # conv/macro/method via decorators on import.  For example,
+    # logic.pyhol declares `domains logic`, which activates the
+    # propositional-logic automation bound to it.
     data = load_pyhol_data(filename)
     for domain_name in data.get('domains', []):
         try:
@@ -252,14 +254,10 @@ def load_theory_cache(filename):
             import sys
             print(f"Warning: failed to load domain '{domain_name}': {e}", file=sys.stderr)
 
-    # Legacy fallback: if the .pyhol has no 'domains' header, load
-    # domain code via the old if-chain. Theories that have been migrated
-    # to declare `domains <name>` use the new path above and skip this.
-    if not data.get('domains'):
-        if filename == 'logic':
-            from logic.macros import z3
-        if filename == 'hoare':
-            from imperative import imp
+    # Imperative program verification is not a domains/ package; the
+    # hoare theory activates it directly.
+    if filename == 'hoare':
+        from imperative import imp  # noqa: F401
 
     # Load all imported theories
     depend_list = get_import_order(cache['imports'])

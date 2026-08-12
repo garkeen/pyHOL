@@ -1,7 +1,7 @@
 # server/methods/expr.py - Expression evaluation method
 
 from server.methods.core import Method, register_method
-from logic.tactic import MacroTactic
+from framework.tactic import MacroTactic
 from domains.expr.macro import prove_avalI_macro
 from syntax import pprint
 

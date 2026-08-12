@@ -18,8 +18,8 @@ from kernel.term import Term, Var, Comb, Abs, Inst, BoolType, Implies, true, fal
 from kernel.thm import Thm
 from kernel.proofterm import ProofTerm
 from kernel import theory
-from logic import logic
-from logic import conv
+from framework import logic
+from framework import conv
 from prover import fologic
 from util import name
 

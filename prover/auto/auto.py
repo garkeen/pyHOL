@@ -5,9 +5,9 @@ import queue
 from kernel.term import Not
 from kernel.proofterm import ProofTerm
 from kernel import theory
-from logic import logic
-from logic import matcher
-from logic.conv import rewr_conv, top_conv
+from framework import logic
+from framework import matcher
+from framework.conv import rewr_conv, top_conv
 
 
 class ProofStateException(Exception):
@@ -238,7 +238,7 @@ class ForwardProofStep(ProofStep):
 global_prfsteps1 = list()
 global_prfsteps1.append(TermProofStep())
 
-from logic import basic
+from framework import basic
 basic.load_theory('topology')
 forward_ths = [
     'is_topology_def'

@@ -8,8 +8,8 @@ from kernel.thm import Thm
 from kernel.proof import Proof
 from kernel.theory import TheoryException
 from kernel import theory
-from logic import basic
-from logic import logic
+from framework import basic
+from framework import logic
 from domains.nat import conv as nat
 from util import set
 

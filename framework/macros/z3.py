@@ -1,4 +1,4 @@
-# logic/macros/z3.py - Z3 Macro class
+# framework/macros/z3.py - Z3 Macro class (domain-independent)
 # Extracted from prover/z3wrapper.py
 
 from kernel.term import Term, Implies

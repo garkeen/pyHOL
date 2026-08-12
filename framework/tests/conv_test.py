@@ -7,11 +7,11 @@ from kernel.term import Term, Var, Eq
 from kernel.thm import Thm
 from kernel import theory
 from kernel.proofterm import ProofTerm
-from logic import conv
-from logic.conv import beta_conv, else_conv, try_conv, abs_conv, top_conv, bottom_conv, \
+from framework import conv
+from framework.conv import beta_conv, else_conv, try_conv, abs_conv, top_conv, bottom_conv, \
     top_sweep_conv, arg_conv, rewr_conv, has_rewrite, ConvException
 from syntax import parser, printer
-from logic import context
+from framework import context
 
 
 def test_conv(self: unittest.TestCase, thy_name: str, cv: conv.Conv, *,

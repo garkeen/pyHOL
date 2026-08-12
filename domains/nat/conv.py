@@ -7,7 +7,7 @@ from kernel.term import Term, Const, Not, Eq, Binary, Nat, Inst
 from kernel.thm import Thm
 from kernel import theory
 from kernel import term_ord
-from logic.conv.core import Conv, ConvException, all_conv, rewr_conv, \
+from framework.conv.core import Conv, ConvException, all_conv, rewr_conv, \
     then_conv, arg_conv, arg1_conv, binop_conv
 from kernel.proofterm import ProofTerm, refl
 

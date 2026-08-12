@@ -15,7 +15,7 @@ from kernel.thm import Thm
 from kernel.proof import ProofItem
 from kernel import theory
 from kernel import extension
-from logic import context
+from framework import context
 from syntax import infertype
 from syntax.tests import parser_test
 
@@ -368,7 +368,7 @@ class HOLTransformer(Transformer):
         return Const("comp_fun", None)(f, g)
 
     def nat_interval(self, m, n):
-        from logic.conv import interval
+        from domains.nat import interval
         return interval.mk_interval(m, n)
 
     def thm(self, *args):

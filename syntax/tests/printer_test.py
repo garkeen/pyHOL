@@ -6,8 +6,8 @@ from kernel.type import TVar, TConst, TFun, BoolType, NatType, IntType, RealType
 from kernel.term import SVar, Var, Const, Comb, Abs, Bound, Term, And, Or, Implies, \
     Not, Eq, Forall, Lambda, Exists, true, false, Nat, Int, Real
 from kernel.thm import Thm
-from logic import basic
-from logic import logic
+from framework import basic
+from framework import logic
 from domains.nat import conv as nat
 from kernel.term import less, less_eq
 nat.less = less(NatType)
@@ -17,7 +17,7 @@ from util import list
 from util import set
 from util import string
 from util import function
-from logic.conv import interval
+from domains.nat import interval
 from syntax import printer
 from syntax.settings import settings, global_setting
 

@@ -17,8 +17,8 @@ from kernel.theory import register_macro
 from kernel.proofterm import ProofTerm, TacticException
 from domains.real import conv as real
 from util import set as hol_set
-from logic import auto
-from logic import logic
+from framework import auto
+from framework import logic
 
 
 class SymPyException(Exception):

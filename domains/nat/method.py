@@ -2,7 +2,7 @@
 # Migrated from server/methods/nat.py
 
 from server.methods.core import Method, register_method
-from logic.tactic import MacroTactic
+from framework.tactic import MacroTactic
 from domains.nat.macro import nat_norm_macro, nat_const_ineq_macro
 from syntax import pprint
 

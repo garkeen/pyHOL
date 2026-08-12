@@ -31,8 +31,8 @@ from kernel.type import NatType, IntType, TFun, TConst
 from kernel import term
 from kernel.term import Term, Var, Lambda, Number, Eq, Not, true, false, Const
 from kernel import theory
-from logic import basic
-from logic.logic import mk_if
+from framework import basic
+from framework.logic import mk_if
 from imperative import expr as expr_mod
 from imperative import com as com_mod
 from imperative import parser2
@@ -58,7 +58,7 @@ def _load_theories(imports):
     theory, in dependency order.  Unlike repeated basic.load_theory calls
     (each of which resets the global theory to EmptyTheory), this merges
     all the imported theories into a single context."""
-    from logic.basic import load_theory_cache, load_metadata
+    from framework.basic import load_theory_cache, load_metadata
     load_metadata()
     theory_cache = load_theory_cache.__globals__.get('theory_cache', {})
     closure = []
@@ -109,7 +109,7 @@ def _register_recursive_preds():
     """
     from kernel.term import Var, Forall, Eq, Or, And, Const
     from kernel.type import NatType
-    from logic import conv
+    from framework import conv
 
     def strip_foralls(t):
         """Strip outer !x_1 ... x_n. Stored theorems use free Vars

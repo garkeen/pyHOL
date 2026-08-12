@@ -7,8 +7,8 @@ from kernel.thm import Thm
 from kernel import term
 from kernel.proofterm import ProofTerm
 from domains.nat import util_nat as nat
-from logic import logic
-from logic.logic import apply_theorem
+from framework import logic
+from framework.logic import apply_theorem
 from util import poly
 
 

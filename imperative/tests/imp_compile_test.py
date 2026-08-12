@@ -5,7 +5,7 @@
 import unittest
 import os
 
-from logic import basic
+from framework import basic
 from server import monitor
 from imperative.imp_compile import parse_imp, compile_programs, compile_file, CompileError
 

@@ -8,7 +8,7 @@ from kernel.term import Term, Var, Bound, Inst
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import theory
 from kernel.proofterm import ProofTerm, refl
-from logic import matcher
+from framework import matcher
 from util import typecheck
 
 

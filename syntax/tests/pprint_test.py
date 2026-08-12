@@ -4,7 +4,7 @@ import unittest
 
 from syntax import parser
 from syntax import pprint
-from logic import context
+from framework import context
 from syntax.settings import settings, global_setting
 
 

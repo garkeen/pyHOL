@@ -15,8 +15,8 @@ from kernel import term
 from kernel import term_ord
 from kernel import proofterm
 from domains.integer import conv as integer
-from logic import logic, basic
-from logic import conv
+from framework import logic, basic
+from framework import conv
 
 basic.load_theory('int')
 

@@ -6,7 +6,7 @@ import json, os
 from flask import request
 from flask.json import jsonify
 
-from logic import basic
+from framework import basic
 from imperative import imp_compile as imp_compiler
 from app.app import app
 

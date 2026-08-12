@@ -7,7 +7,7 @@ from kernel.term import Term, Const, Not, Eq, Binary, Nat, Inst
 from kernel.thm import Thm
 from kernel import theory
 from kernel.proofterm import ProofTerm
-from logic.logic import apply_theorem
+from framework.logic import apply_theorem
 from util import poly
 from domains.nat.conv import (
     zero, one, plus, minus, times, Suc,

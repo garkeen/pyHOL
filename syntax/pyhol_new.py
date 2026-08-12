@@ -162,7 +162,7 @@ def replay_proof(thy_name, thm_name, vars_dict, prop_str, steps: List[NewStep]):
 
     Maps stable IDs to positional IDs for the current kernel.
     """
-    from logic import context
+    from framework import context
 
     from kernel.term import Term
     from server.methods.core import ProofState

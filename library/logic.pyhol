@@ -1,5 +1,6 @@
 theory logic
 imports logic_base
+domains logic
 description "Basic results in logic"
 
 theorem conj_comm

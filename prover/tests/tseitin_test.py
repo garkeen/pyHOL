@@ -4,7 +4,7 @@ from kernel.type import BoolType
 from kernel.term import Term, Var, Implies, And, Or
 from kernel import report
 from kernel import theory
-from logic import basic
+from framework import basic
 from prover import tseitin
 
 a = Var('a', BoolType)

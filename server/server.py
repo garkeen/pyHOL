@@ -11,10 +11,10 @@ from kernel.proof import ProofItem, Proof, ItemID, ProofStateException
 from kernel import report
 from kernel import theory
 from kernel.proofterm import ProofTerm
-from logic import logic, matcher
-from logic import context
-from logic import tactic
-from logic.context import Context
+from framework import logic, matcher
+from framework import context
+from framework import tactic
+from framework.context import Context
 from syntax import parser, printer
 from syntax.settings import settings, global_setting
 from server.methods.core import ProofState

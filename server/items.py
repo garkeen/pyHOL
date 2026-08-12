@@ -9,7 +9,7 @@ from kernel.term import Term, Var, Const, And, Implies, Not, Eq, Forall
 from kernel.thm import Thm
 from kernel import theory
 from kernel import extension
-from logic import context
+from framework import context
 from util.name import get_variant_names
 from syntax import parser
 from syntax import printer

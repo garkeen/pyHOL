@@ -6,7 +6,7 @@ import unittest
 from kernel.term import Var, Term, Implies
 from kernel.thm import Thm
 from kernel import theory
-from logic import context
+from framework import context
 from server import methods as method
 from server.methods.core import global_methods
 from server import server

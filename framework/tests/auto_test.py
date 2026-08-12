@@ -1,8 +1,8 @@
 # Author: Bohua Zhan
 
 import unittest
-from logic import auto
-from logic.tests.logic_test import test_macro
+from framework import auto
+from domains.logic.tests.logic_test import test_macro
 
 
 class AutoTest(unittest.TestCase):

@@ -11,11 +11,11 @@ from pstats import Stats
 import cProfile
 
 from kernel import theory
-from logic import basic
-from logic import context
+from framework import basic
+from framework import context
 from server import server
 from server import methods as method
-from logic import logic
+from framework import logic
 from server import items
 from syntax import parser
 from prover import z3wrapper

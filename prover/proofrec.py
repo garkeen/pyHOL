@@ -7,7 +7,7 @@ by Sascha Böhme and Tjark Weber.
 import z3
 from z3.z3consts import *
 from domains.integer import conv as integer
-from logic.conv import proplogic
+from domains.logic import conv as proplogic
 from domains.real.conv import norm_neg_real_ineq_conv, real_const_eq_conv, real_eval_conv, real_norm_comparison
 from kernel.type import TFun, BoolType, NatType, IntType, RealType, STVar, TVar
 from kernel.term import *
@@ -17,12 +17,14 @@ from kernel.macro import Macro
 from kernel.theory import check_proof, register_macro
 from kernel import theory
 from kernel.report import ProofReport
-from logic import basic, context, matcher
-from logic.logic import apply_theorem, imp_disj_iff, disj_norm, resolution
-from logic.macros.core import imp_conj_macro
-from logic.tactic import rewrite_goal_with_prev
-from logic.conv import rewr_conv, try_conv, top_conv, top_sweep_conv, bottom_conv, arg_conv, ConvException, Conv, arg1_conv, binop_conv, replace_conv
-from logic import auto
+from framework import basic, matcher
+from framework import context
+from framework.logic import apply_theorem
+from domains.logic.logic import imp_disj_iff, disj_norm, resolution
+from domains.logic.macro import imp_conj_macro
+from framework.tactic import rewrite_goal_with_prev
+from framework.conv import rewr_conv, try_conv, top_conv, top_sweep_conv, bottom_conv, arg_conv, ConvException, Conv, arg1_conv, binop_conv, replace_conv
+from framework import auto
 from prover import sat, tseitin, simplex, simplex_strict
 from syntax.settings import settings
 from syntax import parser

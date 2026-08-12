@@ -10,8 +10,9 @@ from kernel.term import Var, And, Implies, Inst, NatVars, Eq, equals, SVar, Cons
 from kernel.report import ProofReport
 from kernel import theory
 from kernel.thm import Thm
-from logic import basic
-from logic import matcher, context
+from framework import basic
+from framework import matcher
+from framework import context
 from kernel.proofterm import ProofTerm
 from domains.nat import util_nat as nat
 from fractions import Fraction

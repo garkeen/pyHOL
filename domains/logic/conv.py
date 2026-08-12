@@ -1,12 +1,12 @@
-# logic/conv/proplogic.py - Propositional logic conversions
+# domains/logic/conv.py - Propositional logic conversions
+# Domain-dependent: hardcodes logic.pyhol theorem names
 
 from kernel.term import Term, BoolType, Not, Var, true, false, And
-from logic.conv import Conv, rewr_conv, arg1_conv, arg_conv, binop_conv, try_conv, top_conv, bottom_conv, top_sweep_conv
+from framework.conv import Conv, rewr_conv, arg1_conv, arg_conv, binop_conv, try_conv, top_conv, bottom_conv, top_sweep_conv
 from kernel.proofterm import refl, ProofTerm
-from logic.logic import apply_theorem
-from logic import matcher
+from framework.logic import apply_theorem
+from framework import matcher
 from kernel import term_ord
-from logic import basic
 from collections import deque
 import functools
 

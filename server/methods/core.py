@@ -12,12 +12,12 @@ from kernel import report
 from kernel.proof import ProofItem, ItemID, Proof, ProofStateException
 from kernel import theory
 from kernel.proofterm import ProofTerm, TacticException
-from logic import matcher
-from logic import logic
-from logic import context
-from logic import tactic
-from logic.tactic import Tactic, trivial
-from logic import conv
+from framework import matcher
+from framework import logic
+from framework import context
+from framework import tactic
+from framework.tactic import Tactic, trivial
+from framework import conv
 from syntax import parser, printer, pprint
 from syntax.settings import settings, global_setting
 

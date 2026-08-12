@@ -7,15 +7,15 @@ from kernel.macro import Macro
 from kernel.theory import check_proof, register_macro, get_theorem
 from kernel.proofterm import ProofTerm
 from kernel.report import ProofReport
-from logic import basic
-from logic import context
-from logic.logic import apply_theorem, is_if
-from logic.conv import Conv, rewr_conv, arg_conv, arg1_conv, binop_conv, top_conv, ConvException, try_conv
+from framework import basic
+from framework import context
+from framework.logic import apply_theorem, is_if
+from framework.conv import Conv, rewr_conv, arg_conv, arg1_conv, binop_conv, top_conv, ConvException, try_conv
 from domains.nat import util_nat as nat
 from kernel.thm import Thm
 from syntax.settings import settings
 from math import gcd
-from logic import matcher
+from framework import matcher
 from util import poly
 import functools
 

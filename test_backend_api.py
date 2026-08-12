@@ -10,7 +10,7 @@ import shutil
 sys.path.insert(0, '.')
 
 from app.app import app as flask_app
-from logic import basic
+from framework import basic
 from syntax import pyhol
 
 # Real library dir

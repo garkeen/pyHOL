@@ -1,5 +1,4 @@
 # domains/nat/macro.py - Nat Macro classes
-# Migrated from logic/macros/nat.py
 
 from kernel.type import TFun, BoolType, NatType
 from kernel import term
@@ -9,9 +8,9 @@ from kernel import theory
 from kernel.theory import register_macro
 from kernel.macro import Macro
 from kernel.proofterm import ProofTerm, refl
-from logic import auto
-from logic.logic import apply_theorem
-from logic.conv import arg_conv, binop_conv, rewr_conv
+from framework import auto
+from framework.logic import apply_theorem
+from framework.conv import arg_conv, binop_conv, rewr_conv
 from domains.nat.conv import (
     Suc, plus, minus, times, zero, one,
     is_bit0, is_bit1,

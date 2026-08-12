@@ -5,7 +5,7 @@ from kernel import term
 from kernel.term import Term, Const, Abs
 from kernel.macro import Macro
 from kernel.theory import register_macro
-from logic.conv import Conv, rewr_conv, then_conv, arg_conv, argn_conv
+from framework.conv import Conv, rewr_conv, then_conv, arg_conv, argn_conv
 from kernel.proofterm import ProofTerm, refl
 from util.function import is_fun_upd
 

@@ -7,7 +7,7 @@ from lark import Lark, Transformer, v_args, exceptions
 from util.lark_error import translate_lark_error
 from kernel.type import TFun, BoolType
 from kernel.term import Term, Var, Const, Abs, true
-from logic import logic
+from framework import logic
 from imperative import expr
 from imperative import com
 

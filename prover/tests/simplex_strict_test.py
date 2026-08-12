@@ -1,6 +1,6 @@
 import unittest
 from syntax.parser import parse_term
-from logic import context
+from framework import context
 from prover import simplex_strict
 from kernel.term import false
 

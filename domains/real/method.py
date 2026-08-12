@@ -1,5 +1,4 @@
-# server/methods/real.py - Real Method classes
-# Imports from logic.conv.real (moved from data.real)
+# domains/real/method.py - Real Method classes
 
 from domains.real.conv import (
     real_norm_method,

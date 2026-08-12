@@ -9,12 +9,12 @@ from domains.nat import util_nat as nat
 from domains.nat import conv as nat_conv
 from util import function
 from domains.function import conv as function_conv
-from logic import logic
-from logic.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_conv, binop_conv, \
+from domains.logic.logic import norm_bool_expr
+from framework.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_conv, binop_conv, \
     every_conv, rewr_conv, assums_conv, beta_norm
 from kernel.proofterm import ProofTerm
-from logic.logic import apply_theorem
-from logic.tactic import Tactic, MacroTactic
+from framework.logic import apply_theorem
+from framework.tactic import Tactic, MacroTactic
 from syntax import pprint, settings
 from server.methods.core import Method, register_method
 from prover import z3wrapper
@@ -59,7 +59,7 @@ norm_cv = then_conv(top_conv(function_conv.fun_upd_eval_conv()), nat_conv.norm_f
 norm_cond_cv = every_conv(
     norm_cv,
     top_conv(nat_conv.nat_eq_conv()),
-    logic.norm_bool_expr()
+    norm_bool_expr()
 )
 
 def eval_Sem(c, st):

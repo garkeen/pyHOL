@@ -1,4 +1,10 @@
-# Author: Bohua Zhan
+# framework/auto.py - Generic proof automation (domain-independent)
+#
+# A head-term -> proof-procedure dispatch engine shared by all domains:
+# nat/real/... register their normalization and solving procedures into
+# global_autos / global_autos_norm.  The connective decomposition in
+# solve() only uses logic_base axioms (conjI, conjD1, disjE, ...), which
+# are always available, so this module belongs to the framework.
 
 from kernel import term
 from kernel.term import Term, Var
@@ -6,10 +12,10 @@ from kernel.macro import Macro
 from kernel import theory
 from kernel.theory import register_macro
 from kernel.proofterm import ProofTerm, TacticException
-from logic import logic
-from logic.logic import apply_theorem
-from logic import matcher
-from logic.conv import Conv, ConvException, refl, eta_conv, top_conv
+from framework import logic
+from framework.logic import apply_theorem
+from framework import matcher
+from framework.conv import Conv, ConvException, refl, eta_conv, top_conv
 from util import name
 
 

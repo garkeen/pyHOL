@@ -11,13 +11,14 @@ from kernel.report import ProofReport
 from kernel import theory
 from kernel.macro import Macro
 from kernel.proofterm import ProofTerm
-from logic import logic
-from logic import basic
-from logic import matcher
-from logic.tests.conv_test import test_conv
+from framework.logic import get_forall_names
+from domains.logic.logic import norm_bool_expr, norm_conj_assoc, conj_norm, disj_norm
+from framework import basic
+from framework import matcher
+from framework.tests.conv_test import test_conv
 from domains.nat import util_nat as nat
 from syntax import parser
-from logic import context
+from framework import context
 
 Ta = TVar("a")
 a = Var("a", BoolType)
@@ -65,7 +66,7 @@ class LogicTest(unittest.TestCase):
         ]
 
         for t, res in test_data:
-            self.assertEqual(logic.get_forall_names(t), res)
+            self.assertEqual(get_forall_names(t), res)
 
     def testNormBoolExpr(self):
         test_data = [
@@ -76,7 +77,7 @@ class LogicTest(unittest.TestCase):
         ]
 
         for t, t_res in test_data:
-            test_conv(self, 'logic', logic.norm_bool_expr(), t=t, t_res=t_res)
+            test_conv(self, 'logic', norm_bool_expr(), t=t, t_res=t_res)
 
     def testNormConjAssoc(self):
         test_data = [
@@ -88,7 +89,7 @@ class LogicTest(unittest.TestCase):
 
         vars = {'A': 'bool', 'B': 'bool'}
         for t, t_res in test_data:
-            test_conv(self, 'logic', logic.norm_conj_assoc(), vars=vars, t=t, t_res=t_res)
+            test_conv(self, 'logic', norm_conj_assoc(), vars=vars, t=t, t_res=t_res)
 
     def testBetaNorm(self):
         test_macro(
@@ -125,7 +126,7 @@ class LogicTest(unittest.TestCase):
 
     def testIntro(self):
         basic.load_theory('logic_base')
-        from logic.macros.core import intros_macro
+        from framework.macros.core import intros_macro
         macro = intros_macro()
 
         Ta = TVar('a')
@@ -264,7 +265,7 @@ class LogicTest(unittest.TestCase):
 
         vars = {'A': 'bool', 'B': 'bool', 'C': 'bool', 'D': 'bool'}
         for t, t_res in test_data:
-            test_conv(self, 'logic', logic.conj_norm(), vars=vars, t=t, t_res=t_res)
+            test_conv(self, 'logic', conj_norm(), vars=vars, t=t, t_res=t_res)
 
     def testImpDisjMacro(self):
         test_data = [
@@ -289,7 +290,7 @@ class LogicTest(unittest.TestCase):
 
         vars = {'A': 'bool', 'B': 'bool', 'C': 'bool', 'D': 'bool'}
         for t, t_res in test_data:
-            test_conv(self, 'logic', logic.disj_norm(), vars=vars, t=t, t_res=t_res)
+            test_conv(self, 'logic', disj_norm(), vars=vars, t=t, t_res=t_res)
 
     def testResolution(self):
         test_data = [

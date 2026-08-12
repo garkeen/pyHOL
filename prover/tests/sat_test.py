@@ -2,10 +2,10 @@ import unittest
 import json
 
 from kernel.term import Not
-from logic import logic
-from logic import basic
+from framework import logic
+from framework import basic
 from syntax import parser
-from logic import context
+from framework import context
 from prover import tseitin
 from prover import sat
 

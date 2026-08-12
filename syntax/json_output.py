@@ -6,7 +6,7 @@ import json
 
 from kernel.term import get_vars
 from kernel import proof
-from logic import basic
+from framework import basic
 from server import items
 from syntax import printer
 from syntax import pyhol

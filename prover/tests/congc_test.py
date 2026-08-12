@@ -7,9 +7,9 @@ from kernel.type import TVar, TFun, NatType
 from kernel.term import Term, Eq
 from kernel.thm import Thm
 from kernel import theory
-from logic import basic
+from framework import basic
 from syntax import parser, printer
-from logic import context
+from framework import context
 
 MERGE, CHECK, EXPLAIN, MATCH = range(4)
 

@@ -5,10 +5,10 @@ import unittest
 from kernel.type import TFun
 from kernel.thm import Thm
 from domains.nat import util_nat as nat
-from logic import basic
-from logic.tests.logic_test import test_macro
+from framework import basic
+from domains.logic.tests.logic_test import test_macro
 from syntax import parser
-from logic import context
+from framework import context
 from prover import z3wrapper
 from server.tests.method_test import test_method
 

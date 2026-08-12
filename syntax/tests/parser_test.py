@@ -6,11 +6,11 @@ from kernel.type import TVar, TConst, TFun, Type, BoolType
 from kernel.term import Var, Term, And, Eq, Inst
 from kernel.thm import Thm
 from kernel.proof import ProofItem
-from logic import basic
+from framework import basic
 from syntax.printer import print_term, print_type
 from syntax import parser
 from syntax.settings import global_setting
-from logic import context
+from framework import context
 
 
 class ParserTest(unittest.TestCase):

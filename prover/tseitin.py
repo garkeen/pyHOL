@@ -7,9 +7,10 @@ from kernel.term import Term, Var, And, Or, Not, Implies, Eq
 from kernel.thm import Thm
 from kernel import term_ord
 from kernel.proofterm import ProofTerm
-from logic import basic
-from logic import logic
-from logic.conv import rewr_conv, every_conv, top_conv
+from framework import basic
+from framework.logic import apply_theorem
+from domains.logic.logic import conj_norm
+from framework.conv import rewr_conv, every_conv, top_conv
 
 
 def is_logical(t):
@@ -69,7 +70,7 @@ def encode(t):
         encode_pt = encode_pt.on_prop(top_conv(rewr_conv(eq_pt, sym=True)))
     for eq_pt in eq_pts:
         if is_logical(eq_pt.rhs):
-            encode_pt = logic.apply_theorem('conjI', eq_pt, encode_pt)
+            encode_pt = apply_theorem('conjI', eq_pt, encode_pt)
     
     # Rewrite using Tseitin rules
     encode_thms = ['encode_conj', 'encode_disj', 'encode_imp', 'encode_eq', 'encode_not']
@@ -78,7 +79,7 @@ def encode(t):
         encode_pt = encode_pt.on_prop(top_conv(rewr_conv(th)))
     
     # Normalize the conjuncts
-    return encode_pt.on_prop(logic.conj_norm())
+    return encode_pt.on_prop(conj_norm())
 
 def convert_cnf(t):
     """Convert a term to CNF form (as a list of lists of literals)."""
