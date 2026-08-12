@@ -972,10 +972,6 @@ def _parse_step_line(line):
     """
     # Strip direction prefix
     direction = ''
-    # Strip legacy step-number prefix like "0: "
-    m_num = re.match(r'^(\d+):\s*(.*)$', line)
-    if m_num:
-        line = m_num.group(2)
     if line.startswith('← '):
         direction = '←'
         line = line[2:]
@@ -1085,39 +1081,3 @@ def _tokenize_step(s):
     if current.strip():
         tokens.append(current.strip())
     return tokens
-
-
-def _apply_step_args(method_name, args, step):
-    """Apply parsed args to a step dict based on method."""
-    positional_keys = _METHOD_POSITIONAL.get(method_name, [])
-
-    # Separate positional args from named args
-    positional = []
-
-    for arg in args:
-        if arg.startswith('@'):
-            # Fact IDs
-            fact_str = arg[1:]
-            if fact_str:
-                step['fact_ids'] = fact_str.split(',')
-            else:
-                step['fact_ids'] = []
-        elif arg.startswith('"'):
-            # Quoted string - always positional (strip quotes, unescape, normalize arrows)
-            val = _norm_arrows(arg[1:-1].replace('\\"', '"').replace('\\n', '\n').replace('\\\\', '\\'))
-            positional.append(val)
-        elif '=' in arg:
-            # Named arg: key=value or key="value"
-            k, v = arg.split('=', 1)
-            if v.startswith('"') and v.endswith('"'):
-                v = _norm_arrows(v[1:-1].replace('\\"', '"').replace('\\n', '\n').replace('\\\\', '\\'))
-            else:
-                v = _norm_arrows(v)
-            step[k] = v
-        else:
-            positional.append(_norm_arrows(arg))
-
-    # Apply positional args
-    for i, key in enumerate(positional_keys):
-        if i < len(positional):
-            step[key] = positional[i]
