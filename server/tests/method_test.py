@@ -71,6 +71,10 @@ def test_method(self: unittest.TestCase, thy_name: str, *, vars=None,
             self.assertEqual(state.get_proof_item(id).th.prop, t)
 
 
+# Helper function, not a pytest test
+test_method.__test__ = False
+
+
 class MethodTest(unittest.TestCase):
     def run_search_thm(self, thy_name: str, *, vars=None, assms: Optional[List[str]] = None,
                        concl: str, method_name: str, prevs=None, res):

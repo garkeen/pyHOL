@@ -8,7 +8,7 @@ on intervals.
 import sympy
 from fractions import Fraction
 
-from kernel.type import RealType
+from kernel.type import RealType, NatType, TFun, BoolType
 from kernel import term
 from kernel.term import Term
 from kernel.thm import Thm
@@ -196,21 +196,22 @@ def sympy_solve(goal, pts):
 
     macro = SymPyMacro()
     if macro.can_eval(goal, pts):
-        th = Thm(goal, *(th.hyps for th in prevs))
+        th = Thm(goal, *(th.hyps for th in pts))
         return ProofTerm('sympy', args=goal, prevs=pts, th=th)
     else:
         raise TacticException
 
-# auto.add_global_autos(real.greater_eq, sympy_solve)
-# auto.add_global_autos(real.greater, sympy_solve)
-# auto.add_global_autos(real.less_eq, sympy_solve)
-# auto.add_global_autos(real.less, sympy_solve)
+# Register sympy solving procedures into the generic auto engine.
+# Real inequalities and equalities:
+auto.add_global_autos(term.greater_eq(RealType), sympy_solve)
+auto.add_global_autos(term.greater(RealType), sympy_solve)
+auto.add_global_autos(term.less_eq(RealType), sympy_solve)
+auto.add_global_autos(term.less(RealType), sympy_solve)
+auto.add_global_autos_neg(term.Const('equals', TFun(RealType, RealType, BoolType)), sympy_solve)
 
-# auto.add_global_autos_neg(real.equals, sympy_solve)
-
-# auto.add_global_autos(nat.greater_eq, sympy_solve)
-# auto.add_global_autos(nat.greater, sympy_solve)
-# auto.add_global_autos(nat.less_eq, sympy_solve)
-# auto.add_global_autos(nat.less, sympy_solve)
-
-# auto.add_global_autos_neg(nat.equals, sympy_solve)
+# Natural number inequalities and equalities:
+auto.add_global_autos(term.greater_eq(NatType), sympy_solve)
+auto.add_global_autos(term.greater(NatType), sympy_solve)
+auto.add_global_autos(term.less_eq(NatType), sympy_solve)
+auto.add_global_autos(term.less(NatType), sympy_solve)
+auto.add_global_autos_neg(term.Const('equals', TFun(NatType, NatType, BoolType)), sympy_solve)

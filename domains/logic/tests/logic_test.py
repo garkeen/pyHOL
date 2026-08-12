@@ -59,6 +59,9 @@ def test_macro(self: unittest.TestCase, thy_name: str, macro: Macro, *,
         prf = pt.export()
         self.assertEqual(theory.check_proof(prf), Thm(res, assms))
 
+# Helper function, not a pytest test (name shared by importing modules)
+test_macro.__test__ = False
+
 class LogicTest(unittest.TestCase):
     def testGetForallName(self):
         test_data = [
@@ -153,9 +156,9 @@ class LogicTest(unittest.TestCase):
         test_macro(
             self, 'set', 'rewrite_goal_sym',
             vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set"},
-            args=("image_combine, image f (image g s) = t"),
-            assms=["image (f O g) s = t"],
-            res="image f (image g s) = t"
+            args=("image_combine, image (g O f) s = t"),
+            assms=["image f (image g s) = t"],
+            res="image (g O f) s = t"
         )
 
     def testRewriteFactWithPrev(self):

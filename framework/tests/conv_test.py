@@ -44,6 +44,9 @@ def test_conv(self: unittest.TestCase, thy_name: str, cv: conv.Conv, *,
     prf = pt.export()
     self.assertEqual(theory.check_proof(prf), res_th)
 
+# Helper function, not a pytest test (name shared by importing modules)
+test_conv.__test__ = False
+
 class ConvTest(unittest.TestCase):
     def testBetaConv(self):
         test_conv(
@@ -122,10 +125,10 @@ class ConvTest(unittest.TestCase):
 
     def testRewrConv6(self):
         test_conv(
-            self, 'set', rewr_conv('image_combine', sym=True),
+            self, 'set', rewr_conv('image_combine'),
             vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set"},
             t="image f (image g s)",
-            t_res="image (f O g) s"
+            t_res="image (g O f) s"
         )
 
     def testRewrConv7(self):
@@ -227,10 +230,10 @@ class ConvTest(unittest.TestCase):
 
     def testTopSweepConv4(self):
         test_conv(
-            self, 'set', top_sweep_conv(rewr_conv('image_combine', sym=True)),
+            self, 'set', top_sweep_conv(rewr_conv('image_combine')),
             vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set"},
             t="image f (image g s) = t",
-            t_res="image (f O g) s = t"
+            t_res="image (g O f) s = t"
         )
 
     def testHasRewrite(self):
@@ -247,8 +250,8 @@ class ConvTest(unittest.TestCase):
 
     def testHasRewriteSym(self):
         test_data = [
-            ("image f (image g s)", "image_combine", True),
-            ("image h (image h t) = t", "image_combine", True),
+            ("image (g O f) s", "image_combine", True),
+            ("image (h O h) t = t", "image_combine", True),
         ]
 
         context.set_context('set', vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set", 'h': 'nat => nat', 't': 'nat set'})

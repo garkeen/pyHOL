@@ -45,6 +45,9 @@ def testSteps(self, thy_name, thm_name, *, no_gaps=True, print_proof=False, \
             if val['ty'] == 'thm' and val['name'] == thm_name:
                 test_val(val)
 
+# Helper function, not a pytest test
+testSteps.__test__ = False
+
 class ServerTest(unittest.TestCase):
     def testInitState(self):
         context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
