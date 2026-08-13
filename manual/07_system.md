@@ -111,8 +111,8 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 ### 4.4 方法层自动化
 
-- `simp`：遍历所有 `hint_rewrite` 定理，构造 `top_conv(rewr_conv(...))` 链。
-- `norm`/`eval`/`linarith`：按目标类型分发到 `nat_norm`/`real_norm`/`int_norm` 等 `MacroTactic`。
+- `simp`：全体 `hint_rewrite` 无前提定理定点迭代重写 + β 归一，must-change（无效果报错）。
+- `norm`：按目标类型分发到 `nat_norm`/`real_norm` 等领域宏方法（受检宏调用，无 MacroTactic 逃生门）。
 
 ## 5. 语法层（syntax/）
 

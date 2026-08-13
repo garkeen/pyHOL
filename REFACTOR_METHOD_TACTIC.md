@@ -549,10 +549,27 @@ auto 宏内部递归、对外仍是一行受检证明，已证明该模式可行
 - C6 端到端：not_or_elim2 缺口 `~(q|p) --> ~q` 经 rule not_or_elim1
   一步关闭；suggest exact 通道给出 ('rule', 'not_or_elim1') 建议
 
-### 待办
+### 追加完成（第四轮：前端同步 + manual 更新）
 
-- 前端同步（option 列表 / sig 表 / FORWARD_METHODS 集合改新名）
-- manual/ 更新
+11. **前端同步新词表**：
+   - ProofArea.vue 手动 tab 下拉改新名（forward/rewrite/inst 正向组；
+     rule/resolve/apply_prev/intro/elim/cases/induct/unfold/simp/refl/
+     eq_intro/assumption/accept 反向组；cut/var 结构组），删除
+     subst/fold/insert；Auto tab 删 eval/linarith（已不存在）
+   - 集合更新：FORWARD_METHODS={forward,rewrite,inst}（无目标可用），
+     INST_PARAM_METHODS={rule,forward,apply_prev}；rewrite 分组改
+     target 标记判定（isFactRewrite/isGoalRewrite）
+   - apply_suggestion 透传 target/source 标记（双模式回放无歧义）；
+     手动应用 rewrite/inst 无目标时自动注 target='fact'；
+     method_sig_map 静态回退表改新名
+   - ProofLine.vue 方向标记加 close_by（行级 rule 名均合法保留）
+   - FRONTEND_API.md 示例与说明同步新名
+12. **manual/ 更新**：06_method.md 方法目录/分发模式/属性表/step 示例
+   全部改新词表（含双模式语义与受检宏调用）；README.md 速查、
+   07_system.md 方法层自动化同步；MacroTactic 描述移除
+13. **验证**：前端 npm build 通过；端到端 API 冒烟 16 项全过
+   （init/搜索/apply/双模式 fact 改写 target=fact/自动闭合 close_by/
+   从头重放）；pytest 349 全绿无回归
 
 ### 追加完成（第二轮）
 

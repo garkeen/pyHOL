@@ -105,7 +105,7 @@
             "prop": "A ∧ B ⟷ B ∧ A",
             "attributes": ["hint_rewrite"],
             "steps": [
-                { "method_name": "apply_backward_step", "goal_id": "0", "theorem": "iffI" }
+                { "method_name": "rule", "goal": 0, "theorem": "iffI" }
             ]
         }
     ]
@@ -191,8 +191,8 @@
             { "id": "2", "th": "...", "rule": "intros", "args": "", "prevs": ["0","1"] }
         ],
         "num_gaps": 1,
-        "method_sig": { "cut": ["goal"], "apply_backward_step": ["theorem"], ... },
-        "method_list_params": { "introduction": ["names"], "exists_elim": ["names"] }
+        "method_sig": { "cut": ["cut_goal"], "rule": ["theorem"], ... },
+        "method_list_params": { "intro": ["names"], "elim": ["names"] }
     },
     "history": [
         { "step_output": [...], "goal_id": "0", "fact_ids": ["1"] }
@@ -223,14 +223,14 @@
 {
     "results": [
         {
-            "method_name": "apply_forward_step",
+            "method_name": "forward",
             "theorem": "subset_trans",
             "fact_ids": ["1", "3"],
             "_fact": ["B ⊆ C"],
             "_thm": "A ⊆ B ⟹ B ⊆ C ⟹ A ⊆ C"
         },
         {
-            "method_name": "apply_forward_step",
+            "method_name": "forward",
             "theorem": "image_union",
             "_needs_params": ["param_x"]
         }
@@ -264,14 +264,14 @@
 {
     "results": [
         {
-            "method_name": "apply_backward_step",
+            "method_name": "rule",
             "theorem": "conjI",
             "goal_id": "5",
             "fact_ids": ["1"],
             "_goal": ["A", "B"],
             "_thm": "A ⟹ B ⟹ A ∧ B"
         },
-        { "method_name": "reflexive", "goal_id": "5", "_goal": [] }
+        { "method_name": "refl", "goal": 5, "_goal": [] }
     ],
     "ctxt": { "A": "bool", "B": "bool" }
 }
@@ -445,7 +445,7 @@
 ### components/proof/ProofLine.vue（证明行）
 
 - 双击命题 → 选中为事实；双击 sorry 行 → 选中为目标
-- 方向标记：`→` 正向推导（apply_forward_step/apply_fact 等）、`←` 反向应用（apply_backward_step 等）
+- 方向标记：`→` 正向推导（apply_theorem/apply_fact/rewrite_fact 等行级规则）、`←` 反向应用（sorry/subproof/trivial/close_by）
 - `can_select` 控制可点击性（无目标模式允许同层 + 外层事实）
 
 ### components/proof/ProofContext.vue（上下文面板）

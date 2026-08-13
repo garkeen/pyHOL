@@ -68,14 +68,14 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 ### 内置策略
 
-`rule` / `resolve` / `var_induct` / `intros` / `rewrite_goal` / `rewrite_goal_with_prev` / `apply_prev` / `cases` / `inst_exists_goal` / `assumption` / `reflexive` / `equal_intr` / `elim_tac` / `MacroTactic`
+`rule` / `resolve` / `var_induct` / `intros` / `rewrite_goal` / `rewrite_goal_with_prev` / `apply_prev` / `cases` / `inst_exists_goal` / `assumption` / `reflexive` / `equal_intr` / `elim_tac`
 
 ### 方法分发模式
 
-- **A 策略路径**：`apply_backward_step` / `introduction` / `cases` / `rewrite_goal` / `induction` / ...
-- **B 可信宏求值**：`norm` / `eval` / `linarith`
-- **C 正向路径**：`apply_forward_step` / `rewrite_fact` / `apply_fact` / `frule` / `forall_elim`
-- **D 直接操作**：`cut` / `new_var` / `insert` / `exists_elim` / `z3`
+- **A 策略路径**：`rule` / `intro` / `cases` / `rewrite`（goal）/ `induct` / `refl` / `eq_intro` / `unfold` / `simp` / ...
+- **B 受检宏调用**：`norm` / 领域宏方法（`nat_norm` / `real_norm` / `eval_Sem` / ...）
+- **C 正向路径**：`forward` / `rewrite`（fact）/ `inst`（fact）
+- **D 直接操作**：`cut` / `var` / `elim` / `z3`
 
 > 行不可变：fact/goal 生成后不可改写，已移除 `thin` / `sym` / `revert_intro` / `drule` 等行改写方法。
 

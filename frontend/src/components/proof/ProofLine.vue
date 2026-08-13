@@ -78,7 +78,7 @@ defineEmits(['select-fact', 'select-goal'])
 const hover = ref(false)
 
 const FORWARD_RULES = new Set(['apply_theorem', 'apply_theorem_for', 'rewrite_fact', 'rewrite_fact_sym', 'forall_elim_gen', 'apply_fact'])
-const BACKWARD_RULES = new Set(['sorry', 'subproof', 'trivial'])
+const BACKWARD_RULES = new Set(['sorry', 'subproof', 'trivial', 'close_by'])
 const APPLY_THEOREM_RULES = ['apply_theorem', 'apply_theorem_for']
 
 const dirMark = computed(() => {

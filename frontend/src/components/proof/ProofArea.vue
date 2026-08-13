@@ -104,32 +104,28 @@
           <select v-model="manual_method" class="method-select">
             <option value="">-- select --</option>
             <optgroup label="⟶ Forward (needs facts, no goal)">
-              <option value="apply_forward_step">apply_forward_step</option>
-              <option value="apply_fact">apply_fact</option>
-              <option value="rewrite_fact">rewrite_fact</option>
-              <option value="forall_elim">forall_elim</option>
-              <option value="exists_elim">exists_elim</option>
-              <option value="frule">frule</option>
+              <option value="forward">forward</option>
+              <option value="rewrite">rewrite (fact mode w/o goal)</option>
+              <option value="inst">inst (fact mode w/o goal)</option>
             </optgroup>
             <optgroup label="← Backward (needs goal)">
-              <option value="apply_backward_step">apply_backward_step</option>
-              <option value="apply_resolve_step">apply_resolve_step</option>
+              <option value="rule">rule</option>
+              <option value="resolve">resolve</option>
               <option value="apply_prev">apply_prev</option>
-              <option value="rewrite_goal">rewrite_goal</option>
-              <option value="simp">simp</option>
-              <option value="unfold">unfold</option>
-              <option value="fold">fold</option>
-              <option value="reflexive">reflexive</option>
-              <option value="subst">subst</option>
-              <option value="introduction">introduction</option>
-              <option value="inst_exists_goal">inst_exists_goal</option>
+              <option value="intro">intro</option>
+              <option value="elim">elim</option>
               <option value="cases">cases</option>
-              <option value="induction">induction</option>
+              <option value="induct">induct</option>
+              <option value="unfold">unfold</option>
+              <option value="simp">simp</option>
+              <option value="refl">refl</option>
+              <option value="eq_intro">eq_intro</option>
+              <option value="assumption">assumption</option>
+              <option value="accept">accept</option>
             </optgroup>
             <optgroup label="Structural">
               <option value="cut">cut</option>
-              <option value="insert">insert</option>
-              <option value="new_var">new_var</option>
+              <option value="var">var</option>
             </optgroup>
           </select>
         </div>
@@ -148,7 +144,7 @@
           </div>
         </div>
         <button v-if="manual_method" class="btn btn-sm btn-primary" @click="apply_manual_method"
-                :disabled="goal === -1 && !FORWARD_METHODS.has(manual_method) && manual_method !== 'insert' && manual_method !== 'new_var'">
+                :disabled="goal === -1 && !FORWARD_METHODS.has(manual_method) && manual_method !== 'var'">
           Apply
         </button>
       </div>
@@ -159,10 +155,6 @@
         <span class="auto-desc">hint_rewrite auto-rewrite</span>
         <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('norm')" :disabled="goal === -1">norm</button>
         <span class="auto-desc">polynomial normalize</span>
-        <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('eval')" :disabled="goal === -1">eval</button>
-        <span class="auto-desc">constant evaluation</span>
-        <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('linarith')" :disabled="goal === -1">linarith</button>
-        <span class="auto-desc">linear arithmetic</span>
         <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('z3')" :disabled="goal === -1">z3</button>
         <span class="auto-desc">SMT solver (oracle)</span>
         <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('vcg')" :disabled="goal === -1">vcg</button>
@@ -213,21 +205,27 @@ const theorem_results = ref([])
 // Fields that are comma-separated lists (rendered as +/- dynamic inputs)
 const listFieldsFor = (mn) => new Set(method_list_params.value[mn] || [])
 
-const FORWARD_METHODS = new Set(['apply_forward_step', 'apply_fact', 'rewrite_fact', 'forall_elim', 'exists_elim', 'frule'])
-const REWRITE_FACT_METHODS = new Set(['rewrite_fact', 'rewrite_fact_with_prev'])
-const REWRITE_GOAL_METHODS = new Set(['rewrite_goal', 'rewrite_goal_with_prev'])
+// Methods usable without a selected goal (fact mode). rewrite/inst are
+// dual-mode: with no goal selected they run in fact mode (target='fact'
+// is injected at apply time).
+const FORWARD_METHODS = new Set(['forward', 'rewrite', 'inst'])
 // Methods whose params are instantiations (sent with param_ prefix for Inst).
-// All other methods expect plain keys (cut/cases/induction/new_var/...).
-const INST_PARAM_METHODS = new Set(['apply_backward_step', 'apply_forward_step', 'apply_prev'])
+// All other methods expect plain keys (cut/cases/induct/var/...).
+const INST_PARAM_METHODS = new Set(['rule', 'forward', 'apply_prev'])
+
+// Dual-mode rewrite results carry a target marker from the backend
+// (fact mode: target='fact'); goal mode has no marker.
+const isFactRewrite = (r) => r.method_name === 'rewrite' && r.target === 'fact'
+const isGoalRewrite = (r) => r.method_name === 'rewrite' && r.target !== 'fact'
 
 const method_sig_map = {
-  'introduction': [], 'apply_backward_step': ['theorem'], 'apply_forward_step': ['theorem'],
-  'apply_prev': [], 'apply_fact': [], 'cut': ['cut_goal'], 'cases': ['case'], 'induction': ['theorem', 'var'],
-  'forall_elim': ['s'], 'exists_elim': ['names'], 'inst_exists_goal': ['s'], 'new_var': ['name', 'type'],
-  'subst': ['theorem'], 'reflexive': [],
-  'rewrite_goal': ['theorem', 'sym'], 'rewrite_fact': ['theorem', 'sym'],
-  'unfold': ['theorem'], 'fold': ['theorem'], 'simp': [],
-  'insert': ['theorem'], 'frule': ['theorem'],
+  'rule': ['theorem'], 'resolve': ['theorem'], 'accept': ['theorem'],
+  'apply_prev': [], 'forward': ['theorem'],
+  'rewrite': ['theorem', 'sym'], 'unfold': ['theorem', 'sym'],
+  'intro': [], 'elim': ['names'], 'inst': ['s'],
+  'induct': ['theorem', 'var'], 'cases': ['case'], 'cut': ['cut_goal'],
+  'var': ['name', 'type'], 'refl': [], 'eq_intro': [], 'assumption': [],
+  'simp': [], 'norm': [],
 }
 
 const method_params = computed(() => {
@@ -246,20 +244,20 @@ const param_hint = (p) => ({
 
 const derive_suggestions = computed(() => {
   if (goal.value !== -1) return []  // backward mode: no derive
-  return search_res.value.filter(r => !r.fuzzy && !REWRITE_FACT_METHODS.has(r.method_name))
+  return search_res.value.filter(r => !r.fuzzy && !isFactRewrite(r))
 })
 
 const rewrite_suggestions = computed(() => {
   if (goal.value !== -1) {
     // Backward mode: only goal-rewrites go here
-    return search_res.value.filter(r => !r.fuzzy && REWRITE_GOAL_METHODS.has(r.method_name))
+    return search_res.value.filter(r => !r.fuzzy && isGoalRewrite(r))
   }
-  return search_res.value.filter(r => !r.fuzzy && REWRITE_FACT_METHODS.has(r.method_name))
+  return search_res.value.filter(r => !r.fuzzy && isFactRewrite(r))
 })
 
 const backward_suggestions = computed(() => {
   if (goal.value === -1) return []  // forward mode: no backward
-  return search_res.value.filter(r => !r.fuzzy && !REWRITE_GOAL_METHODS.has(r.method_name))
+  return search_res.value.filter(r => !r.fuzzy && !isGoalRewrite(r))
 })
 
 // Fuzzy suggestions: group by (method, theorem), each group lists all
@@ -456,6 +454,10 @@ const apply_suggestion = (res) => {
   if (res.sym) args.sym = res.sym
   if (res.var) args.var = res.var
   if (res.facts) args.facts = res.facts
+  // Dual-mode markers: required for unambiguous replay of rewrite/inst
+  // (a fact rewrite at a gap position is otherwise inferred as goal mode).
+  if (res.target) args.target = res.target
+  if (res.source && res.method_name === 'rewrite') args.source = res.source
   // Context shown in the parameter query dialog
   const desc = { thm: res._thm || '', result: '' }
   if (res._goal) desc.result = '⇒ ' + (res._goal.length === 0 ? 'closes' : res._goal.length + ' subgoals')
@@ -507,6 +509,10 @@ const apply_manual_method = async () => {
   const method_name = manual_method.value
   const params = { ...manual_params.value }
   const args = { ...params }
+  // Dual-mode methods without a selected goal run in fact mode.
+  if ((method_name === 'rewrite' || method_name === 'inst') && goal.value === -1) {
+    args.target = 'fact'
+  }
   await apply_method(method_name, args)
   manual_params.value = {}
   theorem_results.value = []

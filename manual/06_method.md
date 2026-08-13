@@ -62,13 +62,13 @@ class ProofState:
 ```
 method.apply -> state.apply_tactic(tactic) -> tactic.get_proof_term -> ProofTerm
 ```
-典型：`apply_backward_step`、`introduction`、`cases`、`rewrite_goal`、`apply_prev`、`inst_exists_goal`、`induction`、`reflexive`、`equal_intr`、`subst`、`unfold`、`fold`、`simp`。
+典型：`rule`、`intro`、`cases`、`rewrite`（goal 模式）、`apply_prev`、`inst`（goal 模式）、`induct`、`refl`、`eq_intro`、`unfold`、`simp`、`assumption`、`accept`。
 
-### 模式 B：可信宏求值（领域计算）
+### 模式 B：受检宏调用（领域计算）
 ```
-method.apply -> state.apply_tactic(MacroTactic(name)) -> macro.eval -> Thm
+method.apply -> state.apply_macro(name, args) -> macro 展开 -> 受检原语行
 ```
-典型：`norm`、`eval`、`linarith`（按类型分发到 `nat_norm`/`real_norm`/`int_norm`）。
+宏一律走受检调用入口（无 MacroTactic 逃生门），展开结果经 `check_proof` 验证。典型：`norm`、领域注册的 `nat_norm`/`real_norm`/`nat_const_ineq`/`eval_Sem`/`prove_avalI`。
 
 ### 模式 C：正向策略路径（向前推理）
 ```
@@ -77,63 +77,62 @@ method.apply -> tactic.X_forward().get_proof_term(args, prevs) -> ProofTerm
 ```
 正向方法不走 `apply_tactic`（那需要 sorry goal），而是直接调正向策略获取 ProofTerm，再手动插入新行。推理（匹配、效果检查）在策略层完成。
 
-典型：`apply_forward_step`、`rewrite_fact`、`rewrite_fact_with_prev`、`apply_fact`、`forall_elim`、`frule`。
+典型：`forward`（定理模式与 fact-on-facts 模式）、`rewrite`（fact 模式）、`inst`（fact 模式，即全称实例化）。
 
 ### 模式 D：直接操作
 ```
 method.apply -> state.set_line(rule, args, prevs, th)
 ```
-典型：`cut`、`new_var`、`insert`、`exists_elim`、`z3`。
+典型：`cut`、`var`、`elim`、`z3`。
 
 > **行不可变约束**：已删除所有"改写已有行"的方法（`thin` / `sym` / `revert_intro` / `drule`）。fact 与 goal 一旦生成不可变：向后推理通过证明项展开覆盖 goal 行、以新 sorry 行产生子目标；正向推理只插入新事实行。`add_line_before` / `remove_line` / `replace_id` / `set_line` 仍在底层保留，但只用于 IDE 结构性编辑与上述路径，不用于改写已存在行的命题。
 
 
 ## 4. 方法目录
 
+方法词表（`server/methods/core.py` 注册 + 领域宏方法）：
+`rule` / `resolve` / `rewrite` / `intro` / `cases` / `induct` / `cut` / `inst` /
+`accept` / `refl` / `eq_intro` / `unfold` / `forward` / `elim` / `var` /
+`assumption` / `norm` / `simp` + oracle（`z3` / `vcg`）+ 领域宏方法。
+
+`rewrite` 与 `inst` 是**双模式**方法，由状态形状推断模式（显式 `target`/`source` 标记可覆盖）：
+- 目标行是缺口 → goal 模式；否则 fact 模式
+- 带 `theorem` 参数 → 定理来源；否则用选中的事实
+- 注意：对缺口位置做 fact 改写必须显式传 `target='fact'`（缺口 id 有歧义）
+
 ### 4.1 逻辑方法
 
 | 方法 | 参数 | 分发 | 说明 |
 |---|---|---|---|
-| `cut` | `[goal]` | D | 插入中间目标（have） |
-| `cases` | `[case]` | A | 分情况 `A⟶C` 与 `¬A⟶C` |
-| `apply_prev` | `[]` | A | 向后应用已有事实 |
-| `rewrite_goal_with_prev` | `[]` | A | 用已有等式事实重写目标 |
-| `rewrite_goal` | `[theorem, sym]` | A | 用定理重写目标（支持 `loc`） |
-| `rewrite_fact` | `[theorem, sym]` | C | 用定理重写事实 |
-| `rewrite_fact_with_prev` | `[]` | C | 用一个事实重写另一个 |
-| `apply_forward_step` | `[theorem]` | C | 向前应用定理推新事实 |
-| `apply_backward_step` | `[theorem]` | A | **最常用**：向后应用定理分解目标 |
-| `apply_resolve_step` | `[theorem]` | A | 消解（`~A` + `A` -> 任意目标） |
+| `rule` | `[theorem]` | A | **最常用**：向后应用定理分解目标（整条命题匹配 + 前提子目标） |
+| `resolve` | `[theorem]` | A | 消解（`~A` + fact `A` -> 任意目标） |
+| `apply_prev` | `[]` | A | 向后应用已有事实（可带 `param_*` 实例化） |
 | `accept` | `[theorem]` | A | 直接用定理关闭：结论匹配 goal、前提匹配假设，无子目标 |
-| `call_tactic` | `[tactic_name]` | A | 逃生舱：按名直接调用策略（rule/rewrite_goal/apply_prev/intros/assumption/resolve/cases） |
-| `introduction` | `[names]` | A | 引入变量与假设 |
-| `exists_elim` | `[names]` | D | 消除存在量词事实 |
-| `forall_elim` | `[s]` | C | 实例化全称量词 |
-| `inst_exists_goal` | `[s]` | A | 用见证实例化存在目标 |
-| `induction` | `[theorem, var]` | A | 结构归纳 |
-| `new_var` | `[name, type]` | D | 声明新变量 |
-| `apply_fact` | `[]` | C | 应用 forall/implies 事实 |
-| `reflexive` | `[]` | A | 证明 `t = t` |
-| `equal_intr` | `[]` | A | 证明 `A = B`（拆两个方向） |
-| `subst` | `[theorem]` | A | 用等式替换（`top_sweep_conv`） |
-| `unfold` | `[theorem]` | A | 展开定义（`top_conv` + β） |
-| `fold` | `[theorem]` | A | 折叠定义（反向 `top_conv`） |
-| `insert` | `[theorem]` | D | 插入定理作为新行 |
-| `frule` | `[theorem]` | C | 向前推理，**保留**所有 fact |
+| `rewrite` | `[theorem, sym]` | A/C | 双模式：goal 模式重写目标（支持 `loc`），fact 模式重写事实；无 theorem 时用选中事实作重写规则 |
+| `intro` | `[names]` | A | 引入变量与假设（names 为逗号分隔列表） |
+| `elim` | `[names]` | D | 消除存在量词事实（引入新变量 + 假设） |
+| `inst` | `[s]` | A/C | 双模式：goal 模式用见证实例化存在目标，fact 模式实例化全称事实 |
+| `cases` | `[case]` | A | 分情况 `A⟶C` 与 `¬A⟶C` |
+| `induct` | `[theorem, var]` | A | 结构归纳 |
+| `cut` | `[cut_goal]` | D | 插入中间目标（have） |
+| `var` | `[name, type]` | D | 声明新变量 |
+| `forward` | `[theorem]` | C | 正向推理推新事实：带 theorem 为定理模式，不带为 fact-on-facts 模式 |
+| `unfold` | `[theorem, sym]` | A | 展开定义（`top_conv` + β）；`sym='true'` 即折叠 |
+| `refl` | `[]` | A | 证明 `t = t` |
+| `eq_intro` | `[]` | A | 证明 `A = B`（拆两个方向） |
+| `assumption` | `[]` | A | 用自身假设关闭目标 |
 
 ### 4.2 自动化方法
 
 | 方法 | 分发 | 说明 |
 |---|---|---|
-| `simp` | A | 用所有 `hint_rewrite` 定理重写 |
-| `norm` | B | 归一化，按类型选 nat/real |
-| `eval` | B | 计算，按类型选 nat/int/real |
-| `linarith` | B | 线性算术，按类型选 nat/real/int |
+| `simp` | A | 全体 `hint_rewrite` 无前提定理定点迭代重写 + β 归一，must-change |
+| `norm` | B | 归一化，按类型选 nat/real 领域 conv |
 | `eval_Sem` | B | 计算命令式程序小步语义 `Sem com st st2`（imperative） |
 | `z3` | D | Z3 SMT 求解器（oracle 宏行，直接 `set_line`） |
 | `vcg` | A | Hoare 逻辑 VCG：将 `Valid P c Q` 分解为验证条件子目标 |
 
-领域包还直接注册了无参宏方法（模式 B，`MacroTactic` 包装）：`nat_norm`、`real_norm`、`nat_const_ineq`（nat 常量不等式）、`prove_avalI`（数组访问求值）。
+领域包还直接注册了无参宏方法（模式 B，受检宏调用）：`nat_norm`、`real_norm`、`nat_const_ineq`（nat 常量不等式）、`prove_avalI`（数组访问求值）。
 
 ## 5. 属性系统
 
@@ -141,13 +140,13 @@ method.apply -> state.set_line(rule, args, prevs, th)
 
 | 属性 | 作用 | 使用者 |
 |---|---|---|
-| `hint_rewrite` | 可用于重写 | `simp`, `rewrite_goal`, `rewrite_fact` |
-| `hint_rewrite_sym` | 可反向重写 | `rewrite_goal(sym=True)`, `rewrite_fact(sym=True)` |
-| `hint_backward` | 向后推理搜索 | `apply_backward_step` |
-| `hint_backward1` | 需 ≥1 个事实的向后推理 | `apply_backward_step` |
-| `hint_forward` | 向前推理搜索 | `apply_forward_step` |
-| `hint_resolve` | 消解搜索 | `apply_resolve_step` |
-| `var_induct` | 归纳原理 | `induction` |
+| `hint_rewrite` | 可用于重写 | `simp`, `rewrite` |
+| `hint_rewrite_sym` | 可反向重写 | `rewrite(sym=true)` |
+| `hint_backward` | 向后推理搜索 | `rule` |
+| `hint_backward1` | 需 ≥1 个事实的向后推理 | `rule` |
+| `hint_forward` | 向前推理搜索 | `forward` |
+| `hint_resolve` | 消解搜索 | `resolve` |
+| `var_induct` | 归纳原理 | `induct` |
 
 在 `.pyhol` 里，`fun` 的每条规则自动带 `hint_rewrite`，`def.pred`（归纳谓词）的规则带 `hint_backward`，`Datatype` 的归纳定理带 `var_induct`。
 
@@ -163,7 +162,7 @@ method.apply -> state.set_line(rule, args, prevs, th)
 | 部分 | 说明 | 示例 |
 |---|---|---|
 | `←` / `→` | 方向标注 | `←`（逆向，消耗 goal），`→`（正向，消耗 fact） |
-| `method_name` | 方法名 | `apply_backward_step` |
+| `method_name` | 方法名 | `rule` |
 | `positional_args` | 位置参数 | `conjI` |
 | `goal=N` | 操作的 goal/fact 稳定 ID | `goal=0`, `goal=3` |
 | `facts=[N,...]` | 引用事实的稳定 ID | `facts=[3]`, `facts=[1,2]` |
@@ -171,38 +170,40 @@ method.apply -> state.set_line(rule, args, prevs, th)
 
 - **#0** = 要证明的定理（隐含，不写）
 - **#[N]**（N≥1）= method 调用产生的 item（fact 或 subgoal）
-- 命题有蕴含时，第一步必须是 `← introduction goal=0` 显式拆分
+- 命题有蕴含时，第一步必须是 `← intro goal=0` 显式拆分
 - `fixes` 变量在上下文中，不需要 `#[N]`
 - replay 时 `#[N]` 的 ID 用于引用映射，命题不验证
 
 示例：
 ```
 proof
-  ← apply_backward_step iffI goal=0
+  ← rule iffI goal=0
     #[1] A ∧ B ⟶ B ∧ A
     #[2] B ∧ A ⟶ A ∧ B
-  ← introduction goal=1
+  ← intro goal=1
     #[3] A ∧ B
     #[4] B ∧ A
-  ← apply_backward_step conjI goal=4
+  ← rule conjI goal=4
     #[5] B
     #[6] A
-  ← apply_backward_step conjD2 goal=5 facts=[3]
-  ← apply_backward_step conjD1 goal=6 facts=[3]
+  ← rule conjD2 goal=5 facts=[3]
+  ← rule conjD1 goal=6 facts=[3]
 qed
 ```
 
 ## 7. 自动搜索（前端 forward/backward-search）
 
-搜索逻辑在前端触发、后端 `app/ide.py` 执行：
+搜索逻辑在前端触发、后端 `app/ide_v2.py` + `server/stable_state.py` 执行：
 
-- `apply_backward_step.search`：遍历所有带 `hint_backward`/`hint_backward1` 属性的定理，尝试 `rule().get_proof_term`，成功则记录子目标。
+- `rule.search`：遍历所有带 `hint_backward`/`hint_backward1` 属性的定理，尝试 `rule().get_proof_term`，成功则记录子目标。另有精确匹配通道：全局模式网中整条命题匹配 goal 的定理一律作为 `rule` 建议。
+- 双模式方法在搜索层同时贡献两种模式的结果，以 `target`/`source` 标记区分；正向搜索只保留 fact 模式结果。
+- 自动闭合（显式）：每步应用后对新缺口按**匹配**（first_order_match + hyps 子集）查找先行证明行，命中则落 `close_by` 可见行；未命中尝试 `trivial` 策略，成功落 `trivial` 行。
 - 每个方法按 `no_order` 属性决定是否对 `prevs` 做排列。
 - 若有结果能"solves"（`_goal` 为空），只保留 solves 的结果。
 
 ## 8. loc 位置特定重写
 
-`rewrite_goal` 方法支持 `loc` 参数，对目标的特定子位置重写：
+`rewrite` 方法（goal 模式）支持 `loc` 参数，对目标的特定子位置重写：
 
 - `loc="0"`：函数部分（`fun_conv`）
 - `loc="1"`：参数部分（`arg_conv`）
@@ -226,7 +227,7 @@ class my_method(Method):
 ```
 
 `list_params` 是类属性（非实例属性），声明哪些参数接受逗号分隔的多个值。
-当前仅 `introduction`（`{'names'}`）与 `exists_elim`（`{'names'}`）使用。
+当前仅 `intro`（`{'names'}`）与 `elim`（`{'names'}`）使用。
 前端 ProofQuery 对 `list_params` 中的字段渲染动态增减输入框，提交时用逗号 join。
 后端通过 `get_method_list_params()` 汇总，序列化到 proof state 的 `method_list_params` 字段。
 
