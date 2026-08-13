@@ -942,48 +942,72 @@ class exists_elim(Method):
         return pprint.N("Instantiate exists fact")
 
     def apply(self, state: ProofState, id, data, prevs):
-        assert len(prevs) == 1, "exists_elim"
+        assert len(prevs) == 1, "elim"
 
         # Parse the list of variable names
         with context.fresh_context(vars=state.get_vars(id)):
-            names = [name.strip() for name in data['names'].split(',')]
-            for name in names:
-                if name in context.ctxt.vars:
-                    raise AssertionError("Instantiate exists: duplicate name %s" % name)
+            names = [nm.strip() for nm in data['names'].split(',')]
+            for nm in names:
+                if nm in context.ctxt.vars:
+                    raise AssertionError("elim: duplicate name %s" % nm)
 
         exists_item = state.get_proof_item(prevs[0])
         exists_prop = exists_item.th.prop
-        assert exists_prop.is_exists(), "exists_elim"
+        assert exists_prop.is_exists(), "elim"
 
         vars, body = logic.strip_exists(exists_prop, names)
 
-        # Add one line for each variable, and one line for body of exists
+        # Gap theorem BEFORE its hyps are extended (needed by the
+        # elim_exists tactic).
+        gap_th = state.get_proof_item(id).th
+
+        # Visible structure: one line per fresh variable plus the
+        # assumption of the exists body, inserted before the gap.
         state.add_line_before(id, len(vars) + 1)
         for i, var in enumerate(vars):
             state.set_line(id.incr_id(i), 'variable', args=(var.name, var.T), prevs=[])
         state.set_line(id.incr_id(len(vars)), 'assume', args=body, prevs=[])
 
-        # Find the intros at the end, append exists fact and new variables
-        # and assumptions to prevs.
-        new_intros = [prevs[0]] + [id.incr_id(i) for i in range(len(vars)+1)]
+        # Locate the enclosing intros line; the lines in between
+        # (including the gap) get their hyps extended with the body.
+        intros_item = None
         i = len(vars) + 1
-        while True:
+        while intros_item is None:
             try:
                 item = state.get_proof_item(id.incr_id(i))
             except ProofStateException:
-                raise AssertionError("exists_elim: cannot find intros at the end")
+                raise AssertionError("elim: cannot find intros at the end")
+            if item.rule == 'intros':
+                intros_item = item
             else:
-                if item.rule == 'intros':
-                    if item.args is None:
-                        item.args = [exists_prop]
-                    else:
-                        item.args = [exists_prop] + item.args
-                    item.prevs = item.prevs[:-1] + new_intros + [item.prevs[-1]]
-                    break
-                else:
-                    state.set_line(id.incr_id(i), item.rule, args=item.args, prevs=item.prevs, \
-                                   th=Thm(item.th.prop, item.th.hyps, body))
-            i += 1
+                state.set_line(id.incr_id(i), item.rule, args=item.args,
+                               prevs=item.prevs,
+                               th=Thm(item.th.prop, item.th.hyps, body))
+                i += 1
+
+        # Rewire the enclosing intros line: the exists fact, fresh
+        # variables and the body assumption are inserted before the
+        # continuation; the exists prop is prepended to the args.
+        new_intros_ids = [prevs[0]] + [id.incr_id(k) for k in range(len(vars) + 1)]
+        intros_item.args = [exists_prop] + \
+            (list(intros_item.args) if intros_item.args else [])
+        intros_item.prevs = intros_item.prevs[:-1] + new_intros_ids + \
+            [intros_item.prevs[-1]]
+        state.check_proof(compute_only=True)
+
+        # Derive the rewired intros line as a CHECKED proof term and
+        # assert the committed line matches it. The wiring above is the
+        # only state-level part; its correctness is kernel-verified
+        # here against the tactic-derived proof term.
+        exists_pt = ProofTerm.atom(prevs[0], exists_item.th)
+        wired_prev_pts = [ProofTerm.atom(p, state.get_proof_item(p).th)
+                          for p in intros_item.prevs]
+        pt = tactic.elim_exists().get_proof_term(
+            args=(names, exists_pt, wired_prev_pts, intros_item.args),
+            prevs=[ProofTerm.atom(id, gap_th)])
+        assert intros_item.th.prop == pt.th.prop and \
+            set(intros_item.th.hyps) == set(pt.th.hyps), \
+            "elim: rewired intros line does not match derived proof term"
 
 
 class forall_elim(Method):

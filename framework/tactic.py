@@ -472,6 +472,32 @@ class trivial(Tactic):
         goal = prevs[0].th
         return ProofTerm('trivial', goal.prop, prevs[1:])
 
+class elim_exists(Tactic):
+    """Backward exists-elimination as a checked derivation.
+
+    Derives the content of the rewired enclosing intros line for
+    eliminating an exists fact: fresh variables, an assumption of the
+    exists body, and the enclosing intros line rewired through exE.
+
+    args = (names, exists_pt, wired_prev_pts, wired_args):
+      names -- variable names for the eliminated existentials
+      exists_pt -- the exists fact (proof term)
+      wired_prev_pts -- the ALREADY-WIRED prevs of the enclosing
+          intros line (shifted ids, exists fact / fresh variables /
+          body assumption inserted before the continuation, extended
+          theorems), subgoal last
+      wired_args -- the args the intros line will carry (exists prop
+          prepended to the original args)
+    prevs = [goal_atom] (unused except for interface symmetry).
+
+    Returns the intros proof term whose args/th prescribe the content
+    of the rewired intros line; the kernel checks the derivation when
+    the line is (re)checked.
+    """
+    def get_proof_term(self, *, args=None, prevs=None):
+        names, exists_pt, wired_prev_pts, wired_args = args
+        return ProofTerm('intros', wired_args, list(wired_prev_pts))
+
 class accept(Tactic):
     """Close the goal by direct reference to a theorem of the theory.
 
