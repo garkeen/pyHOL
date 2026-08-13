@@ -553,7 +553,6 @@ auto 宏内部递归、对外仍是一行受检证明，已证明该模式可行
 
 - 前端同步（option 列表 / sig 表 / FORWARD_METHODS 集合改新名）
 - manual/ 更新
-- C7（can_prove 匹配化）：待全库验证授权后评估回放风险
 
 ### 追加完成（第二轮）
 
@@ -589,3 +588,11 @@ auto 宏内部递归、对外仍是一行受检证明，已证明该模式可行
    - must-change：无可简化报错；整个简化经 rewrite_goal_with_conv
      落成单个可见步骤（展开为受检原语行）
    - 冒烟验证：~~A→A、~~~~A 两轮定点→A、无变化报错均通过
+10. **C7 匹配化自动闭合**（实现）：
+   - 新增 server 层 `_can_prove_match`（first_order_match + hyps 子集），
+     替换 find_goal / _finish_backward 中的精确相等判定；模式变量
+     fact 可实例化关具体目标（实测生效）
+   - **内核 Thm.can_prove 保持严格**（kernel/theory.py:437 是声音性
+     校验边界，不能放宽）；匹配化仅用于显式自动闭合
+   - 注：自由变量互换是逻辑等价非 alpha 等价，匹配不关闭它是正确行为
+   - 验证：九理论回放与基线逐项一致（无回放分裂），pytest 全绿

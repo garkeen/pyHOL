@@ -23,6 +23,21 @@ from syntax import parser, printer, pprint
 from syntax.settings import settings, global_setting
 
 
+def _can_prove_match(fact_th, target_th):
+    """Matching-based closure test (audit finding C7).
+
+    The fact's proposition first-order-matches the target's proposition
+    (schematic variables instantiated), and the fact's assumptions are a
+    subset of the target's. This subsumes exact equality, so schematic
+    facts can close concrete goals and alpha-variants. Used for EXPLICIT
+    auto-close only; the kernel soundness check (kernel Thm.can_prove)
+    is deliberately left strict.
+    """
+    if not matcher.can_first_order_match(fact_th.prop, target_th.prop):
+        return False
+    return set(fact_th.hyps).issubset(set(target_th.hyps))
+
+
 class ProofState():
     """Represents proof state on the server side."""
 
@@ -147,7 +162,7 @@ class ProofState():
         try:
             for n in goal_id.id:
                 for item in prf.items[:n]:
-                    if item.th is not None and item.th.can_prove(concl):
+                    if item.th is not None and _can_prove_match(item.th, concl):
                         return item.id
                 prf = prf.items[n].subproof
         except (AttributeError, IndexError):
@@ -173,7 +188,7 @@ class ProofState():
         if pt.rule == 'atom':
             fact_id = pt.args  # ItemID of the fact
             fact_item = self.get_proof_item(fact_id)
-            if fact_item.th is not None and fact_item.th.can_prove(self.get_proof_item(id).th):
+            if fact_item.th is not None and _can_prove_match(fact_item.th, self.get_proof_item(id).th):
                 self.set_line(id, 'close_by', prevs=[fact_id], th=self.get_proof_item(id).th)
             return None
 
