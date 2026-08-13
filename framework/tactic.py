@@ -4,7 +4,7 @@ from copy import copy
 
 from kernel.type import TyInst
 from kernel import term
-from kernel.term import Term, Implies, Not, Lambda, Inst
+from kernel.term import Term, Implies, Not, Lambda, Inst, false
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import theory
 from kernel.proofterm import ProofTerm, TacticException
@@ -31,28 +31,39 @@ class Tactic:
         raise NotImplementedError
 
 
-class MacroTactic(Tactic):
-    """Construct a tactic from a macro.
-    
-    The name of the macro is provided at initialization. The first
-    argument of the macro must be the goal statement. The remaining
-    arguments are supplied by the tactic.
-    
+def _whole_prop_match(th_name: str, goal: Thm):
+    """Try to match the whole proposition of the theorem against the
+    goal proposition (Isabelle rule semantics). This handles goals with
+    an object-level implication head, which the stripped-conclusion
+    matching in _backward_rule can never reach.
+
+    Returns a proof term of the instantiated theorem when successful,
+    or None otherwise. The proof term is a primitive chain
+    (theorem + subst_type + substitution), fully checked by the kernel.
+
     """
-    def __init__(self, macro):
-        self.macro = macro
+    th = theory.get_theorem(th_name)
+    try:
+        inst = matcher.first_order_match(th.prop, goal.prop, Inst())
+    except matcher.MatchException:
+        return None
 
-    def get_proof_term(self, *, args=None, prevs=None):
-        assert prevs is not None and len(prevs) >= 1, "MacroTactic"
-        goal = prevs[0].th
-        prevs = prevs[1:]
+    # All schematic (term and type) variables must be determined.
+    unmatched = [v.name for v in term.get_svars([th.prop]) if v.name not in inst]
+    if unmatched:
+        raise theory.ParameterQueryException(list("param_" + name for name in unmatched))
+    unmatched_ty = [v.name for v in th.prop.get_stvars() if v.name not in inst.tyinst]
+    if unmatched_ty:
+        raise theory.ParameterQueryException(list("param_" + name for name in unmatched_ty))
 
-        if args is None:
-            args = goal.prop
-        else:
-            args = (goal.prop,) + args
+    pt = ProofTerm.theorem(th_name)
+    if inst.tyinst:
+        pt = pt.subst_type(inst.tyinst)
+    if inst:
+        pt = pt.substitution(inst)
+    assert pt.th.prop == goal.prop, "_whole_prop_match: instantiation mismatch"
+    return pt
 
-        return ProofTerm(self.macro, args, prevs)
 
 def _backward_rule(th_name, goal, inst, prevs):
     """Backward application of a theorem to a goal. Shared logic for rule
@@ -99,6 +110,17 @@ class rule(Tactic):
 
     args is either a pair of theorem name and instantiation, or the
     theorem name alone.
+
+    Matching is attempted in two stages:
+    1. Stripped-conclusion match: object-level implications of the
+       theorem become premises; the final conclusion is matched against
+       the goal; unmatched premises become subgoals. (Tried FIRST, so
+       that recorded proofs replay byte-identically.)
+    2. Whole-proposition match (C6, fallback): the entire theorem
+       proposition is matched against the goal. This closes
+       implication-shaped goals with implication-shaped theorems in
+       one step (Isabelle semantics), reachable only where stage 1
+       fails -- exactly the cases the old semantics could not handle.
     """
     def get_proof_term(self, *, args=None, prevs=None):
         goal = prevs[0].th
@@ -110,12 +132,24 @@ class rule(Tactic):
         assert isinstance(th_name, str), "rule: theorem name must be a string"
         if prevs is None:
             prevs = []
-        return _backward_rule(th_name, goal, inst, prevs)
+        try:
+            return _backward_rule(th_name, goal, inst, prevs)
+        except (AssertionError, matcher.MatchException):
+            if inst is None and len(prevs) == 0:
+                pt = _whole_prop_match(th_name, goal)
+                if pt is not None:
+                    return pt
+            raise
 
 class resolve(Tactic):
-    """Given any goal, a theorem of the form ~A, and an existing fact A,
-    solve the goal.
-    
+    """Given any goal, a theorem of the form ~A (or a theorem that can
+    be normalized to ~A, see below), and an existing fact A, solve the
+    goal.
+
+    Accepted theorem shapes (C4 shape normalization):
+    - ~A                    used directly via the resolve_theorem macro
+    - A = false             rewritten to ~A, then derived by primitives
+    - A --> false           ~A derived by primitives
     """
     def get_proof_term(self, *, args=None, prevs=None):
         goal = prevs[0].th
@@ -124,10 +158,34 @@ class resolve(Tactic):
         th_name = args
         th = theory.get_theorem(th_name)
 
-        assert th.prop.is_not(), "resolve: prop is not a negation"
+        if th.prop.is_not():
+            # Checking that the theorem matches the fact is done in the macro.
+            return ProofTerm('resolve_theorem', (args, goal.prop), prevs)
 
-        # Checking that the theorem matches the fact is done here.
-        return ProofTerm('resolve_theorem', (args, goal.prop), prevs)
+        # Shape normalization (C4): derive |- ~A from related shapes.
+        neg_pt = None
+        if th.prop.is_implies() and th.prop.rhs == false:
+            # |- A --> false, combined with negI: |- (A --> false) --> ~A
+            neg_pt = apply_theorem('negI', ProofTerm.theorem(th_name))
+        elif th.prop.is_equals() and th.prop.rhs == false:
+            # |- A = false. Under assumption A, rewrite A to false via
+            # symmetric equal_elim, discharge to A --> false, then negI.
+            A = th.prop.lhs
+            asm = ProofTerm.assume(A)
+            false_pt = ProofTerm('equal_elim', None, [
+                ProofTerm('symmetric', None, [ProofTerm.theorem(th_name)]), asm])
+            imp_pt = false_pt.implies_intr(A)
+            neg_pt = apply_theorem('negI', imp_pt)
+        else:
+            raise AssertionError(
+                "resolve: theorem %s is not a negation "
+                "(accepted shapes: ~A, A --> false, A = false)" % th_name)
+
+        # Match ~A against the fact, derive false, eliminate to the goal.
+        inst = matcher.first_order_match(neg_pt.prop.arg, prevs[0].prop)
+        neg_pt = neg_pt.subst_type(inst.tyinst).substitution(inst)
+        false_pt = neg_pt.implies_elim(prevs[0])
+        return apply_theorem('falseE', false_pt, concl=goal.prop)
 
 class intros(Tactic):
     """Given a goal of form !x_1 ... x_n. A_1 --> ... --> A_n --> C,
@@ -150,16 +208,32 @@ class intros(Tactic):
         return ProofTerm('intros', None, ptVars + ptAs + [pt])
 
 class var_induct(Tactic):
-    """Apply induction rule on a variable."""
+    """Apply induction rule on a variable.
+
+    The goal may start with forall quantifiers over OTHER variables
+    (library proofs rely on this shape). It must NOT start with a
+    quantifier binding the induction variable itself: in that case the
+    variable is bound in the goal and the induction predicate would
+    capture the whole quantified proposition (C10). Introduce such a
+    quantifier's body first.
+    """
     def get_proof_term(self, *, args=None, prevs=None):
         goal = prevs[0].th
         prevs = prevs[1:]
         th_name, var = args
+        assert not (goal.prop.is_forall() and
+                    goal.prop.arg.var_name == var.name), (
+            "var_induct: the goal starts with a forall binding the "
+            "induction variable %s; introduce it first, then apply "
+            "induction on the body." % var.name)
         P = Lambda(var, goal.prop)
         th = theory.get_theorem(th_name)
         f, th_args = th.concl.strip_comb()
         if len(th_args) != 1:
-            raise NotImplementedError
+            raise AssertionError(
+                "var_induct: %s is not an induction theorem "
+                "(its conclusion must have exactly one argument, got %s)"
+                % (th_name, th.concl))
         inst = matcher.first_order_match(th_args[0], var)
         inst[f.name] = P
         # Get original assumption count before substitution

@@ -22,10 +22,9 @@ from framework import logic
 from framework import auto
 from framework import matcher
 from framework.conv import rewr_conv, binop_conv, arg1_conv, arg_conv, try_conv, Conv, ConvException, top_conv
-from framework.tactic import MacroTactic
 from kernel.proofterm import refl, ProofTerm
 from syntax import pprint
-from server.methods.core import Method, register_method
+from server.methods.core import register_macro_method
 from util import poly
 import functools
 
@@ -785,32 +784,10 @@ class real_norm_conv(Conv):
             return ProofTerm('real_norm', Eq(t, t2))
 
 
-@register_method('real_norm')
-class real_norm_method(Method):
-    """Apply real_norm macro."""
-    def __init__(self):
-        self.sig = []
-        self.limit = 'real_neg_0'
+# Expose the real_norm macro as an interactive method (auto-generated;
+# checked apply_macro entry point).
+register_macro_method('real_norm', limit='real_neg_0')
 
-    def search(self, state, id, prevs, data=None):
-        if data:
-            return [data]
-
-        if len(prevs) != 0:
-            return []
-
-        cur_th = state.get_proof_item(id).th
-        if real_norm_macro().can_eval(cur_th.prop):
-            return [{}]
-        else:
-            return []
-
-    def display_step(self, state, data):
-        return pprint.N("real_norm: ") + pprint.KWGreen("(solves)")
-
-    def apply(self, state, id, data, prevs):
-        assert len(prevs) == 0, "real_norm_method"
-        state.apply_tactic(id, MacroTactic('real_norm'))
 
 def is_real_ineq(tm):
     """Check if tm is an real inequality."""

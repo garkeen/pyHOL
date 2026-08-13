@@ -476,6 +476,24 @@ class StableProofState:
                         if k == n and list(perm) == prevs:
                             continue  # already in exact
                         collect(method_name, method, list(perm), exact=False)
+
+        # Exact-closure channel (C1): the global pattern net suggests
+        # every theorem whose whole proposition matches the goal,
+        # regardless of hint attributes. These apply via the rule
+        # method (whole-prop fallback, C6).
+        try:
+            from framework import search as fw_search
+            goal_prop = self.state.get_proof_item(goal_id).th.prop
+            existing = {(r.get('method_name'), r.get('theorem')) for r in results}
+            for th_name in fw_search.exact_match_theorems(goal_prop):
+                if ('rule', th_name) in existing:
+                    continue
+                results.append({'method_name': 'rule', 'theorem': th_name,
+                                'fact_ids': [str(p) for p in prevs],
+                                '_exact': True, 'fuzzy': False})
+        except Exception:
+            pass
+
         return {'results': results, 'fuzzy': fuzzy}
 
     def search_forward(self, fact_sids: list) -> dict:

@@ -14,9 +14,9 @@ from framework.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_c
     every_conv, rewr_conv, assums_conv, beta_norm
 from kernel.proofterm import ProofTerm
 from framework.logic import apply_theorem
-from framework.tactic import Tactic, MacroTactic
+from framework.tactic import Tactic
 from syntax import pprint, settings
-from server.methods.core import Method, register_method
+from server.methods.core import Method, register_method, register_macro_method
 from prover import z3wrapper
 
 
@@ -136,32 +136,9 @@ class eval_Sem_macro(Macro):
         return pt
 
 
-@register_method('eval_Sem')
-class eval_Sem_method(Method):
-    """Apply eval_Sem macro."""
-    def __init__(self):
-        self.sig = []
-        self.limit = 'Sem_AssignV'
-
-    def search(self, state, id, prevs, data=None):
-        if data:
-            return [data]
-
-        if len(prevs) != 0:
-            return []
-
-        cur_th = state.get_proof_item(id).th
-        if eval_Sem_macro().can_eval(cur_th.prop):
-            return [{}]
-        else:
-            return []
-
-    def display_step(self, state, data):
-        return pprint.N("eval_Sem: ") + pprint.KWGreen("(solves)")
-
-    def apply(self, state, id, data, prevs):
-        assert len(prevs) == 0, "eval_Sem_method"
-        state.apply_tactic(id, MacroTactic('eval_Sem'))
+# Expose the eval_Sem macro as an interactive method (auto-generated;
+# checked apply_macro entry point).
+register_macro_method('eval_Sem', limit='Sem_AssignV')
 
 
 def compute_wp(T, c, Q):

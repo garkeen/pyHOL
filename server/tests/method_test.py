@@ -8,7 +8,7 @@ from kernel.thm import Thm
 from kernel import theory
 from framework import context
 from server import methods as method
-from server.methods.core import global_methods
+from server.methods.core import global_methods, get_method
 from server import server
 from syntax import parser
 
@@ -86,9 +86,20 @@ class MethodTest(unittest.TestCase):
         concl = parser.parse_term(concl)
         state = server.parse_init_state(Implies(*(assms + [concl])))
 
-        # Obtain method and run its search function
-        method = global_methods[method_name]
+        # Obtain method and run its search function. Legacy method
+        # names resolve through the replay alias table; the unified
+        # rewrite dispatcher merges four modes, so filter its results
+        # by the mode markers to get the legacy single-mode view.
+        method = get_method(method_name)
         search_res = state.apply_search(len(assms), method, prevs=prevs)
+        MODE_FILTER = {
+            'rewrite_goal': lambda r: 'target' not in r and 'source' not in r,
+            'rewrite_goal_with_prev': lambda r: 'target' not in r and r.get('source') == 'prev',
+            'rewrite_fact': lambda r: r.get('target') == 'fact' and 'source' not in r,
+            'rewrite_fact_with_prev': lambda r: r.get('target') == 'fact' and r.get('source') == 'prev',
+        }
+        if method_name in MODE_FILTER:
+            search_res = [r for r in search_res if MODE_FILTER[method_name](r)]
         self.assertEqual([res['theorem'] for res in search_res], res)
 
     def testCases(self):
