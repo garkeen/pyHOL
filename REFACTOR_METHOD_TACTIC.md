@@ -552,6 +552,19 @@ auto 宏内部递归、对外仍是一行受检证明，已证明该模式可行
 ### 待办
 
 - 前端同步（option 列表 / sig 表 / FORWARD_METHODS 集合改新名）
-- search 统一协议深化：method.search 迁入 framework/search.py 数据驱动
-- elim（exists_elim）重做为 tactic 产出子证明（消除改行手术）
 - manual/ 更新
+- C7（can_prove 匹配化）：待全库验证授权后评估回放风险
+
+### 追加完成（第二轮）
+
+6. **elim 重做**：新增 tactic.elim_exists 受检推导；method 只做结构性
+   状态编辑（插行/扩 hyps/接线），接线的 intros 行与 tactic 推导项做
+   kernel 等价断言。exists_elim 密集理论（logic_base/logic/function/
+   misc/sums/floor/metric）回放与基线逐项一致
+7. **search 数据驱动化**：framework/search.py 升级为通配模式桶
+   （head 常量分桶 + 骨架通配匹配）：
+   - rewrite_goal/rewrite_fact/rule/forward/accept 的 search 改走
+     candidates_for / forward_candidates_for（结论两侧骨架 + 全部前提
+     骨架均入索引），干跑验证不变；严格候选列表测试全部通过
+   - resolve 保留全扫（hint_resolve 定理极少且 ~A 结论不适用骨架索引）
+   - 实测剪枝：real 理论 389 条 hint_rewrite → 9 候选（0.0025s）

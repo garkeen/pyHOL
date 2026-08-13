@@ -16,6 +16,7 @@ from framework import matcher
 from framework import logic
 from framework import context
 from framework import tactic
+from framework import search as fw_search
 from framework.tactic import Tactic, trivial
 from framework import conv
 from syntax import parser, printer, pprint
@@ -560,11 +561,11 @@ class rewrite_goal(Method):
             except (AssertionError, matcher.MatchException) as e:
                 pass
 
-        for th_name in theory.thy.get_data("theorems"):
-            if 'hint_rewrite' in theory.thy.get_attributes(th_name):
-                search_thm(th_name, 'false')
-            if 'hint_rewrite_sym' in theory.thy.get_attributes(th_name):
-                search_thm(th_name, 'true')
+        # Pattern-net candidates (subterms of the goal), then dry-run.
+        for th_name in fw_search.candidates_for(cur_item.th.prop, category='hint_rewrite'):
+            search_thm(th_name, 'false')
+        for th_name in fw_search.candidates_for(cur_item.th.prop, category='hint_rewrite_sym'):
+            search_thm(th_name, 'true')
 
         return sorted(results, key=lambda d: d['theorem'])
 
@@ -616,10 +617,13 @@ class rewrite_fact(Method):
                 # print(e)
                 pass
 
-        for th_name in theory.thy.get_data("theorems"):
-            if 'hint_rewrite' in theory.thy.get_attributes(th_name):
+        # Pattern-net candidates (subterms of the fact being rewritten),
+        # then dry-run.
+        fact_prop = prevs[0].prop if prevs else None
+        if fact_prop is not None:
+            for th_name in fw_search.candidates_for(fact_prop, category='hint_rewrite'):
                 search_thm(th_name, 'false')
-            if 'hint_rewrite_sym' in theory.thy.get_attributes(th_name):
+            for th_name in fw_search.candidates_for(fact_prop, category='hint_rewrite_sym'):
                 search_thm(th_name, 'true')
 
         return sorted(results, key=lambda d: d['theorem'])
@@ -703,9 +707,16 @@ class apply_forward_step(Method):
             except (AssertionError, matcher.MatchException):
                 pass
 
-        for th_name in theory.thy.get_data("theorems"):
-            if 'hint_forward' in theory.thy.get_attributes(th_name):
-                search_thm(th_name, min_prevs=1)
+        # Pattern-net candidates over the facts' subterms, then dry-run.
+        cand = []
+        seen = set()
+        for prev_th in prev_ths:
+            for th_name in fw_search.forward_candidates_for(prev_th.prop):
+                if th_name not in seen:
+                    seen.add(th_name)
+                    cand.append(th_name)
+        for th_name in cand:
+            search_thm(th_name, min_prevs=1)
 
         return sorted(results, key=lambda d: d['theorem'])
 
@@ -756,9 +767,13 @@ class apply_backward_step(Method):
             except (AssertionError, matcher.MatchException):
                 pass
 
-        for th_name in theory.thy.get_data("theorems"):
-            if 'hint_backward' in theory.thy.get_attributes(th_name) or \
-                ('hint_backward1' in theory.thy.get_attributes(th_name) and len(prevs) >= 1):
+        # Pattern-net candidates (whole-goal skeleton), then dry-run.
+        # Theorems carrying both hint_backward and hint_backward1 are
+        # tried twice (matching the legacy behavior).
+        for th_name in fw_search.candidates_for(cur_item.th.prop, category='hint_backward'):
+            search_thm(th_name)
+        if len(prevs) >= 1:
+            for th_name in fw_search.candidates_for(cur_item.th.prop, category='hint_backward1'):
                 search_thm(th_name)
 
         return sorted(results, key=lambda d: d['theorem'])
@@ -838,10 +853,17 @@ class accept_method(Method):
             except (AssertionError, matcher.MatchException, TacticException):
                 pass
 
-        for th_name in theory.thy.get_data("theorems"):
-            attrs = theory.thy.get_attributes(th_name)
-            if any(attr.startswith("hint_") for attr in attrs):
-                search_thm(th_name)
+        # Pattern-net candidates (whole-goal skeleton) across all hint
+        # categories, deduplicated, then dry-run.
+        cand = []
+        seen = set()
+        for c in fw_search.HINT_CATEGORIES:
+            for th_name in fw_search.candidates_for(cur_item.th.prop, category=c):
+                if th_name not in seen:
+                    seen.add(th_name)
+                    cand.append(th_name)
+        for th_name in cand:
+            search_thm(th_name)
 
         return sorted(results, key=lambda d: d['theorem'])
 
