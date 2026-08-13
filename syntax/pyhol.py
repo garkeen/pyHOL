@@ -346,6 +346,8 @@ _METHOD_POSITIONAL = {
     'apply_prev': [],
     'cut': ['cut_goal'],
     'cases': ['case'],
+    'type_cases': ['case'],
+    'trans': ['s'],
     'inst': ['s'],
     'elim': ['names'],
     'unfold': ['theorem'],

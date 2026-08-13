@@ -91,8 +91,8 @@ method.apply -> state.set_line(rule, args, prevs, th)
 ## 4. 方法目录
 
 方法词表（`server/methods/core.py` 注册 + 领域宏方法）：
-`rule` / `resolve` / `rewrite` / `intro` / `cases` / `induct` / `cut` / `inst` /
-`accept` / `refl` / `eq_intro` / `unfold` / `forward` / `elim` / `var` /
+`rule` / `resolve` / `rewrite` / `intro` / `cases` / `type_cases` / `induct` / `cut` / `inst` /
+`accept` / `refl` / `eq_intro` / `trans` / `unfold` / `forward` / `elim` / `var` /
 `assumption` / `norm` / `simp` + oracle（`z3` / `vcg`）+ 领域宏方法。
 
 `rewrite` 与 `inst` 是**双模式**方法，由状态形状推断模式（显式 `target`/`source` 标记可覆盖）：
@@ -112,7 +112,8 @@ method.apply -> state.set_line(rule, args, prevs, th)
 | `intro` | `[names]` | A | 引入变量与假设（names 为逗号分隔列表） |
 | `elim` | `[names]` | D | 消除存在量词事实（引入新变量 + 假设） |
 | `inst` | `[s]` | A/C | 双模式：goal 模式用见证实例化存在目标，fact 模式实例化全称事实 |
-| `cases` | `[case]` | A | 分情况 `A⟶C` 与 `¬A⟶C` |
+| `cases` | `[case]` | A | 布尔分情况 `A⟶C` 与 `¬A⟶C`（classical_cases 包装，cases_thm 可换） |
+| `type_cases` | `[case]` | A | 数据类型分情况：用 datatype 扩展生成的 `<tyname>_cases` 定理，每个构造子一个分支（无归纳假设） |
 | `induct` | `[theorem, var]` | A | 结构归纳 |
 | `cut` | `[cut_goal]` | D | 插入中间目标（have） |
 | `var` | `[name, type]` | D | 声明新变量 |
@@ -120,6 +121,7 @@ method.apply -> state.set_line(rule, args, prevs, th)
 | `unfold` | `[theorem, sym]` | A | 展开定义（`top_conv` + β）；`sym='true'` 即折叠 |
 | `refl` | `[]` | A | 证明 `t = t` |
 | `eq_intro` | `[]` | A | 证明 `A = B`（拆两个方向） |
+| `trans` | `[s]` | A | 传递性（TRANS_TAC）：证 `s = t` 时选中间项 `u`，拆 `s = u` 与 `u = t`；自反一侧自动跳过 |
 | `assumption` | `[]` | A | 用自身假设关闭目标 |
 
 ### 4.2 自动化方法

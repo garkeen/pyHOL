@@ -571,6 +571,24 @@ auto 宏内部递归、对外仍是一行受检证明，已证明该模式可行
    （init/搜索/apply/双模式 fact 改写 target=fact/自动闭合 close_by/
    从头重放）；pytest 349 全绿无回归
 
+### 追加完成（第五轮：trans + type_cases）
+
+14. **trans 方法**（TRANS_TAC）：证 `s = t` 时选中间项 `u`，拆
+   `s = u` 与 `u = t` 两个子目标；复用内核 transitive 原语（自反
+   一侧自动跳过），sig=['s']，等式目标搜索建议带 _needs_params
+15. **type_cases 方法**（datatype case_tac）：
+   - Datatype 扩展新增生成 `<tyname>_cases` 定理（每构造子一个
+     分支、无归纳假设，与 induct 定理同机制）
+   - 新 tactic datatype_cases：P := λcase_expr. goal 实例化，结构
+     仿 var_induct；类型检查排除函数类型（TFun 是 TConst 子类）
+   - 多态验证：nat_cases / list_cases（'a 类型变量经定理应用实例化）
+16. **同步**：stable_state BACKWARD 集合、pyhol 解析位置参数表、
+   前端 Manual tab / method_sig_map、manual 方法目录、items_test
+   期望值（新定理行）
+17. **验证**：新增 10 项单测全过（含稳定 ID 管线端到端证明
+   `!n. n = zero | (?m. n = Suc m)` + 内核 check_proof）；pytest
+   359+72 全绿；nat/list/hoare/expr 回放与基线一致；前端 build 通过
+
 ### 追加完成（第二轮）
 
 6. **elim 重做**：新增 tactic.elim_exists 受检推导；method 只做结构性

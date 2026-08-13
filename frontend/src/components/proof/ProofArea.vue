@@ -115,11 +115,13 @@
               <option value="intro">intro</option>
               <option value="elim">elim</option>
               <option value="cases">cases</option>
+              <option value="type_cases">type_cases</option>
               <option value="induct">induct</option>
               <option value="unfold">unfold</option>
               <option value="simp">simp</option>
               <option value="refl">refl</option>
               <option value="eq_intro">eq_intro</option>
+              <option value="trans">trans</option>
               <option value="assumption">assumption</option>
               <option value="accept">accept</option>
             </optgroup>
@@ -222,8 +224,8 @@ const method_sig_map = {
   'rule': ['theorem'], 'resolve': ['theorem'], 'accept': ['theorem'],
   'apply_prev': [], 'forward': ['theorem'],
   'rewrite': ['theorem', 'sym'], 'unfold': ['theorem', 'sym'],
-  'intro': [], 'elim': ['names'], 'inst': ['s'],
-  'induct': ['theorem', 'var'], 'cases': ['case'], 'cut': ['cut_goal'],
+  'intro': [], 'elim': ['names'], 'inst': ['s'], 'trans': ['s'],
+  'induct': ['theorem', 'var'], 'cases': ['case'], 'type_cases': ['case'], 'cut': ['cut_goal'],
   'var': ['name', 'type'], 'refl': [], 'eq_intro': [], 'assumption': [],
   'simp': [], 'norm': [],
 }

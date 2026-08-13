@@ -31,7 +31,8 @@ class ItemsTest(unittest.TestCase):
             "Theorem nat_zero_Suc_neq: ~(0 = Suc n)",
             "Theorem nat_Suc_inject: Suc n = Suc n1 --> n = n1",
             "Theorem nat_induct: P 0 --> (!n. P n --> P (Suc n)) --> P x",
-            "Attribute nat_induct [var_induct]"
+            "Attribute nat_induct [var_induct]",
+            "Theorem nat_cases: P 0 --> (!n. P (Suc n)) --> P x"
         ]
 
         with global_setting(unicode=False):
@@ -58,7 +59,8 @@ class ItemsTest(unittest.TestCase):
             "Theorem list_nil_cons_neq: ~([] = x # xs)",
             "Theorem list_cons_inject: x # xs = x1 # xs1 --> x = x1 & xs = xs1",
             "Theorem list_induct: P [] --> (!x1. !xs. P xs --> P (x1 # xs)) --> P x",
-            "Attribute list_induct [var_induct]"
+            "Attribute list_induct [var_induct]",
+            "Theorem list_cases: P [] --> (!x1. !xs. P (x1 # xs)) --> P x"
         ]
 
         with global_setting(unicode=False):
@@ -82,7 +84,8 @@ class ItemsTest(unittest.TestCase):
             "Constant Pair :: 'a => 'b => ('a, 'b) prod",
             "Theorem prod_Pair_inject: Pair a b = Pair a1 b1 --> a = a1 & b = b1",
             "Theorem prod_induct: (!a. !b. P (Pair a b)) --> P x",
-            "Attribute prod_induct [var_induct]"
+            "Attribute prod_induct [var_induct]",
+            "Theorem prod_cases: (!a. !b. P (Pair a b)) --> P x"
         ]
 
         with global_setting(unicode=False):

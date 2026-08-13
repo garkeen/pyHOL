@@ -827,6 +827,21 @@ class Datatype(Item):
         res.append(extension.Theorem(th_name, Thm(Implies(*(ind_assums + [ind_concl])))))
         res.append(extension.Attribute(th_name, "var_induct"))
 
+        # Add the cases theorem: one branch per constructor, without
+        # induction hypotheses (used by the datatype_cases tactic).
+        case_assums = []
+        for constr in self.constrs:
+            A = Const(constr['name'], constr['type'])
+            argT, _ = constr['type'].strip_type()
+            args = [Var(nm, T2) for nm, T2 in zip(constr['args'], argT)]
+            case_assum = var_P(A(*args))
+            for arg in reversed(args):
+                case_assum = Forall(arg, case_assum)
+            case_assums.append(case_assum)
+        case_concl = var_P(Var("x", T))
+        th_name = self.name + "_cases"
+        res.append(extension.Theorem(th_name, Thm(Implies(*(case_assums + [case_concl])))))
+
         return res
 
     def get_display(self):

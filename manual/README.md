@@ -72,7 +72,7 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 ### 方法分发模式
 
-- **A 策略路径**：`rule` / `intro` / `cases` / `rewrite`（goal）/ `induct` / `refl` / `eq_intro` / `unfold` / `simp` / ...
+- **A 策略路径**：`rule` / `intro` / `cases` / `type_cases` / `rewrite`（goal）/ `induct` / `refl` / `eq_intro` / `trans` / `unfold` / `simp` / ...
 - **B 受检宏调用**：`norm` / 领域宏方法（`nat_norm` / `real_norm` / `eval_Sem` / ...）
 - **C 正向路径**：`forward` / `rewrite`（fact）/ `inst`（fact）
 - **D 直接操作**：`cut` / `var` / `elim` / `z3`
