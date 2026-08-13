@@ -874,7 +874,7 @@ def compile_programs(imp_file, existing_pyhol_text=None, validate_steps=True):
             main_steps = [{'method_name': 'vcg', 'goal': 0, 'new_ids': vc_ids}]
             for i, vc in enumerate(prog_vcs):
                 main_steps.append({
-                    'method_name': 'apply_backward_step',
+                    'method_name': 'rule',
                     'goal': vc_ids[i],
                     'theorem': vc['name'],
                 })

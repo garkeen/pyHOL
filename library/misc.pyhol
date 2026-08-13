@@ -7,17 +7,17 @@ theorem abs_sqare_lt_1
   prop x ^ (2::nat) < 1 <--> abs x < 1
   [hint_rewrite]
 proof
-  ← rewrite_goal real_one_def sym=false goal=0
+  ← rewrite real_one_def sym=false goal=0
     #[1] x ^ (2::nat) < of_nat 1 ⟷ abs x < of_nat 1
-  ← rewrite_goal real_abs_nat sym=true goal=1
+  ← rewrite real_abs_nat sym=true goal=1
     #[2] x ^ (2::nat) < abs of_nat 1 ⟷ abs x < abs of_nat 1
-  ← rewrite_goal real_lt_square_abs sym=false goal=2
+  ← rewrite real_lt_square_abs sym=false goal=2
     #[3] x ^ (2::nat) < abs of_nat 1 ⟷ x ^ (2::nat) < of_nat 1 ^ (2::nat)
-  ← rewrite_goal real_abs_nat sym=false goal=3
+  ← rewrite real_abs_nat sym=false goal=3
     #[4] x ^ (2::nat) < of_nat 1 ⟷ x ^ (2::nat) < of_nat 1 ^ (2::nat)
-  ← rewrite_goal real_one_def sym=true goal=4
+  ← rewrite real_one_def sym=true goal=4
     #[5] x ^ (2::nat) < 1 ⟷ x ^ (2::nat) < 1 ^ (2::nat)
-  ← rewrite_goal real_pow_one sym=false goal=5
+  ← rewrite real_pow_one sym=false goal=5
 qed
 
 theorem real_lt_between
@@ -25,13 +25,13 @@ theorem real_lt_between
   prop a < b <--> (?x. a < x & x < b)
   [hint_rewrite]
 proof
-  ← apply_backward_step iffI goal=0
+  ← rule iffI goal=0
     #[1] a < b ⟶ (∃x. a < x ∧ x < b)
     #[2] (∃x. a < x ∧ x < b) ⟶ a < b
-  ← introduction goal=1
+  ← intro goal=1
     #[3] a < b
     #[4] ∃x. a < x ∧ x < b
-  ← inst_exists_goal "(a+b)/2" goal=4
+  ← inst "(a+b)/2" goal=4
     #[5] a < (a + b) / 2 ∧ (a + b) / 2 < b
   ← z3 goal=5 facts=[3]
   ← z3 goal=2
@@ -48,16 +48,16 @@ theorem is_realinterval_union
   prop is_realinterval s --> is_realinterval t --> ~(s Int t = {}) --> is_realinterval (s Un t)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] is_realinterval s
     #[2] is_realinterval t
     #[3] ¬(s ∩ t = ∅)
     #[4] is_realinterval (s ∪ t)
-  ← rewrite_goal is_realinterval_def sym=false goal=4
+  ← rewrite is_realinterval_def sym=false goal=4
     #[5] ∀a. ∀b. ∀c. a ∈ s ∪ t ⟶ b ∈ s ∪ t ⟶ a ≤ c ⟶ c ≤ b ⟶ c ∈ s ∪ t
-  → rewrite_fact is_realinterval_def sym=false goal=5 facts=[1]
+  → rewrite target=fact is_realinterval_def sym=false goal=5 facts=[1]
     #[6] ∀a. ∀b. ∀c. a ∈ s ⟶ b ∈ s ⟶ a ≤ c ⟶ c ≤ b ⟶ c ∈ s
-  → rewrite_fact is_realinterval_def sym=false goal=5 facts=[2]
+  → rewrite target=fact is_realinterval_def sym=false goal=5 facts=[2]
     #[7] ∀a. ∀b. ∀c. a ∈ t ⟶ b ∈ t ⟶ a ≤ c ⟶ c ≤ b ⟶ c ∈ t
   ← z3 goal=5 facts=[6,7,3]
 qed
@@ -79,9 +79,9 @@ theorem in_real_closed_interval
   prop x Mem real_closed_interval a b <--> a <= x & x <= b
   [hint_rewrite]
 proof
-  ← rewrite_goal real_closed_interval_def sym=false goal=0
+  ← rewrite real_closed_interval_def sym=false goal=0
     #[1] x ∈ {p. a ≤ p ∧ p ≤ b} ⟷ a ≤ x ∧ x ≤ b
-  ← rewrite_goal member_collect sym=false goal=1
+  ← rewrite member_collect sym=false goal=1
 qed
 
 theorem in_real_open_interval
@@ -89,27 +89,27 @@ theorem in_real_open_interval
   prop x Mem real_open_interval a b <--> a < x & x < b
   [hint_rewrite]
 proof
-  ← rewrite_goal real_open_interval_def sym=false goal=0
+  ← rewrite real_open_interval_def sym=false goal=0
     #[1] x ∈ {p. a < p ∧ p < b} ⟷ a < x ∧ x < b
-  ← rewrite_goal member_collect sym=false goal=1
+  ← rewrite member_collect sym=false goal=1
 qed
 
 theorem in_real_lopen_interval
   fixes a :: real, b :: real, x :: real
   prop x Mem real_lopen_interval a b <--> a < x & x <= b
 proof
-  ← rewrite_goal real_lopen_interval_def sym=false goal=0
+  ← rewrite real_lopen_interval_def sym=false goal=0
     #[1] x ∈ {p. a < p ∧ p ≤ b} ⟷ a < x ∧ x ≤ b
-  ← rewrite_goal member_collect sym=false goal=1
+  ← rewrite member_collect sym=false goal=1
 qed
 
 theorem in_real_ropen_interval
   fixes a :: real, b :: real, x :: real
   prop x Mem real_ropen_interval a b <--> a <= x & x < b
 proof
-  ← rewrite_goal real_ropen_interval_def sym=false goal=0
+  ← rewrite real_ropen_interval_def sym=false goal=0
     #[1] x ∈ {p. a ≤ p ∧ p < b} ⟷ a ≤ x ∧ x < b
-  ← rewrite_goal member_collect sym=false goal=1
+  ← rewrite member_collect sym=false goal=1
 qed
 
 theorem real_interval_open_subset_closed
@@ -122,11 +122,11 @@ theorem real_closed_interval_eq_empty
   prop real_closed_interval a b = {} <--> b < a
   [hint_rewrite]
 proof
-  ← rewrite_goal real_closed_interval_def sym=false goal=0
+  ← rewrite real_closed_interval_def sym=false goal=0
     #[1] {p. a ≤ p ∧ p ≤ b} = ∅ ⟷ b < a
-  ← rewrite_goal set_equal_iff sym=false goal=1
+  ← rewrite set_equal_iff sym=false goal=1
     #[2] (∀x. x ∈ {p. a ≤ p ∧ p ≤ b} ⟷ x ∈ ∅) ⟷ b < a
-  ← rewrite_goal member_collect sym=false goal=2
+  ← rewrite member_collect sym=false goal=2
     #[3] (∀x. a ≤ x ∧ x ≤ b ⟷ x ∈ ∅) ⟷ b < a
   ← z3 goal=3
 qed
@@ -136,7 +136,7 @@ theorem real_open_interval_eq_empty
   prop real_open_interval a b = {} <--> b <= a
   [hint_rewrite]
 proof
-  ← rewrite_goal real_open_interval_def sym=false goal=0
+  ← rewrite real_open_interval_def sym=false goal=0
     #[1] {p. a < p ∧ p < b} = ∅ ⟷ b ≤ a
   ← z3 goal=1
 qed
@@ -146,9 +146,9 @@ theorem real_closed_interval_ne_empty
   prop ~(real_closed_interval a b = {}) <--> a <= b
   [hint_rewrite]
 proof
-  ← rewrite_goal real_closed_interval_eq_empty sym=false goal=0
+  ← rewrite real_closed_interval_eq_empty sym=false goal=0
     #[1] ¬(b < a) ⟷ a ≤ b
-  ← rewrite_goal real_not_lt sym=false goal=1
+  ← rewrite real_not_lt sym=false goal=1
 qed
 
 theorem real_open_interval_ne_empty
@@ -161,9 +161,9 @@ theorem is_realinterval_open_interval
   prop is_realinterval (real_open_interval a b)
   [hint_backward]
 proof
-  ← rewrite_goal is_realinterval_def sym=false goal=0
+  ← rewrite is_realinterval_def sym=false goal=0
     #[1] ∀a1. ∀b1. ∀c. a1 ∈ real_open_interval a b ⟶ b1 ∈ real_open_interval a b ⟶ a1 ≤ c ⟶ c ≤ b1 ⟶ c ∈ real_open_interval a b
-  ← rewrite_goal in_real_open_interval sym=false goal=1
+  ← rewrite in_real_open_interval sym=false goal=1
     #[2] ∀a1. ∀b1. ∀c. a < a1 ∧ a1 < b ⟶ a < b1 ∧ b1 < b ⟶ a1 ≤ c ⟶ c ≤ b1 ⟶ a < c ∧ c < b
   ← z3 goal=2
 qed
@@ -173,9 +173,9 @@ theorem is_realinterval_closed_interval
   prop is_realinterval (real_closed_interval a b)
   [hint_backward]
 proof
-  ← rewrite_goal is_realinterval_def sym=false goal=0
+  ← rewrite is_realinterval_def sym=false goal=0
     #[1] ∀a1. ∀b1. ∀c. a1 ∈ real_closed_interval a b ⟶ b1 ∈ real_closed_interval a b ⟶ a1 ≤ c ⟶ c ≤ b1 ⟶ c ∈ real_closed_interval a b
-  ← rewrite_goal in_real_closed_interval sym=false goal=1
+  ← rewrite in_real_closed_interval sym=false goal=1
     #[2] ∀a1. ∀b1. ∀c. a ≤ a1 ∧ a1 ≤ b ⟶ a ≤ b1 ∧ b1 ≤ b ⟶ a1 ≤ c ⟶ c ≤ b1 ⟶ a ≤ c ∧ c ≤ b
   ← z3 goal=2
 qed
@@ -201,28 +201,28 @@ theorem from_mono
   prop from m Sub from n <--> n <= m
   [hint_rewrite]
 proof
-  ← rewrite_goal subset_def sym="" goal=0
+  ← rewrite subset_def sym="" goal=0
     #[1] (∀x. x ∈ from m ⟶ x ∈ from n) ⟷ n ≤ m
-  ← rewrite_goal in_from sym=false goal=1
+  ← rewrite in_from sym=false goal=1
     #[2] (∀x. m ≤ x ⟶ n ≤ x) ⟷ n ≤ m
-  ← apply_backward_step iffI goal=2
+  ← rule iffI goal=2
     #[3] (∀x. m ≤ x ⟶ n ≤ x) ⟶ n ≤ m
     #[4] n ≤ m ⟶ (∀x. m ≤ x ⟶ n ≤ x)
-  ← introduction goal=3
+  ← intro goal=3
     #[5] ∀x. m ≤ x ⟶ n ≤ x
     #[6] n ≤ m
   ← apply_prev goal=6 facts=[5]
     #[7] m ≤ m
-  ← apply_backward_step less_eq_refl goal=7
+  ← rule less_eq_refl goal=7
     #[8] m ≤ m
-  ← introduction goal=4
+  ← intro goal=4
     #[9] n ≤ m
     #[10] ∀x. m ≤ x ⟶ n ≤ x
-  ← introduction x goal=10
+  ← intro x goal=10
     #[11] _VAR x
     #[12] m ≤ x
     #[13] n ≤ x
-  ← apply_backward_step less_eq_trans param_m=m goal=13
+  ← rule less_eq_trans param_m=m goal=13
 qed
 
 theorem from_inter_natseg_gen
@@ -235,13 +235,13 @@ theorem from_inter_natseg_max
   prop from p Int {m..n} = {max p m..n}
   [hint_rewrite]
 proof
-  ← rewrite_goal set_equal_iff sym=false goal=0
+  ← rewrite set_equal_iff sym=false goal=0
     #[1] ∀x. x ∈ from p ∩ {m..n} ⟷ x ∈ {max p m..n}
-  ← rewrite_goal member_inter_iff sym=false goal=1
+  ← rewrite member_inter_iff sym=false goal=1
     #[2] ∀x. x ∈ from p ∧ x ∈ {m..n} ⟷ x ∈ {max p m..n}
-  ← rewrite_goal in_from sym=false goal=2
+  ← rewrite in_from sym=false goal=2
     #[3] ∀x. p ≤ x ∧ x ∈ {m..n} ⟷ x ∈ {max p m..n}
-  ← rewrite_goal member_natseg sym=false goal=3
+  ← rewrite member_natseg sym=false goal=3
     #[4] ∀x. p ≤ x ∧ m ≤ x ∧ x ≤ n ⟷ max p m ≤ x ∧ x ≤ n
   ← z3 goal=4
 qed
@@ -251,12 +251,12 @@ theorem from_inter_natseg
   prop from k Int {0..n} = {k..n}
   [hint_rewrite]
 proof
-  ← rewrite_goal from_inter_natseg_max sym=false goal=0
+  ← rewrite from_inter_natseg_max sym=false goal=0
     #[1] {max k 0..n} = {k..n}
   cut "max k 0 = k" goal=1
     #[2] max k 0 = k
   ← z3 goal=2
-  ← rewrite_goal_with_prev goal=1 facts=[2]
+  ← rewrite source=prev goal=1 facts=[2]
 qed
 
 theorem infinite_from
@@ -274,25 +274,25 @@ theorem monotone_bigger
   prop (!m. !n. m < n --> R m < R n) --> (!n. n <= R n)
   [hint_backward,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀m. ∀n. m < n ⟶ R m < R n
     #[2] ∀n. n ≤ R n
-  ← introduction n goal=2
+  ← intro n goal=2
     #[3] _VAR n
     #[4] n ≤ R n
-  ← induction n nat_induct goal=4
+  ← induct n nat_induct goal=4
     #[5] 0 ≤ R 0
     #[6] ∀n. n ≤ R n ⟶ Suc n ≤ R (Suc n)
-  ← apply_backward_step le_0 goal=5
+  ← rule le_0 goal=5
     #[7] 0 ≤ R 0
-  ← introduction n goal=6
+  ← intro n goal=6
     #[8] n ≤ R n
     #[9] Suc n ≤ R (Suc n)
   cut "n < n+1" goal=9
     #[10] n < n + 1
   ← z3 goal=10
     #[11] n < n + 1
-  ← rewrite_goal add_1_right sym=true goal=9
+  ← rewrite add_1_right sym=true goal=9
     #[12] n + 1 ≤ R (n + 1)
   ← z3 goal=12 facts=[11,8,1]
 qed
@@ -322,40 +322,40 @@ theorem convergent_bounded_monotone
   prop (!n. abs (s n) <= b) --> (!m. !n. m <= n --> s m <= s n) | (!m. !n. m <= n --> s n <= s m) --> (?l. !e. 0 < e --> (?N. !n. N <= n --> abs (s n - l) < e))
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀n. abs (s n) ≤ b
     #[2] (∀m. ∀n. m ≤ n ⟶ s m ≤ s n) ∨ (∀m. ∀n. m ≤ n ⟶ s n ≤ s m)
     #[3] ∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e)
-  ← apply_backward_step disjE goal=3 facts=[2]
+  ← rule disjE goal=3 facts=[2]
     #[4] (∀m. ∀n. m ≤ n ⟶ s m ≤ s n) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e))
     #[5] (∀m. ∀n. m ≤ n ⟶ s n ≤ s m) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e))
-  ← introduction goal=4
+  ← intro goal=4
     #[6] ∀m. ∀n. m ≤ n ⟶ s m ≤ s n
     #[7] ∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e)
-  ← apply_backward_step convergent_bounded_increasing goal=7 facts=[6,1]
+  ← rule convergent_bounded_increasing goal=7 facts=[6,1]
     #[8] ∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e)
-  ← introduction goal=5
+  ← intro goal=5
     #[9] ∀m. ∀n. m ≤ n ⟶ s n ≤ s m
     #[10] ∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e)
-  → apply_forward_step convergent_bounded_increasing param_b=b param_s="(%n. -s n)" goal=10
+  → forward convergent_bounded_increasing param_b=b param_s="(%n. -s n)" goal=10
     #[11] (∀m. ∀n. m ≤ n ⟶ -(s m) ≤ -(s n)) ⟶ (∀n. abs (-(s n)) ≤ b) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (-(s n) - l) < e))
-  → rewrite_fact real_le_lneg2 sym=false goal=10 facts=[11]
+  → rewrite target=fact real_le_lneg2 sym=false goal=10 facts=[11]
     #[12] (∀m. ∀n. m ≤ n ⟶ s n ≤ s m) ⟶ (∀n. abs (-(s n)) ≤ b) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (-(s n) - l) < e))
-  → rewrite_fact real_abs_neg sym=false goal=10 facts=[12]
+  → rewrite target=fact real_abs_neg sym=false goal=10 facts=[12]
     #[13] (∀m. ∀n. m ≤ n ⟶ s n ≤ s m) ⟶ (∀n. abs (s n) ≤ b) ⟶ (∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (-(s n) - l) < e))
-  → apply_fact goal=10 facts=[13,9,1]
+  → forward goal=10 facts=[13,9,1]
     #[14] ∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (-(s n) - l) < e)
-  exists_elim l goal=10 facts=[14]
+  elim l goal=10 facts=[14]
     #[15] _VAR l
     #[16] ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (-(s n) - l) < e)
     #[17] ∃l. ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - l) < e)
-  ← inst_exists_goal -l goal=17
+  ← inst -l goal=17
     #[18] ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - -l) < e)
   cut "!n. abs (-(s n) - l) = abs (s n - -l) " goal=18
     #[19] ∀n. abs (-(s n) - l) = abs (s n - -l)
   ← z3 goal=19
     #[20] ∀n. abs (-(s n) - l) = abs (s n - -l)
-  → rewrite_fact_with_prev goal=18 facts=[20,16]
+  → rewrite target=fact source=prev goal=18 facts=[20,16]
     #[21] ∀e. 0 < e ⟶ (∃N. ∀n. N ≤ n ⟶ abs (s n - -l) < e)
 qed
 

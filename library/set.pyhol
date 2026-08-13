@@ -70,7 +70,7 @@ theorem member_empty
   prop x Mem {} <--> false
   [hint_rewrite]
 proof
-  ← rewrite_goal member_empty_simp sym=false goal=0
+  ← rewrite member_empty_simp sym=false goal=0
 qed
 
 theorem member_singleton
@@ -78,11 +78,11 @@ theorem member_singleton
   prop x Mem {a} <--> x = a
   [hint_rewrite]
 proof
-  ← rewrite_goal member_insert sym=false goal=0
+  ← rewrite member_insert sym=false goal=0
     #[1] x = a ∨ x ∈ ∅ ⟷ x = a
-  ← rewrite_goal member_empty_simp sym=false goal=1
+  ← rewrite member_empty_simp sym=false goal=1
     #[2] x = a ∨ false ⟷ x = a
-  ← rewrite_goal disj_false_right sym=false goal=2
+  ← rewrite disj_false_right sym=false goal=2
 qed
 
 axiom member_univ
@@ -192,17 +192,17 @@ theorem subset_empty
   prop A Sub {} <--> A = {}
   [hint_rewrite]
 proof
-  ← rewrite_goal subset_def sym=false goal=0
+  ← rewrite subset_def sym=false goal=0
     #[1] (∀x. x ∈ A ⟶ x ∈ ∅) ⟷ A = ∅
-  ← rewrite_goal member_empty_simp sym=false goal=1
+  ← rewrite member_empty_simp sym=false goal=1
     #[2] (∀x. x ∈ A ⟶ false) ⟷ A = ∅
-  ← rewrite_goal set_equal_iff sym=false goal=2
+  ← rewrite set_equal_iff sym=false goal=2
     #[3] (∀x. x ∈ A ⟶ false) ⟷ (∀x. x ∈ A ⟷ x ∈ ∅)
-  ← rewrite_goal member_empty_simp sym=false goal=3
+  ← rewrite member_empty_simp sym=false goal=3
     #[4] (∀x. x ∈ A ⟶ false) ⟷ (∀x. x ∈ A ⟷ false)
-  ← rewrite_goal imp_false_iff sym=false goal=4
+  ← rewrite imp_false_iff sym=false goal=4
     #[5] (∀x. ¬(x ∈ A)) ⟷ (∀x. x ∈ A ⟷ false)
-  ← rewrite_goal eq_false sym=false goal=5
+  ← rewrite eq_false sym=false goal=5
 qed
 
 theorem subset_univ
@@ -210,15 +210,15 @@ theorem subset_univ
   prop A Sub univ
   [hint_rewrite]
 proof
-  ← rewrite_goal subset_def sym=false goal=0
+  ← rewrite subset_def sym=false goal=0
     #[1] ∀x. x ∈ A ⟶ x ∈ univ
-  ← rewrite_goal member_univ sym=false goal=1
+  ← rewrite member_univ sym=false goal=1
     #[2] ∀x. x ∈ A ⟶ true
-  ← introduction x goal=2
+  ← intro x goal=2
     #[3] _VAR x
     #[4] x ∈ A
     #[5] true
-  ← apply_backward_step trueI goal=5
+  ← rule trueI goal=5
     #[6] true
 qed
 
@@ -227,13 +227,13 @@ theorem subset_union_id
   prop A Un B = A <--> B Sub A
   [hint_rewrite]
 proof
-  ← rewrite_goal set_equal_iff sym=false goal=0
+  ← rewrite set_equal_iff sym=false goal=0
     #[1] (∀x. x ∈ A ∪ B ⟷ x ∈ A) ⟷ B ⊆ A
-  ← rewrite_goal member_union_iff sym=false goal=1
+  ← rewrite member_union_iff sym=false goal=1
     #[2] (∀x. x ∈ A ∨ x ∈ B ⟷ x ∈ A) ⟷ B ⊆ A
-  ← rewrite_goal subset_def sym=false goal=2
+  ← rewrite subset_def sym=false goal=2
     #[3] (∀x. x ∈ A ∨ x ∈ B ⟷ x ∈ A) ⟷ (∀x. x ∈ B ⟶ x ∈ A)
-  ← rewrite_goal disj_iff_left sym=false goal=3
+  ← rewrite disj_iff_left sym=false goal=3
 qed
 
 theorem subset_diff
@@ -253,13 +253,13 @@ theorem inter_subset_id
   prop A Int B = A <--> A Sub B
   [hint_rewrite]
 proof
-  ← rewrite_goal set_equal_iff sym=false goal=0
+  ← rewrite set_equal_iff sym=false goal=0
     #[1] (∀x. x ∈ A ∩ B ⟷ x ∈ A) ⟷ A ⊆ B
-  ← rewrite_goal member_inter_iff sym=false goal=1
+  ← rewrite member_inter_iff sym=false goal=1
     #[2] (∀x. x ∈ A ∧ x ∈ B ⟷ x ∈ A) ⟷ A ⊆ B
-  ← rewrite_goal subset_def sym=false goal=2
+  ← rewrite subset_def sym=false goal=2
     #[3] (∀x. x ∈ A ∧ x ∈ B ⟷ x ∈ A) ⟷ (∀x. x ∈ A ⟶ x ∈ B)
-  ← rewrite_goal conj_iff_left sym=false goal=3
+  ← rewrite conj_iff_left sym=false goal=3
 qed
 
 theorem union_comm
@@ -272,18 +272,18 @@ theorem union_empty
   prop A Un {} = A
   [hint_rewrite]
 proof
-  ← rewrite_goal set_equal_iff sym=false goal=0
+  ← rewrite set_equal_iff sym=false goal=0
     #[1] ∀x. x ∈ A ∪ ∅ ⟷ x ∈ A
-  ← rewrite_goal member_union_iff sym=false goal=1
+  ← rewrite member_union_iff sym=false goal=1
     #[2] ∀x. x ∈ A ∨ x ∈ ∅ ⟷ x ∈ A
-  ← rewrite_goal member_empty_simp sym=false goal=2
+  ← rewrite member_empty_simp sym=false goal=2
     #[3] ∀x. x ∈ A ∨ false ⟷ x ∈ A
-  ← rewrite_goal disj_false_right sym=false goal=3
+  ← rewrite disj_false_right sym=false goal=3
     #[4] ∀x. x ∈ A ⟷ x ∈ A
-  ← introduction x goal=4
+  ← intro x goal=4
     #[5] _VAR x
     #[6] x ∈ A ⟷ x ∈ A
-  ← reflexive goal=6
+  ← refl goal=6
 qed
 
 header "Finite sets"
@@ -335,20 +335,20 @@ theorem image_empty
   prop image f {} = {}
   [hint_rewrite]
 proof
-  ← rewrite_goal set_equal_iff sym=false goal=0
+  ← rewrite set_equal_iff sym=false goal=0
     #[1] ∀x. x ∈ image f ∅ ⟷ x ∈ ∅
-  ← rewrite_goal in_image sym=false goal=1
+  ← rewrite in_image sym=false goal=1
     #[2] ∀x. (∃x1. x1 ∈ ∅ ∧ x = f x1) ⟷ x ∈ ∅
-  ← rewrite_goal member_empty_simp sym=false goal=2
+  ← rewrite member_empty_simp sym=false goal=2
     #[3] ∀x. (∃x1. false ∧ x = f x1) ⟷ false
-  ← rewrite_goal conj_false_right sym=false goal=3
+  ← rewrite conj_false_right sym=false goal=3
     #[4] ∀x::'b. (∃x1::'a. false) ⟷ false
-  ← rewrite_goal exists_false sym=false goal=4
+  ← rewrite exists_false sym=false goal=4
     #[5] ∀x::'b. false ⟷ false
-  ← introduction x goal=5
+  ← intro x goal=5
     #[6] _VAR x
     #[7] false ⟷ false
-  ← reflexive goal=7
+  ← refl goal=7
 qed
 
 theorem image_insert
@@ -361,16 +361,16 @@ theorem image_id
   prop image (%x. x) A = A
   [hint_rewrite]
 proof
-  ← rewrite_goal set_equal_iff sym=false goal=0
+  ← rewrite set_equal_iff sym=false goal=0
     #[1] ∀x. x ∈ image (λx1. x1) A ⟷ x ∈ A
-  ← rewrite_goal in_image sym=false goal=1
+  ← rewrite in_image sym=false goal=1
     #[2] ∀x. (∃x1. x1 ∈ A ∧ x = x1) ⟷ x ∈ A
-  ← rewrite_goal exists_eq sym=false goal=2
+  ← rewrite exists_eq sym=false goal=2
     #[3] ∀x. x ∈ A ⟷ x ∈ A
-  ← introduction x goal=3
+  ← intro x goal=3
     #[4] _VAR x
     #[5] x ∈ A ⟷ x ∈ A
-  ← reflexive goal=5
+  ← refl goal=5
 qed
 
 theorem image_combine
@@ -388,7 +388,7 @@ theorem exists_in_gspec1
   prop (?x. x Mem {y. P y} & Q x) <--> (?x. P x & Q x)
   [hint_rewrite]
 proof
-  ← rewrite_goal member_collect sym=false goal=0
+  ← rewrite member_collect sym=false goal=0
 qed
 
 theorem forall_in_gspec1
@@ -396,7 +396,7 @@ theorem forall_in_gspec1
   prop (!x. x Mem {y. P y} --> Q x) <--> (!x. P x --> Q x)
   [hint_rewrite]
 proof
-  ← rewrite_goal member_collect sym=false goal=0
+  ← rewrite member_collect sym=false goal=0
 qed
 
 header "Cardinality and surjectivity"
@@ -420,55 +420,55 @@ theorem Union_union
   prop UN (A Un B) = UN A Un UN B
   [hint_rewrite]
 proof
-  ← rewrite_goal set_equal_iff sym=false goal=0
+  ← rewrite set_equal_iff sym=false goal=0
     #[1] ∀x. x ∈ ⋃(A ∪ B) ⟷ x ∈ ⋃A ∪ ⋃B
-  ← rewrite_goal member_union_iff sym=false goal=1
+  ← rewrite member_union_iff sym=false goal=1
     #[2] ∀x. x ∈ ⋃(A ∪ B) ⟷ x ∈ ⋃A ∨ x ∈ ⋃B
-  ← rewrite_goal member_Union sym=false goal=2
+  ← rewrite member_Union sym=false goal=2
     #[3] ∀x. (∃S. S ∈ A ∪ B ∧ x ∈ S) ⟷ (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S)
-  ← rewrite_goal member_union_iff sym=false goal=3
+  ← rewrite member_union_iff sym=false goal=3
     #[4] ∀x. (∃S. (S ∈ A ∨ S ∈ B) ∧ x ∈ S) ⟷ (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S)
-  ← rewrite_goal exists_disj_conj_distrib sym=false goal=4
+  ← rewrite exists_disj_conj_distrib sym=false goal=4
     #[5] ∀x. (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S) ⟷ (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S)
-  ← introduction x goal=5
+  ← intro x goal=5
     #[6] _VAR x
     #[7] (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S) ⟷ (∃S. S ∈ A ∧ x ∈ S) ∨ (∃S. S ∈ B ∧ x ∈ S)
-  ← reflexive goal=7
+  ← refl goal=7
 qed
 
 theorem cantor
   fixes f :: 'a => 'a set
   prop ?S. !x. ~(f x = S)
 proof
-  ← inst_exists_goal "{x. ¬(x ∈ f x)}" goal=0
+  ← inst "{x. ¬(x ∈ f x)}" goal=0
     #[1] ∀x. ¬(f x = {x1. ¬(x1 ∈ f x1)})
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] ¬(f x = {x1. ¬(x1 ∈ f x1)})
-  ← apply_backward_step negI goal=3
+  ← rule negI goal=3
     #[4] f x = {x1. ¬(x1 ∈ f x1)} ⟶ false
-  ← introduction goal=4
+  ← intro goal=4
     #[5] f x = {x1. ¬(x1 ∈ f x1)}
     #[6] false
   ← cases "x ∈ f x" goal=6
     #[7] x ∈ f x ⟶ false
     #[8] ¬(x ∈ f x) ⟶ false
-  ← introduction goal=7
+  ← intro goal=7
     #[9] x ∈ f x
     #[10] false
-  → rewrite_fact_with_prev goal=10 facts=[5,9]
+  → rewrite target=fact source=prev goal=10 facts=[5,9]
     #[11] x ∈ {x1. ¬(x1 ∈ f x1)}
-  → rewrite_fact member_collect sym=false goal=10 facts=[11]
+  → rewrite target=fact member_collect sym=false goal=10 facts=[11]
     #[12] ¬(x ∈ f x)
-  ← apply_backward_step negE goal=10 facts=[12,9]
-  ← introduction goal=8
+  ← rule negE goal=10 facts=[12,9]
+  ← intro goal=8
     #[13] ¬(x ∈ f x)
     #[14] false
-  → rewrite_fact_with_prev goal=14 facts=[5,13]
+  → rewrite target=fact source=prev goal=14 facts=[5,13]
     #[15] ¬(x ∈ {x1. ¬(x1 ∈ f x1)})
-  → rewrite_fact member_collect sym=false goal=14 facts=[15]
+  → rewrite target=fact member_collect sym=false goal=14 facts=[15]
     #[16] ¬¬(x ∈ f x)
-  ← apply_backward_step negE goal=14 facts=[16,13]
+  ← rule negE goal=14 facts=[16,13]
 qed
 
 theorem subsetE
@@ -479,27 +479,27 @@ theorem subset_antisym
   fixes A :: 'a set, B :: 'a set
   prop A Sub B --> B Sub A --> A = B
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] A ⊆ B
     #[2] B ⊆ A
     #[3] A = B
-  ← rewrite_goal set_equal_iff sym=false goal=3
+  ← rewrite set_equal_iff sym=false goal=3
     #[4] ∀x. x ∈ A ⟷ x ∈ B
-  ← introduction x goal=4
+  ← intro x goal=4
     #[5] _VAR x
     #[6] x ∈ A ⟷ x ∈ B
-  ← apply_backward_step iffI goal=6
+  ← rule iffI goal=6
     #[7] x ∈ A ⟶ x ∈ B
     #[8] x ∈ B ⟶ x ∈ A
-  ← introduction goal=7
+  ← intro goal=7
     #[9] x ∈ A
     #[10] x ∈ B
-  → apply_forward_step subsetE goal=10 facts=[1,9]
+  → forward subsetE goal=10 facts=[1,9]
     #[11] x ∈ B
-  ← introduction goal=8
+  ← intro goal=8
     #[12] x ∈ B
     #[13] x ∈ A
-  → apply_forward_step subsetE goal=13 facts=[2,12]
+  → forward subsetE goal=13 facts=[2,12]
     #[14] x ∈ A
 qed
 
@@ -523,13 +523,13 @@ theorem lfp_unfold
   fixes h :: 'a set => 'a set
   prop bnd_mono h --> h (lfp h) = lfp h
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] bnd_mono h
     #[2] h (lfp h) = lfp h
-  ← apply_backward_step subset_antisym goal=2
+  ← rule subset_antisym goal=2
     #[3] h (lfp h) ⊆ lfp h
     #[4] lfp h ⊆ h (lfp h)
-  ← apply_backward_step lfp_fix_upper goal=3 facts=[1]
-  ← apply_backward_step lfp_fix_lower goal=4 facts=[1]
+  ← rule lfp_fix_upper goal=3 facts=[1]
+  ← rule lfp_fix_lower goal=4 facts=[1]
 qed
 

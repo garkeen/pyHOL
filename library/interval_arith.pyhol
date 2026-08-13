@@ -47,22 +47,22 @@ theorem neg_interval_closed
   fixes a :: real, b :: real, x :: real
   prop x Mem real_closed_interval a b --> -x Mem real_closed_interval (-b) (-a)
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] x ∈ real_closed_interval a b
     #[2] -x ∈ real_closed_interval (-b) (-a)
-  ← rewrite_goal in_real_closed_interval sym=false goal=2
+  ← rewrite in_real_closed_interval sym=false goal=2
     #[3] -b ≤ -x ∧ -x ≤ -a
-  ← apply_backward_step conjI goal=3
+  ← rule conjI goal=3
     #[4] -b ≤ -x
     #[5] -x ≤ -a
-  ← rewrite_goal real_le_lneg2 sym=false goal=4
+  ← rewrite real_le_lneg2 sym=false goal=4
     #[6] x ≤ b
-  → rewrite_fact in_real_closed_interval sym=false goal=6 facts=[1]
+  → rewrite target=fact in_real_closed_interval sym=false goal=6 facts=[1]
     #[7] a ≤ x ∧ x ≤ b
-  ← apply_backward_step conjD2 goal=6 facts=[7]
-  ← rewrite_goal real_le_lneg2 sym=false goal=5
+  ← rule conjD2 goal=6 facts=[7]
+  ← rewrite real_le_lneg2 sym=false goal=5
     #[8] a ≤ x
-  ← apply_backward_step conjD1 goal=8 facts=[7]
+  ← rule conjD1 goal=8 facts=[7]
 qed
 
 theorem neg_interval_open

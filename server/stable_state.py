@@ -29,16 +29,14 @@ _SKIP_RULES = {'intros', 'close_by'}
 
 # Method direction classification
 BACKWARD = {
-    'apply_backward_step', 'apply_resolve_step', 'introduction',
-    'cases', 'rewrite_goal', 'rewrite_goal_with_prev', 'apply_prev',
-    'inst_exists_goal', 'induction', 'reflexive', 'equal_intr',
-    'subst', 'unfold', 'fold', 'simp', 'assumption',
-    'norm', 'eval', 'linarith', 'z3',
+    'rule', 'resolve', 'intro', 'cases', 'rewrite', 'apply_prev',
+    'inst', 'induct', 'refl', 'eq_intro',
+    'unfold', 'simp', 'assumption',
+    'norm', 'z3',
     'vcg',
 }
 FORWARD = {
-    'apply_forward_step', 'rewrite_fact', 'rewrite_fact_with_prev',
-    'apply_fact', 'forall_elim', 'frule',
+    'forward', 'rewrite', 'inst',
 }
 
 
@@ -530,6 +528,9 @@ class StableProofState:
                 search_res = method_obj.search(self.state, ItemID(0), perm_prevs)
             except Exception:
                 return
+            # Dual-mode methods contribute only their fact modes here.
+            if method_name in ('rewrite', 'inst'):
+                search_res = [r for r in search_res if r.get('target') == 'fact']
             for r in search_res:
                 r['method_name'] = method_name
                 r['fact_ids'] = [str(p) for p in perm_prevs]

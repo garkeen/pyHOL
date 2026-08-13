@@ -8,19 +8,19 @@ theorem neutral_nat_mul
   prop neutral times = (1::nat)
   [hint_rewrite]
 proof
-  ← rewrite_goal neutral_def sym=false goal=0
+  ← rewrite neutral_def sym=false goal=0
     #[1] (THE x::nat. ∀y. x * y = y ∧ y * x = y) = 1
-  → apply_forward_step theI param_P="(%x::nat. ∀y. x * y = y ∧ y * x = y)" param_a="(1::nat)" goal=1
+  → forward theI param_P="(%x::nat. ∀y. x * y = y ∧ y * x = y)" param_a="(1::nat)" goal=1
     #[2] (∀y::nat. 1 * y = y ∧ y * 1 = y) ⟶ (∀x::nat. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1) ⟶ (∀y::nat. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y)
   cut "(∀y::nat. 1 * y = y ∧ y * 1 = y)" goal=1 facts=[2]
     #[3] ∀y::nat. 1 * y = y ∧ y * 1 = y
   ← z3 goal=3
-  → apply_fact goal=1 facts=[2,3]
+  → forward goal=1 facts=[2,3]
     #[4] (∀x::nat. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1) ⟶ (∀y::nat. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y)
   cut "(∀x::nat. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1)" goal=1 facts=[4]
     #[5] ∀x::nat. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1
   ← z3 goal=5
-  → apply_fact goal=1 facts=[4,5]
+  → forward goal=1 facts=[4,5]
     #[6] ∀y::nat. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y
   ← apply_prev goal=1 facts=[5]
 qed
@@ -29,28 +29,28 @@ theorem monoidal_nat_mul
   prop monoidal (times::nat => nat => nat)
   [hint_backward]
 proof
-  ← rewrite_goal monoidal_def sym=false goal=0
+  ← rewrite monoidal_def sym=false goal=0
     #[1] (∀x::nat. ∀y. x * y = y * x) ∧ (∀x::nat. ∀y. ∀z. x * (y * z) = x * y * z) ∧ (∀x::nat. neutral times * x = x)
-  ← apply_backward_step conjI goal=1
+  ← rule conjI goal=1
     #[2] ∀x::nat. ∀y. x * y = y * x
     #[3] (∀x::nat. ∀y. ∀z. x * (y * z) = x * y * z) ∧ (∀x::nat. neutral times * x = x)
-  ← introduction x,y goal=2
+  ← intro x,y goal=2
     #[4] _VAR x
     #[5] _VAR y
     #[6] x * y = y * x
-  ← apply_backward_step mult_comm goal=6
-  ← apply_backward_step conjI goal=3
+  ← rule mult_comm goal=6
+  ← rule conjI goal=3
     #[7] ∀x::nat. ∀y. ∀z. x * (y * z) = x * y * z
     #[8] ∀x::nat. neutral times * x = x
-  ← introduction x,y,z goal=7
+  ← intro x,y,z goal=7
     #[9] _VAR z
     #[10] x * (y * z) = x * y * z
-  ← rewrite_goal mult_assoc sym=false goal=10
-  ← introduction x goal=8
+  ← rewrite mult_assoc sym=false goal=10
+  ← intro x goal=8
     #[11] neutral times * x = x
-  ← rewrite_goal neutral_nat_mul sym=false goal=11
+  ← rewrite neutral_nat_mul sym=false goal=11
     #[12] 1 * x = x
-  ← rewrite_goal mult_1_left sym=false goal=12
+  ← rewrite mult_1_left sym=false goal=12
 qed
 
 theorem nproduct_empty
@@ -58,13 +58,13 @@ theorem nproduct_empty
   prop nproduct {} f = 1
   [hint_rewrite]
 proof
-  ← rewrite_goal nproduct_def sym=false goal=0
+  ← rewrite nproduct_def sym=false goal=0
     #[1] iterate times ∅ f = 1
-  ← rewrite_goal neutral_nat_mul sym=true goal=1
+  ← rewrite neutral_nat_mul sym=true goal=1
     #[2] iterate times ∅ f = neutral times
-  ← apply_backward_step iterate_empty goal=2
+  ← rule iterate_empty goal=2
     #[3] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=3
+  ← rule monoidal_nat_mul goal=3
 qed
 
 theorem nproduct_insert
@@ -72,14 +72,14 @@ theorem nproduct_insert
   prop finite s --> nproduct (insert x s) f = (if x Mem s then nproduct s f else f x * nproduct s f)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] finite s
     #[2] nproduct (insert x s) f = (if x ∈ s then nproduct s f else f x * nproduct s f)
-  ← rewrite_goal nproduct_def sym=false goal=2
+  ← rewrite nproduct_def sym=false goal=2
     #[3] iterate times (insert x s) f = (if x ∈ s then iterate times s f else f x * iterate times s f)
-  ← apply_backward_step iterate_insert goal=3
+  ← rule iterate_insert goal=3
     #[4] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=4
+  ← rule monoidal_nat_mul goal=4
     #[5] monoidal (times::nat ⇒ nat ⇒ nat)
 qed
 
@@ -88,9 +88,9 @@ theorem nproduct_support
   prop nproduct (support times f s) f = nproduct s f
   [hint_rewrite]
 proof
-  ← rewrite_goal nproduct_def sym=false goal=0
+  ← rewrite nproduct_def sym=false goal=0
     #[1] iterate times (support times f s) f = iterate times s f
-  ← rewrite_goal iterate_support sym=false goal=1
+  ← rewrite iterate_support sym=false goal=1
 qed
 
 theorem nproduct_union
@@ -98,16 +98,16 @@ theorem nproduct_union
   prop finite s --> finite t --> disjoint s t --> nproduct (s Un t) f = nproduct s f * nproduct t f
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] finite s
     #[2] finite t
     #[3] disjoint s t
     #[4] nproduct (s ∪ t) f = nproduct s f * nproduct t f
-  ← rewrite_goal nproduct_def sym=false goal=4
+  ← rewrite nproduct_def sym=false goal=4
     #[5] iterate times (s ∪ t) f = iterate times s f * iterate times t f
-  ← apply_backward_step iterate_union goal=5
+  ← rule iterate_union goal=5
     #[6] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=6
+  ← rule monoidal_nat_mul goal=6
     #[7] monoidal (times::nat ⇒ nat ⇒ nat)
 qed
 
@@ -126,24 +126,24 @@ theorem nproduct_add_split
   prop m <= n + 1 --> nproduct ({m..n + p}) f = nproduct ({m..n}) f * nproduct ({n + 1..n + p}) f
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] m ≤ n + 1
     #[2] nproduct ({m..n + p}) f = nproduct ({m..n}) f * nproduct ({n + 1..n + p}) f
-  → apply_forward_step natseg_add_split param_p=p goal=2 facts=[1]
+  → forward natseg_add_split param_p=p goal=2 facts=[1]
     #[3] {m..n + p} = {m..n} ∪ {n + 1..n + p}
-  ← rewrite_goal_with_prev goal=2 facts=[3]
+  ← rewrite source=prev goal=2 facts=[3]
     #[4] nproduct ({m..n} ∪ {n + 1..n + p}) f = nproduct ({m..n}) f * nproduct ({n + 1..n + p}) f
-  ← apply_backward_step nproduct_union goal=4
+  ← rule nproduct_union goal=4
     #[5] finite ({m..n})
     #[6] finite ({n + 1..n + p})
     #[7] disjoint ({m..n}) ({n + 1..n + p})
-  ← apply_backward_step finite_natseg goal=5
+  ← rule finite_natseg goal=5
     #[8] finite ({m..n})
-  ← apply_backward_step finite_natseg goal=6
+  ← rule finite_natseg goal=6
     #[9] finite ({n + 1..n + p})
-  ← rewrite_goal disjoint_natseg sym=false goal=7
+  ← rewrite disjoint_natseg sym=false goal=7
     #[10] n < n + 1 ∨ n + p < m ∨ n < m ∨ n + p < n + 1
-  ← apply_backward_step disjI1 goal=10
+  ← rule disjI1 goal=10
     #[11] n < n + 1
   ← z3 goal=11
     #[12] n < n + 1
@@ -159,23 +159,23 @@ theorem nproduct_pos_lt_natseg
   prop (!x. m <= x --> x <= n --> 0 < f x) --> 0 < nproduct ({m..n}) f
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. m ≤ x ⟶ x ≤ n ⟶ 0 < f x
     #[2] 0 < nproduct ({m..n}) f
-  ← apply_backward_step nproduct_pos_lt goal=2
+  ← rule nproduct_pos_lt goal=2
     #[3] finite ({m..n})
     #[4] ∀x. x ∈ {m..n} ⟶ 0 < f x
-  ← apply_backward_step finite_natseg goal=3
+  ← rule finite_natseg goal=3
     #[5] finite ({m..n})
-  ← introduction x goal=4
+  ← intro x goal=4
     #[6] _VAR x
     #[7] x ∈ {m..n}
     #[8] 0 < f x
-  → rewrite_fact member_natseg sym=false goal=8 facts=[7]
+  → rewrite target=fact member_natseg sym=false goal=8 facts=[7]
     #[9] m ≤ x ∧ x ≤ n
-  → apply_forward_step conjD1 goal=8 facts=[9]
+  → forward conjD1 goal=8 facts=[9]
     #[10] m ≤ x
-  → apply_forward_step conjD2 goal=8 facts=[9]
+  → forward conjD2 goal=8 facts=[9]
     #[11] x ≤ n
   ← apply_prev goal=8 facts=[1]
 qed
@@ -195,9 +195,9 @@ theorem nproduct_sing_natseg
   prop nproduct ({n..n}) f = f n
   [hint_rewrite]
 proof
-  ← rewrite_goal natseg_sing sym=false goal=0
+  ← rewrite natseg_sing sym=false goal=0
     #[1] nproduct ({n}) f = f n
-  ← rewrite_goal nproduct_sing sym=false goal=1
+  ← rewrite nproduct_sing sym=false goal=1
 qed
 
 theorem nproduct_0_natseg
@@ -205,24 +205,24 @@ theorem nproduct_0_natseg
   prop nproduct ({m..0}) f = (if m = 0 then f 0 else 1)
   [hint_rewrite]
 proof
-  ← rewrite_goal natseg_0 sym=false goal=0
+  ← rewrite natseg_0 sym=false goal=0
     #[1] nproduct (if m = 0 then {0} else ∅) f = (if m = 0 then f 0 else 1)
   ← cases "m = 0 " goal=1
     #[2] m = 0 ⟶ nproduct (if m = 0 then {0} else ∅) f = (if m = 0 then f 0 else 1)
     #[3] ¬(m = 0) ⟶ nproduct (if m = 0 then {0} else ∅) f = (if m = 0 then f 0 else 1)
-  ← introduction goal=2
+  ← intro goal=2
     #[4] m = 0
     #[5] nproduct (if m = 0 then {0} else ∅) f = (if m = 0 then f 0 else 1)
-  ← rewrite_goal if_P sym=false goal=5 facts=[4]
+  ← rewrite if_P sym=false goal=5 facts=[4]
     #[6] nproduct ({0}) f = f 0
-  ← rewrite_goal nproduct_sing sym=false goal=6
+  ← rewrite nproduct_sing sym=false goal=6
     #[7] nproduct ({0}) f = f 0
-  ← introduction goal=3
+  ← intro goal=3
     #[8] ¬(m = 0)
     #[9] nproduct (if m = 0 then {0} else ∅) f = (if m = 0 then f 0 else 1)
-  ← rewrite_goal if_not_P sym=false goal=9 facts=[8]
+  ← rewrite if_not_P sym=false goal=9 facts=[8]
     #[10] nproduct ∅ f = 1
-  ← rewrite_goal nproduct_empty sym=false goal=10
+  ← rewrite nproduct_empty sym=false goal=10
     #[11] nproduct ∅ f = 1
 qed
 
@@ -231,46 +231,46 @@ theorem nproduct_Suc_natseg
   prop nproduct ({m..Suc n}) f = (if m <= Suc n then nproduct ({m..n}) f * f (Suc n) else nproduct ({m..n}) f)
   [hint_rewrite]
 proof
-  ← rewrite_goal natseg_Suc sym=false goal=0
+  ← rewrite natseg_Suc sym=false goal=0
     #[1] nproduct (if m ≤ Suc n then insert (Suc n) ({m..n}) else {m..n}) f = (if m ≤ Suc n then nproduct ({m..n}) f * f (Suc n) else nproduct ({m..n}) f)
   ← cases " m ≤ Suc n" goal=1
     #[2] m ≤ Suc n ⟶ nproduct (if m ≤ Suc n then insert (Suc n) ({m..n}) else {m..n}) f = (if m ≤ Suc n then nproduct ({m..n}) f * f (Suc n) else nproduct ({m..n}) f)
     #[3] ¬(m ≤ Suc n) ⟶ nproduct (if m ≤ Suc n then insert (Suc n) ({m..n}) else {m..n}) f = (if m ≤ Suc n then nproduct ({m..n}) f * f (Suc n) else nproduct ({m..n}) f)
-  ← introduction goal=2
+  ← intro goal=2
     #[4] m ≤ Suc n
     #[5] nproduct (if m ≤ Suc n then insert (Suc n) ({m..n}) else {m..n}) f = (if m ≤ Suc n then nproduct ({m..n}) f * f (Suc n) else nproduct ({m..n}) f)
-  ← rewrite_goal if_P sym=false goal=5 facts=[4]
+  ← rewrite if_P sym=false goal=5 facts=[4]
     #[6] nproduct (insert (Suc n) ({m..n})) f = nproduct ({m..n}) f * f (Suc n)
   cut "finite {m..n}" goal=6
     #[7] finite ({m..n})
-  ← apply_backward_step finite_natseg goal=7
+  ← rule finite_natseg goal=7
     #[8] finite ({m..n})
-  → apply_forward_step nproduct_insert param_f=f param_x="Suc n" goal=6 facts=[8]
+  → forward nproduct_insert param_f=f param_x="Suc n" goal=6 facts=[8]
     #[9] nproduct (insert (Suc n) ({m..n})) f = (if Suc n ∈ {m..n} then nproduct ({m..n}) f else f (Suc n) * nproduct ({m..n}) f)
   cut "~(Suc n ∈ {m..n})" goal=6
     #[10] ¬(Suc n ∈ {m..n})
-  ← rewrite_goal member_natseg sym=false goal=10
+  ← rewrite member_natseg sym=false goal=10
     #[11] ¬(m ≤ Suc n ∧ Suc n ≤ n)
-  ← rewrite_goal lesseq_Suc_less sym=false goal=11
+  ← rewrite lesseq_Suc_less sym=false goal=11
     #[12] ¬(m ≤ Suc n ∧ n < n)
-  ← rewrite_goal de_morgan_thm1 sym=false goal=12
+  ← rewrite de_morgan_thm1 sym=false goal=12
     #[13] ¬(m ≤ Suc n) ∨ ¬(n < n)
-  ← apply_backward_step disjI2 goal=13
+  ← rule disjI2 goal=13
     #[14] ¬(n < n)
-  ← rewrite_goal not_lt sym=false goal=14
+  ← rewrite not_lt sym=false goal=14
     #[15] n ≤ n
-  ← apply_backward_step less_eq_refl goal=15
+  ← rule less_eq_refl goal=15
     #[16] n ≤ n
-  → rewrite_fact if_not_P sym=false goal=6 facts=[9,10]
+  → rewrite target=fact if_not_P sym=false goal=6 facts=[9,10]
     #[17] nproduct (insert (Suc n) ({m..n})) f = f (Suc n) * nproduct ({m..n}) f
-  ← rewrite_goal_with_prev goal=6 facts=[17]
+  ← rewrite source=prev goal=6 facts=[17]
     #[18] f (Suc n) * nproduct ({m..n}) f = nproduct ({m..n}) f * f (Suc n)
-  ← apply_backward_step mult_comm goal=18
+  ← rule mult_comm goal=18
     #[19] f (Suc n) * nproduct ({m..n}) f = nproduct ({m..n}) f * f (Suc n)
-  ← introduction goal=3
+  ← intro goal=3
     #[20] ¬(m ≤ Suc n)
     #[21] nproduct (if m ≤ Suc n then insert (Suc n) ({m..n}) else {m..n}) f = (if m ≤ Suc n then nproduct ({m..n}) f * f (Suc n) else nproduct ({m..n}) f)
-  ← rewrite_goal if_not_P sym=false goal=21 facts=[20]
+  ← rewrite if_not_P sym=false goal=21 facts=[20]
 qed
 
 theorem nproduct_eq
@@ -278,14 +278,14 @@ theorem nproduct_eq
   prop (!x. x Mem s --> f x = g x) --> nproduct s f = nproduct s g
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. x ∈ s ⟶ f x = g x
     #[2] nproduct s f = nproduct s g
-  ← rewrite_goal nproduct_def sym=false goal=2
+  ← rewrite nproduct_def sym=false goal=2
     #[3] iterate times s f = iterate times s g
-  ← apply_backward_step iterate_eq goal=3
+  ← rule iterate_eq goal=3
     #[4] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=4
+  ← rule monoidal_nat_mul goal=4
     #[5] monoidal (times::nat ⇒ nat ⇒ nat)
 qed
 
@@ -294,23 +294,23 @@ theorem nproduct_eq_natseg
   prop (!i. m <= i --> i <= n --> f i = g i) --> nproduct ({m..n}) f = nproduct ({m..n}) g
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀i. m ≤ i ⟶ i ≤ n ⟶ f i = g i
     #[2] nproduct ({m..n}) f = nproduct ({m..n}) g
-  ← apply_backward_step nproduct_eq goal=2
+  ← rule nproduct_eq goal=2
     #[3] ∀x. x ∈ {m..n} ⟶ f x = g x
-  ← introduction i goal=3
+  ← intro i goal=3
     #[4] _VAR i
     #[5] i ∈ {m..n}
     #[6] f i = g i
-  → rewrite_fact member_natseg sym=false goal=6 facts=[5]
+  → rewrite target=fact member_natseg sym=false goal=6 facts=[5]
     #[7] m ≤ i ∧ i ≤ n
   ← apply_prev goal=6 facts=[1]
     #[8] m ≤ i
     #[9] i ≤ n
-  ← apply_backward_step conjD1 goal=8 facts=[7]
+  ← rule conjD1 goal=8 facts=[7]
     #[10] m ≤ i
-  ← apply_backward_step conjD2 goal=9 facts=[7]
+  ← rule conjD2 goal=9 facts=[7]
     #[11] i ≤ n
 qed
 
@@ -324,15 +324,15 @@ theorem nproduct_eq_0_natseg
   prop nproduct ({m..n}) f = 0 <--> (?x. m <= x & x <= n & f x = 0)
   [hint_rewrite]
 proof
-  → apply_forward_step nproduct_eq_0 param_f=f param_s={m..n} goal=0
+  → forward nproduct_eq_0 param_f=f param_s={m..n} goal=0
     #[1] finite ({m..n}) ⟶ nproduct ({m..n}) f = 0 ⟷ (∃x. x ∈ {m..n} ∧ f x = 0)
-  → rewrite_fact member_natseg sym=false goal=0 facts=[1]
+  → rewrite target=fact member_natseg sym=false goal=0 facts=[1]
     #[2] finite ({m..n}) ⟶ nproduct ({m..n}) f = 0 ⟷ (∃x. (m ≤ x ∧ x ≤ n) ∧ f x = 0)
-  ← rewrite_goal conj_assoc sym=false goal=0
+  ← rewrite conj_assoc sym=false goal=0
     #[3] nproduct ({m..n}) f = 0 ⟷ (∃x. (m ≤ x ∧ x ≤ n) ∧ f x = 0)
   ← apply_prev goal=3 facts=[2]
     #[4] finite ({m..n})
-  ← apply_backward_step finite_natseg goal=4
+  ← rule finite_natseg goal=4
 qed
 
 theorem nproduct_restrict
@@ -340,16 +340,16 @@ theorem nproduct_restrict
   prop finite s --> nproduct s (%i. if i Mem s then f i else 1) = nproduct s f
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] finite s
     #[2] nproduct s (λi. if i ∈ s then f i else 1) = nproduct s f
-  ← apply_backward_step nproduct_eq goal=2
+  ← rule nproduct_eq goal=2
     #[3] ∀x. x ∈ s ⟶ (if x ∈ s then f x else 1) = f x
-  ← introduction x goal=3
+  ← intro x goal=3
     #[4] _VAR x
     #[5] x ∈ s
     #[6] (if x ∈ s then f x else 1) = f x
-  ← rewrite_goal if_P sym=false goal=6 facts=[5]
+  ← rewrite if_P sym=false goal=6 facts=[5]
     #[7] (if x ∈ s then f x else 1) = f x
 qed
 
@@ -358,13 +358,13 @@ theorem nproduct_restrict_set
   prop nproduct ({i. i Mem s & P i}) f = nproduct s (%i. if P i then f i else 1)
   [hint_rewrite]
 proof
-  ← rewrite_goal nproduct_def sym=false goal=0
+  ← rewrite nproduct_def sym=false goal=0
     #[1] iterate times ({i. i ∈ s ∧ P i}) f = iterate times s (λi. if P i then f i else 1)
-  ← rewrite_goal neutral_nat_mul sym=true goal=1
+  ← rewrite neutral_nat_mul sym=true goal=1
     #[2] iterate times ({i. i ∈ s ∧ P i}) f = iterate times s (λi. if P i then f i else neutral times)
-  ← apply_backward_step iterate_restrict_set goal=2
+  ← rule iterate_restrict_set goal=2
     #[3] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=3
+  ← rule monoidal_nat_mul goal=3
 qed
 
 theorem nproduct_le
@@ -377,26 +377,26 @@ theorem nproduct_le_natseg
   prop (!i. m <= i --> i <= n --> f i <= g i) --> nproduct ({m..n}) f <= nproduct ({m..n}) g
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀i. m ≤ i ⟶ i ≤ n ⟶ f i ≤ g i
     #[2] nproduct ({m..n}) f ≤ nproduct ({m..n}) g
-  ← apply_backward_step nproduct_le goal=2
+  ← rule nproduct_le goal=2
     #[3] finite ({m..n})
     #[4] ∀x. x ∈ {m..n} ⟶ f x ≤ g x
-  ← apply_backward_step finite_natseg goal=3
+  ← rule finite_natseg goal=3
     #[5] finite ({m..n})
-  ← introduction i goal=4
+  ← intro i goal=4
     #[6] _VAR i
     #[7] i ∈ {m..n}
     #[8] f i ≤ g i
-  → rewrite_fact member_natseg sym=false goal=8 facts=[7]
+  → rewrite target=fact member_natseg sym=false goal=8 facts=[7]
     #[9] m ≤ i ∧ i ≤ n
   ← apply_prev goal=8 facts=[1]
     #[10] m ≤ i
     #[11] i ≤ n
-  ← apply_backward_step conjD1 goal=10 facts=[9]
+  ← rule conjD1 goal=10 facts=[9]
     #[12] m ≤ i
-  ← apply_backward_step conjD2 goal=11 facts=[9]
+  ← rule conjD2 goal=11 facts=[9]
     #[13] i ≤ n
 qed
 
@@ -405,19 +405,19 @@ theorem nproduct_eq_1
   prop (!x. x Mem s --> f x = 1) --> nproduct s f = 1
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. x ∈ s ⟶ f x = 1
     #[2] nproduct s f = 1
-  ← rewrite_goal nproduct_def sym=false goal=2
+  ← rewrite nproduct_def sym=false goal=2
     #[3] iterate times s f = 1
-  ← rewrite_goal neutral_nat_mul sym=true goal=3
+  ← rewrite neutral_nat_mul sym=true goal=3
     #[4] iterate times s f = neutral times
-  ← apply_backward_step iterate_eq_neutral goal=4
+  ← rule iterate_eq_neutral goal=4
     #[5] monoidal (times::nat ⇒ nat ⇒ nat)
     #[6] ∀x. x ∈ s ⟶ f x = neutral times
-  ← apply_backward_step monoidal_nat_mul goal=5
+  ← rule monoidal_nat_mul goal=5
     #[7] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← rewrite_goal neutral_nat_mul sym=false goal=6
+  ← rewrite neutral_nat_mul sym=false goal=6
 qed
 
 theorem nproduct_eq_1_natseg
@@ -425,23 +425,23 @@ theorem nproduct_eq_1_natseg
   prop (!i. m <= i --> i <= n --> f i = 1) --> nproduct ({m..n}) f = 1
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀i. m ≤ i ⟶ i ≤ n ⟶ f i = 1
     #[2] nproduct ({m..n}) f = 1
-  ← apply_backward_step nproduct_eq_1 goal=2
+  ← rule nproduct_eq_1 goal=2
     #[3] ∀x. x ∈ {m..n} ⟶ f x = 1
-  ← introduction i goal=3
+  ← intro i goal=3
     #[4] _VAR i
     #[5] i ∈ {m..n}
     #[6] f i = 1
   ← apply_prev goal=6 facts=[1]
     #[7] m ≤ i
     #[8] i ≤ n
-  → rewrite_fact member_natseg sym=false goal=7 facts=[5]
+  → rewrite target=fact member_natseg sym=false goal=7 facts=[5]
     #[9] m ≤ i ∧ i ≤ n
-  ← apply_backward_step conjD1 goal=7 facts=[9]
+  ← rule conjD1 goal=7 facts=[9]
     #[10] m ≤ i
-  ← apply_backward_step conjD2 goal=8 facts=[9]
+  ← rule conjD2 goal=8 facts=[9]
     #[11] i ≤ n
 qed
 
@@ -450,24 +450,24 @@ theorem nproduct_mul_gen
   prop finite ({x. x Mem s & ~(f x = 1)}) --> finite ({x. x Mem s & ~(g x = 1)}) --> nproduct s (%x. f x * g x) = nproduct s f * nproduct s g
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] finite ({x. x ∈ s ∧ ¬(f x = 1)})
     #[2] finite ({x. x ∈ s ∧ ¬(g x = 1)})
     #[3] nproduct s (λx. f x * g x) = nproduct s f * nproduct s g
-  ← rewrite_goal nproduct_def sym=false goal=3
+  ← rewrite nproduct_def sym=false goal=3
     #[4] iterate times s (λx. f x * g x) = iterate times s f * iterate times s g
-  ← apply_backward_step iterate_op_gen goal=4
+  ← rule iterate_op_gen goal=4
     #[5] monoidal (times::nat ⇒ nat ⇒ nat)
     #[6] finite (support times f s)
     #[7] finite (support times g s)
-  ← apply_backward_step monoidal_nat_mul goal=5
+  ← rule monoidal_nat_mul goal=5
     #[8] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← rewrite_goal support_def sym=false goal=6
+  ← rewrite support_def sym=false goal=6
     #[9] finite ({x. x ∈ s ∧ ¬(f x = neutral times)})
-  ← rewrite_goal neutral_nat_mul sym=false goal=9
-  ← rewrite_goal support_def sym=false goal=7
+  ← rewrite neutral_nat_mul sym=false goal=9
+  ← rewrite support_def sym=false goal=7
     #[10] finite ({x. x ∈ s ∧ ¬(g x = neutral times)})
-  ← rewrite_goal neutral_nat_mul sym=false goal=10
+  ← rewrite neutral_nat_mul sym=false goal=10
 qed
 
 theorem nproduct_mul
@@ -480,9 +480,9 @@ theorem nproduct_mul_natseg
   prop nproduct ({m..n}) (%x. f x * g x) = nproduct ({m..n}) f * nproduct ({m..n}) g
   [hint_rewrite]
 proof
-  ← apply_backward_step nproduct_mul goal=0
+  ← rule nproduct_mul goal=0
     #[1] finite ({m..n})
-  ← apply_backward_step finite_natseg goal=1
+  ← rule finite_natseg goal=1
 qed
 
 theorem nproduct_const
@@ -495,11 +495,11 @@ theorem nproduct_const_natseg
   prop nproduct ({m..n}) (%x. c) = c ^ (n + 1 - m)
   [hint_rewrite]
 proof
-  ← rewrite_goal card_natseg sym=true goal=0
+  ← rewrite card_natseg sym=true goal=0
     #[1] nproduct ({m..n}) (λx. c) = c ^ card ({m..n})
-  ← apply_backward_step nproduct_const goal=1
+  ← rule nproduct_const goal=1
     #[2] finite ({m..n})
-  ← apply_backward_step finite_natseg goal=2
+  ← rule finite_natseg goal=2
 qed
 
 theorem nproduct_const_natseg_1
@@ -507,9 +507,9 @@ theorem nproduct_const_natseg_1
   prop nproduct ({1..n}) (%x. c) = c ^ n
   [hint_rewrite]
 proof
-  ← rewrite_goal nproduct_const_natseg sym=false goal=0
+  ← rewrite nproduct_const_natseg sym=false goal=0
     #[1] c ^ (n + 1 - 1) = c ^ n
-  ← rewrite_goal nat_plus_minus sym=false goal=1
+  ← rewrite nat_plus_minus sym=false goal=1
 qed
 
 theorem nproduct_one
@@ -517,7 +517,7 @@ theorem nproduct_one
   prop nproduct s (%n. 1) = 1
   [hint_rewrite]
 proof
-  ← apply_backward_step nproduct_eq_1 goal=0
+  ← rule nproduct_eq_1 goal=0
     #[1] ∀x. x ∈ s ⟶ (1::nat) = 1
   ← z3 goal=1
 qed
@@ -527,27 +527,27 @@ theorem nproduct_closed
   prop P 1 --> (!x. !y. P x --> P y --> P (x * y)) --> (!a. a Mem s --> P (f a)) --> P (nproduct s f)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] P 1
     #[2] ∀x. ∀y. P x ⟶ P y ⟶ P (x * y)
     #[3] ∀a. a ∈ s ⟶ P (f a)
     #[4] P (nproduct s f)
-  ← rewrite_goal nproduct_def sym=false goal=4
+  ← rewrite nproduct_def sym=false goal=4
     #[5] P (iterate times s f)
-  ← apply_backward_step iterate_closed goal=5
+  ← rule iterate_closed goal=5
     #[6] monoidal (times::nat ⇒ nat ⇒ nat)
     #[7] P (neutral times)
     #[8] ∀x. x ∈ s ∧ ¬(f x = neutral times) ⟶ P (f x)
-  ← apply_backward_step monoidal_nat_mul goal=6
+  ← rule monoidal_nat_mul goal=6
     #[9] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← rewrite_goal neutral_nat_mul sym=false goal=7
-  ← introduction x goal=8
+  ← rewrite neutral_nat_mul sym=false goal=7
+  ← intro x goal=8
     #[10] _VAR x
     #[11] x ∈ s ∧ ¬(f x = neutral times)
     #[12] P (f x)
   ← apply_prev goal=12 facts=[3]
     #[13] x ∈ s
-  ← apply_backward_step conjD1 goal=13 facts=[11]
+  ← rule conjD1 goal=13 facts=[11]
     #[14] x ∈ s
 qed
 
@@ -556,24 +556,24 @@ theorem nproduct_related
   prop R 1 1 --> (!m. !n. !m1. !n1. R m n --> R m1 n1 --> R (m * m1) (n * n1)) --> finite s --> (!i. i Mem s --> R (f i) (g i)) --> R (nproduct s f) (nproduct s g)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] R 1 1
     #[2] ∀m. ∀n. ∀m1. ∀n1. R m n ⟶ R m1 n1 ⟶ R (m * m1) (n * n1)
     #[3] finite s
     #[4] ∀i. i ∈ s ⟶ R (f i) (g i)
     #[5] R (nproduct s f) (nproduct s g)
-  ← rewrite_goal nproduct_def sym=false goal=5
+  ← rewrite nproduct_def sym=false goal=5
     #[6] R (iterate times s f) (iterate times s g)
-  → apply_forward_step iterate_related param_R=R param_f=f param_g=g param_op="(times::nat⇒nat⇒nat)" param_s=s goal=6
+  → forward iterate_related param_R=R param_f=f param_g=g param_op="(times::nat⇒nat⇒nat)" param_s=s goal=6
     #[7] monoidal (times::nat ⇒ nat ⇒ nat) ⟶ R (neutral times) (neutral times) ⟶ (∀x1. ∀y1. ∀x2. ∀y2. R x1 x2 ⟶ R y1 y2 ⟶ R (x1 * y1) (x2 * y2)) ⟶ finite s ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (iterate times s f) (iterate times s g)
   ← apply_prev goal=6 facts=[7]
     #[8] monoidal (times::nat ⇒ nat ⇒ nat)
     #[9] R (neutral times) (neutral times)
     #[10] ∀x1. ∀y1. ∀x2. ∀y2. R x1 x2 ⟶ R y1 y2 ⟶ R (x1 * y1) (x2 * y2)
-  ← apply_backward_step monoidal_nat_mul goal=8
+  ← rule monoidal_nat_mul goal=8
     #[11] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← rewrite_goal neutral_nat_mul sym=false goal=9
-  ← introduction m,n,m1,n1 goal=10
+  ← rewrite neutral_nat_mul sym=false goal=9
+  ← intro m,n,m1,n1 goal=10
     #[12] _VAR m
     #[13] _VAR n
     #[14] _VAR m1
@@ -589,17 +589,17 @@ theorem nproduct_closed_nonempty
   prop finite s --> ~(s = {}) --> (!x. !y. P x --> P y --> P (x * y)) --> (!a. a Mem s --> P (f a)) --> P (nproduct s f)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] finite s
     #[2] ¬(s = ∅)
     #[3] ∀x. ∀y. P x ⟶ P y ⟶ P (x * y)
     #[4] ∀a. a ∈ s ⟶ P (f a)
     #[5] P (nproduct s f)
-  ← rewrite_goal nproduct_def sym=false goal=5
+  ← rewrite nproduct_def sym=false goal=5
     #[6] P (iterate times s f)
-  ← apply_backward_step iterate_closed_nonempty goal=6
+  ← rule iterate_closed_nonempty goal=6
     #[7] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=7
+  ← rule monoidal_nat_mul goal=7
     #[8] monoidal (times::nat ⇒ nat ⇒ nat)
 qed
 
@@ -608,22 +608,22 @@ theorem nproduct_related_nonempty
   prop (!m. !n. !m1. !n1. R m n --> R m1 n1 --> R (m * m1) (n * n1)) --> finite s --> ~(s = {}) --> (!i. i Mem s --> R (f i) (g i)) --> R (nproduct s f) (nproduct s g)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀m. ∀n. ∀m1. ∀n1. R m n ⟶ R m1 n1 ⟶ R (m * m1) (n * n1)
     #[2] finite s
     #[3] ¬(s = ∅)
     #[4] ∀i. i ∈ s ⟶ R (f i) (g i)
     #[5] R (nproduct s f) (nproduct s g)
-  ← rewrite_goal nproduct_def sym=false goal=5
+  ← rewrite nproduct_def sym=false goal=5
     #[6] R (iterate times s f) (iterate times s g)
-  → apply_forward_step iterate_related_nonempty param_R=R param_f=f param_g=g param_op="(times::nat⇒nat⇒nat)" param_s=s goal=6
+  → forward iterate_related_nonempty param_R=R param_f=f param_g=g param_op="(times::nat⇒nat⇒nat)" param_s=s goal=6
     #[7] monoidal (times::nat ⇒ nat ⇒ nat) ⟶ (∀x1. ∀y1. ∀x2. ∀y2. R x1 x2 ⟶ R y1 y2 ⟶ R (x1 * y1) (x2 * y2)) ⟶ finite s ⟶ ¬(s = ∅) ⟶ (∀x. x ∈ s ⟶ R (f x) (g x)) ⟶ R (iterate times s f) (iterate times s g)
   ← apply_prev goal=6 facts=[7]
     #[8] monoidal (times::nat ⇒ nat ⇒ nat)
     #[9] ∀x1. ∀y1. ∀x2. ∀y2. R x1 x2 ⟶ R y1 y2 ⟶ R (x1 * y1) (x2 * y2)
-  ← apply_backward_step monoidal_nat_mul goal=8
+  ← rule monoidal_nat_mul goal=8
     #[10] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← introduction m,n,m1,n1 goal=9
+  ← intro m,n,m1,n1 goal=9
     #[11] _VAR m
     #[12] _VAR n
     #[13] _VAR m1
@@ -639,32 +639,32 @@ theorem nproduct_clauses_left
   prop m <= n --> nproduct ({m..n}) f = f m * nproduct ({m + 1..n}) f
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] m ≤ n
     #[2] nproduct ({m..n}) f = f m * nproduct ({m + 1..n}) f
-  → apply_forward_step natseg_lrec goal=2 facts=[1]
+  → forward natseg_lrec goal=2 facts=[1]
     #[3] {m..n} = insert m ({m + 1..n})
-  ← rewrite_goal_with_prev goal=2 facts=[3]
+  ← rewrite source=prev goal=2 facts=[3]
     #[4] nproduct (insert m ({m + 1..n})) f = f m * nproduct ({m + 1..n}) f
-  → apply_forward_step nproduct_insert param_f=f param_s="{m + 1..n}" param_x=m goal=4
+  → forward nproduct_insert param_f=f param_s="{m + 1..n}" param_x=m goal=4
     #[5] finite ({m + 1..n}) ⟶ nproduct (insert m ({m + 1..n})) f = (if m ∈ {m + 1..n} then nproduct ({m + 1..n}) f else f m * nproduct ({m + 1..n}) f)
   cut "finite ({m + 1..n})" goal=4
     #[6] finite ({m + 1..n})
-  ← apply_backward_step finite_natseg goal=6
+  ← rule finite_natseg goal=6
     #[7] finite ({m + 1..n})
-  → apply_fact goal=4 facts=[5,7]
+  → forward goal=4 facts=[5,7]
     #[8] nproduct (insert m ({m + 1..n})) f = (if m ∈ {m + 1..n} then nproduct ({m + 1..n}) f else f m * nproduct ({m + 1..n}) f)
   cut "~(m ∈ {m + 1..n})" goal=4
     #[9] ¬(m ∈ {m + 1..n})
-  ← rewrite_goal member_natseg sym=false goal=9
+  ← rewrite member_natseg sym=false goal=9
     #[10] ¬(m + 1 ≤ m ∧ m ≤ n)
-  ← rewrite_goal de_morgan_thm1 sym=false goal=10
+  ← rewrite de_morgan_thm1 sym=false goal=10
     #[11] ¬(m + 1 ≤ m) ∨ ¬(m ≤ n)
-  ← apply_backward_step disjI1 goal=11
+  ← rule disjI1 goal=11
     #[12] ¬(m + 1 ≤ m)
   ← z3 goal=12
     #[13] ¬(m + 1 ≤ m)
-  → rewrite_fact if_not_P sym=false goal=4 facts=[8,9]
+  → rewrite target=fact if_not_P sym=false goal=4 facts=[8,9]
 qed
 
 theorem nproduct_clauses_right
@@ -677,18 +677,18 @@ theorem nproduct_superset
   prop u Sub v --> (!x. x Mem v --> ~(x Mem u) --> f x = 1) --> nproduct v f = nproduct u f
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] u ⊆ v
     #[2] ∀x. x ∈ v ⟶ ¬(x ∈ u) ⟶ f x = 1
     #[3] nproduct v f = nproduct u f
-  ← rewrite_goal nproduct_def sym=false goal=3
+  ← rewrite nproduct_def sym=false goal=3
     #[4] iterate times v f = iterate times u f
-  ← apply_backward_step iterate_superset goal=4
+  ← rule iterate_superset goal=4
     #[5] monoidal (times::nat ⇒ nat ⇒ nat)
     #[6] ∀x. x ∈ v ⟶ ¬(x ∈ u) ⟶ f x = neutral times
-  ← apply_backward_step monoidal_nat_mul goal=5
+  ← rule monoidal_nat_mul goal=5
     #[7] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← rewrite_goal neutral_nat_mul sym=false goal=6
+  ← rewrite neutral_nat_mul sym=false goal=6
 qed
 
 theorem nproduct_univ
@@ -696,14 +696,14 @@ theorem nproduct_univ
   prop support times f univ Sub s --> nproduct s f = nproduct univ f
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] support times f univ ⊆ s
     #[2] nproduct s f = nproduct univ f
-  ← rewrite_goal nproduct_def sym=false goal=2
+  ← rewrite nproduct_def sym=false goal=2
     #[3] iterate times s f = iterate times univ f
-  ← apply_backward_step iterate_univ goal=3
+  ← rule iterate_univ goal=3
     #[4] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=4
+  ← rule monoidal_nat_mul goal=4
     #[5] monoidal (times::nat ⇒ nat ⇒ nat)
 qed
 
@@ -712,11 +712,11 @@ theorem nproduct_pair
   prop nproduct ({2 * m..2 * n + 1}) f = nproduct ({m..n}) (%i. f (2 * i) * f (2 * i + 1))
   [hint_rewrite]
 proof
-  ← rewrite_goal nproduct_def sym=false goal=0
+  ← rewrite nproduct_def sym=false goal=0
     #[1] iterate times ({2 * m..2 * n + 1}) f = iterate times ({m..n}) (λi. f (2 * i) * f (2 * i + 1))
-  ← apply_backward_step iterate_pair goal=1
+  ← rule iterate_pair goal=1
     #[2] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=2
+  ← rule monoidal_nat_mul goal=2
 qed
 
 theorem nproduct_reflect
@@ -724,13 +724,13 @@ theorem nproduct_reflect
   prop nproduct ({m..n}) x = (if n < m then 1 else nproduct ({0..n - m}) (%i. x (n - i)))
   [hint_rewrite]
 proof
-  ← rewrite_goal nproduct_def sym=false goal=0
+  ← rewrite nproduct_def sym=false goal=0
     #[1] iterate times ({m..n}) x = (if n < m then 1 else iterate times ({0..n - m}) (λi. x (n - i)))
-  ← rewrite_goal neutral_nat_mul sym=true goal=1
+  ← rewrite neutral_nat_mul sym=true goal=1
     #[2] iterate times ({m..n}) x = (if n < m then neutral times else iterate times ({0..n - m}) (λi. x (n - i)))
-  ← apply_backward_step iterate_reflect goal=2
+  ← rule iterate_reflect goal=2
     #[3] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=3
+  ← rule monoidal_nat_mul goal=3
 qed
 
 theorem nproduct_delete
@@ -738,15 +738,15 @@ theorem nproduct_delete
   prop finite s --> a Mem s --> f a * nproduct (delete s a) f = nproduct s f
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] finite s
     #[2] a ∈ s
     #[3] f a * nproduct (delete s a) f = nproduct s f
-  ← rewrite_goal nproduct_def sym=false goal=3
+  ← rewrite nproduct_def sym=false goal=3
     #[4] f a * iterate times (delete s a) f = iterate times s f
-  ← apply_backward_step iterate_delete goal=4
+  ← rule iterate_delete goal=4
     #[5] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=5
+  ← rule monoidal_nat_mul goal=5
     #[6] monoidal (times::nat ⇒ nat ⇒ nat)
 qed
 
@@ -755,35 +755,35 @@ theorem nproduct_fact
   prop nproduct ({1..n}) (%m. m) = fact n
   [hint_rewrite]
 proof
-  ← induction n nat_induct goal=0
+  ← induct n nat_induct goal=0
     #[1] nproduct ({1..0}) (λm. m) = fact 0
     #[2] ∀n. nproduct ({1..n}) (λm. m) = fact n ⟶ nproduct ({1..Suc n}) (λm. m) = fact (Suc n)
-  ← rewrite_goal fact_def_1 sym=false goal=1
+  ← rewrite fact_def_1 sym=false goal=1
     #[3] nproduct ({1..0}) (λm. m) = 1
-  ← apply_backward_step nproduct_eq_1_natseg goal=3
+  ← rule nproduct_eq_1_natseg goal=3
     #[4] ∀i::nat. 1 ≤ i ⟶ i ≤ 0 ⟶ i = 1
   ← z3 goal=4
-  ← introduction n goal=2
+  ← intro n goal=2
     #[5] _VAR n
     #[6] nproduct ({1..n}) (λm. m) = fact n
     #[7] nproduct ({1..Suc n}) (λm. m) = fact (Suc n)
-  ← rewrite_goal nproduct_Suc_natseg sym=false goal=7
+  ← rewrite nproduct_Suc_natseg sym=false goal=7
     #[8] (if 1 ≤ Suc n then nproduct ({1..n}) (λm. m) * Suc n else nproduct ({1..n}) (λm. m)) = fact (Suc n)
   cut "1 ≤ Suc n" goal=8
     #[9] 1 ≤ Suc n
-  ← apply_backward_step le_1_2 goal=9
+  ← rule le_1_2 goal=9
     #[10] ¬(Suc n = 0)
-  ← apply_backward_step ineq_sym goal=10
+  ← rule ineq_sym goal=10
     #[11] ¬(0 = Suc n)
-  ← apply_backward_step nat_zero_Suc_neq goal=11
+  ← rule nat_zero_Suc_neq goal=11
     #[12] ¬(0 = Suc n)
-  ← rewrite_goal if_P sym=false goal=8 facts=[9]
+  ← rewrite if_P sym=false goal=8 facts=[9]
     #[13] nproduct ({1..n}) (λm. m) * Suc n = fact (Suc n)
-  ← rewrite_goal_with_prev goal=13 facts=[6]
+  ← rewrite source=prev goal=13 facts=[6]
     #[14] fact n * Suc n = fact (Suc n)
-  ← rewrite_goal fact_def_2 sym=false goal=14
+  ← rewrite fact_def_2 sym=false goal=14
     #[15] fact n * Suc n = Suc n * fact n
-  ← apply_backward_step mult_comm goal=15
+  ← rule mult_comm goal=15
     #[16] fact n * Suc n = Suc n * fact n
 qed
 
@@ -792,13 +792,13 @@ theorem nproduct_delta
   prop nproduct s (%x. if x = a then b else 1) = (if a Mem s then b else 1)
   [hint_rewrite]
 proof
-  ← rewrite_goal nproduct_def sym=false goal=0
+  ← rewrite nproduct_def sym=false goal=0
     #[1] iterate times s (λx. if x = a then b else 1) = (if a ∈ s then b else 1)
-  ← rewrite_goal neutral_nat_mul sym=true goal=1
+  ← rewrite neutral_nat_mul sym=true goal=1
     #[2] iterate times s (λx. if x = a then b else neutral times) = (if a ∈ s then b else neutral times)
-  ← apply_backward_step iterate_delta goal=2
+  ← rule iterate_delta goal=2
     #[3] monoidal (times::nat ⇒ nat ⇒ nat)
-  ← apply_backward_step monoidal_nat_mul goal=3
+  ← rule monoidal_nat_mul goal=3
 qed
 
 def iproduct :: 'a set ⇒ ('a ⇒ int) ⇒ int = (iproduct::'a set ⇒ ('a ⇒ int) ⇒ int) = iterate times [hint_rewrite]
@@ -807,19 +807,19 @@ theorem neutral_int_mul
   prop neutral times = (1::int)
   [hint_rewrite]
 proof
-  ← rewrite_goal neutral_def sym=false goal=0
+  ← rewrite neutral_def sym=false goal=0
     #[1] (THE x::int. ∀y. x * y = y ∧ y * x = y) = 1
-  → apply_forward_step theI param_P="(%x::int. ∀y. x * y = y ∧ y * x = y)" param_a="(1::int)" goal=1
+  → forward theI param_P="(%x::int. ∀y. x * y = y ∧ y * x = y)" param_a="(1::int)" goal=1
     #[2] (∀y::int. 1 * y = y ∧ y * 1 = y) ⟶ (∀x::int. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1) ⟶ (∀y::int. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y)
   cut "(∀y::int. 1 * y = y ∧ y * 1 = y)" goal=1
     #[3] ∀y::int. 1 * y = y ∧ y * 1 = y
   ← z3 goal=3
-  → apply_fact goal=1 facts=[2,3]
+  → forward goal=1 facts=[2,3]
     #[4] (∀x::int. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1) ⟶ (∀y::int. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y)
   cut "(∀x::int. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1)" goal=1
     #[5] ∀x::int. (∀y. x * y = y ∧ y * x = y) ⟶ x = 1
   ← z3 goal=5
-  → apply_fact goal=1 facts=[4,5]
+  → forward goal=1 facts=[4,5]
     #[6] ∀y::int. (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) * y = y ∧ y * (THE x. ∀y1. x * y1 = y1 ∧ y1 * x = y1) = y
   ← apply_prev goal=1 facts=[5]
 qed
@@ -828,17 +828,17 @@ theorem monoidal_int_mul
   prop monoidal (times::int => int => int)
   [hint_backward]
 proof
-  ← rewrite_goal monoidal_def sym=false goal=0
+  ← rewrite monoidal_def sym=false goal=0
     #[1] (∀x::int. ∀y. x * y = y * x) ∧ (∀x::int. ∀y. ∀z. x * (y * z) = x * y * z) ∧ (∀x::int. neutral times * x = x)
-  ← apply_backward_step conjI goal=1
+  ← rule conjI goal=1
     #[2] ∀x::int. ∀y. x * y = y * x
     #[3] (∀x::int. ∀y. ∀z. x * (y * z) = x * y * z) ∧ (∀x::int. neutral times * x = x)
   ← z3 goal=2
-  ← apply_backward_step conjI goal=3
+  ← rule conjI goal=3
     #[4] ∀x::int. ∀y. ∀z. x * (y * z) = x * y * z
     #[5] ∀x::int. neutral times * x = x
   ← z3 goal=4
-  ← rewrite_goal neutral_int_mul sym=false goal=5
+  ← rewrite neutral_int_mul sym=false goal=5
     #[6] ∀x::int. 1 * x = x
   ← z3 goal=6
 qed
@@ -848,13 +848,13 @@ theorem iproduct_empty
   prop iproduct {} f = 1
   [hint_rewrite]
 proof
-  ← rewrite_goal iproduct_def sym=false goal=0
+  ← rewrite iproduct_def sym=false goal=0
     #[1] iterate times ∅ f = 1
-  ← rewrite_goal neutral_int_mul sym=true goal=1
+  ← rewrite neutral_int_mul sym=true goal=1
     #[2] iterate times ∅ f = neutral times
-  ← apply_backward_step iterate_empty goal=2
+  ← rule iterate_empty goal=2
     #[3] monoidal (times::int ⇒ int ⇒ int)
-  ← apply_backward_step monoidal_int_mul goal=3
+  ← rule monoidal_int_mul goal=3
 qed
 
 theorem iproduct_insert
@@ -862,14 +862,14 @@ theorem iproduct_insert
   prop finite s --> iproduct (insert x s) f = (if x Mem s then iproduct s f else f x * iproduct s f)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] finite s
     #[2] iproduct (insert x s) f = (if x ∈ s then iproduct s f else f x * iproduct s f)
-  ← rewrite_goal iproduct_def sym=false goal=2
+  ← rewrite iproduct_def sym=false goal=2
     #[3] iterate times (insert x s) f = (if x ∈ s then iterate times s f else f x * iterate times s f)
-  ← apply_backward_step iterate_insert goal=3
+  ← rule iterate_insert goal=3
     #[4] monoidal (times::int ⇒ int ⇒ int)
-  ← apply_backward_step monoidal_int_mul goal=4
+  ← rule monoidal_int_mul goal=4
     #[5] monoidal (times::int ⇒ int ⇒ int)
 qed
 
@@ -880,13 +880,13 @@ theorem product_empty
   prop product {} f = 1
   [hint_rewrite]
 proof
-  ← rewrite_goal product_def sym=false goal=0
+  ← rewrite product_def sym=false goal=0
     #[1] iterate times ∅ f = 1
-  ← rewrite_goal neutral_real_mul sym=true goal=1
+  ← rewrite neutral_real_mul sym=true goal=1
     #[2] iterate times ∅ f = neutral times
-  ← apply_backward_step iterate_empty goal=2
+  ← rule iterate_empty goal=2
     #[3] monoidal (times::real ⇒ real ⇒ real)
-  ← apply_backward_step monoidal_real_mul goal=3
+  ← rule monoidal_real_mul goal=3
 qed
 
 theorem product_insert
@@ -894,14 +894,14 @@ theorem product_insert
   prop finite s --> product (insert x s) f = (if x Mem s then product s f else f x * product s f)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] finite s
     #[2] product (insert x s) f = (if x ∈ s then product s f else f x * product s f)
-  ← rewrite_goal product_def sym=false goal=2
+  ← rewrite product_def sym=false goal=2
     #[3] iterate times (insert x s) f = (if x ∈ s then iterate times s f else f x * iterate times s f)
-  ← apply_backward_step iterate_insert goal=3
+  ← rule iterate_insert goal=3
     #[4] monoidal (times::real ⇒ real ⇒ real)
-  ← apply_backward_step monoidal_real_mul goal=4
+  ← rule monoidal_real_mul goal=4
     #[5] monoidal (times::real ⇒ real ⇒ real)
 qed
 
@@ -910,9 +910,9 @@ theorem product_support
   prop product (support times f s) f = product s f
   [hint_rewrite]
 proof
-  ← rewrite_goal product_def sym=false goal=0
+  ← rewrite product_def sym=false goal=0
     #[1] iterate times (support times f s) f = iterate times s f
-  ← rewrite_goal iterate_support sym=false goal=1
+  ← rewrite iterate_support sym=false goal=1
 qed
 
 theorem product_union
@@ -920,16 +920,16 @@ theorem product_union
   prop finite s --> finite t --> disjoint s t --> product (s Un t) f = product s f * product t f
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] finite s
     #[2] finite t
     #[3] disjoint s t
     #[4] product (s ∪ t) f = product s f * product t f
-  ← rewrite_goal product_def sym=false goal=4
+  ← rewrite product_def sym=false goal=4
     #[5] iterate times (s ∪ t) f = iterate times s f * iterate times t f
-  ← apply_backward_step iterate_union goal=5
+  ← rule iterate_union goal=5
     #[6] monoidal (times::real ⇒ real ⇒ real)
-  ← apply_backward_step monoidal_real_mul goal=6
+  ← rule monoidal_real_mul goal=6
     #[7] monoidal (times::real ⇒ real ⇒ real)
 qed
 
@@ -948,22 +948,22 @@ theorem product_add_split
   prop m <= n + 1 --> product ({m..n + p}) f = product ({m..n}) f * product ({n + 1..n + p}) f
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] m ≤ n + 1
     #[2] product ({m..n + p}) f = product ({m..n}) f * product ({n + 1..n + p}) f
-  → apply_forward_step natseg_add_split param_p=p goal=2 facts=[1]
+  → forward natseg_add_split param_p=p goal=2 facts=[1]
     #[3] {m..n + p} = {m..n} ∪ {n + 1..n + p}
-  ← rewrite_goal_with_prev goal=2 facts=[3]
+  ← rewrite source=prev goal=2 facts=[3]
     #[4] product ({m..n} ∪ {n + 1..n + p}) f = product ({m..n}) f * product ({n + 1..n + p}) f
-  ← apply_backward_step product_union goal=4
+  ← rule product_union goal=4
     #[5] finite ({m..n})
     #[6] finite ({n + 1..n + p})
     #[7] disjoint ({m..n}) ({n + 1..n + p})
-  ← apply_backward_step finite_natseg goal=5
+  ← rule finite_natseg goal=5
     #[8] finite ({m..n})
-  ← apply_backward_step finite_natseg goal=6
+  ← rule finite_natseg goal=6
     #[9] finite ({n + 1..n + p})
-  ← rewrite_goal disjoint_natseg sym=false goal=7
+  ← rewrite disjoint_natseg sym=false goal=7
     #[10] n < n + 1 ∨ n + p < m ∨ n < m ∨ n + p < n + 1
   ← z3 goal=10
     #[11] n < n + 1 ∨ n + p < m ∨ n < m ∨ n + p < n + 1
@@ -979,15 +979,15 @@ theorem product_pos_le_natseg
   prop (!x. m <= x --> x <= n --> 0 <= f x) --> 0 <= product ({m..n}) f
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. m ≤ x ⟶ x ≤ n ⟶ 0 ≤ f x
     #[2] 0 ≤ product ({m..n}) f
-  ← apply_backward_step product_pos_le goal=2
+  ← rule product_pos_le goal=2
     #[3] finite ({m..n})
     #[4] ∀x. x ∈ {m..n} ⟶ 0 ≤ f x
-  ← apply_backward_step finite_natseg goal=3
+  ← rule finite_natseg goal=3
     #[5] finite ({m..n})
-  ← rewrite_goal member_natseg sym=false goal=4
+  ← rewrite member_natseg sym=false goal=4
     #[6] ∀x. m ≤ x ∧ x ≤ n ⟶ 0 ≤ f x
   ← z3 goal=6 facts=[1]
 qed
@@ -1002,15 +1002,15 @@ theorem product_pos_lt_natseg
   prop (!x. m <= x --> x <= n --> 0 < f x) --> 0 < product ({m..n}) f
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. m ≤ x ⟶ x ≤ n ⟶ 0 < f x
     #[2] 0 < product ({m..n}) f
-  ← apply_backward_step product_pos_lt goal=2
+  ← rule product_pos_lt goal=2
     #[3] finite ({m..n})
     #[4] ∀x. x ∈ {m..n} ⟶ 0 < f x
-  ← apply_backward_step finite_natseg goal=3
+  ← rule finite_natseg goal=3
     #[5] finite ({m..n})
-  ← rewrite_goal member_natseg sym=false goal=4
+  ← rewrite member_natseg sym=false goal=4
     #[6] ∀x. m ≤ x ∧ x ≤ n ⟶ 0 < f x
   ← z3 goal=6 facts=[1]
 qed

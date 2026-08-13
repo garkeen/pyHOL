@@ -630,7 +630,7 @@ theorem int_gcd
   fixes c :: int, d :: int, m :: int, n :: int, x :: int, y :: int
   prop c > 0 --> 0 <= x + d --> c * y = x --> c * n + d < 0 --> c * (n + 1) + d > 0 --> 0 <= 1 * y + -(n + 1)
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] c > 0
     #[2] 0 ≤ x + d
     #[3] c * y = x
@@ -680,7 +680,7 @@ theorem int_zero_less_eq_neg
   fixes x :: int
   prop x < 0 --> 0 <= x --> false
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] x < 0
     #[2] 0 ≤ x
     #[3] false

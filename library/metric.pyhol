@@ -35,11 +35,11 @@ theorem eventually_within_inter_imp
   prop eventually P (within net (s Int t)) <--> eventually (%x. x Mem t --> P x) (within net s)
   [hint_rewrite]
 proof
-  ← rewrite_goal within_within sym=true goal=0
+  ← rewrite within_within sym=true goal=0
     #[1] eventually P (within (within net s) t) ⟷ eventually (λx. x ∈ t ⟶ P x) (within net s)
-  ← rewrite_goal eventually_within_imp sym=false goal=1
+  ← rewrite eventually_within_imp sym=false goal=1
     #[2] eventually (λx. x ∈ t ⟶ P x) (within net s) ⟷ eventually (λx. x ∈ s ⟶ x ∈ t ⟶ P x) net
-  ← rewrite_goal eventually_within_imp sym=false goal=2
+  ← rewrite eventually_within_imp sym=false goal=2
 qed
 
 theorem nontrivial_limit_within
@@ -47,14 +47,14 @@ theorem nontrivial_limit_within
   prop trivial_limit net --> trivial_limit (within net s)
   [hint_backward,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] trivial_limit net
     #[2] trivial_limit (within net s)
-  ← rewrite_goal trivial_limit_def sym=false goal=2
+  ← rewrite trivial_limit_def sym=false goal=2
     #[3] eventually (λx. false) (within net s)
-  → rewrite_fact trivial_limit_def sym=false goal=3 facts=[1]
+  → rewrite target=fact trivial_limit_def sym=false goal=3 facts=[1]
     #[4] eventually (λx. false) net
-  ← apply_backward_step eventually_imp_within goal=3
+  ← rule eventually_imp_within goal=3
 qed
 
 theorem eventually_happens
@@ -87,15 +87,15 @@ theorem eventually_eq_mp
   prop eventually (%x. P x <--> Q x) net --> eventually P net --> eventually Q net
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] eventually (λx. P x ⟷ Q x) net
     #[2] eventually P net
     #[3] eventually Q net
-  ← apply_backward_step eventually_mp param_P=P goal=3
+  ← rule eventually_mp param_P=P goal=3
     #[4] eventually (λx. P x ⟶ Q x) net
-  ← apply_backward_step eventually_mp param_P="(λx. P x ⟷ Q x)" goal=4
+  ← rule eventually_mp param_P="(λx. P x ⟷ Q x)" goal=4
     #[5] eventually (λx. P x ⟷ Q x ⟶ P x ⟶ Q x) net
-  ← apply_backward_step always_eventually goal=5
+  ← rule always_eventually goal=5
     #[6] ∀x. P x ⟷ Q x ⟶ P x ⟶ Q x
   ← z3 goal=6
     #[7] ∀x. P x ⟷ Q x ⟶ P x ⟶ Q x
@@ -106,22 +106,22 @@ theorem eventually_iff
   prop eventually (%x. P x <--> Q x) net --> eventually P net <--> eventually Q net
   [hint_backward,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] eventually (λx. P x ⟷ Q x) net
     #[2] eventually P net ⟷ eventually Q net
-  ← apply_backward_step iffI goal=2
+  ← rule iffI goal=2
     #[3] eventually P net ⟶ eventually Q net
     #[4] eventually Q net ⟶ eventually P net
-  ← introduction goal=3
+  ← intro goal=3
     #[5] eventually P net
     #[6] eventually Q net
-  ← apply_backward_step eventually_eq_mp param_P=P goal=6
-  ← introduction goal=4
+  ← rule eventually_eq_mp param_P=P goal=6
+  ← intro goal=4
     #[7] eventually Q net
     #[8] eventually P net
-  ← apply_backward_step eventually_eq_mp param_P=Q goal=8
+  ← rule eventually_eq_mp param_P=Q goal=8
     #[9] eventually (λx. Q x ⟷ P x) net
-  ← rewrite_goal eq_sym_eq sym=false goal=9
+  ← rewrite eq_sym_eq sym=false goal=9
 qed
 
 theorem eventually_true
@@ -134,15 +134,15 @@ theorem eventually_within_subset
   prop eventually P (within net s) --> t Sub s --> eventually P (within net t)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] eventually P (within net s)
     #[2] t ⊆ s
     #[3] eventually P (within net t)
-  ← rewrite_goal eventually_within_imp sym=false goal=3
+  ← rewrite eventually_within_imp sym=false goal=3
     #[4] eventually (λx. x ∈ t ⟶ P x) net
-  → rewrite_fact eventually_within_imp sym=false goal=4 facts=[1]
+  → rewrite target=fact eventually_within_imp sym=false goal=4 facts=[1]
     #[5] eventually (λx. x ∈ s ⟶ P x) net
-  ← apply_backward_step eventually_mono param_P="(λx. x ∈ s ⟶ P x)" goal=4
+  ← rule eventually_mono param_P="(λx. x ∈ s ⟶ P x)" goal=4
     #[6] ∀x. (x ∈ s ⟶ P x) ⟶ x ∈ t ⟶ P x
   ← z3 goal=6 facts=[2]
     #[7] ∀x. (x ∈ s ⟶ P x) ⟶ x ∈ t ⟶ P x
@@ -153,12 +153,12 @@ theorem always_within_eventually
   prop (!x. x Mem s --> P x) --> eventually P (within net s)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. x ∈ s ⟶ P x
     #[2] eventually P (within net s)
-  ← rewrite_goal eventually_within_imp sym=false goal=2
+  ← rewrite eventually_within_imp sym=false goal=2
     #[3] eventually (λx. x ∈ s ⟶ P x) net
-  ← apply_backward_step always_eventually goal=3 facts=[1]
+  ← rule always_eventually goal=3 facts=[1]
 qed
 
 theorem not_eventually
@@ -166,28 +166,28 @@ theorem not_eventually
   prop (!x. ~(P x)) --> ~(trivial_limit net) --> ~(eventually P net)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. ¬(P x)
     #[2] ¬(trivial_limit net)
     #[3] ¬(eventually P net)
-  → rewrite_fact not_exists sym=true goal=3 facts=[1]
+  → rewrite target=fact not_exists sym=true goal=3 facts=[1]
     #[4] ¬(∃x. P x)
-  → apply_forward_step conjI goal=3 facts=[4,2]
+  → forward conjI goal=3 facts=[4,2]
     #[5] ¬(∃x. P x) ∧ ¬(trivial_limit net)
-  ← apply_backward_step contrapositive goal=3 facts=[5]
+  ← rule contrapositive goal=3 facts=[5]
     #[6] ¬¬(eventually P net) ⟶ ¬(¬(∃x. P x) ∧ ¬(trivial_limit net))
-  ← introduction goal=6
+  ← intro goal=6
     #[7] ¬¬(eventually P net)
     #[8] ¬(¬(∃x. P x) ∧ ¬(trivial_limit net))
-  → rewrite_fact double_neg sym=false goal=8 facts=[7]
+  → rewrite target=fact double_neg sym=false goal=8 facts=[7]
     #[9] eventually P net
-  → apply_forward_step eventually_happens goal=8 facts=[9]
+  → forward eventually_happens goal=8 facts=[9]
     #[10] trivial_limit net ∨ (∃x. P x)
-  ← rewrite_goal de_morgan_thm1 sym=false goal=8
+  ← rewrite de_morgan_thm1 sym=false goal=8
     #[11] ¬¬(∃x. P x) ∨ ¬¬(trivial_limit net)
-  ← rewrite_goal double_neg sym=false goal=11
+  ← rewrite double_neg sym=false goal=11
     #[12] (∃x. P x) ∨ trivial_limit net
-  ← rewrite_goal disj_comm sym=false goal=12
+  ← rewrite disj_comm sym=false goal=12
 qed
 
 theorem eventually_forall
@@ -200,13 +200,13 @@ theorem forall_eventually
   prop finite s --> ~(s = {}) --> (!a. a Mem s --> eventually (P a) net) <--> eventually (%x. !a. a Mem s --> P a x) net
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] finite s
     #[2] ¬(s = ∅)
     #[3] (∀a. a ∈ s ⟶ eventually (P a) net) ⟷ eventually (λx. ∀a. a ∈ s ⟶ P a x) net
-  ← rewrite_goal eq_sym_eq sym=false goal=3
+  ← rewrite eq_sym_eq sym=false goal=3
     #[4] eventually (λx. ∀a. a ∈ s ⟶ P a x) net ⟷ (∀a. a ∈ s ⟶ eventually (P a) net)
-  ← apply_backward_step eventually_forall goal=4
+  ← rule eventually_forall goal=4
 qed
 
 theorem eventually_trivial
@@ -214,12 +214,12 @@ theorem eventually_trivial
   prop trivial_limit net --> eventually P net
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] trivial_limit net
     #[2] eventually P net
-  → rewrite_fact trivial_limit_def sym=false goal=2 facts=[1]
+  → rewrite target=fact trivial_limit_def sym=false goal=2 facts=[1]
     #[3] eventually (λx. false) net
-  ← apply_backward_step eventually_mono param_P="(λx::'a. false)" goal=2
+  ← rule eventually_mono param_P="(λx::'a. false)" goal=2
     #[4] ∀x. false ⟶ P x
   ← z3 goal=4
     #[5] ∀x. false ⟶ P x
@@ -236,9 +236,9 @@ theorem trivial_limit_sequentially
   prop ~(trivial_limit sequentially)
   [hint_backward]
 proof
-  ← rewrite_goal trivial_limit_def sym=false goal=0
+  ← rewrite trivial_limit_def sym=false goal=0
     #[1] ¬(eventually (λx. false) sequentially)
-  ← rewrite_goal eventually_sequentially sym=false goal=1
+  ← rewrite eventually_sequentially sym=false goal=1
     #[2] ¬(∃N::nat. ∀n. N ≤ n ⟶ false)
   ← z3 goal=2
 qed
@@ -248,22 +248,22 @@ theorem eventually_happens_sequentially
   prop eventually P sequentially --> (?n. P n)
   [hint_backward,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] eventually P sequentially
     #[2] ∃n. P n
-  → apply_forward_step eventually_happens goal=2 facts=[1]
+  → forward eventually_happens goal=2 facts=[1]
     #[3] trivial_limit sequentially ∨ (∃x. P x)
-  ← apply_backward_step disjE goal=2 facts=[3]
+  ← rule disjE goal=2 facts=[3]
     #[4] trivial_limit sequentially ⟶ (∃n. P n)
     #[5] (∃x. P x) ⟶ (∃n. P n)
-  ← introduction goal=4
+  ← intro goal=4
     #[6] trivial_limit sequentially
     #[7] ∃n. P n
-  → rewrite_fact double_neg sym=true goal=7 facts=[6]
+  → rewrite target=fact double_neg sym=true goal=7 facts=[6]
     #[8] ¬¬(trivial_limit sequentially)
-  ← apply_backward_step negE_gen goal=7 facts=[8]
+  ← rule negE_gen goal=7 facts=[8]
     #[9] ¬(trivial_limit sequentially)
-  ← apply_backward_step trivial_limit_sequentially goal=9
+  ← rule trivial_limit_sequentially goal=9
     #[10] ¬(trivial_limit sequentially)
 qed
 
@@ -287,22 +287,22 @@ theorem arch_eventually_lt
   prop eventually (%n. x < of_nat n) sequentially
   [hint_backward]
 proof
-  → apply_forward_step real_arch_simple param_x=x+1 goal=0
+  → forward real_arch_simple param_x=x+1 goal=0
     #[1] ∃n. x + 1 ≤ of_nat n
-  ← rewrite_goal eventually_sequentially sym=false goal=0
+  ← rewrite eventually_sequentially sym=false goal=0
     #[2] ∃N. ∀n. N ≤ n ⟶ x < of_nat n
-  exists_elim N goal=2 facts=[1]
+  elim N goal=2 facts=[1]
     #[3] _VAR N
     #[4] x + 1 ≤ of_nat N
     #[5] ∃N. ∀n. N ≤ n ⟶ x < of_nat n
     #[6] eventually (λn. x < of_nat n) sequentially
-  ← inst_exists_goal N goal=5
+  ← inst N goal=5
     #[7] ∀n. N ≤ n ⟶ x < of_nat n
-  ← introduction n goal=7
+  ← intro n goal=7
     #[8] _VAR n
     #[9] N ≤ n
     #[10] x < of_nat n
-  → rewrite_fact real_of_nat_le sym=true goal=10 facts=[9]
+  → rewrite target=fact real_of_nat_le sym=true goal=10 facts=[9]
     #[11] (of_nat::nat ⇒ real) N ≤ of_nat n
   ← z3 goal=10 facts=[11,4]
 qed
@@ -312,19 +312,19 @@ theorem arch_eventually_le
   prop eventually (%n. x <= of_nat n) sequentially
   [hint_backward]
 proof
-  → apply_forward_step real_arch_simple param_x=x goal=0
+  → forward real_arch_simple param_x=x goal=0
     #[1] ∃n. x ≤ of_nat n
-  ← rewrite_goal eventually_sequentially sym=false goal=0
+  ← rewrite eventually_sequentially sym=false goal=0
     #[2] ∃N. ∀n. N ≤ n ⟶ x ≤ of_nat n
-  ← rewrite_goal real_of_nat_le sym=true goal=2
+  ← rewrite real_of_nat_le sym=true goal=2
     #[3] ∃N. ∀n. (of_nat::nat ⇒ real) N ≤ of_nat n ⟶ x ≤ of_nat n
-  exists_elim N goal=3 facts=[1]
+  elim N goal=3 facts=[1]
     #[4] _VAR N
     #[5] x ≤ of_nat N
     #[6] ∃N. ∀n. (of_nat::nat ⇒ real) N ≤ of_nat n ⟶ x ≤ of_nat n
     #[7] ∃N. ∀n. N ≤ n ⟶ x ≤ of_nat n
     #[8] eventually (λn. x ≤ of_nat n) sequentially
-  ← inst_exists_goal N goal=6
+  ← inst N goal=6
     #[9] ∀n. (of_nat::nat ⇒ real) N ≤ of_nat n ⟶ x ≤ of_nat n
   ← z3 goal=9 facts=[5]
 qed
@@ -334,51 +334,51 @@ theorem arch_eventually_abs_inv_offset
   prop eventually (%n. abs (real_inverse (of_nat n + a)) < e) sequentially <--> 0 < e
   [hint_rewrite]
 proof
-  ← apply_backward_step iffI goal=0
+  ← rule iffI goal=0
     #[1] eventually (λn. abs (real_inverse (of_nat n + a)) < e) sequentially ⟶ 0 < e
     #[2] 0 < e ⟶ eventually (λn. abs (real_inverse (of_nat n + a)) < e) sequentially
-  ← introduction goal=1
+  ← intro goal=1
     #[3] eventually (λn. abs (real_inverse (of_nat n + a)) < e) sequentially
     #[4] 0 < e
-  → apply_forward_step eventually_happens goal=4 facts=[3]
+  → forward eventually_happens goal=4 facts=[3]
     #[5] trivial_limit sequentially ∨ (∃x. abs (real_inverse (of_nat x + a)) < e)
-  ← apply_backward_step disjE goal=4 facts=[5]
+  ← rule disjE goal=4 facts=[5]
     #[6] trivial_limit sequentially ⟶ 0 < e
     #[7] (∃x. abs (real_inverse (of_nat x + a)) < e) ⟶ 0 < e
-  ← introduction goal=6
+  ← intro goal=6
     #[8] trivial_limit sequentially
     #[9] 0 < e
-  ← apply_backward_step contrapositive goal=9 facts=[8]
+  ← rule contrapositive goal=9 facts=[8]
     #[10] ¬(0 < e) ⟶ ¬(trivial_limit sequentially)
-  ← introduction goal=10
+  ← intro goal=10
     #[11] ¬(0 < e)
     #[12] ¬(trivial_limit sequentially)
-  ← apply_backward_step trivial_limit_sequentially goal=12
+  ← rule trivial_limit_sequentially goal=12
     #[13] ¬(trivial_limit sequentially)
   ← z3 goal=7
     #[14] (∃x. abs (real_inverse (of_nat x + a)) < e) ⟶ 0 < e
-  ← introduction goal=2
+  ← intro goal=2
     #[15] 0 < e
     #[16] eventually (λn. abs (real_inverse (of_nat n + a)) < e) sequentially
-  ← apply_backward_step eventually_mono param_P="(λn. max 0 (max (2 * abs a) (2/e)) < of_nat n)" goal=16
+  ← rule eventually_mono param_P="(λn. max 0 (max (2 * abs a) (2/e)) < of_nat n)" goal=16
     #[17] ∀x. max 0 (max (2 * abs a) (2 / e)) < of_nat x ⟶ abs (real_inverse (of_nat x + a)) < e
     #[18] eventually (λn. max 0 (max (2 * abs a) (2 / e)) < of_nat n) sequentially
-  ← introduction n goal=17
+  ← intro n goal=17
     #[19] _VAR n
     #[20] max 0 (max (2 * abs a) (2 / e)) < of_nat n
     #[21] abs (real_inverse (of_nat n + a)) < e
-  → rewrite_fact real_max_lt sym=false goal=21 facts=[20]
+  → rewrite target=fact real_max_lt sym=false goal=21 facts=[20]
     #[22] (0::real) < of_nat n ∧ max (2 * abs a) (2 / e) < of_nat n
-  ← apply_backward_step real_let_trans param_y="real_inverse (of_nat n /2)" goal=21
+  ← rule real_let_trans param_y="real_inverse (of_nat n /2)" goal=21
     #[23] abs (real_inverse (of_nat n + a)) ≤ real_inverse (of_nat n / 2)
     #[24] real_inverse (of_nat n / 2) < e
-  → apply_forward_step conjD2 goal=23 facts=[22]
+  → forward conjD2 goal=23 facts=[22]
     #[25] max (2 * abs a) (2 / e) < of_nat n
-  → rewrite_fact real_max_lt sym=false goal=23 facts=[25]
+  → rewrite target=fact real_max_lt sym=false goal=23 facts=[25]
     #[26] 2 * abs a < of_nat n ∧ 2 / e < of_nat n
-  ← rewrite_goal real_abs_inv sym=false goal=23
+  ← rewrite real_abs_inv sym=false goal=23
     #[27] real_inverse (abs (of_nat n + a)) ≤ real_inverse (of_nat n / 2)
-  ← apply_backward_step real_le_inv2 goal=27
+  ← rule real_le_inv2 goal=27
     #[28] 0 < of_nat n / 2
     #[29] of_nat n / 2 ≤ abs (of_nat n + a)
   ← z3 goal=28 facts=[22]
@@ -386,16 +386,16 @@ proof
   ← z3 goal=29 facts=[26,15]
   cut "e = real_inverse (real_inverse e)" goal=24
     #[31] e = real_inverse (real_inverse e)
-  ← rewrite_goal real_inv_inv sym=false goal=31
+  ← rewrite real_inv_inv sym=false goal=31
     #[32] e = real_inverse (real_inverse e)
-  ← rewrite_goal_with_prev goal=24 facts=[32]
+  ← rewrite source=prev goal=24 facts=[32]
     #[33] real_inverse (of_nat n / 2) < real_inverse (real_inverse e)
-  ← apply_backward_step real_lt_inv2 goal=33
+  ← rule real_lt_inv2 goal=33
     #[34] 0 < real_inverse e
     #[35] real_inverse e < of_nat n / 2
-  ← apply_backward_step real_lt_inv goal=34
+  ← rule real_lt_inv goal=34
   ← z3 goal=35 facts=[26,15]
-  ← apply_backward_step arch_eventually_lt goal=18
+  ← rule arch_eventually_lt goal=18
     #[36] eventually (λn. max 0 (max (2 * abs a) (2 / e)) < of_nat n) sequentially
 qed
 
@@ -404,51 +404,51 @@ theorem arch_eventually_inv_offset
   prop eventually (%n. real_inverse (of_nat n + a) < e) sequentially <--> 0 < e
   [hint_rewrite]
 proof
-  ← apply_backward_step iffI goal=0
+  ← rule iffI goal=0
     #[1] eventually (λn. real_inverse (of_nat n + a) < e) sequentially ⟶ 0 < e
     #[2] 0 < e ⟶ eventually (λn. real_inverse (of_nat n + a) < e) sequentially
-  → apply_forward_step arch_eventually_lt param_x="abs a" goal=1
+  → forward arch_eventually_lt param_x="abs a" goal=1
     #[3] eventually (λn. abs a < of_nat n) sequentially
-  ← introduction goal=1
+  ← intro goal=1
     #[4] eventually (λn. real_inverse (of_nat n + a) < e) sequentially
     #[5] 0 < e
-  → apply_forward_step conjI goal=5 facts=[4,3]
+  → forward conjI goal=5 facts=[4,3]
     #[6] eventually (λn. real_inverse (of_nat n + a) < e) sequentially ∧ eventually (λn. abs a < of_nat n) sequentially
-  → rewrite_fact eventually_and sym=true goal=5 facts=[6]
+  → rewrite target=fact eventually_and sym=true goal=5 facts=[6]
     #[7] eventually (λx. real_inverse (of_nat x + a) < e ∧ abs a < of_nat x) sequentially
-  → apply_forward_step eventually_happens goal=5 facts=[7]
+  → forward eventually_happens goal=5 facts=[7]
     #[8] trivial_limit sequentially ∨ (∃x. real_inverse (of_nat x + a) < e ∧ abs a < of_nat x)
-  ← apply_backward_step disjE goal=5 facts=[8]
+  ← rule disjE goal=5 facts=[8]
     #[9] trivial_limit sequentially ⟶ 0 < e
     #[10] (∃x. real_inverse (of_nat x + a) < e ∧ abs a < of_nat x) ⟶ 0 < e
-  ← introduction goal=9
+  ← intro goal=9
     #[11] trivial_limit sequentially
     #[12] 0 < e
-  ← apply_backward_step contrapositive goal=12 facts=[11]
+  ← rule contrapositive goal=12 facts=[11]
     #[13] ¬(0 < e) ⟶ ¬(trivial_limit sequentially)
-  ← introduction goal=13
+  ← intro goal=13
     #[14] ¬(0 < e)
     #[15] ¬(trivial_limit sequentially)
-  ← apply_backward_step trivial_limit_sequentially goal=15
+  ← rule trivial_limit_sequentially goal=15
     #[16] ¬(trivial_limit sequentially)
-  ← introduction goal=10
+  ← intro goal=10
     #[17] ∃x. real_inverse (of_nat x + a) < e ∧ abs a < of_nat x
     #[18] 0 < e
-  exists_elim n goal=18 facts=[17]
+  elim n goal=18 facts=[17]
     #[19] _VAR n
     #[20] real_inverse (of_nat n + a) < e ∧ abs a < of_nat n
     #[21] 0 < e
   ← z3 goal=21 facts=[20]
     #[22] 0 < e
-  ← introduction goal=2
+  ← intro goal=2
     #[23] 0 < e
     #[24] eventually (λn. real_inverse (of_nat n + a) < e) sequentially
-  ← apply_backward_step eventually_mono param_P="(λn. abs (real_inverse (of_nat n + a)) < e)" goal=24
+  ← rule eventually_mono param_P="(λn. abs (real_inverse (of_nat n + a)) < e)" goal=24
     #[25] ∀x. abs (real_inverse (of_nat x + a)) < e ⟶ real_inverse (of_nat x + a) < e
     #[26] eventually (λn. abs (real_inverse (of_nat n + a)) < e) sequentially
   ← z3 goal=25
     #[27] ∀x. abs (real_inverse (of_nat x + a)) < e ⟶ real_inverse (of_nat x + a) < e
-  ← rewrite_goal arch_eventually_abs_inv_offset sym=false goal=26
+  ← rewrite arch_eventually_abs_inv_offset sym=false goal=26
 qed
 
 theorem arch_eventually_inv1
@@ -456,7 +456,7 @@ theorem arch_eventually_inv1
   prop eventually (%n. real_inverse (of_nat n + 1) < e) sequentially <--> 0 < e
   [hint_rewrite]
 proof
-  ← rewrite_goal arch_eventually_inv_offset sym=false goal=0
+  ← rewrite arch_eventually_inv_offset sym=false goal=0
 qed
 
 theorem arch_eventually_inv
@@ -466,13 +466,13 @@ theorem arch_eventually_inv
 proof
   cut "!n. of_nat n = of_nat n + (0::real)" goal=0
     #[1] ∀n. of_nat n = of_nat n + (0::real)
-  ← introduction n goal=1
+  ← intro n goal=1
     #[2] _VAR n
     #[3] of_nat n = of_nat n + (0::real)
-  ← rewrite_goal real_add_rid sym=false goal=3
-  ← rewrite_goal_with_prev goal=0 facts=[1]
+  ← rewrite real_add_rid sym=false goal=3
+  ← rewrite source=prev goal=0 facts=[1]
     #[4] eventually (λn. real_inverse (of_nat n + 0) < e) sequentially ⟷ 0 < e
-  ← rewrite_goal arch_eventually_inv_offset sym=false goal=4
+  ← rewrite arch_eventually_inv_offset sym=false goal=4
 qed
 
 theorem arch_eventually_pow
@@ -480,29 +480,29 @@ theorem arch_eventually_pow
   prop 1 < x --> eventually (%n. b < x ^ n) sequentially
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 1 < x
     #[2] eventually (λn. b < x ^ n) sequentially
-  ← rewrite_goal eventually_sequentially sym=false goal=2
+  ← rewrite eventually_sequentially sym=false goal=2
     #[3] ∃N::nat. ∀n. N ≤ n ⟶ b < x ^ n
-  → apply_forward_step real_arch_pow param_y=b goal=3 facts=[1]
+  → forward real_arch_pow param_y=b goal=3 facts=[1]
     #[4] ∃n::nat. b < x ^ n
-  exists_elim N goal=3 facts=[4]
+  elim N goal=3 facts=[4]
     #[5] _VAR N
     #[6] b < x ^ N
     #[7] ∃N::nat. ∀n. N ≤ n ⟶ b < x ^ n
     #[8] eventually (λn. b < x ^ n) sequentially
-  ← inst_exists_goal N goal=7
+  ← inst N goal=7
     #[9] ∀n. N ≤ n ⟶ b < x ^ n
-  ← introduction n goal=9
+  ← intro n goal=9
     #[10] _VAR n
     #[11] N ≤ n
     #[12] b < x ^ n
-  ← apply_backward_step real_lte_trans param_y="x ^ N" goal=12
+  ← rule real_lte_trans param_y="x ^ N" goal=12
     #[13] x ^ N ≤ x ^ n
-  ← apply_backward_step real_pow_mono goal=13
+  ← rule real_pow_mono goal=13
     #[14] 1 ≤ x
-  ← apply_backward_step real_lt_imp_le goal=14
+  ← rule real_lt_imp_le goal=14
 qed
 
 theorem arch_eventually_pow_inv
@@ -510,53 +510,53 @@ theorem arch_eventually_pow_inv
   prop 1 < e --> abs x < 1 --> eventually (%n. abs (x ^ n) < e) sequentially
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 1 < e
     #[2] abs x < 1
     #[3] eventually (λn. abs (x ^ n) < e) sequentially
   ← cases "x = 0" goal=3
     #[4] x = 0 ⟶ eventually (λn. abs (x ^ n) < e) sequentially
     #[5] ¬(x = 0) ⟶ eventually (λn. abs (x ^ n) < e) sequentially
-  ← introduction goal=4
+  ← intro goal=4
     #[6] x = 0
     #[7] eventually (λn. abs (x ^ n) < e) sequentially
-  ← rewrite_goal_with_prev goal=7 facts=[6]
+  ← rewrite source=prev goal=7 facts=[6]
     #[8] eventually (λn. abs (0 ^ n) < e) sequentially
-  ← rewrite_goal real_pow_zero sym=false goal=8
+  ← rewrite real_pow_zero sym=false goal=8
     #[9] eventually (λn. abs (if n = 0 then 1 else 0) < e) sequentially
-  ← rewrite_goal eventually_sequentially sym=false goal=9
+  ← rewrite eventually_sequentially sym=false goal=9
     #[10] ∃N::nat. ∀n. N ≤ n ⟶ abs (if n = 0 then 1 else 0) < e
-  ← inst_exists_goal "(1::nat)" goal=10
+  ← inst "(1::nat)" goal=10
     #[11] ∀n::nat. 1 ≤ n ⟶ abs (if n = 0 then 1 else 0) < e
   ← z3 goal=11 facts=[1]
     #[12] ∀n::nat. 1 ≤ n ⟶ abs (if n = 0 then 1 else 0) < e
-  ← introduction goal=5
+  ← intro goal=5
     #[13] ¬(x = 0)
     #[14] eventually (λn. abs (x ^ n) < e) sequentially
-  → apply_forward_step arch_eventually_pow param_b="real_inverse e" param_x="real_inverse (abs x)" goal=14
+  → forward arch_eventually_pow param_b="real_inverse e" param_x="real_inverse (abs x)" goal=14
     #[15] 1 < real_inverse (abs x) ⟶ eventually (λn. real_inverse e < real_inverse (abs x) ^ n) sequentially
   cut "1 < real_inverse (abs x)" goal=14
     #[16] 1 < real_inverse (abs x)
   ← z3 goal=16 facts=[13,2]
     #[17] 1 < real_inverse (abs x)
-  → apply_fact goal=14 facts=[15,17]
+  → forward goal=14 facts=[15,17]
     #[18] eventually (λn. real_inverse e < real_inverse (abs x) ^ n) sequentially
-  ← apply_backward_step eventually_mono param_P="(λn::nat. real_inverse e < real_inverse (abs x) ^ n)" goal=14
+  ← rule eventually_mono param_P="(λn::nat. real_inverse e < real_inverse (abs x) ^ n)" goal=14
     #[19] ∀x1::nat. real_inverse e < real_inverse (abs x) ^ x1 ⟶ abs (x ^ x1) < e
-  ← introduction n goal=19
+  ← intro n goal=19
     #[20] _VAR n
     #[21] real_inverse e < real_inverse (abs x) ^ n
     #[22] abs (x ^ n) < e
-  ← rewrite_goal real_abs_pow sym=false goal=22
+  ← rewrite real_abs_pow sym=false goal=22
     #[23] abs x ^ n < e
-  ← rewrite_goal real_inv_inv sym=true goal=23
+  ← rewrite real_inv_inv sym=true goal=23
     #[24] real_inverse (real_inverse (abs x ^ n)) < real_inverse (real_inverse e)
-  ← apply_backward_step real_lt_inv2 goal=24
+  ← rule real_lt_inv2 goal=24
     #[25] 0 < real_inverse e
     #[26] real_inverse e < real_inverse (abs x ^ n)
   ← z3 goal=25 facts=[1]
     #[27] 0 < real_inverse e
-  → rewrite_fact real_pow_inv sym=false goal=26 facts=[21]
+  → rewrite target=fact real_pow_inv sym=false goal=26 facts=[21]
     #[28] real_inverse e < real_inverse (abs x ^ n)
 qed
 
@@ -570,18 +570,18 @@ theorem eventually_no_subsequence
   prop eventually P sequentially <--> ~(?r. (!m::nat. !n. m < n --> r m < r n) & (!n. ~(P (r n))))
   [hint_rewrite]
 proof
-  ← rewrite_goal eventually_in_sequentially sym=false goal=0
+  ← rewrite eventually_in_sequentially sym=false goal=0
     #[1] finite ({n. ¬(P n)}) ⟷ ¬(∃r. (∀m::nat. ∀n. m < n ⟶ r m < r n) ∧ (∀n. ¬(P (r n))))
   cut "!p. !q. (p <--> ~q) <-->  (~p <--> q)" goal=1
     #[2] ∀p. ∀q. (p ⟷ ¬q) ⟷ ¬p ⟷ q
   ← z3 goal=2
-  ← rewrite_goal_with_prev goal=1 facts=[2]
+  ← rewrite source=prev goal=1 facts=[2]
     #[3] ¬(finite ({n. ¬(P n)})) ⟷ (∃r. (∀m::nat. ∀n. m < n ⟶ r m < r n) ∧ (∀n. ¬(P (r n))))
-  ← rewrite_goal infinite_def sym=true goal=3
+  ← rewrite infinite_def sym=true goal=3
     #[4] infinite ({n. ¬(P n)}) ⟷ (∃r. (∀m::nat. ∀n. m < n ⟶ r m < r n) ∧ (∀n. ¬(P (r n))))
-  ← rewrite_goal infinite_enumerate_eq_alt sym=false goal=4
+  ← rewrite infinite_enumerate_eq_alt sym=false goal=4
     #[5] (∃r. (∀m::nat. ∀n. m < n ⟶ r m < r n) ∧ (∀n. r n ∈ {n1. ¬(P n1)})) ⟷ (∃r. (∀m::nat. ∀n. m < n ⟶ r m < r n) ∧ (∀n. ¬(P (r n))))
-  ← rewrite_goal member_collect sym=false goal=5
+  ← rewrite member_collect sym=false goal=5
 qed
 
 theorem eventually_ubound_le_sequentially
@@ -619,84 +619,84 @@ theorem real_open_inter
   prop real_open s --> real_open t --> real_open (s Int t)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_open s
     #[2] real_open t
     #[3] real_open (s ∩ t)
-  ← rewrite_goal real_open_def sym=false goal=3
+  ← rewrite real_open_def sym=false goal=3
     #[4] ∀x. x ∈ s ∩ t ⟶ (∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s ∩ t))
-  → rewrite_fact real_open_def sym=false goal=4 facts=[1]
+  → rewrite target=fact real_open_def sym=false goal=4 facts=[1]
     #[5] ∀x. x ∈ s ⟶ (∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s))
-  → rewrite_fact real_open_def sym=false goal=4 facts=[2]
+  → rewrite target=fact real_open_def sym=false goal=4 facts=[2]
     #[6] ∀x. x ∈ t ⟶ (∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ t))
-  ← introduction x goal=4
+  ← intro x goal=4
     #[7] _VAR x
     #[8] x ∈ s ∩ t
     #[9] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s ∩ t)
-  → rewrite_fact member_inter_iff sym=false goal=9 facts=[8]
+  → rewrite target=fact member_inter_iff sym=false goal=9 facts=[8]
     #[10] x ∈ s ∧ x ∈ t
-  → apply_forward_step conjD1 goal=9 facts=[10]
+  → forward conjD1 goal=9 facts=[10]
     #[11] x ∈ s
-  → apply_forward_step conjD2 goal=9 facts=[10]
+  → forward conjD2 goal=9 facts=[10]
     #[12] x ∈ t
-  → apply_fact goal=9 facts=[5,11]
+  → forward goal=9 facts=[5,11]
     #[13] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s)
-  → apply_fact goal=9 facts=[6,12]
+  → forward goal=9 facts=[6,12]
     #[14] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ t)
-  exists_elim d1 goal=9 facts=[13]
+  elim d1 goal=9 facts=[13]
     #[15] _VAR d1
     #[16] 0 < d1 ∧ (∀x1. abs (x1 - x) < d1 ⟶ x1 ∈ s)
     #[17] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s ∩ t)
-  exists_elim d2 goal=17 facts=[14]
+  elim d2 goal=17 facts=[14]
     #[18] _VAR d2
     #[19] 0 < d2 ∧ (∀x1. abs (x1 - x) < d2 ⟶ x1 ∈ t)
     #[20] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s ∩ t)
-  ← rewrite_goal member_inter_iff sym=false goal=20
+  ← rewrite member_inter_iff sym=false goal=20
     #[21] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s ∧ x1 ∈ t)
-  → apply_forward_step conjD1 goal=21 facts=[16]
+  → forward conjD1 goal=21 facts=[16]
     #[22] 0 < d1
-  → apply_forward_step conjD1 goal=21 facts=[19]
+  → forward conjD1 goal=21 facts=[19]
     #[23] 0 < d2
-  → apply_forward_step real_down2 param_d1=d1 param_d2=d2 goal=21
+  → forward real_down2 param_d1=d1 param_d2=d2 goal=21
     #[24] 0 < d1 ⟶ 0 < d2 ⟶ (∃e. 0 < e ∧ e < d1 ∧ e < d2)
-  → apply_fact goal=21 facts=[24,22,23]
+  → forward goal=21 facts=[24,22,23]
     #[25] ∃e. 0 < e ∧ e < d1 ∧ e < d2
-  exists_elim e goal=21 facts=[25]
+  elim e goal=21 facts=[25]
     #[26] _VAR e
     #[27] 0 < e ∧ e < d1 ∧ e < d2
     #[28] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s ∧ x1 ∈ t)
     #[29] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s ∩ t)
-  ← inst_exists_goal e goal=28
+  ← inst e goal=28
     #[30] 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ s ∧ x1 ∈ t)
-  ← apply_backward_step conjI goal=30
+  ← rule conjI goal=30
     #[31] 0 < e
     #[32] ∀x1. abs (x1 - x) < e ⟶ x1 ∈ s ∧ x1 ∈ t
-  ← apply_backward_step conjD1 goal=31 facts=[27]
+  ← rule conjD1 goal=31 facts=[27]
     #[33] 0 < e
-  → apply_forward_step conjD2 goal=32 facts=[16]
+  → forward conjD2 goal=32 facts=[16]
     #[34] ∀x1. abs (x1 - x) < d1 ⟶ x1 ∈ s
-  → apply_forward_step conjD2 goal=32 facts=[19]
+  → forward conjD2 goal=32 facts=[19]
     #[35] ∀x1. abs (x1 - x) < d2 ⟶ x1 ∈ t
-  ← introduction x1 goal=32
+  ← intro x1 goal=32
     #[36] _VAR x1
     #[37] abs (x1 - x) < e
     #[38] x1 ∈ s ∧ x1 ∈ t
-  ← apply_backward_step conjI goal=38
+  ← rule conjI goal=38
     #[39] x1 ∈ s
     #[40] x1 ∈ t
   ← apply_prev goal=39 facts=[34]
     #[41] abs (x1 - x) < d1
-  ← apply_backward_step real_lt_trans param_y=e goal=41
+  ← rule real_lt_trans param_y=e goal=41
     #[42] e < d1
-  → apply_forward_step conjD2 goal=42 facts=[27]
+  → forward conjD2 goal=42 facts=[27]
     #[43] e < d1 ∧ e < d2
-  ← apply_backward_step conjD1 goal=42 facts=[43]
+  ← rule conjD1 goal=42 facts=[43]
     #[44] e < d1
   ← apply_prev goal=40 facts=[35]
     #[45] abs (x1 - x) < d2
-  ← apply_backward_step real_lt_trans param_y=e goal=45
+  ← rule real_lt_trans param_y=e goal=45
     #[46] e < d2
-  ← apply_backward_step conjD2 goal=46 facts=[43]
+  ← rule conjD2 goal=46 facts=[43]
     #[47] e < d2
 qed
 
@@ -705,23 +705,23 @@ theorem real_open_halfspace_gt
   prop real_open ({x. a < x})
   [hint_backward]
 proof
-  ← rewrite_goal real_open_def sym=false goal=0
+  ← rewrite real_open_def sym=false goal=0
     #[1] ∀x. x ∈ {x1. a < x1} ⟶ (∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ {x2. a < x2}))
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ {x1. a < x1}
     #[4] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ {x2. a < x2})
-  → rewrite_fact member_collect sym=false goal=4 facts=[3]
+  → rewrite target=fact member_collect sym=false goal=4 facts=[3]
     #[5] a < x
-  ← rewrite_goal member_collect sym=false goal=4
+  ← rewrite member_collect sym=false goal=4
     #[6] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ a < x1)
-  ← inst_exists_goal "abs (a - x)" goal=6
+  ← inst "abs (a - x)" goal=6
     #[7] 0 < abs (a - x) ∧ (∀x1. abs (x1 - x) < abs (a - x) ⟶ a < x1)
-  ← apply_backward_step conjI goal=7
+  ← rule conjI goal=7
     #[8] 0 < abs (a - x)
     #[9] ∀x1. abs (x1 - x) < abs (a - x) ⟶ a < x1
   ← z3 goal=8 facts=[5]
-  ← introduction x1 goal=9
+  ← intro x1 goal=9
     #[10] _VAR x1
     #[11] abs (x1 - x) < abs (a - x)
     #[12] a < x1
@@ -733,25 +733,25 @@ theorem real_open_halfspace_lt
   prop real_open ({x. x < a})
   [hint_backward]
 proof
-  ← rewrite_goal real_open_def sym=false goal=0
+  ← rewrite real_open_def sym=false goal=0
     #[1] ∀x. x ∈ {x1. x1 < a} ⟶ (∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ {x2. x2 < a}))
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ {x1. x1 < a}
     #[4] ∃e. 0 < e ∧ (∀x1. abs (x1 - x) < e ⟶ x1 ∈ {x2. x2 < a})
-  ← inst_exists_goal "abs (a - x)" goal=4
+  ← inst "abs (a - x)" goal=4
     #[5] 0 < abs (a - x) ∧ (∀x1. abs (x1 - x) < abs (a - x) ⟶ x1 ∈ {x2. x2 < a})
-  → rewrite_fact member_collect sym=false goal=5 facts=[3]
+  → rewrite target=fact member_collect sym=false goal=5 facts=[3]
     #[6] x < a
-  ← apply_backward_step conjI goal=5
+  ← rule conjI goal=5
     #[7] 0 < abs (a - x)
     #[8] ∀x1. abs (x1 - x) < abs (a - x) ⟶ x1 ∈ {x2. x2 < a}
   ← z3 goal=7 facts=[6]
-  ← introduction x1 goal=8
+  ← intro x1 goal=8
     #[9] _VAR x1
     #[10] abs (x1 - x) < abs (a - x)
     #[11] x1 ∈ {x. x < a}
-  ← rewrite_goal member_collect sym=false goal=11
+  ← rewrite member_collect sym=false goal=11
     #[12] x1 < a
   ← z3 goal=12 facts=[10,6]
 qed
@@ -761,18 +761,18 @@ theorem real_open_real_interval
   prop real_open (real_open_interval a b)
   [hint_backward]
 proof
-  ← rewrite_goal real_open_interval_def sym=false goal=0
+  ← rewrite real_open_interval_def sym=false goal=0
     #[1] real_open ({p. a < p ∧ p < b})
   cut "{p. a < p ∧ p < b} = inter {p. a < p}  {p. p < b} " goal=1
     #[2] {p. a < p ∧ p < b} = {p. a < p} ∩ {p. p < b}
   ← z3 goal=2
-  ← rewrite_goal_with_prev goal=1 facts=[2]
+  ← rewrite source=prev goal=1 facts=[2]
     #[3] real_open ({p. a < p} ∩ {p. p < b})
-  ← apply_backward_step real_open_inter goal=3
+  ← rule real_open_inter goal=3
     #[4] real_open ({p. a < p})
     #[5] real_open ({p. p < b})
-  ← apply_backward_step real_open_halfspace_gt goal=4
-  ← apply_backward_step real_open_halfspace_lt goal=5
+  ← rule real_open_halfspace_gt goal=4
+  ← rule real_open_halfspace_lt goal=5
 qed
 
 def real_bounded :: real set ⇒ bool = real_bounded s ⟷ (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) [hint_rewrite]
@@ -782,42 +782,42 @@ theorem real_bounded_pos
   prop real_bounded s <--> (?B. 0 < B & (!x. x Mem s --> abs x <= B))
   [hint_rewrite]
 proof
-  ← rewrite_goal real_bounded_def sym=false goal=0
+  ← rewrite real_bounded_def sym=false goal=0
     #[1] (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ⟷ (∃B. 0 < B ∧ (∀x. x ∈ s ⟶ abs x ≤ B))
-  ← apply_backward_step iffI goal=1
+  ← rule iffI goal=1
     #[2] (∃B. ∀x. x ∈ s ⟶ abs x ≤ B) ⟶ (∃B. 0 < B ∧ (∀x. x ∈ s ⟶ abs x ≤ B))
     #[3] (∃B. 0 < B ∧ (∀x. x ∈ s ⟶ abs x ≤ B)) ⟶ (∃B. ∀x. x ∈ s ⟶ abs x ≤ B)
-  ← introduction goal=2
+  ← intro goal=2
     #[4] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
     #[5] ∃B. 0 < B ∧ (∀x. x ∈ s ⟶ abs x ≤ B)
-  exists_elim B goal=5 facts=[4]
+  elim B goal=5 facts=[4]
     #[6] _VAR B
     #[7] ∀x. x ∈ s ⟶ abs x ≤ B
     #[8] ∃B. 0 < B ∧ (∀x. x ∈ s ⟶ abs x ≤ B)
-  ← inst_exists_goal "1+abs B" goal=8
+  ← inst "1+abs B" goal=8
     #[9] 0 < 1 + abs B ∧ (∀x. x ∈ s ⟶ abs x ≤ 1 + abs B)
-  ← apply_backward_step conjI goal=9
+  ← rule conjI goal=9
     #[10] 0 < 1 + abs B
     #[11] ∀x. x ∈ s ⟶ abs x ≤ 1 + abs B
   ← z3 goal=10
     #[12] 0 < 1 + abs B
-  ← introduction x goal=11
+  ← intro x goal=11
     #[13] _VAR x
     #[14] x ∈ s
     #[15] abs x ≤ 1 + abs B
-  → apply_fact goal=15 facts=[7,14]
+  → forward goal=15 facts=[7,14]
     #[16] abs x ≤ B
   ← z3 goal=15 facts=[16]
     #[17] abs x ≤ 1 + abs B
-  ← introduction goal=3
+  ← intro goal=3
     #[18] ∃B. 0 < B ∧ (∀x. x ∈ s ⟶ abs x ≤ B)
     #[19] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
-  exists_elim B goal=19 facts=[18]
+  elim B goal=19 facts=[18]
     #[20] 0 < B ∧ (∀x. x ∈ s ⟶ abs x ≤ B)
     #[21] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
-  → apply_forward_step conjD2 goal=21 facts=[20]
+  → forward conjD2 goal=21 facts=[20]
     #[22] ∀x. x ∈ s ⟶ abs x ≤ B
-  ← apply_backward_step exI goal=21 facts=[22]
+  ← rule exI goal=21 facts=[22]
     #[23] ∃B. ∀x. x ∈ s ⟶ abs x ≤ B
 qed
 
@@ -826,13 +826,13 @@ theorem real_bounded_real_closed_interval
   prop real_bounded (real_closed_interval a b)
   [hint_backward]
 proof
-  ← rewrite_goal real_bounded_def sym=false goal=0
+  ← rewrite real_bounded_def sym=false goal=0
     #[1] ∃B. ∀x. x ∈ real_closed_interval a b ⟶ abs x ≤ B
-  ← rewrite_goal real_closed_interval_def sym=false goal=1
+  ← rewrite real_closed_interval_def sym=false goal=1
     #[2] ∃B. ∀x. x ∈ {p. a ≤ p ∧ p ≤ b} ⟶ abs x ≤ B
-  ← inst_exists_goal "max (abs a) (abs b)" goal=2
+  ← inst "max (abs a) (abs b)" goal=2
     #[3] ∀x. x ∈ {p. a ≤ p ∧ p ≤ b} ⟶ abs x ≤ max (abs a) (abs b)
-  ← rewrite_goal member_collect sym=false goal=3
+  ← rewrite member_collect sym=false goal=3
     #[4] ∀x. a ≤ x ∧ x ≤ b ⟶ abs x ≤ max (abs a) (abs b)
   ← z3 goal=4
 qed
@@ -842,13 +842,13 @@ theorem real_bounded_real_open_interval
   prop real_bounded (real_open_interval a b)
   [hint_backward]
 proof
-  ← rewrite_goal real_bounded_def sym=false goal=0
+  ← rewrite real_bounded_def sym=false goal=0
     #[1] ∃B. ∀x. x ∈ real_open_interval a b ⟶ abs x ≤ B
-  ← rewrite_goal real_open_interval_def sym=false goal=1
+  ← rewrite real_open_interval_def sym=false goal=1
     #[2] ∃B. ∀x. x ∈ {p. a < p ∧ p < b} ⟶ abs x ≤ B
-  ← inst_exists_goal "max (abs a) (abs b)" goal=2
+  ← inst "max (abs a) (abs b)" goal=2
     #[3] ∀x. x ∈ {p. a < p ∧ p < b} ⟶ abs x ≤ max (abs a) (abs b)
-  ← rewrite_goal member_collect sym=false goal=3
+  ← rewrite member_collect sym=false goal=3
     #[4] ∀x. a < x ∧ x < b ⟶ abs x ≤ max (abs a) (abs b)
   ← z3 goal=4
 qed

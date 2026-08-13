@@ -284,11 +284,9 @@ global_methods: Dict[str, "Method"] = dict()
 
 def has_method(name: str) -> bool:
     """Return whether the method with the given name exists and can be
-    used in the current location of the theory. Legacy (aliased) names
-    are accepted for replay compatibility.
+    used in the current location of the theory.
     
     """
-    name, _ = resolve_method_name(name)
     if name in global_methods:
         method = global_methods[name]
         return method.limit is None or theory.thy.has_theorem(method.limit)
@@ -296,9 +294,7 @@ def has_method(name: str) -> bool:
         return False
 
 def get_method(name: str) -> "Method":
-    """Return method with the given name (legacy names resolve via
-    the replay alias table)."""
-    name, _ = resolve_method_name(name)
+    """Return method with the given name."""
     assert has_method(name), "get_method: %s is not available" % name
     return global_methods[name]
 
@@ -340,46 +336,6 @@ def register_method(name):
         global_methods[name] = method_cls()
         return method_cls
     return decorator
-
-
-"""Replay alias table: legacy method names recorded in .pyhol proofs
-map to the new vocabulary. Each entry is (new_name, data_defaults):
-data_defaults are merged under the step's own keys, so recorded
-arguments always win. The aliases serve replay ONLY; the interactive
-surface exposes only the new names.
-"""
-METHOD_ALIASES = {
-    'apply_backward_step': ('rule', {}),
-    'apply_resolve_step': ('resolve', {}),
-    'introduction': ('intro', {}),
-    'induction': ('induct', {}),
-    'inst_exists_goal': ('inst', {'target': 'goal'}),
-    'forall_elim': ('inst', {'target': 'fact'}),
-    'exists_elim': ('elim', {}),
-    'new_var': ('var', {}),
-    'reflexive': ('refl', {}),
-    'equal_intr': ('eq_intro', {}),
-    'rewrite_goal': ('rewrite', {}),
-    'rewrite_goal_with_prev': ('rewrite', {'source': 'prev'}),
-    'rewrite_fact': ('rewrite', {'target': 'fact'}),
-    'rewrite_fact_with_prev': ('rewrite', {'target': 'fact', 'source': 'prev'}),
-    'apply_forward_step': ('forward', {}),
-    'frule': ('forward', {}),
-    'insert': ('forward', {'mode': 'insert'}),
-    'apply_fact': ('forward', {'source': 'fact'}),
-}
-
-def resolve_method_name(name: str):
-    """Return (canonical_name, data_defaults) for a method name.
-
-    New names resolve to themselves with empty defaults; legacy names
-    resolve via METHOD_ALIASES.
-    """
-    if name in global_methods:
-        return name, {}
-    if name in METHOD_ALIASES:
-        return METHOD_ALIASES[name]
-    return name, {}
 
 
 def _loc_to_conv(loc, base_cv):
@@ -517,7 +473,7 @@ class apply_prev(Method):
             state.apply_tactic(id, tactic.apply_prev(), prevs=prevs)
 
 
-class rewrite_goal_with_prev(Method):
+class rewrite_with_prev_impl(Method):
     """Rewrite using previous fact."""
     def __init__(self):
         self.sig = []
@@ -540,7 +496,7 @@ class rewrite_goal_with_prev(Method):
         state.apply_tactic(id, tactic.rewrite_goal_with_prev(), prevs=prevs)
 
 
-class rewrite_goal(Method):
+class rewrite_thm_impl(Method):
     """Rewrite using a theorem."""
     def __init__(self):
         self.sig = ['theorem', 'sym']
@@ -597,7 +553,7 @@ class rewrite_goal(Method):
             state.apply_tactic(id, tactic.rewrite_goal(sym=sym_b), args=data['theorem'], prevs=prevs)
 
 
-class rewrite_fact(Method):
+class rewrite_fact_thm_impl(Method):
     """Rewrite fact using a theorem."""
     def __init__(self):
         self.sig = ['theorem', 'sym']
@@ -651,7 +607,7 @@ class rewrite_fact(Method):
         id2 = id.incr_id(1)
         state._find_and_close(id2)
 
-class rewrite_fact_with_prev(Method):
+class rewrite_fact_prev_impl(Method):
     """Rewrite fact using a previous equality."""
     def __init__(self):
         self.sig = []
@@ -682,7 +638,7 @@ class rewrite_fact_with_prev(Method):
         state._find_and_close(id2)
 
 
-class apply_forward_step(Method):
+class forward_thm_impl(Method):
     """Apply theorem in the forward direction."""
     def __init__(self):
         self.sig = ['theorem']
@@ -744,7 +700,7 @@ class apply_forward_step(Method):
 
 
 @register_method('rule')
-class apply_backward_step(Method):
+class rule(Method):
     """Apply theorem in the backward direction."""
     def __init__(self):
         self.sig = ['theorem']
@@ -794,7 +750,7 @@ class apply_backward_step(Method):
 
 
 @register_method('resolve')
-class apply_resolve_step(Method):
+class resolve(Method):
     """Resolve using a theorem ~A and a fact A."""
     def __init__(self):
         self.sig = ["theorem"]
@@ -880,7 +836,7 @@ class accept_method(Method):
 
 
 @register_method('intro')
-class introduction(Method):
+class intro(Method):
     """Introducing variables and assumptions."""
     list_params = {'names'}
     def __init__(self):
@@ -945,7 +901,7 @@ class introduction(Method):
 
 
 @register_method('elim')
-class exists_elim(Method):
+class elim(Method):
     """Make use of an exists fact."""
     list_params = {'names'}
     def __init__(self):
@@ -1032,7 +988,7 @@ class exists_elim(Method):
             "elim: rewired intros line does not match derived proof term"
 
 
-class forall_elim(Method):
+class inst_forall_impl(Method):
     """Elimination of forall statement."""
     def __init__(self):
         self.sig = ['s']
@@ -1063,7 +1019,7 @@ class forall_elim(Method):
         state.set_line(id, 'forall_elim_gen', args=t, prevs=prevs)
 
 
-class inst_exists_goal(Method):
+class inst_exists_impl(Method):
     """Instantiate an exists goal."""
     def __init__(self):
         self.sig = ['s']
@@ -1094,7 +1050,7 @@ class inst_exists_goal(Method):
 
 
 @register_method('induct')
-class induction(Method):
+class induct(Method):
     """Apply induction."""
     def __init__(self):
         self.sig = ['theorem', 'var']
@@ -1135,7 +1091,7 @@ class induction(Method):
 
 
 @register_method('var')
-class new_var(Method):
+class var(Method):
     """Create new variable."""
     def __init__(self):
         self.sig = ['name', 'type']
@@ -1154,7 +1110,7 @@ class new_var(Method):
         state.set_line(id, 'variable', args=(data['name'], T), prevs=[])
 
 
-class apply_fact(Method):
+class forward_fact_impl(Method):
     """When one of the prevs is an forall/implies fact, apply that fact
     to the remaining prevs.
 
@@ -1192,55 +1148,45 @@ class apply_fact(Method):
 
 # Internal single-mode implementations, merged into the dispatchers
 # below (kept verbatim for replay-exact behavior).
-_rw_goal_thm = rewrite_goal()
-_rw_goal_prev = rewrite_goal_with_prev()
-_rw_fact_thm = rewrite_fact()
-_rw_fact_prev = rewrite_fact_with_prev()
-_fwd_step = apply_forward_step()
-_apply_fact = apply_fact()
-_inst_exists = inst_exists_goal()
-_forall_elim = forall_elim()
-
-
-class insert(Method):
-    """Insert a named theorem as a new line in the proof (internal;
-    exposed through the forward method with mode='insert')."""
-    def __init__(self):
-        self.sig = ['theorem']
-        self.limit = None
-
-    def search(self, state, id, prevs):
-        return []
-
-    def display_step(self, state, data):
-        return pprint.N("insert " + data.get('theorem', '?'))
-
-    def apply(self, state, id, data, prevs):
-        thm_name = data.get('theorem')
-        if not thm_name:
-            raise AssertionError("insert: theorem required")
-        thm = theory.thy.get_theorem(thm_name)
-        state.add_line_before(id, 1)
-        state.set_line(id, 'theorem', args=thm_name, prevs=[])
-
-
-_insert = insert()
+_rw_goal_thm = rewrite_thm_impl()
+_rw_goal_prev = rewrite_with_prev_impl()
+_rw_fact_thm = rewrite_fact_thm_impl()
+_rw_fact_prev = rewrite_fact_prev_impl()
+_fwd_step = forward_thm_impl()
+_apply_fact = forward_fact_impl()
+_inst_exists = inst_exists_impl()
+_forall_elim = inst_forall_impl()
 
 
 @register_method('rewrite')
 class rewrite(Method):
     """Rewrite a goal or a fact.
 
+    Mode is inferred from the state shape (recorded steps carry no
+    mode markers): the line at id being a gap means goal mode; the
+    absence of a theorem argument means the rewrite rule is a selected
+    equality fact. Explicit 'target'/'source' keys override inference.
+    NOTE: fact rewrites targeting a gap position must pass
+    target='fact' explicitly (a gap id alone is ambiguous); migrated
+    recorded steps carry the marker.
+
     data keys:
-    - theorem: rewrite rule (omit when source == 'prev')
+    - theorem: rewrite rule (omit when rewriting with a fact)
     - sym: 'true' for the symmetric direction
     - loc: goal subterm position, e.g. "0", "1", "0.1" (goal mode only)
-    - target: 'fact' to rewrite a fact line (default: goal)
-    - source: 'prev' to rewrite using a selected equality fact
     """
     def __init__(self):
         self.sig = ['theorem', 'sym']
         self.limit = None
+
+    def _mode(self, state, id, data):
+        target = data.get('target')
+        if target is None:
+            target = 'goal' if state.get_proof_item(id).rule == 'sorry' else 'fact'
+        source = data.get('source')
+        if source is None:
+            source = 'thm' if data.get('theorem') else 'prev'
+        return target, source
 
     def search(self, state, id, prevs):
         results = _rw_goal_thm.search(state, id, prevs)
@@ -1260,14 +1206,7 @@ class rewrite(Method):
         return results
 
     def display_step(self, state, data):
-        if data.get('target') == 'fact':
-            if data.get('source') == 'prev':
-                return pprint.N("rewrite fact with fact")
-            if 'sym' in data and data['sym'] == 'true':
-                return pprint.N(data['theorem'] + " (sym, r)")
-            else:
-                return pprint.N(data['theorem'] + " (r)")
-        if data.get('source') == 'prev':
+        if not data.get('theorem'):
             return pprint.N("rewrite with fact")
         if 'sym' in data and data['sym'] == 'true':
             return pprint.N(data['theorem'] + " (sym, r)")
@@ -1275,15 +1214,16 @@ class rewrite(Method):
             return pprint.N(data['theorem'] + " (r)")
 
     def apply(self, state, id, data, prevs):
-        if data.get('target') == 'fact':
+        target, source = self._mode(state, id, data)
+        if target == 'fact':
             # Fact mode: prevs[0] is the fact being rewritten; the
             # remaining facts serve as conditions of the rewrite rule.
-            if data.get('source') == 'prev':
+            if source == 'prev':
                 _rw_fact_prev.apply(state, id, data, prevs)
             else:
                 _rw_fact_thm.apply(state, id, data, prevs)
         else:
-            if data.get('source') == 'prev':
+            if source == 'prev':
                 _rw_goal_prev.apply(state, id, data, prevs)
             else:
                 _rw_goal_thm.apply(state, id, data, prevs)
@@ -1293,13 +1233,12 @@ class rewrite(Method):
 class forward(Method):
     """Forward reasoning: derive a new fact line.
 
+    Mode is inferred: with a theorem argument the theorem is applied to
+    the selected facts (zero facts allowed); without one, the first
+    selected fact (a forall/implies fact) is applied to the others.
+
     data keys:
-    - theorem: theorem to apply to the selected facts
-      (omit when source == 'fact' or mode == 'insert')
-    - source: 'fact' to apply a selected forall/implies fact to the
-      other facts
-    - mode: 'insert' to insert a named theorem as a fact line
-      (zero facts)
+    - theorem: theorem to apply (omit for fact-on-facts mode)
     """
     def __init__(self):
         self.sig = ['theorem']
@@ -1314,30 +1253,26 @@ class forward(Method):
         return results
 
     def display_step(self, state, data):
-        if data.get('mode') == 'insert':
-            return pprint.N("insert " + data.get('theorem', '?'))
-        if data.get('source') == 'fact':
-            return pprint.N("Apply fact (f)")
-        return pprint.N(data.get('theorem', '?') + " (f)")
+        if data.get('theorem'):
+            return pprint.N(data['theorem'] + " (f)")
+        return pprint.N("Apply fact (f)")
 
     def apply(self, state, id, data, prevs):
-        if data.get('mode') == 'insert':
-            _insert.apply(state, id, data, prevs)
-        elif data.get('source') == 'fact':
-            _apply_fact.apply(state, id, data, prevs)
-        else:
+        if data.get('theorem'):
             _fwd_step.apply(state, id, data, prevs)
+        else:
+            _apply_fact.apply(state, id, data, prevs)
 
 
 @register_method('inst')
 class inst(Method):
     """Instantiation.
 
-    target='goal' (default): provide a witness for an exists goal.
-    target='fact': instantiate a forall fact with a term.
+    Mode is inferred: with selected facts, instantiate a forall fact
+    with a term; without, provide a witness for an exists goal.
+    Explicit 'target' key overrides inference.
 
-    data keys: s (the term), names (exists elimination names are
-    handled by elim, not here).
+    data keys: s (the term/witness).
     """
     def __init__(self):
         self.sig = ['s']
@@ -1360,7 +1295,8 @@ class inst(Method):
         return pprint.N("Instantiate exists goal")
 
     def apply(self, state, id, data, prevs):
-        if data.get('target') == 'fact':
+        target = data.get('target') or ('fact' if prevs else 'goal')
+        if target == 'fact':
             _forall_elim.apply(state, id, data, prevs)
         else:
             _inst_exists.apply(state, id, data, prevs)
@@ -1512,6 +1448,82 @@ class norm(Method):
         state.apply_macro(id, macro_name)
 
 
+@register_method('simp')
+class simp(Method):
+    """Simplify the goal by rewriting with all hint_rewrite theorems
+    of the current theory, iterating to a fixed point (bounded).
+
+    Each round sweeps every applicable theorem once over the goal
+    (top_conv per theorem) followed by beta-normalization; rounds
+    repeat until nothing changes or the iteration cap is reached.
+    Only unconditional rewrite theorems participate (conditional ones
+    are left to rewrite with explicit facts). Fails when nothing can
+    be simplified (must-change semantics). The whole simplification is
+    committed as a single visible step via rewrite_goal_with_conv.
+    """
+    MAX_ROUNDS = 100
+
+    def __init__(self):
+        self.sig = []
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        if len(prevs) > 0:
+            return []
+        try:
+            cur_item = state.get_proof_item(id)
+            if cur_item.th.prop.is_var():
+                return []
+            return [{}]
+        except Exception:
+            return []
+
+    def display_step(self, state, data):
+        return pprint.N("simp")
+
+    def apply(self, state, id, data, prevs):
+        cur_item = state.get_proof_item(id)
+        goal_prop = cur_item.th.prop
+
+        # Unconditional hint_rewrite theorems of the current theory.
+        th_names = []
+        attrs = theory.thy.get_data('attributes')
+        for nm, a in attrs.items():
+            if 'hint_rewrite' not in a:
+                continue
+            try:
+                th = theory.thy.get_theorem(nm)
+            except theory.TheoryException:
+                continue
+            if len(th.assums) == 0:
+                th_names.append(nm)
+
+        cv_acc = None
+        current = goal_prop
+        for _ in range(self.MAX_ROUNDS):
+            round_cv = None
+            for nm in th_names:
+                try:
+                    conv.top_conv(conv.rewr_conv(nm)).get_proof_term(current)
+                except Exception:
+                    continue
+                cv_i = conv.top_conv(conv.rewr_conv(nm))
+                round_cv = cv_i if round_cv is None else conv.then_conv(round_cv, cv_i)
+            if round_cv is None:
+                break
+            round_cv = conv.then_conv(round_cv, conv.beta_norm_conv())
+            new_prop = round_cv.eval(current).prop.rhs
+            cv_acc = round_cv if cv_acc is None else conv.then_conv(cv_acc, round_cv)
+            if new_prop == current:
+                break
+            current = new_prop
+
+        assert cv_acc is not None and current != goal_prop, \
+            "simp: nothing to simplify"
+
+        state.apply_tactic(id, tactic.rewrite_goal_with_conv(cv_acc), prevs=prevs)
+
+
 def register_macro_method(name: str, *, limit=None):
     """Register a method auto-generated from a macro.
 
@@ -1554,33 +1566,22 @@ def register_macro_method(name: str, *, limit=None):
 
 def apply_method(state: ProofState, step):
     """Apply a method to the state. Here data is a dictionary containing
-    all necessary information. Legacy method names are resolved via the
-    replay alias table; alias data defaults are merged under the step's
-    own keys.
+    all necessary information.
 
     """
-    name, defaults = resolve_method_name(step['method_name'])
-    method = get_method(name)
+    method = get_method(step['method_name'])
     goal_id = ItemID(step['goal_id'])
     fact_ids = [ItemID(fact_id) for fact_id in step['fact_ids']] \
         if 'fact_ids' in step and step['fact_ids'] else []
     assert all(goal_id.can_depend_on(fact_id) for fact_id in fact_ids), \
         "apply_method: illegal dependence."
-    data = dict(step)
-    data['method_name'] = name
-    for k, v in defaults.items():
-        data.setdefault(k, v)
-    return method.apply(state, goal_id, data, fact_ids)
+    return method.apply(state, goal_id, step, fact_ids)
 
 def output_step(state: ProofState, step):
     """Obtain the string explaining the step in the user interface."""
     try:
-        name, defaults = resolve_method_name(step['method_name'])
-        method = get_method(name)
-        data = dict(step)
-        for k, v in defaults.items():
-            data.setdefault(k, v)
-        res = method.display_step(state, data)
+        method = get_method(step['method_name'])
+        res = method.display_step(state, step)
     except Exception as e:
         res = pprint.N(step['method_name'])
     goal = step.get('goal_id', str(step.get('goal', '')))
@@ -1591,12 +1592,8 @@ def output_step(state: ProofState, step):
     return res
 
 def output_hint(state: ProofState, step):
-    name, defaults = resolve_method_name(step['method_name'])
-    method = get_method(name)
-    data = dict(step)
-    for k, v in defaults.items():
-        data.setdefault(k, v)
-    res = method.display_step(state, data)
+    method = get_method(step['method_name'])
+    res = method.display_step(state, step)
     if '_goal' in step:
         if step['_goal']:
             goals = [printer.print_term(t) for t in step['_goal']]

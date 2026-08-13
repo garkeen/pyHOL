@@ -14,5 +14,5 @@ theorem if_demo
   prop Valid (λst. true) (Cond (λst. ¬(reg st 0 = n)) (AssignV (λst. 0) (λst. n)) Skip) (λst. reg st 0 = n)
 proof
   ← vcg goal=0
-  ← apply_backward_step if_demo_vc_0 goal=1
+  ← rule if_demo_vc_0 goal=1
 qed

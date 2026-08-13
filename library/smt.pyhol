@@ -6,35 +6,35 @@ theorem r001
   fixes x :: 'a, y :: 'a
   prop x = y <--> y = x
 proof
-  ← apply_backward_step iffI goal=0
+  ← rule iffI goal=0
     #[1] x = y ⟶ y = x
     #[2] y = x ⟶ x = y
-  ← introduction goal=1
+  ← intro goal=1
     #[3] x = y
     #[4] y = x
-  ← rewrite_goal eq_sym_eq sym=false goal=4
-  ← introduction goal=2
+  ← rewrite eq_sym_eq sym=false goal=4
+  ← intro goal=2
     #[5] y = x
     #[6] x = y
-  ← rewrite_goal eq_sym_eq sym=false goal=6
+  ← rewrite eq_sym_eq sym=false goal=6
 qed
 
 theorem r002
   fixes x :: 'a
   prop x = x <--> true
 proof
-  ← apply_backward_step iffI goal=0
+  ← rule iffI goal=0
     #[1] x = x ⟶ true
     #[2] true ⟶ x = x
-  ← introduction goal=1
+  ← intro goal=1
     #[3] x = x
     #[4] true
-  ← apply_backward_step trueI goal=4
+  ← rule trueI goal=4
     #[5] true
-  ← introduction goal=2
+  ← intro goal=2
     #[6] true
     #[7] x = x
-  ← apply_backward_step eq_refl goal=7
+  ← rule eq_refl goal=7
     #[8] x = x
 qed
 
@@ -57,22 +57,22 @@ theorem r006
 theorem r038
   prop ~true <--> false
 proof
-  ← apply_backward_step iffI goal=0
+  ← rule iffI goal=0
     #[1] ¬true ⟶ false
     #[2] false ⟶ ¬true
-  ← introduction goal=1
+  ← intro goal=1
     #[3] ¬true
     #[4] false
-  ← apply_backward_step negE param_A=true goal=4
+  ← rule negE param_A=true goal=4
     #[5] true
-  ← apply_backward_step trueI goal=5
+  ← rule trueI goal=5
     #[6] true
-  ← introduction goal=2
+  ← intro goal=2
     #[7] false
     #[8] ¬true
-  ← apply_backward_step negI goal=8
+  ← rule negI goal=8
     #[9] true ⟶ false
-  ← introduction goal=9
+  ← intro goal=9
     #[10] true
 qed
 

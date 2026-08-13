@@ -12,12 +12,12 @@ theorem fun_upd_same
   prop (f)(a := b) a = b
   [hint_rewrite]
 proof
-  ← rewrite_goal fun_upd_def goal=0
+  ← rewrite fun_upd_def goal=0
     #[1] (if a = a then b else f a) = b
   cut "a = a" goal=1
     #[2] a = a
-  ← apply_backward_step eq_refl goal=2
-  ← rewrite_goal if_P sym=false goal=1 facts=[2]
+  ← rule eq_refl goal=2
+  ← rewrite if_P sym=false goal=1 facts=[2]
 qed
 
 theorem fun_upd_other
@@ -25,122 +25,122 @@ theorem fun_upd_other
   prop ~(c = a) --> (f)(a := b) c = f c
   [hint_rewrite]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ¬(c = a)
     #[2] (f)(a := b) c = f c
-  ← rewrite_goal fun_upd_def goal=2
+  ← rewrite fun_upd_def goal=2
     #[3] (if c = a then b else f c) = f c
-  ← rewrite_goal if_not_P sym=false goal=3 facts=[1]
+  ← rewrite if_not_P sym=false goal=3 facts=[1]
 qed
 
 theorem fun_upd_triv
   fixes a :: 'a, f :: 'a => 'b
   prop (f)(a := f a) = f
 proof
-  ← apply_backward_step extension goal=0
+  ← rule extension goal=0
     #[1] ∀x. (f)(a := f a) x = f x
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] (f)(a := f a) x = f x
-  ← rewrite_goal fun_upd_def goal=3
+  ← rewrite fun_upd_def goal=3
     #[4] (if x = a then f a else f x) = f x
   ← cases "x= a" goal=4
     #[5] x = a ⟶ (if x = a then f a else f x) = f x
     #[6] ¬(x = a) ⟶ (if x = a then f a else f x) = f x
-  ← introduction goal=5
+  ← intro goal=5
     #[7] x = a
     #[8] (if x = a then f a else f x) = f x
-  ← rewrite_goal if_P goal=8 facts=[7]
+  ← rewrite if_P goal=8 facts=[7]
     #[9] f a = f x
-  ← rewrite_goal_with_prev goal=9 facts=[7]
-  ← introduction goal=6
+  ← rewrite source=prev goal=9 facts=[7]
+  ← intro goal=6
     #[10] ¬(x = a)
     #[11] (if x = a then f a else f x) = f x
-  ← rewrite_goal if_not_P goal=11 facts=[10]
+  ← rewrite if_not_P goal=11 facts=[10]
 qed
 
 theorem fun_upd_upd
   fixes a :: 'a, b :: 'b, c :: 'b, f :: 'a => 'b
   prop (f)(a := b, a := c) = (f)(a := c)
 proof
-  ← apply_backward_step extension goal=0
+  ← rule extension goal=0
     #[1] ∀x. (f)(a := b, a := c) x = (f)(a := c) x
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] (f)(a := b, a := c) x = (f)(a := c) x
   ← cases "x = a" goal=3
     #[4] x = a ⟶ (f)(a := b, a := c) x = (f)(a := c) x
     #[5] ¬(x = a) ⟶ (f)(a := b, a := c) x = (f)(a := c) x
-  ← introduction goal=4
+  ← intro goal=4
     #[6] x = a
     #[7] (f)(a := b, a := c) x = (f)(a := c) x
-  ← rewrite_goal_with_prev goal=7 facts=[6]
+  ← rewrite source=prev goal=7 facts=[6]
     #[8] (f)(a := b, a := c) a = (f)(a := c) a
-  ← rewrite_goal fun_upd_same goal=8
+  ← rewrite fun_upd_same goal=8
     #[9] (f)(a := b, a := c) a = (f)(a := c) a
-  ← introduction goal=5
+  ← intro goal=5
     #[10] ¬(x = a)
     #[11] (f)(a := b, a := c) x = (f)(a := c) x
-  ← rewrite_goal fun_upd_other goal=11 facts=[10]
+  ← rewrite fun_upd_other goal=11 facts=[10]
     #[12] (f)(a := b) x = f x
-  ← rewrite_goal fun_upd_other goal=12 facts=[10]
+  ← rewrite fun_upd_other goal=12 facts=[10]
 qed
 
 theorem fun_upd_twist
   fixes a :: 'a, b :: 'b, c :: 'a, d :: 'b, f :: 'a => 'b
   prop ~(c = a) --> (f)(a := b, c := d) = (f)(c := d, a := b)
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ¬(c = a)
     #[2] (f)(a := b, c := d) = (f)(c := d, a := b)
-  ← apply_backward_step extension goal=2
+  ← rule extension goal=2
     #[3] ∀x. (f)(a := b, c := d) x = (f)(c := d, a := b) x
-  ← introduction x goal=3
+  ← intro x goal=3
     #[4] _VAR x
     #[5] (f)(a := b, c := d) x = (f)(c := d, a := b) x
   ← cases "x = a" goal=5
     #[6] x = a ⟶ (f)(a := b, c := d) x = (f)(c := d, a := b) x
     #[7] ¬(x = a) ⟶ (f)(a := b, c := d) x = (f)(c := d, a := b) x
-  ← introduction goal=6
+  ← intro goal=6
     #[8] x = a
     #[9] (f)(a := b, c := d) x = (f)(c := d, a := b) x
-  ← rewrite_goal_with_prev goal=9 facts=[8]
+  ← rewrite source=prev goal=9 facts=[8]
     #[10] (f)(a := b, c := d) a = (f)(c := d, a := b) a
-  ← rewrite_goal fun_upd_same goal=10
+  ← rewrite fun_upd_same goal=10
     #[11] (f)(a := b, c := d) a = b
   cut "~a = c" goal=11
     #[12] ¬(a = c)
-  ← apply_backward_step ineq_sym goal=12 facts=[1]
+  ← rule ineq_sym goal=12 facts=[1]
     #[13] ¬(a = c)
-  ← rewrite_goal fun_upd_other goal=11 facts=[13]
+  ← rewrite fun_upd_other goal=11 facts=[13]
     #[14] (f)(a := b) a = b
-  ← rewrite_goal fun_upd_same goal=14
+  ← rewrite fun_upd_same goal=14
     #[15] (f)(a := b) a = b
-  ← introduction goal=7
+  ← intro goal=7
     #[16] ¬(x = a)
     #[17] (f)(a := b, c := d) x = (f)(c := d, a := b) x
   ← cases "x = c" goal=17
     #[18] x = c ⟶ (f)(a := b, c := d) x = (f)(c := d, a := b) x
     #[19] ¬(x = c) ⟶ (f)(a := b, c := d) x = (f)(c := d, a := b) x
-  ← introduction goal=18
+  ← intro goal=18
     #[20] x = c
     #[21] (f)(a := b, c := d) x = (f)(c := d, a := b) x
-  ← rewrite_goal_with_prev goal=21 facts=[20]
+  ← rewrite source=prev goal=21 facts=[20]
     #[22] (f)(a := b, c := d) c = (f)(c := d, a := b) c
-  ← rewrite_goal fun_upd_same goal=22
+  ← rewrite fun_upd_same goal=22
     #[23] d = (f)(c := d, a := b) c
-  ← rewrite_goal fun_upd_other goal=23 facts=[1]
+  ← rewrite fun_upd_other goal=23 facts=[1]
     #[24] d = (f)(c := d) c
-  ← rewrite_goal fun_upd_same goal=24
+  ← rewrite fun_upd_same goal=24
     #[25] d = (f)(c := d) c
-  ← introduction goal=19
+  ← intro goal=19
     #[26] ¬(x = c)
     #[27] (f)(a := b, c := d) x = (f)(c := d, a := b) x
-  ← rewrite_goal fun_upd_other goal=27 facts=[16]
+  ← rewrite fun_upd_other goal=27 facts=[16]
     #[28] (f)(a := b, c := d) x = (f)(c := d) x
-  ← rewrite_goal fun_upd_other goal=28 facts=[26]
+  ← rewrite fun_upd_other goal=28 facts=[26]
     #[29] (f)(a := b) x = f x
-  ← rewrite_goal fun_upd_other goal=29 facts=[16]
+  ← rewrite fun_upd_other goal=29 facts=[16]
     #[30] (f)(a := b) x = f x
 qed
 
@@ -150,13 +150,13 @@ proof
   cut "~((0::nat) = 1)" goal=0
     #[1] ¬((0::nat) = 1)
   nat_const_ineq goal=1
-  ← rewrite_goal fun_upd_other sym=false goal=0 facts=[1]
+  ← rewrite fun_upd_other sym=false goal=0 facts=[1]
 qed
 
 theorem fun_upd_eval_test2
   prop (%x::nat. (0::nat))(1 := 5) 1 = 5
 proof
-  ← rewrite_goal fun_upd_same goal=0
+  ← rewrite fun_upd_same goal=0
 qed
 
 def id_fun :: 'a ⇒ 'a = id_fun = (λx::'a. x) [hint_rewrite]
@@ -168,16 +168,16 @@ theorem comp_fun_eval
   prop (f O g) x = f (g x)
   [hint_rewrite]
 proof
-  ← rewrite_goal comp_fun_def goal=0
+  ← rewrite comp_fun_def goal=0
 qed
 
 theorem comp_fun_assoc
   fixes f :: 'c => 'd, g :: 'b => 'c, h :: 'a => 'b
   prop (f O g) O h = f O g O h
 proof
-  ← rewrite_goal comp_fun_def sym=false goal=0
+  ← rewrite comp_fun_def sym=false goal=0
     #[1] (λx. (f ∘ g) (h x)) = (λx. f ((g ∘ h) x))
-  ← rewrite_goal comp_fun_def sym=false goal=1
+  ← rewrite comp_fun_def sym=false goal=1
 qed
 
 def injective :: ('a ⇒ 'b) ⇒ bool = injective f ⟷ (∀x. ∀y. f x = f y ⟶ x = y)
@@ -187,10 +187,10 @@ theorem injectiveI
   prop (!x. !y. f x = f y --> x = y) --> injective f
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. ∀y. f x = f y ⟶ x = y
     #[2] injective f
-  ← rewrite_goal injective_def goal=2
+  ← rewrite injective_def goal=2
 qed
 
 theorem injectiveD
@@ -198,11 +198,11 @@ theorem injectiveD
   prop injective f --> f x = f y --> x = y
   [hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] injective f
     #[2] f x = f y
     #[3] x = y
-  → rewrite_fact injective_def goal=3 facts=[1]
+  → rewrite target=fact injective_def goal=3 facts=[1]
     #[4] ∀x. ∀y. f x = f y ⟶ x = y
   ← apply_prev goal=3 facts=[4,2]
 qed
@@ -214,10 +214,10 @@ theorem surjectiveI
   prop (!y. ?x. f x = y) --> surjective f
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀y. ∃x. f x = y
     #[2] surjective f
-  ← rewrite_goal surjective_def goal=2
+  ← rewrite surjective_def goal=2
 qed
 
 theorem surjectiveD
@@ -225,10 +225,10 @@ theorem surjectiveD
   prop surjective f --> (?x. f x = y)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] surjective f
     #[2] ∃x. f x = y
-  → rewrite_fact surjective_def goal=2 facts=[1]
+  → rewrite target=fact surjective_def goal=2 facts=[1]
     #[3] ∀y. ∃x. f x = y
   ← apply_prev goal=2 facts=[3]
 qed
@@ -236,83 +236,83 @@ qed
 theorem injective_id_fun
   prop injective (id_fun::'a => 'a)
 proof
-  ← rewrite_goal id_fun_def goal=0
+  ← rewrite id_fun_def goal=0
     #[1] injective (λx::'a. x)
-  ← apply_backward_step injectiveI goal=1
+  ← rule injectiveI goal=1
     #[2] ∀x::'a. ∀y. x = y ⟶ x = y
 qed
 
 theorem surjective_id_fun
   prop surjective (id_fun::'a => 'a)
 proof
-  ← rewrite_goal id_fun_def goal=0
+  ← rewrite id_fun_def goal=0
     #[1] surjective (λx::'a. x)
-  ← apply_backward_step surjectiveI goal=1
+  ← rule surjectiveI goal=1
     #[2] ∀y::'a. ∃x. x = y
-  ← introduction y goal=2
+  ← intro y goal=2
     #[3] _VAR y
     #[4] ∃x. x = y
-  ← inst_exists_goal y goal=4
+  ← inst y goal=4
     #[5] y = y
-  ← apply_backward_step eq_refl goal=5
+  ← rule eq_refl goal=5
 qed
 
 theorem injective_comp_fun
   fixes f :: 'a => 'b, g :: 'b => 'c
   prop injective f --> injective g --> injective (g O f)
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] injective f
     #[2] injective g
     #[3] injective (g ∘ f)
-  ← apply_backward_step injectiveI goal=3
+  ← rule injectiveI goal=3
     #[4] ∀x. ∀y. (g ∘ f) x = (g ∘ f) y ⟶ x = y
-  ← introduction "x, y" goal=4
+  ← intro "x, y" goal=4
     #[5] _VAR x
     #[6] _VAR y
     #[7] (g ∘ f) x = (g ∘ f) y
     #[8] x = y
-  → rewrite_fact comp_fun_eval goal=8 facts=[7]
+  → rewrite target=fact comp_fun_eval goal=8 facts=[7]
     #[9] g (f x) = g (f y)
-  → apply_forward_step injectiveD goal=8 facts=[2,9]
+  → forward injectiveD goal=8 facts=[2,9]
     #[10] f x = f y
-  → apply_forward_step injectiveD goal=8 facts=[1,10]
+  → forward injectiveD goal=8 facts=[1,10]
 qed
 
 theorem surjective_comp_fun
   fixes f :: 'a => 'b, g :: 'b => 'c
   prop surjective f --> surjective g --> surjective (g O f)
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] surjective f
     #[2] surjective g
     #[3] surjective (g ∘ f)
-  ← apply_backward_step surjectiveI goal=3
+  ← rule surjectiveI goal=3
     #[4] ∀y. ∃x. (g ∘ f) x = y
-  ← introduction y goal=4
+  ← intro y goal=4
     #[5] _VAR y
     #[6] ∃x. (g ∘ f) x = y
   cut "?z. g z = y" goal=6
     #[7] ∃z. g z = y
-  ← apply_backward_step surjectiveD goal=7 facts=[2]
+  ← rule surjectiveD goal=7 facts=[2]
     #[8] ∃z. g z = y
-  ← rewrite_goal comp_fun_eval goal=6
+  ← rewrite comp_fun_eval goal=6
     #[9] ∃x. g (f x) = y
-  exists_elim z goal=9 facts=[8]
+  elim z goal=9 facts=[8]
     #[10] _VAR z
     #[11] g z = y
     #[12] ∃x. g (f x) = y
     #[13] ∃x. (g ∘ f) x = y
   cut "?x. f x = z" goal=12
     #[14] ∃x. f x = z
-  ← apply_backward_step surjectiveD goal=14
-  exists_elim x goal=12 facts=[14]
+  ← rule surjectiveD goal=14
+  elim x goal=12 facts=[14]
     #[15] _VAR x
     #[16] f x = z
     #[17] ∃x. g (f x) = y
     #[18] ∃x. (g ∘ f) x = y
-  ← inst_exists_goal x goal=17
+  ← inst x goal=17
     #[19] g (f x) = y
-  ← rewrite_goal_with_prev goal=19 facts=[16]
+  ← rewrite source=prev goal=19 facts=[16]
 qed
 

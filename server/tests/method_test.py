@@ -77,7 +77,7 @@ test_method.__test__ = False
 
 class MethodTest(unittest.TestCase):
     def run_search_thm(self, thy_name: str, *, vars=None, assms: Optional[List[str]] = None,
-                       concl: str, method_name: str, prevs=None, res):
+                       concl: str, method_name: str, prevs=None, res, mode=None):
         # Build context
         context.set_context(thy_name, vars=vars)
 
@@ -86,20 +86,23 @@ class MethodTest(unittest.TestCase):
         concl = parser.parse_term(concl)
         state = server.parse_init_state(Implies(*(assms + [concl])))
 
-        # Obtain method and run its search function. Legacy method
-        # names resolve through the replay alias table; the unified
-        # rewrite dispatcher merges four modes, so filter its results
-        # by the mode markers to get the legacy single-mode view.
+        # Obtain method and run its search function. Unified dispatchers
+        # (rewrite/forward/inst) merge several modes, so filter their
+        # results by the mode markers to get a single-mode view.
         method = get_method(method_name)
         search_res = state.apply_search(len(assms), method, prevs=prevs)
         MODE_FILTER = {
-            'rewrite_goal': lambda r: 'target' not in r and 'source' not in r,
-            'rewrite_goal_with_prev': lambda r: 'target' not in r and r.get('source') == 'prev',
-            'rewrite_fact': lambda r: r.get('target') == 'fact' and 'source' not in r,
-            'rewrite_fact_with_prev': lambda r: r.get('target') == 'fact' and r.get('source') == 'prev',
+            'goal_thm': lambda r: 'target' not in r and 'source' not in r,
+            'goal_prev': lambda r: 'target' not in r and r.get('source') == 'prev',
+            'fact_thm': lambda r: r.get('target') == 'fact' and 'source' not in r,
+            'fact_prev': lambda r: r.get('target') == 'fact' and r.get('source') == 'prev',
+            'fwd_thm': lambda r: 'source' not in r,
+            'fwd_fact': lambda r: r.get('source') == 'fact',
+            'inst_goal': lambda r: r.get('target') == 'goal',
+            'inst_fact': lambda r: r.get('target') == 'fact',
         }
-        if method_name in MODE_FILTER:
-            search_res = [r for r in search_res if MODE_FILTER[method_name](r)]
+        if mode in MODE_FILTER:
+            search_res = [r for r in search_res if MODE_FILTER[mode](r)]
         self.assertEqual([res['theorem'] for res in search_res], res)
 
     def testCases(self):
@@ -148,7 +151,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
             concl='B & A',
-            method_name='apply_backward_step',
+            method_name='rule',
             res=['conjI']
         )
 
@@ -158,7 +161,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A | B'],
             concl='B | A',
-            method_name='apply_backward_step',
+            method_name='rule',
             prevs=[0],
             res=['disjE', 'resolution_right']
         )
@@ -170,7 +173,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A | B'],
             concl='B | A',
-            method_name='apply_backward_step',
+            method_name='rule',
             res=['disjI1', 'disjI2']
         )
 
@@ -179,7 +182,7 @@ class MethodTest(unittest.TestCase):
         self.run_search_thm(
             'logic_base',
             concl='true',
-            method_name='apply_backward_step',
+            method_name='rule',
             res=['trueI']
         )
 
@@ -189,7 +192,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
             concl='B & A',
-            method_name='apply_backward_step',
+            method_name='rule',
             args={'theorem': 'conjI'},
             gaps=['B', 'A']
         )
@@ -201,7 +204,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A | B'],
             concl='B | A',
-            method_name='apply_backward_step',
+            method_name='rule',
             args={'theorem': 'disjE'},
             prevs=[0],
             gaps=['A --> B | A', 'B --> B | A']
@@ -214,7 +217,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
             concl='A',
-            method_name='apply_backward_step',
+            method_name='rule',
             args={'theorem': 'conjD1'},
             query=['B']
         )
@@ -226,7 +229,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
             concl='A',
-            method_name='apply_backward_step',
+            method_name='rule',
             args={'theorem': 'conjD1', 'param_B': 'B'},
             gaps=False
         )
@@ -236,7 +239,7 @@ class MethodTest(unittest.TestCase):
         test_method(self,
             'set',
             concl='finite (empty_set::nat set)',
-            method_name='apply_backward_step',
+            method_name='rule',
             args={'theorem': 'finite_empty'},
             gaps=False
         )
@@ -247,9 +250,10 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
             concl='B & A',
-            method_name='apply_forward_step',
+            method_name='forward',
             prevs=[0],
-            res=['conjD1', 'conjD2', 'resolution_right', 'weakening']
+            res=['conjD1', 'conjD2', 'resolution_right', 'weakening'],
+            mode='fwd_thm'
         )
 
     def testApplyForwardStep1(self):
@@ -258,7 +262,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A & B'],
             concl='B & A',
-            method_name='apply_forward_step',
+            method_name='forward',
             args={'theorem': 'conjD1'},
             prevs=[0],
             lines={'1': 'A'}
@@ -270,7 +274,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A'],
             concl='A | B',
-            method_name='apply_forward_step',
+            method_name='forward',
             args={'theorem': 'disjI1'},
             prevs=[0],
             query=['B']
@@ -282,7 +286,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'bool', 'B': 'bool'},
             assms=['A'],
             concl='A | B',
-            method_name='apply_forward_step',
+            method_name='forward',
             args={'theorem': 'disjI1', 'param_B': 'B'},
             prevs=[0],
             gaps=False
@@ -294,7 +298,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'nat set', 'B': 'nat set'},
             assms=['A Sub B'],
             concl='false',
-            method_name='apply_forward_step',
+            method_name='forward',
             args={'theorem': 'subset_trans', 'param_C': ''},
             prevs=[0],
             lines={'1': '!C. B Sub C --> A Sub C'}
@@ -306,7 +310,7 @@ class MethodTest(unittest.TestCase):
             vars={'A': 'nat set', 'B': 'nat set', 'C': 'nat set'},
             assms=['A Sub B'],
             concl='B Sub C',
-            method_name='apply_forward_step',
+            method_name='forward',
             args={'theorem': 'subset_trans', 'param_C': 'C'},
             prevs=[0],
             lines={'1': 'B Sub C --> A Sub C'}
@@ -317,7 +321,7 @@ class MethodTest(unittest.TestCase):
             'set',
             vars={'A': 'nat set', 'B': 'nat set', 'C': 'nat set'},
             concl='false',
-            method_name='apply_forward_step',
+            method_name='forward',
             args={'theorem': 'subset_trans', 'param_A': 'A', 'param_B': 'B', 'param_C': 'C'},
             lines={'0': 'A Sub B --> B Sub C --> A Sub C'}
         )
@@ -329,7 +333,7 @@ class MethodTest(unittest.TestCase):
             vars={'x': "'a"},
             assms=['x Mem empty_set'],
             concl=['false'],
-            method_name='apply_resolve_step',
+            method_name='resolve',
             prevs=[0],
             res=[]
         )
@@ -339,7 +343,7 @@ class MethodTest(unittest.TestCase):
             'logic_base',
             assms=['false'],
             concl=['false'],
-            method_name='apply_resolve_step',
+            method_name='resolve',
             prevs=[0],
             res=['not_false_res']
         )
@@ -349,7 +353,7 @@ class MethodTest(unittest.TestCase):
             'logic_base',
             vars={'A': "'a => bool", 'B': "'a => bool"},
             concl='!x. A x --> B x',
-            method_name='introduction',
+            method_name='intro',
             args={'names': 'x'},
             gaps=['B x']
         )
@@ -359,7 +363,7 @@ class MethodTest(unittest.TestCase):
             'nat',
             vars={'n': 'nat'},
             concl='n + 0 = n',
-            method_name='induction',
+            method_name='induct',
             args={'theorem': 'nat_induct', 'var': 'n'},
             gaps=['(0::nat) + 0 = 0', '!n. n + 0 = n --> Suc n + 0 = Suc n']
         )
@@ -369,8 +373,9 @@ class MethodTest(unittest.TestCase):
             'nat',
             vars={'n': 'nat'},
             concl='0 + n = 0',
-            method_name='rewrite_goal',
-            res=['eq_add_lcancel_0', 'nat_plus_def_1']
+            method_name='rewrite',
+            res=['eq_add_lcancel_0', 'nat_plus_def_1'],
+            mode='goal_thm'
         )
 
     def testRewriteGoalThms2(self):
@@ -378,8 +383,9 @@ class MethodTest(unittest.TestCase):
             'set',
             vars={'f': "nat => nat", 'S': "nat set", 'T': "nat set"},
             concl='image f (image f S) = T',
-            method_name='rewrite_goal',
-            res=['image_combine', 'member_ext', 'set_equal_iff']
+            method_name='rewrite',
+            res=['image_combine', 'member_ext', 'set_equal_iff'],
+            mode='goal_thm'
         )
 
     def testRewriteGoal(self):
@@ -388,7 +394,7 @@ class MethodTest(unittest.TestCase):
             vars={'P': 'bool', 'a': "'a", 'b': "'a"},
             assms=['P'],
             concl='(if P then a else b) = b',
-            method_name='rewrite_goal',
+            method_name='rewrite',
             args={'theorem': 'if_P'},
             prevs=[0],
             gaps=['a = b']
@@ -400,7 +406,7 @@ class MethodTest(unittest.TestCase):
             vars={'P': 'bool', 'a': "'a", 'b': "'a"},
             assms=['P'],
             concl='(if P then a else b) = a',
-            method_name='rewrite_goal',
+            method_name='rewrite',
             args={'theorem': 'if_P'},
             prevs=[0],
             gaps=False
@@ -411,7 +417,7 @@ class MethodTest(unittest.TestCase):
             'set',
             vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set", 't': "'c set"},
             concl='image f (image g s) = t',
-            method_name='rewrite_goal',
+            method_name='rewrite',
             args={'theorem': 'image_combine', 'sym': 'false'},
             gaps=["image (g O f) s = t"]
         )
@@ -421,7 +427,7 @@ class MethodTest(unittest.TestCase):
             'set',
             vars={'f': "'a => 'b", 's': "'a set", 't': "'a set"},
             concl='(∃x1. x1 ∈ s) ⟷ x ∈ image f s',
-            method_name='rewrite_goal',
+            method_name='rewrite',
             args={'theorem': 'in_image'},
             gaps=["(∃x1. x1 ∈ s) ⟷ (∃x1. x1 ∈ s & x = f x1)"]
         )
@@ -432,7 +438,7 @@ class MethodTest(unittest.TestCase):
             vars={'f': 'nat => nat', 'g': 'nat => nat', 'a': 'nat'},
             assms=['!n. f n = g n'],
             concl='?x. f x = a',
-            method_name='rewrite_goal_with_prev',
+            method_name='rewrite',
             prevs=[0],
             gaps=['?x. g x = a']
         )
@@ -443,7 +449,7 @@ class MethodTest(unittest.TestCase):
             vars={'f': 'nat => nat => nat', 'g': 'nat => nat => nat'},
             assms=['!m. !n. f m n = g m n'],
             concl='?x. f x x = a',
-            method_name='rewrite_goal_with_prev',
+            method_name='rewrite',
             prevs=[0],
             gaps=['?x. g x x = a']
         )
@@ -454,9 +460,10 @@ class MethodTest(unittest.TestCase):
             vars={'n': 'nat'},
             assms=['0 + n = 0'],
             concl='false',
-            method_name='rewrite_fact',
+            method_name='rewrite',
             prevs=[0],
-            res=['eq_add_lcancel_0', 'nat_plus_def_1']
+            res=['eq_add_lcancel_0', 'nat_plus_def_1'],
+            mode='fact_thm'
         )
 
     def testRewriteFactThms2(self):
@@ -465,9 +472,10 @@ class MethodTest(unittest.TestCase):
             vars={'f': "nat => nat", 'S': "nat set", 'T': "nat set"},
             assms=['image f (image f S) = T'],
             concl='false',
-            method_name='rewrite_fact',
+            method_name='rewrite',
             prevs=[0],
-            res=['image_combine', 'member_ext', 'set_equal_iff']
+            res=['image_combine', 'member_ext', 'set_equal_iff'],
+            mode='fact_thm'
         )
 
     def testRewriteFactThms3(self):
@@ -476,9 +484,10 @@ class MethodTest(unittest.TestCase):
             vars={'P': 'bool', 'a': "'a", 'b': "'a", 'c': "'a"},
             assms=['(if P then a else b) = c', 'P'],
             concl='false',
-            method_name='rewrite_fact',
+            method_name='rewrite',
             prevs=[0, 1],
-            res=['if_P']
+            res=['if_P'],
+            mode='fact_thm'
         )
 
     def testRewriteFact(self):
@@ -487,9 +496,9 @@ class MethodTest(unittest.TestCase):
             vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set", 't': "'c set"},
             assms=['image f (image g s) = t'],
             concl='false',
-            method_name='rewrite_fact',
+            method_name='rewrite',
             prevs=[0],
-            args={'theorem': 'image_combine', 'sym': 'false'},
+            args={'theorem': 'image_combine', 'sym': 'false', 'target': 'fact'},
             lines={'1': "image (g O f) s = t"}
         )
 
@@ -499,8 +508,8 @@ class MethodTest(unittest.TestCase):
             vars={'P': 'bool', 'a': "'a", 'b': "'a", 'c': "'a"},
             assms=['(if P then a else b) = c', 'P'],
             concl='false',
-            method_name='rewrite_fact',
-            args={'theorem': 'if_P'},
+            method_name='rewrite',
+            args={'theorem': 'if_P', 'target': 'fact'},
             prevs=[0, 1],
             lines={'2': 'a = c'}
         )
@@ -511,8 +520,9 @@ class MethodTest(unittest.TestCase):
             vars={'f': 'nat => nat', 'g': 'nat => nat', 'a': 'nat'},
             assms=['!n. f n = g n', '?x. f x = a'],
             concl='false',
-            method_name='rewrite_fact_with_prev',
+            method_name='rewrite',
             prevs=[0, 1],
+            args={'target': 'fact', 'source': 'prev'},
             lines={'2': '?x. g x = a'}
         )
 
@@ -522,7 +532,7 @@ class MethodTest(unittest.TestCase):
             vars={'n': 'nat', 'P': 'nat => bool', 'Q': 'nat => bool'},
             assms=['!x. P x --> Q x'],
             concl='Q n',
-            method_name='forall_elim',
+            method_name='inst',
             args={'s': 'n'},
             prevs=[0],
             lines={'1': 'P n --> Q n'}
@@ -534,7 +544,7 @@ class MethodTest(unittest.TestCase):
             vars={'n': 'nat', 'P': 'nat => bool', 'Q': 'nat => bool'},
             assms=['!P. P n'],
             concl='Q n',
-            method_name='forall_elim',
+            method_name='inst',
             args={'s': '%n::nat. n > 2'},
             prevs=[0],
             lines={'1': 'n > 2'}
@@ -546,7 +556,7 @@ class MethodTest(unittest.TestCase):
             vars={'n': 'nat', 'P': 'nat => bool', 'Q': 'nat => bool'},
             assms=['!x. P x --> Q x'],
             concl='Q n',
-            method_name='forall_elim',
+            method_name='inst',
             args={'s': '(m::nat)'},
             prevs=[0],
             failed=AssertionError
@@ -558,7 +568,7 @@ class MethodTest(unittest.TestCase):
             vars={'n': 'nat', 'P': 'nat => bool', 'Q': 'nat => bool'},
             assms=['P n'],
             concl='?x. P x --> Q x',
-            method_name='inst_exists_goal',
+            method_name='inst',
             args={'s': 'n'},
             gaps=['P n --> Q n']
         )
@@ -569,7 +579,7 @@ class MethodTest(unittest.TestCase):
             vars={'n': 'nat', 'P': 'nat => bool', 'Q': 'nat => bool'},
             assms=['P n'],
             concl='?x. P x --> Q x',
-            method_name='inst_exists_goal',
+            method_name='inst',
             args={'s': '(m::nat)'},
             failed=AssertionError
         )
@@ -579,7 +589,7 @@ class MethodTest(unittest.TestCase):
             'nat',
             assms=['?n::nat. n + 1 = 2'],
             concl='false',
-            method_name='exists_elim',
+            method_name='elim',
             args={'names': 'n'},
             prevs=[0],
             lines={'1': '_VAR (n::nat)', '2': '(n::nat) + 1 = 2'}
@@ -591,7 +601,7 @@ class MethodTest(unittest.TestCase):
             vars={'n': 'nat'},
             assms=['?n::nat. n + 1 = 2'],
             concl='n = 1',
-            method_name='exists_elim',
+            method_name='elim',
             args={'names': 'n'},
             prevs=[0],
             failed=AssertionError

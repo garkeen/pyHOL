@@ -20,31 +20,31 @@ theorem has_integral_integrable
   prop has_integral f i s --> integrable_on f s
   [hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_integral f i s
     #[2] integrable_on f s
-  ← rewrite_goal integrable_on_def goal=2
+  ← rewrite integrable_on_def goal=2
     #[3] ∃y. has_integral f y s
-  ← inst_exists_goal i goal=3
+  ← inst i goal=3
 qed
 
 theorem has_integral_integral
   fixes f :: real => real, s :: real set
   prop integrable_on f s <--> has_integral f (integral s f) s
 proof
-  ← apply_backward_step iffI goal=0
+  ← rule iffI goal=0
     #[1] integrable_on f s ⟶ has_integral f (integral s f) s
     #[2] has_integral f (integral s f) s ⟶ integrable_on f s
-  ← introduction goal=1
+  ← intro goal=1
     #[3] integrable_on f s
     #[4] has_integral f (integral s f) s
-  ← apply_backward_step integrable_integral goal=4 facts=[3]
-  ← introduction goal=2
+  ← rule integrable_integral goal=4 facts=[3]
+  ← intro goal=2
     #[5] has_integral f (integral s f) s
     #[6] integrable_on f s
-  ← rewrite_goal integrable_on_def goal=6
+  ← rewrite integrable_on_def goal=6
     #[7] ∃y. has_integral f y s
-  ← apply_backward_step exI param_a="integral s f" goal=7
+  ← rule exI param_a="integral s f" goal=7
 qed
 
 theorem has_integral_unique
@@ -71,13 +71,13 @@ theorem has_integral_0
   fixes s :: real set
   prop has_integral (%x. 0) 0 s
 proof
-  ← apply_backward_step has_integral_is_0 goal=0
+  ← rule has_integral_is_0 goal=0
     #[1] ∀x. x ∈ s ⟶ (0::real) = 0
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ s
     #[4] (0::real) = 0
-  ← apply_backward_step eq_refl goal=4
+  ← rule eq_refl goal=4
     #[5] (0::real) = 0
 qed
 

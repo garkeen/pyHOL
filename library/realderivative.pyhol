@@ -179,31 +179,31 @@ theorem real_differentiable_on_subset
   prop real_differentiable_on f s --> t Sub s --> real_differentiable_on f t
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f s
     #[2] t ⊆ s
     #[3] real_differentiable_on f t
-  ← rewrite_goal real_differentiable_on_def sym=false goal=3
+  ← rewrite real_differentiable_on_def sym=false goal=3
     #[4] ∀x. x ∈ t ⟶ (∃f1. has_real_derivative f f1 (within (atreal x) t))
-  → rewrite_fact real_differentiable_on_def sym=false goal=4 facts=[1]
+  → rewrite target=fact real_differentiable_on_def sym=false goal=4 facts=[1]
     #[5] ∀x. x ∈ s ⟶ (∃f1. has_real_derivative f f1 (within (atreal x) s))
-  ← introduction x goal=4
+  ← intro x goal=4
     #[6] _VAR x
     #[7] x ∈ t
     #[8] ∃f1. has_real_derivative f f1 (within (atreal x) t)
-  → forall_elim x goal=8 facts=[5]
+  → inst target=fact x goal=8 facts=[5]
     #[9] x ∈ s ⟶ (∃f1. has_real_derivative f f1 (within (atreal x) s))
-  → apply_forward_step subsetE goal=8 facts=[2,7]
+  → forward subsetE goal=8 facts=[2,7]
     #[10] x ∈ s
-  → apply_fact goal=8 facts=[9,10]
+  → forward goal=8 facts=[9,10]
     #[11] ∃f1. has_real_derivative f f1 (within (atreal x) s)
-  exists_elim f1 goal=8 facts=[11]
+  elim f1 goal=8 facts=[11]
     #[12] _VAR f1
     #[13] has_real_derivative f f1 (within (atreal x) s)
     #[14] ∃f1. has_real_derivative f f1 (within (atreal x) t)
-  ← inst_exists_goal f1 goal=14
+  ← inst f1 goal=14
     #[15] has_real_derivative f f1 (within (atreal x) t)
-  ← apply_backward_step has_real_derivative_within_subset goal=15 facts=[13,2]
+  ← rule has_real_derivative_within_subset goal=15 facts=[13,2]
     #[16] has_real_derivative f f1 (within (atreal x) t)
 qed
 
@@ -212,22 +212,22 @@ theorem real_differentiable_within_subset
   prop real_differentiable f (within (atreal x) s) --> t Sub s --> real_differentiable f (within (atreal x) t)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f (within (atreal x) s)
     #[2] t ⊆ s
     #[3] real_differentiable f (within (atreal x) t)
-  ← rewrite_goal real_differentiable_def sym=false goal=3
+  ← rewrite real_differentiable_def sym=false goal=3
     #[4] ∃f1. has_real_derivative f f1 (within (atreal x) t)
-  → rewrite_fact real_differentiable_def sym=false goal=4 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=4 facts=[1]
     #[5] ∃f1. has_real_derivative f f1 (within (atreal x) s)
-  exists_elim f1 goal=4 facts=[5]
+  elim f1 goal=4 facts=[5]
     #[6] _VAR f1
     #[7] has_real_derivative f f1 (within (atreal x) s)
     #[8] ∃f1. has_real_derivative f f1 (within (atreal x) t)
     #[9] real_differentiable f (within (atreal x) t)
-  ← inst_exists_goal f1 goal=8
+  ← inst f1 goal=8
     #[10] has_real_derivative f f1 (within (atreal x) t)
-  ← apply_backward_step has_real_derivative_within_subset goal=10 facts=[7,2]
+  ← rule has_real_derivative_within_subset goal=10 facts=[7,2]
     #[11] has_real_derivative f f1 (within (atreal x) t)
 qed
 
@@ -241,15 +241,15 @@ theorem has_real_derivative_within_real_open
   prop a Mem s --> real_open s --> has_real_derivative f f1 (within (atreal a) s) <--> has_real_derivative f f1 (atreal a)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] a ∈ s
     #[2] real_open s
     #[3] has_real_derivative f f1 (within (atreal a) s) ⟷ has_real_derivative f f1 (atreal a)
-  ← rewrite_goal has_real_derivative_atreal sym=false goal=3
+  ← rewrite has_real_derivative_atreal sym=false goal=3
     #[4] has_real_derivative f f1 (within (atreal a) s) ⟷ tendsto_real (λx. (f x - f a) / (x - a)) f1 (atreal a)
-  ← rewrite_goal has_real_derivative_withinreal sym=false goal=4
+  ← rewrite has_real_derivative_withinreal sym=false goal=4
     #[5] tendsto_real (λx. (f x - f a) / (x - a)) f1 (within (atreal a) s) ⟷ tendsto_real (λx. (f x - f a) / (x - a)) f1 (atreal a)
-  ← apply_backward_step reallim_within_real_open goal=5
+  ← rule reallim_within_real_open goal=5
 qed
 
 theorem real_differentiable_atreal_within
@@ -257,21 +257,21 @@ theorem real_differentiable_atreal_within
   prop real_differentiable f (atreal x) --> real_differentiable f (within (atreal x) s)
   [hint_backward,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f (atreal x)
     #[2] real_differentiable f (within (atreal x) s)
-  ← rewrite_goal real_differentiable_def sym=false goal=2
+  ← rewrite real_differentiable_def sym=false goal=2
     #[3] ∃f1. has_real_derivative f f1 (within (atreal x) s)
-  → rewrite_fact real_differentiable_def sym=false goal=3 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=3 facts=[1]
     #[4] ∃f1. has_real_derivative f f1 (atreal x)
-  exists_elim f1 goal=3 facts=[4]
+  elim f1 goal=3 facts=[4]
     #[5] _VAR f1
     #[6] has_real_derivative f f1 (atreal x)
     #[7] ∃f1. has_real_derivative f f1 (within (atreal x) s)
     #[8] real_differentiable f (within (atreal x) s)
-  ← inst_exists_goal f1 goal=7
+  ← inst f1 goal=7
     #[9] has_real_derivative f f1 (within (atreal x) s)
-  ← apply_backward_step has_real_derivative_atreal_within goal=9
+  ← rule has_real_derivative_atreal_within goal=9
 qed
 
 theorem has_real_derivative_transform_within
@@ -294,13 +294,13 @@ theorem has_real_derivative_zero_unique
   prop is_realinterval s --> a Mem s --> f a = c --> (!x. x Mem s --> has_real_derivative f 0 (within (atreal x) s)) --> (!x. x Mem s --> f x = c)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] is_realinterval s
     #[2] a ∈ s
     #[3] f a = c
     #[4] ∀x. x ∈ s ⟶ has_real_derivative f 0 (within (atreal x) s)
     #[5] ∀x. x ∈ s ⟶ f x = c
-  → apply_forward_step has_real_derivative_zero_constant goal=5 facts=[1,4]
+  → forward has_real_derivative_zero_constant goal=5 facts=[1,4]
     #[6] ∃c. ∀x. x ∈ s ⟶ f x = c
   ← z3 goal=5 facts=[6,2,3]
 qed
@@ -315,21 +315,21 @@ theorem real_diff_chain_atreal
   prop has_real_derivative f f1 (atreal x) --> has_real_derivative g g1 (atreal (f x)) --> has_real_derivative (%x1. g (f x1)) (g1 * f1) (atreal x)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (atreal x)
     #[2] has_real_derivative g g1 (atreal (f x))
     #[3] has_real_derivative (λx1. g (f x1)) (g1 * f1) (atreal x)
-  ← rewrite_goal withinreal_univ sym=true goal=3
+  ← rewrite withinreal_univ sym=true goal=3
     #[4] has_real_derivative (λx1. g (f x1)) (g1 * f1) (within (atreal x) univ)
-  → rewrite_fact withinreal_univ sym=true goal=4 facts=[2]
+  → rewrite target=fact withinreal_univ sym=true goal=4 facts=[2]
     #[5] has_real_derivative g g1 (within (atreal (f x)) univ)
-  → rewrite_fact withinreal_univ sym=true goal=4 facts=[1]
+  → rewrite target=fact withinreal_univ sym=true goal=4 facts=[1]
     #[6] has_real_derivative f f1 (within (atreal x) univ)
-  ← apply_backward_step real_diff_chain_within goal=4
+  ← rule real_diff_chain_within goal=4
     #[7] has_real_derivative g g1 (within (atreal (f x)) (image f univ))
-  ← apply_backward_step has_real_derivative_within_subset param_s="(univ::real set)" goal=7
+  ← rule has_real_derivative_within_subset param_s="(univ::real set)" goal=7
     #[8] image f univ ⊆ univ
-  ← apply_backward_step subset_univ goal=8
+  ← rule subset_univ goal=8
     #[9] image f univ ⊆ univ
 qed
 
@@ -342,53 +342,53 @@ theorem has_real_derivative_chain_univ
   fixes f :: real => real, f1 :: real, g :: real => real, g1 :: real => real
   prop (!x. has_real_derivative g (g1 x) (atreal x)) --> (!x. !s. has_real_derivative f f1 (within (atreal x) s) --> has_real_derivative (%x1. g (f x1)) (f1 * g1 (f x)) (within (atreal x) s)) & (!x. has_real_derivative f f1 (atreal x) --> has_real_derivative (%x1. g (f x1)) (f1 * g1 (f x)) (atreal x))
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. has_real_derivative g (g1 x) (atreal x)
     #[2] (∀x. ∀s. has_real_derivative f f1 (within (atreal x) s) ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (within (atreal x) s)) ∧ (∀x. has_real_derivative f f1 (atreal x) ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (atreal x))
-  → apply_forward_step has_real_derivative_chain param_P="(%x::real. true)" param_f=f param_f1=f1 param_g=g param_g1=g1 goal=2
+  → forward has_real_derivative_chain param_P="(%x::real. true)" param_f=f param_f1=f1 param_g=g param_g1=g1 goal=2
     #[3] (∀x. true ⟶ has_real_derivative g (g1 x) (atreal x)) ⟶ (∀x. ∀s. has_real_derivative f f1 (within (atreal x) s) ⟶ true ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (within (atreal x) s)) ∧ (∀x. has_real_derivative f f1 (atreal x) ⟶ true ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (atreal x))
   cut "(∀x. has_real_derivative g (g1 x) (atreal x)) <--> (∀x. true ⟶ has_real_derivative g (g1 x) (atreal x))" goal=2 facts=[1]
     #[4] (∀x. has_real_derivative g (g1 x) (atreal x)) ⟷ (∀x. true ⟶ has_real_derivative g (g1 x) (atreal x))
-  ← apply_backward_step iffI goal=4
+  ← rule iffI goal=4
     #[5] (∀x. has_real_derivative g (g1 x) (atreal x)) ⟶ (∀x. true ⟶ has_real_derivative g (g1 x) (atreal x))
     #[6] (∀x. true ⟶ has_real_derivative g (g1 x) (atreal x)) ⟶ (∀x. has_real_derivative g (g1 x) (atreal x))
-  ← introduction goal=5
+  ← intro goal=5
     #[7] ∀x. true ⟶ has_real_derivative g (g1 x) (atreal x)
-  ← introduction x goal=7
+  ← intro x goal=7
     #[8] _VAR x
     #[9] true
     #[10] has_real_derivative g (g1 x) (atreal x)
   ← apply_prev goal=10 facts=[1]
     #[11] has_real_derivative g (g1 x) (atreal x)
-  ← introduction goal=6
+  ← intro goal=6
     #[12] ∀x. true ⟶ has_real_derivative g (g1 x) (atreal x)
-  → rewrite_fact eq_sym_eq sym=false goal=2 facts=[4]
+  → rewrite target=fact eq_sym_eq sym=false goal=2 facts=[4]
     #[13] (∀x. true ⟶ has_real_derivative g (g1 x) (atreal x)) ⟷ (∀x. has_real_derivative g (g1 x) (atreal x))
-  → rewrite_fact_with_prev goal=2 facts=[13,3]
+  → rewrite target=fact source=prev goal=2 facts=[13,3]
     #[14] (∀x. has_real_derivative g (g1 x) (atreal x)) ⟶ (∀x. ∀s. has_real_derivative f f1 (within (atreal x) s) ⟶ true ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (within (atreal x) s)) ∧ (∀x. has_real_derivative f f1 (atreal x) ⟶ true ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (atreal x))
-  → apply_fact goal=2 facts=[14,1]
+  → forward goal=2 facts=[14,1]
     #[15] (∀x. ∀s. has_real_derivative f f1 (within (atreal x) s) ⟶ true ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (within (atreal x) s)) ∧ (∀x. has_real_derivative f f1 (atreal x) ⟶ true ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (atreal x))
-  ← apply_backward_step conjI goal=2
+  ← rule conjI goal=2
     #[16] ∀x. ∀s. has_real_derivative f f1 (within (atreal x) s) ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (within (atreal x) s)
     #[17] ∀x. has_real_derivative f f1 (atreal x) ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (atreal x)
-  → apply_forward_step conjD1 goal=16 facts=[15]
+  → forward conjD1 goal=16 facts=[15]
     #[18] ∀x. ∀s. has_real_derivative f f1 (within (atreal x) s) ⟶ true ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (within (atreal x) s)
-  → apply_forward_step conjD2 goal=16 facts=[15]
+  → forward conjD2 goal=16 facts=[15]
     #[19] ∀x. has_real_derivative f f1 (atreal x) ⟶ true ⟶ has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (atreal x)
-  ← introduction x,s goal=16
+  ← intro x,s goal=16
     #[20] _VAR s
     #[21] has_real_derivative f f1 (within (atreal x) s)
     #[22] has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (within (atreal x) s)
   ← apply_prev goal=22 facts=[18]
     #[23] true
-  ← apply_backward_step trueI goal=23
+  ← rule trueI goal=23
     #[24] true
-  ← introduction x goal=17
+  ← intro x goal=17
     #[25] has_real_derivative f f1 (atreal x)
     #[26] has_real_derivative (λx1. g (f x1)) (f1 * g1 (f x)) (atreal x)
   ← apply_prev goal=26 facts=[19]
     #[27] true
-  ← apply_backward_step trueI goal=27
+  ← rule trueI goal=27
 qed
 
 theorem real_derivative_unique_atreal
@@ -401,22 +401,22 @@ theorem has_real_derivative_derivative
   prop has_real_derivative f f1 (atreal x) --> real_derivative f x = f1
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (atreal x)
     #[2] real_derivative f x = f1
-  ← rewrite_goal real_derivative_def sym=false goal=2
+  ← rewrite real_derivative_def sym=false goal=2
     #[3] (THE f11. has_real_derivative f f11 (atreal x)) = f1
-  → apply_forward_step theI param_P="(%f11. has_real_derivative f f11 (atreal x))" param_a=f1 goal=3
+  → forward theI param_P="(%f11. has_real_derivative f f11 (atreal x))" param_a=f1 goal=3
     #[4] has_real_derivative f f1 (atreal x) ⟶ (∀x1. has_real_derivative f x1 (atreal x) ⟶ x1 = f1) ⟶ has_real_derivative f (THE x1. has_real_derivative f x1 (atreal x)) (atreal x)
-  → apply_fact goal=3 facts=[4,1]
+  → forward goal=3 facts=[4,1]
     #[5] (∀x1. has_real_derivative f x1 (atreal x) ⟶ x1 = f1) ⟶ has_real_derivative f (THE x1. has_real_derivative f x1 (atreal x)) (atreal x)
   cut "(∀x1. has_real_derivative f x1 (atreal x) ⟶ x1 = f1)" goal=3
     #[6] ∀x1. has_real_derivative f x1 (atreal x) ⟶ x1 = f1
-  ← introduction g goal=6
+  ← intro g goal=6
     #[7] _VAR g
     #[8] has_real_derivative f g (atreal x)
     #[9] g = f1
-  ← apply_backward_step real_derivative_unique_atreal goal=9 facts=[8,1]
+  ← rule real_derivative_unique_atreal goal=9 facts=[8,1]
   ← apply_prev goal=3 facts=[6]
     #[10] has_real_derivative f (THE f1. has_real_derivative f f1 (atreal x)) (atreal x)
   ← apply_prev goal=10 facts=[5]
@@ -426,27 +426,27 @@ theorem has_real_derivative_differentiable
   fixes f :: real => real, x :: real
   prop has_real_derivative f (real_derivative f x) (atreal x) <--> real_differentiable f (atreal x)
 proof
-  ← apply_backward_step iffI goal=0
+  ← rule iffI goal=0
     #[1] has_real_derivative f (real_derivative f x) (atreal x) ⟶ real_differentiable f (atreal x)
     #[2] real_differentiable f (atreal x) ⟶ has_real_derivative f (real_derivative f x) (atreal x)
-  ← introduction goal=1
+  ← intro goal=1
     #[3] has_real_derivative f (real_derivative f x) (atreal x)
     #[4] real_differentiable f (atreal x)
-  ← rewrite_goal real_differentiable_def sym=false goal=4
+  ← rewrite real_differentiable_def sym=false goal=4
     #[5] ∃f1. has_real_derivative f f1 (atreal x)
-  ← apply_backward_step exI goal=5 facts=[3]
-  ← introduction goal=2
+  ← rule exI goal=5 facts=[3]
+  ← intro goal=2
     #[6] real_differentiable f (atreal x)
     #[7] has_real_derivative f (real_derivative f x) (atreal x)
-  → rewrite_fact real_differentiable_def sym=false goal=7 facts=[6]
+  → rewrite target=fact real_differentiable_def sym=false goal=7 facts=[6]
     #[8] ∃f1. has_real_derivative f f1 (atreal x)
-  exists_elim f1 goal=7 facts=[8]
+  elim f1 goal=7 facts=[8]
     #[9] _VAR f1
     #[10] has_real_derivative f f1 (atreal x)
     #[11] has_real_derivative f (real_derivative f x) (atreal x)
-  → apply_forward_step has_real_derivative_derivative goal=11 facts=[10]
+  → forward has_real_derivative_derivative goal=11 facts=[10]
     #[12] real_derivative f x = f1
-  ← rewrite_goal_with_prev goal=11 facts=[12]
+  ← rewrite source=prev goal=11 facts=[12]
 qed
 
 theorem has_real_derivative_lmul_within
@@ -459,12 +459,12 @@ theorem has_real_derivative_rmul_within
   prop has_real_derivative f f1 (within (atreal x) s) --> has_real_derivative (%x1. f x1 * c) (f1 * c) (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (within (atreal x) s)
     #[2] has_real_derivative (λx1. f x1 * c) (f1 * c) (within (atreal x) s)
-  ← rewrite_goal real_mult_comm sym=false goal=2
+  ← rewrite real_mult_comm sym=false goal=2
     #[3] has_real_derivative (λx1. c * f x1) (c * f1) (within (atreal x) s)
-  ← apply_backward_step has_real_derivative_lmul_within goal=3
+  ← rule has_real_derivative_lmul_within goal=3
 qed
 
 theorem has_real_derivative_lmul_atreal
@@ -472,14 +472,14 @@ theorem has_real_derivative_lmul_atreal
   prop has_real_derivative f f1 (atreal x) --> has_real_derivative (%x1. c * f x1) (c * f1) (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (atreal x)
     #[2] has_real_derivative (λx1. c * f x1) (c * f1) (atreal x)
-  ← rewrite_goal withinreal_univ sym=true goal=2
+  ← rewrite withinreal_univ sym=true goal=2
     #[3] has_real_derivative (λx1. c * f x1) (c * f1) (within (atreal x) univ)
-  → rewrite_fact withinreal_univ sym=true goal=3 facts=[1]
+  → rewrite target=fact withinreal_univ sym=true goal=3 facts=[1]
     #[4] has_real_derivative f f1 (within (atreal x) univ)
-  ← apply_backward_step has_real_derivative_lmul_within goal=3
+  ← rule has_real_derivative_lmul_within goal=3
 qed
 
 theorem has_real_derivative_rmul_atreal
@@ -487,12 +487,12 @@ theorem has_real_derivative_rmul_atreal
   prop has_real_derivative f f1 (atreal x) --> has_real_derivative (%x1. f x1 * c) (f1 * c) (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (atreal x)
     #[2] has_real_derivative (λx1. f x1 * c) (f1 * c) (atreal x)
-  ← rewrite_goal real_mult_comm sym=false goal=2
+  ← rewrite real_mult_comm sym=false goal=2
     #[3] has_real_derivative (λx1. c * f x1) (c * f1) (atreal x)
-  ← apply_backward_step has_real_derivative_lmul_atreal goal=3
+  ← rule has_real_derivative_lmul_atreal goal=3
 qed
 
 theorem has_real_derivative_cdiv_within
@@ -500,12 +500,12 @@ theorem has_real_derivative_cdiv_within
   prop has_real_derivative f f1 (within (atreal x) s) --> has_real_derivative (%x1. f x1 / c) (f1 / c) (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (within (atreal x) s)
     #[2] has_real_derivative (λx1. f x1 / c) (f1 / c) (within (atreal x) s)
-  ← rewrite_goal real_divide_def sym=false goal=2
+  ← rewrite real_divide_def sym=false goal=2
     #[3] has_real_derivative (λx1. f x1 * real_inverse c) (f1 * real_inverse c) (within (atreal x) s)
-  ← apply_backward_step has_real_derivative_rmul_within goal=3
+  ← rule has_real_derivative_rmul_within goal=3
 qed
 
 theorem has_real_derivative_cdiv_atreal
@@ -513,12 +513,12 @@ theorem has_real_derivative_cdiv_atreal
   prop has_real_derivative f f1 (atreal x) --> has_real_derivative (%x1. f x1 / c) (f1 / c) (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (atreal x)
     #[2] has_real_derivative (λx1. f x1 / c) (f1 / c) (atreal x)
-  ← rewrite_goal real_divide_def sym=false goal=2
+  ← rewrite real_divide_def sym=false goal=2
     #[3] has_real_derivative (λx1. f x1 * real_inverse c) (f1 * real_inverse c) (atreal x)
-  ← apply_backward_step has_real_derivative_rmul_atreal goal=3
+  ← rule has_real_derivative_rmul_atreal goal=3
 qed
 
 theorem has_real_derivative_id
@@ -526,18 +526,18 @@ theorem has_real_derivative_id
   prop has_real_derivative (%x. x) 1 net
   [hint_backward]
 proof
-  ← rewrite_goal has_real_derivative_def sym=false goal=0
+  ← rewrite has_real_derivative_def sym=false goal=0
     #[1] tendsto_real (λx. real_inverse (x - netlimit net) * (x - (netlimit net + 1 * (x - netlimit net)))) 0 net
-  ← rewrite_goal real_mul_lid sym=false goal=1
+  ← rewrite real_mul_lid sym=false goal=1
     #[2] tendsto_real (λx. real_inverse (x - netlimit net) * (x - (netlimit net + (x - netlimit net)))) 0 net
   cut "!x::real. !a. x-(a+(x-a))=0" goal=2
     #[3] ∀x::real. ∀a. x - (a + (x - a)) = 0
   ← z3 goal=3
-  ← rewrite_goal_with_prev goal=2 facts=[3]
+  ← rewrite source=prev goal=2 facts=[3]
     #[4] tendsto_real (λx. real_inverse (x - netlimit net) * 0) 0 net
-  ← rewrite_goal real_mul_rzero sym=false goal=4
+  ← rewrite real_mul_rzero sym=false goal=4
     #[5] tendsto_real (λx. 0) 0 net
-  ← apply_backward_step reallim_const goal=5
+  ← rule reallim_const goal=5
 qed
 
 theorem real_derivative_id
@@ -545,9 +545,9 @@ theorem real_derivative_id
   prop real_derivative (%x1. x1) x = 1
   [hint_rewrite]
 proof
-  ← apply_backward_step has_real_derivative_derivative goal=0
+  ← rule has_real_derivative_derivative goal=0
     #[1] has_real_derivative (λx1. x1) 1 (atreal x)
-  ← apply_backward_step has_real_derivative_id goal=1
+  ← rule has_real_derivative_id goal=1
 qed
 
 theorem has_real_derivative_const
@@ -555,19 +555,19 @@ theorem has_real_derivative_const
   prop has_real_derivative (%x. c) 0 net
   [hint_backward]
 proof
-  ← rewrite_goal has_real_derivative_def sym=false goal=0
+  ← rewrite has_real_derivative_def sym=false goal=0
     #[1] tendsto_real (λx. real_inverse (x - netlimit net) * (c - (c + 0 * (x - netlimit net)))) 0 net
-  ← rewrite_goal real_mul_lzero sym=false goal=1
+  ← rewrite real_mul_lzero sym=false goal=1
     #[2] tendsto_real (λx. real_inverse (x - netlimit net) * (c - (c + 0))) 0 net
-  ← rewrite_goal real_add_rid sym=false goal=2
+  ← rewrite real_add_rid sym=false goal=2
     #[3] tendsto_real (λx. real_inverse (x - netlimit net) * (c - c)) 0 net
-  ← rewrite_goal real_minus_def sym=false goal=3
+  ← rewrite real_minus_def sym=false goal=3
     #[4] tendsto_real (λx. real_inverse (x + -(netlimit net)) * (c + -c)) 0 net
-  ← rewrite_goal real_add_rinv sym=false goal=4
+  ← rewrite real_add_rinv sym=false goal=4
     #[5] tendsto_real (λx. real_inverse (x + -(netlimit net)) * 0) 0 net
-  ← rewrite_goal real_mul_rzero sym=false goal=5
+  ← rewrite real_mul_rzero sym=false goal=5
     #[6] tendsto_real (λx. 0) 0 net
-  ← apply_backward_step reallim_const goal=6
+  ← rule reallim_const goal=6
 qed
 
 theorem real_derivative_const
@@ -575,9 +575,9 @@ theorem real_derivative_const
   prop real_derivative (%x1. c) x = 0
   [hint_rewrite]
 proof
-  ← apply_backward_step has_real_derivative_derivative goal=0
+  ← rule has_real_derivative_derivative goal=0
     #[1] has_real_derivative (λx1. c) 0 (atreal x)
-  ← apply_backward_step has_real_derivative_const goal=1
+  ← rule has_real_derivative_const goal=1
 qed
 
 theorem has_real_derivative_neg
@@ -585,22 +585,22 @@ theorem has_real_derivative_neg
   prop has_real_derivative f f1 net --> has_real_derivative (%x. -(f x)) (-f1) net
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 net
     #[2] has_real_derivative (λx. -(f x)) (-f1) net
-  ← rewrite_goal has_real_derivative_def sym=false goal=2
+  ← rewrite has_real_derivative_def sym=false goal=2
     #[3] tendsto_real (λx. real_inverse (x - netlimit net) * (-(f x) - (-(f (netlimit net)) + -f1 * (x - netlimit net)))) 0 net
-  → rewrite_fact has_real_derivative_def sym=false goal=3 facts=[1]
+  → rewrite target=fact has_real_derivative_def sym=false goal=3 facts=[1]
     #[4] tendsto_real (λx. real_inverse (x - netlimit net) * (f x - (f (netlimit net) + f1 * (x - netlimit net)))) 0 net
-  → rewrite_fact reallim_neg_eq sym=true goal=3 facts=[4]
+  → rewrite target=fact reallim_neg_eq sym=true goal=3 facts=[4]
     #[5] tendsto_real (λx. -(real_inverse (x - netlimit net) * (f x - (f (netlimit net) + f1 * (x - netlimit net))))) (-0) net
   cut "!a::real. !b. !c. !d. !e. a * (-b - (-c + -d * e)) = -(a * (b - (c + d * e)))" goal=3
     #[6] ∀a::real. ∀b. ∀c. ∀d. ∀e. a * (-b - (-c + -d * e)) = -(a * (b - (c + d * e)))
   ← z3 goal=6
     #[7] ∀a::real. ∀b. ∀c. ∀d. ∀e. a * (-b - (-c + -d * e)) = -(a * (b - (c + d * e)))
-  ← rewrite_goal_with_prev goal=3 facts=[7]
+  ← rewrite source=prev goal=3 facts=[7]
     #[8] tendsto_real (λx. -(real_inverse (x - netlimit net) * (f x - (f (netlimit net) + f1 * (x - netlimit net))))) 0 net
-  → rewrite_fact real_neg_0 sym=false goal=8 facts=[5]
+  → rewrite target=fact real_neg_0 sym=false goal=8 facts=[5]
 qed
 
 theorem real_derivative_neg
@@ -616,27 +616,27 @@ theorem has_real_derivative_add
   prop has_real_derivative f f1 net --> has_real_derivative g g1 net --> has_real_derivative (%x. f x + g x) (f1 + g1) net
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 net
     #[2] has_real_derivative g g1 net
     #[3] has_real_derivative (λx. f x + g x) (f1 + g1) net
-  ← rewrite_goal has_real_derivative_def sym=false goal=3
+  ← rewrite has_real_derivative_def sym=false goal=3
     #[4] tendsto_real (λx. real_inverse (x - netlimit net) * (f x + g x - (f (netlimit net) + g (netlimit net) + (f1 + g1) * (x - netlimit net)))) 0 net
-  → rewrite_fact has_real_derivative_def sym=false goal=4 facts=[1]
+  → rewrite target=fact has_real_derivative_def sym=false goal=4 facts=[1]
     #[5] tendsto_real (λx. real_inverse (x - netlimit net) * (f x - (f (netlimit net) + f1 * (x - netlimit net)))) 0 net
-  → rewrite_fact has_real_derivative_def sym=false goal=4 facts=[2]
+  → rewrite target=fact has_real_derivative_def sym=false goal=4 facts=[2]
     #[6] tendsto_real (λx. real_inverse (x - netlimit net) * (g x - (g (netlimit net) + g1 * (x - netlimit net)))) 0 net
-  → apply_forward_step reallim_add goal=4 facts=[5,6]
+  → forward reallim_add goal=4 facts=[5,6]
     #[7] tendsto_real (λx. real_inverse (x - netlimit net) * (f x - (f (netlimit net) + f1 * (x - netlimit net))) + real_inverse (x - netlimit net) * (g x - (g (netlimit net) + g1 * (x - netlimit net)))) (0 + 0) net
   cut "!a::real. !b. !c. !d. !e. !f. !g. !h. (a-(b+c*(d-e)))+(f-(g+h*(d-e)))=(a+f)-((b+g)+(c +h) *(d-e))" goal=4
     #[8] ∀a::real. ∀b. ∀c. ∀d. ∀e. ∀f. ∀g. ∀h. a - (b + c * (d - e)) + (f - (g + h * (d - e))) = a + f - (b + g + (c + h) * (d - e))
   ← z3 goal=8
     #[9] ∀a::real. ∀b. ∀c. ∀d. ∀e. ∀f. ∀g. ∀h. a - (b + c * (d - e)) + (f - (g + h * (d - e))) = a + f - (b + g + (c + h) * (d - e))
-  → rewrite_fact real_add_ldistrib sym=true goal=4 facts=[7]
+  → rewrite target=fact real_add_ldistrib sym=true goal=4 facts=[7]
     #[10] tendsto_real (λx. real_inverse (x - netlimit net) * (f x - (f (netlimit net) + f1 * (x - netlimit net)) + (g x - (g (netlimit net) + g1 * (x - netlimit net))))) (0 + 0) net
-  → rewrite_fact_with_prev goal=4 facts=[9,10]
+  → rewrite target=fact source=prev goal=4 facts=[9,10]
     #[11] tendsto_real (λx. real_inverse (x - netlimit net) * (f x + g x - (f (netlimit net) + g (netlimit net) + (f1 + g1) * (x - netlimit net)))) (0 + 0) net
-  → rewrite_fact real_add_lid sym=false goal=4 facts=[11]
+  → rewrite target=fact real_add_lid sym=false goal=4 facts=[11]
 qed
 
 theorem real_derivative_add
@@ -648,15 +648,15 @@ theorem has_real_derivative_sub
   prop has_real_derivative f f1 net --> has_real_derivative g g1 net --> has_real_derivative (%x. f x - g x) (f1 - g1) net
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 net
     #[2] has_real_derivative g g1 net
     #[3] has_real_derivative (λx. f x - g x) (f1 - g1) net
-  ← rewrite_goal real_minus_def sym=false goal=3
+  ← rewrite real_minus_def sym=false goal=3
     #[4] has_real_derivative (λx. f x + -(g x)) (f1 + -g1) net
-  ← apply_backward_step has_real_derivative_add goal=4
+  ← rule has_real_derivative_add goal=4
     #[5] has_real_derivative (λx. -(g x)) (-g1) net
-  ← apply_backward_step has_real_derivative_neg goal=5
+  ← rule has_real_derivative_neg goal=5
 qed
 
 theorem real_derivative_sub
@@ -673,17 +673,17 @@ theorem has_real_derivative_mul_atreal
   prop has_real_derivative f f1 (atreal x) --> has_real_derivative g g1 (atreal x) --> has_real_derivative (%x1. f x1 * g x1) (f x * g1 + f1 * g x) (atreal x)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (atreal x)
     #[2] has_real_derivative g g1 (atreal x)
     #[3] has_real_derivative (λx1. f x1 * g x1) (f x * g1 + f1 * g x) (atreal x)
-  ← rewrite_goal withinreal_univ sym=true goal=3
+  ← rewrite withinreal_univ sym=true goal=3
     #[4] has_real_derivative (λx1. f x1 * g x1) (f x * g1 + f1 * g x) (within (atreal x) univ)
-  → rewrite_fact withinreal_univ sym=true goal=4 facts=[1]
+  → rewrite target=fact withinreal_univ sym=true goal=4 facts=[1]
     #[5] has_real_derivative f f1 (within (atreal x) univ)
-  → rewrite_fact withinreal_univ sym=true goal=4 facts=[2]
+  → rewrite target=fact withinreal_univ sym=true goal=4 facts=[2]
     #[6] has_real_derivative g g1 (within (atreal x) univ)
-  ← apply_backward_step has_real_derivative_mul_within goal=4 facts=[5,6]
+  ← rule has_real_derivative_mul_within goal=4 facts=[5,6]
 qed
 
 theorem real_derivative_mul
@@ -695,88 +695,88 @@ theorem has_real_derivative_pow_within
   prop has_real_derivative f f1 (within (atreal x) s) --> has_real_derivative (%x1. f x1 ^ n) (of_nat n * f x ^ (n - 1) * f1) (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (within (atreal x) s)
     #[2] has_real_derivative (λx1. f x1 ^ n) (of_nat n * f x ^ (n - 1) * f1) (within (atreal x) s)
-  ← induction n nat_induct goal=2
+  ← induct n nat_induct goal=2
     #[3] has_real_derivative (λx1. f x1 ^ (0::nat)) (of_nat 0 * f x ^ ((0::nat) - 1) * f1) (within (atreal x) s)
     #[4] ∀n. has_real_derivative (λx1. f x1 ^ n) (of_nat n * f x ^ (n - 1) * f1) (within (atreal x) s) ⟶ has_real_derivative (λx1. f x1 ^ Suc n) (of_nat (Suc n) * f x ^ (Suc n - 1) * f1) (within (atreal x) s)
-  ← rewrite_goal real_zero_def sym=true goal=3
+  ← rewrite real_zero_def sym=true goal=3
     #[5] has_real_derivative (λx1. f x1 ^ (0::nat)) (0 * f x ^ ((0::nat) - 1) * f1) (within (atreal x) s)
-  ← rewrite_goal real_mul_lzero sym=false goal=5
+  ← rewrite real_mul_lzero sym=false goal=5
     #[6] has_real_derivative (λx1. f x1 ^ (0::nat)) (0 * f1) (within (atreal x) s)
-  ← rewrite_goal real_mul_lzero sym=false goal=6
+  ← rewrite real_mul_lzero sym=false goal=6
     #[7] has_real_derivative (λx1. f x1 ^ (0::nat)) 0 (within (atreal x) s)
-  ← rewrite_goal real_nat_power_def_1 sym=false goal=7
+  ← rewrite real_nat_power_def_1 sym=false goal=7
     #[8] has_real_derivative (λx1. 1) 0 (within (atreal x) s)
-  ← apply_backward_step has_real_derivative_const goal=8
+  ← rule has_real_derivative_const goal=8
     #[9] has_real_derivative (λx1. 1) 0 (within (atreal x) s)
-  ← introduction n goal=4
+  ← intro n goal=4
     #[10] _VAR n
     #[11] has_real_derivative (λx1. f x1 ^ n) (of_nat n * f x ^ (n - 1) * f1) (within (atreal x) s)
     #[12] has_real_derivative (λx1. f x1 ^ Suc n) (of_nat (Suc n) * f x ^ (Suc n - 1) * f1) (within (atreal x) s)
-  ← rewrite_goal real_nat_power_def_2 sym=false goal=12
+  ← rewrite real_nat_power_def_2 sym=false goal=12
     #[13] has_real_derivative (λx1. f x1 * f x1 ^ n) (of_nat (Suc n) * f x ^ (Suc n - 1) * f1) (within (atreal x) s)
-  → apply_forward_step has_real_derivative_mul_within goal=13 facts=[1,11]
+  → forward has_real_derivative_mul_within goal=13 facts=[1,11]
     #[14] has_real_derivative (λx1. f x1 * f x1 ^ n) (f x * (of_nat n * f x ^ (n - 1) * f1) + f1 * f x ^ n) (within (atreal x) s)
-  ← rewrite_goal suc_sub1 sym=false goal=13
+  ← rewrite suc_sub1 sym=false goal=13
     #[15] has_real_derivative (λx1. f x1 * f x1 ^ n) (of_nat (Suc n) * f x ^ n * f1) (within (atreal x) s)
   cut "!a::real. !b. !c. !d. a * (b * c *d) = b * (a * c) * d" goal=15
     #[16] ∀a::real. ∀b. ∀c. ∀d. a * (b * c * d) = b * (a * c) * d
   ← z3 goal=16
     #[17] ∀a::real. ∀b. ∀c. ∀d. a * (b * c * d) = b * (a * c) * d
-  → rewrite_fact_with_prev goal=15 facts=[17,14]
+  → rewrite target=fact source=prev goal=15 facts=[17,14]
     #[18] has_real_derivative (λx1. f x1 * f x1 ^ n) (of_nat n * (f x * f x ^ (n - 1)) * f1 + f1 * f x ^ n) (within (atreal x) s)
-  → rewrite_fact real_nat_power_def_2 sym=true goal=15 facts=[18]
+  → rewrite target=fact real_nat_power_def_2 sym=true goal=15 facts=[18]
     #[19] has_real_derivative (λx1. f x1 ^ Suc n) (of_nat n * f x ^ Suc (n - 1) * f1 + f1 * f x ^ n) (within (atreal x) s)
   ← cases "n=0" goal=15
     #[20] n = 0 ⟶ has_real_derivative (λx1. f x1 * f x1 ^ n) (of_nat (Suc n) * f x ^ n * f1) (within (atreal x) s)
     #[21] ¬(n = 0) ⟶ has_real_derivative (λx1. f x1 * f x1 ^ n) (of_nat (Suc n) * f x ^ n * f1) (within (atreal x) s)
-  ← introduction goal=20
+  ← intro goal=20
     #[22] n = 0
     #[23] has_real_derivative (λx1. f x1 * f x1 ^ n) (of_nat (Suc n) * f x ^ n * f1) (within (atreal x) s)
-  ← rewrite_goal_with_prev goal=23 facts=[22]
+  ← rewrite source=prev goal=23 facts=[22]
     #[24] has_real_derivative (λx1. f x1 * f x1 ^ (0::nat)) (of_nat (Suc 0) * f x ^ (0::nat) * f1) (within (atreal x) s)
-  ← rewrite_goal real_nat_power_def_1 sym=false goal=24
+  ← rewrite real_nat_power_def_1 sym=false goal=24
     #[25] has_real_derivative (λx1. f x1 * 1) (of_nat (Suc 0) * 1 * f1) (within (atreal x) s)
-  ← rewrite_goal nat_one_def sym=true goal=25
+  ← rewrite nat_one_def sym=true goal=25
     #[26] has_real_derivative (λx1. f x1 * 1) (of_nat 1 * 1 * f1) (within (atreal x) s)
-  ← rewrite_goal real_one_def sym=true goal=26
+  ← rewrite real_one_def sym=true goal=26
     #[27] has_real_derivative (λx1. f x1 * 1) (1 * 1 * f1) (within (atreal x) s)
-  ← rewrite_goal real_mul_lid sym=false goal=27
+  ← rewrite real_mul_lid sym=false goal=27
     #[28] has_real_derivative (λx1. f x1 * 1) (1 * f1) (within (atreal x) s)
-  ← rewrite_goal real_mul_lid sym=false goal=28
+  ← rewrite real_mul_lid sym=false goal=28
     #[29] has_real_derivative (λx1. f x1 * 1) f1 (within (atreal x) s)
-  ← rewrite_goal real_mult_comm sym=false goal=29
+  ← rewrite real_mult_comm sym=false goal=29
     #[30] has_real_derivative (λx1. 1 * f x1) f1 (within (atreal x) s)
-  ← rewrite_goal real_mul_lid sym=false goal=30
+  ← rewrite real_mul_lid sym=false goal=30
     #[31] has_real_derivative (λx1. f x1) f1 (within (atreal x) s)
-  ← rewrite_goal eta_conversion sym=false goal=31
-  ← introduction goal=21
+  ← rewrite eta_conversion sym=false goal=31
+  ← intro goal=21
     #[32] ¬(n = 0)
     #[33] has_real_derivative (λx1. f x1 * f x1 ^ n) (of_nat (Suc n) * f x ^ n * f1) (within (atreal x) s)
   cut "Suc (n-1) = n" goal=33
     #[34] Suc (n - 1) = n
-  ← rewrite_goal add_1_right sym=true goal=34
+  ← rewrite add_1_right sym=true goal=34
     #[35] n - 1 + 1 = n
-  ← apply_backward_step sub_add goal=35
+  ← rule sub_add goal=35
     #[36] 1 ≤ n
-  ← apply_backward_step le_1_2 goal=36
-  → rewrite_fact_with_prev goal=33 facts=[34,19]
+  ← rule le_1_2 goal=36
+  → rewrite target=fact source=prev goal=33 facts=[34,19]
     #[37] has_real_derivative (λx1. f x1 ^ Suc n) (of_nat n * f x ^ n * f1 + f1 * f x ^ n) (within (atreal x) s)
   cut "!a::real. !b. !c. a * b * c + c * b = (a +1) * b * c" goal=33
     #[38] ∀a::real. ∀b. ∀c. a * b * c + c * b = (a + 1) * b * c
   ← z3 goal=38
     #[39] ∀a::real. ∀b. ∀c. a * b * c + c * b = (a + 1) * b * c
-  → rewrite_fact_with_prev goal=33 facts=[39,37]
+  → rewrite target=fact source=prev goal=33 facts=[39,37]
     #[40] has_real_derivative (λx1. f x1 ^ Suc n) ((of_nat n + 1) * f x ^ n * f1) (within (atreal x) s)
-  → rewrite_fact real_one_def sym=false goal=33 facts=[40]
+  → rewrite target=fact real_one_def sym=false goal=33 facts=[40]
     #[41] has_real_derivative (λx1. f x1 ^ Suc n) ((of_nat n + of_nat 1) * f x ^ n * f1) (within (atreal x) s)
-  ← rewrite_goal add_1_right sym=true goal=33
+  ← rewrite add_1_right sym=true goal=33
     #[42] has_real_derivative (λx1. f x1 * f x1 ^ n) (of_nat (n + 1) * f x ^ n * f1) (within (atreal x) s)
-  → rewrite_fact real_of_nat_add sym=false goal=42 facts=[41]
+  → rewrite target=fact real_of_nat_add sym=false goal=42 facts=[41]
     #[43] has_real_derivative (λx1. f x1 ^ Suc n) (of_nat (n + 1) * f x ^ n * f1) (within (atreal x) s)
-  → rewrite_fact real_nat_power_def_2 sym=false goal=42 facts=[43]
+  → rewrite target=fact real_nat_power_def_2 sym=false goal=42 facts=[43]
 qed
 
 theorem has_real_derivative_pow_atreal
@@ -784,14 +784,14 @@ theorem has_real_derivative_pow_atreal
   prop has_real_derivative f f1 (atreal x) --> has_real_derivative (%x1. f x1 ^ n) (of_nat n * f x ^ (n - 1) * f1) (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (atreal x)
     #[2] has_real_derivative (λx1. f x1 ^ n) (of_nat n * f x ^ (n - 1) * f1) (atreal x)
-  ← rewrite_goal withinreal_univ sym=true goal=2
+  ← rewrite withinreal_univ sym=true goal=2
     #[3] has_real_derivative (λx1. f x1 ^ n) (of_nat n * f x ^ (n - 1) * f1) (within (atreal x) univ)
-  → rewrite_fact withinreal_univ sym=true goal=3 facts=[1]
+  → rewrite target=fact withinreal_univ sym=true goal=3 facts=[1]
     #[4] has_real_derivative f f1 (within (atreal x) univ)
-  ← apply_backward_step has_real_derivative_pow_within goal=3
+  ← rule has_real_derivative_pow_within goal=3
 qed
 
 theorem real_derivative_pow
@@ -808,23 +808,23 @@ theorem has_real_derivative_inv_within
   prop has_real_derivative f f1 (within (atreal x) s) --> ~(f x = 0) --> has_real_derivative (%x1. real_inverse (f x1)) (-f1 / f x ^ (2::nat)) (within (atreal x) s)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (within (atreal x) s)
     #[2] ¬(f x = 0)
     #[3] has_real_derivative (λx1. real_inverse (f x1)) (-f1 / f x ^ (2::nat)) (within (atreal x) s)
-  ← rewrite_goal real_divide_def sym=false goal=3
+  ← rewrite real_divide_def sym=false goal=3
     #[4] has_real_derivative (λx1. real_inverse (f x1)) (-f1 * real_inverse (f x ^ (2::nat))) (within (atreal x) s)
-  ← rewrite_goal real_mult_comm sym=false goal=4
+  ← rewrite real_mult_comm sym=false goal=4
     #[5] has_real_derivative (λx1. real_inverse (f x1)) (real_inverse (f x ^ (2::nat)) * -f1) (within (atreal x) s)
-  ← rewrite_goal real_mul_rneg sym=false goal=5
+  ← rewrite real_mul_rneg sym=false goal=5
     #[6] has_real_derivative (λx1. real_inverse (f x1)) (-(real_inverse (f x ^ (2::nat)) * f1)) (within (atreal x) s)
-  ← rewrite_goal real_mul_lneg sym=true goal=6
+  ← rewrite real_mul_lneg sym=true goal=6
     #[7] has_real_derivative (λx1. real_inverse (f x1)) (-(real_inverse (f x ^ (2::nat))) * f1) (within (atreal x) s)
-  ← apply_backward_step real_diff_chain_within goal=7
+  ← rule real_diff_chain_within goal=7
     #[8] has_real_derivative real_inverse (-(real_inverse (f x ^ (2::nat)))) (within (atreal (f x)) (image f s))
-  ← apply_backward_step has_real_derivative_atreal_within goal=8
+  ← rule has_real_derivative_atreal_within goal=8
     #[9] has_real_derivative real_inverse (-(real_inverse (f x ^ (2::nat)))) (atreal (f x))
-  ← apply_backward_step has_real_derivative_inv_basic goal=9
+  ← rule has_real_derivative_inv_basic goal=9
 qed
 
 theorem has_real_derivative_inv_atreal
@@ -832,15 +832,15 @@ theorem has_real_derivative_inv_atreal
   prop has_real_derivative f f1 (atreal x) --> ~(f x = 0) --> has_real_derivative (%x1. real_inverse (f x1)) (-f1 / f x ^ (2::nat)) (atreal x)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (atreal x)
     #[2] ¬(f x = 0)
     #[3] has_real_derivative (λx1. real_inverse (f x1)) (-f1 / f x ^ (2::nat)) (atreal x)
-  ← rewrite_goal withinreal_univ sym=true goal=3
+  ← rewrite withinreal_univ sym=true goal=3
     #[4] has_real_derivative (λx1. real_inverse (f x1)) (-f1 / f x ^ (2::nat)) (within (atreal x) univ)
-  → rewrite_fact withinreal_univ sym=true goal=4 facts=[1]
+  → rewrite target=fact withinreal_univ sym=true goal=4 facts=[1]
     #[5] has_real_derivative f f1 (within (atreal x) univ)
-  ← apply_backward_step has_real_derivative_inv_within goal=4
+  ← rule has_real_derivative_inv_within goal=4
 qed
 
 theorem has_real_derivative_div_within
@@ -848,28 +848,28 @@ theorem has_real_derivative_div_within
   prop has_real_derivative f f1 (within (atreal x) s) --> has_real_derivative g g1 (within (atreal x) s) --> ~(g x = 0) --> has_real_derivative (%x1. f x1 / g x1) ((f1 * g x - f x * g1) / g x ^ (2::nat)) (within (atreal x) s)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (within (atreal x) s)
     #[2] has_real_derivative g g1 (within (atreal x) s)
     #[3] ¬(g x = 0)
     #[4] has_real_derivative (λx1. f x1 / g x1) ((f1 * g x - f x * g1) / g x ^ (2::nat)) (within (atreal x) s)
-  → apply_forward_step has_real_derivative_inv_within goal=4 facts=[2,3]
+  → forward has_real_derivative_inv_within goal=4 facts=[2,3]
     #[5] has_real_derivative (λx1. real_inverse (g x1)) (-g1 / g x ^ (2::nat)) (within (atreal x) s)
-  → apply_forward_step has_real_derivative_mul_within goal=4 facts=[1,5]
+  → forward has_real_derivative_mul_within goal=4 facts=[1,5]
     #[6] has_real_derivative (λx1. f x1 * real_inverse (g x1)) (f x * (-g1 / g x ^ (2::nat)) + f1 * real_inverse (g x)) (within (atreal x) s)
-  ← rewrite_goal real_divide_def sym=false goal=4
+  ← rewrite real_divide_def sym=false goal=4
     #[7] has_real_derivative (λx1. f x1 * real_inverse (g x1)) ((f1 * g x - f x * g1) * real_inverse (g x ^ (2::nat))) (within (atreal x) s)
-  → rewrite_fact real_divide_def sym=false goal=7 facts=[6]
+  → rewrite target=fact real_divide_def sym=false goal=7 facts=[6]
     #[8] has_real_derivative (λx1. f x1 * real_inverse (g x1)) (f x * (-g1 * real_inverse (g x ^ (2::nat))) + f1 * real_inverse (g x)) (within (atreal x) s)
-  ← rewrite_goal real_pow_2 sym=false goal=7
+  ← rewrite real_pow_2 sym=false goal=7
     #[9] has_real_derivative (λx1. f x1 * real_inverse (g x1)) ((f1 * g x - f x * g1) * real_inverse (g x * g x)) (within (atreal x) s)
-  → rewrite_fact real_pow_2 sym=false goal=9 facts=[8]
+  → rewrite target=fact real_pow_2 sym=false goal=9 facts=[8]
     #[10] has_real_derivative (λx1. f x1 * real_inverse (g x1)) (f x * (-g1 * real_inverse (g x * g x)) + f1 * real_inverse (g x)) (within (atreal x) s)
   cut "(f x * (-g1 * real_inverse (g x * g x)) + f1 * real_inverse (g x)) = ((f1 * g x - f x * g1) * real_inverse (g x * g x))" goal=9 facts=[10]
     #[11] f x * (-g1 * real_inverse (g x * g x)) + f1 * real_inverse (g x) = (f1 * g x - f x * g1) * real_inverse (g x * g x)
   ← z3 goal=11 facts=[3]
     #[12] f x * (-g1 * real_inverse (g x * g x)) + f1 * real_inverse (g x) = (f1 * g x - f x * g1) * real_inverse (g x * g x)
-  → rewrite_fact_with_prev goal=9 facts=[12,10]
+  → rewrite target=fact source=prev goal=9 facts=[12,10]
 qed
 
 theorem has_real_derivative_div_atreal
@@ -877,18 +877,18 @@ theorem has_real_derivative_div_atreal
   prop has_real_derivative f f1 (atreal x) --> has_real_derivative g g1 (atreal x) --> ~(g x = 0) --> has_real_derivative (%x1. f x1 / g x1) ((f1 * g x - f x * g1) / g x ^ (2::nat)) (atreal x)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] has_real_derivative f f1 (atreal x)
     #[2] has_real_derivative g g1 (atreal x)
     #[3] ¬(g x = 0)
     #[4] has_real_derivative (λx1. f x1 / g x1) ((f1 * g x - f x * g1) / g x ^ (2::nat)) (atreal x)
-  ← rewrite_goal withinreal_univ sym=true goal=4
+  ← rewrite withinreal_univ sym=true goal=4
     #[5] has_real_derivative (λx1. f x1 / g x1) ((f1 * g x - f x * g1) / g x ^ (2::nat)) (within (atreal x) univ)
-  → rewrite_fact withinreal_univ sym=true goal=5 facts=[1]
+  → rewrite target=fact withinreal_univ sym=true goal=5 facts=[1]
     #[6] has_real_derivative f f1 (within (atreal x) univ)
-  → rewrite_fact withinreal_univ sym=true goal=5 facts=[2]
+  → rewrite target=fact withinreal_univ sym=true goal=5 facts=[2]
     #[7] has_real_derivative g g1 (within (atreal x) univ)
-  ← apply_backward_step has_real_derivative_div_within goal=5
+  ← rule has_real_derivative_div_within goal=5
 qed
 
 theorem real_derivative_div_atreal
@@ -905,11 +905,11 @@ theorem real_differentiable_const
   prop real_differentiable (%x. c) net
   [hint_backward]
 proof
-  ← rewrite_goal real_differentiable_def sym=false goal=0
+  ← rewrite real_differentiable_def sym=false goal=0
     #[1] ∃f1. has_real_derivative (λx. c) f1 net
-  ← inst_exists_goal "(0::real)" goal=1
+  ← inst "(0::real)" goal=1
     #[2] has_real_derivative (λx. c) 0 net
-  ← apply_backward_step has_real_derivative_const goal=2
+  ← rule has_real_derivative_const goal=2
 qed
 
 theorem real_differentiable_id
@@ -917,11 +917,11 @@ theorem real_differentiable_id
   prop real_differentiable (%x. x) net
   [hint_backward]
 proof
-  ← rewrite_goal real_differentiable_def sym=false goal=0
+  ← rewrite real_differentiable_def sym=false goal=0
     #[1] ∃f1. has_real_derivative (λx. x) f1 net
-  ← inst_exists_goal "(1::real)" goal=1
+  ← inst "(1::real)" goal=1
     #[2] has_real_derivative (λx. x) 1 net
-  ← apply_backward_step has_real_derivative_id goal=2
+  ← rule has_real_derivative_id goal=2
 qed
 
 theorem real_differentiable_uminus
@@ -933,21 +933,21 @@ theorem real_differentiable_neg
   prop real_differentiable f net --> real_differentiable (%x. -(f x)) net
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f net
     #[2] real_differentiable (λx. -(f x)) net
-  ← rewrite_goal real_differentiable_def sym=false goal=2
+  ← rewrite real_differentiable_def sym=false goal=2
     #[3] ∃f1. has_real_derivative (λx. -(f x)) f1 net
-  → rewrite_fact real_differentiable_def sym=false goal=3 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=3 facts=[1]
     #[4] ∃f1. has_real_derivative f f1 net
-  exists_elim f1 goal=3 facts=[4]
+  elim f1 goal=3 facts=[4]
     #[5] _VAR f1
     #[6] has_real_derivative f f1 net
     #[7] ∃f1. has_real_derivative (λx. -(f x)) f1 net
     #[8] real_differentiable (λx. -(f x)) net
-  ← inst_exists_goal -f1 goal=7
+  ← inst -f1 goal=7
     #[9] has_real_derivative (λx. -(f x)) (-f1) net
-  ← apply_backward_step has_real_derivative_neg goal=9
+  ← rule has_real_derivative_neg goal=9
 qed
 
 theorem real_differentiable_add
@@ -955,29 +955,29 @@ theorem real_differentiable_add
   prop real_differentiable f net --> real_differentiable g net --> real_differentiable (%x. f x + g x) net
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f net
     #[2] real_differentiable g net
     #[3] real_differentiable (λx. f x + g x) net
-  ← rewrite_goal real_differentiable_def sym=false goal=3
+  ← rewrite real_differentiable_def sym=false goal=3
     #[4] ∃f1. has_real_derivative (λx. f x + g x) f1 net
-  → rewrite_fact real_differentiable_def sym=false goal=4 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=4 facts=[1]
     #[5] ∃f1. has_real_derivative f f1 net
-  → rewrite_fact real_differentiable_def sym=false goal=4 facts=[2]
+  → rewrite target=fact real_differentiable_def sym=false goal=4 facts=[2]
     #[6] ∃f1. has_real_derivative g f1 net
-  exists_elim f1 goal=4 facts=[5]
+  elim f1 goal=4 facts=[5]
     #[7] _VAR f1
     #[8] has_real_derivative f f1 net
     #[9] ∃f1. has_real_derivative (λx. f x + g x) f1 net
     #[10] real_differentiable (λx. f x + g x) net
-  exists_elim g1 goal=9 facts=[6]
+  elim g1 goal=9 facts=[6]
     #[11] _VAR g1
     #[12] has_real_derivative g g1 net
     #[13] ∃f1. has_real_derivative (λx. f x + g x) f1 net
     #[14] real_differentiable (λx. f x + g x) net
-  ← apply_backward_step exI param_a=f1+g1 goal=13
+  ← rule exI param_a=f1+g1 goal=13
     #[15] has_real_derivative (λx. f x + g x) (f1 + g1) net
-  ← apply_backward_step has_real_derivative_add goal=15
+  ← rule has_real_derivative_add goal=15
 qed
 
 theorem real_differentiable_sub
@@ -985,15 +985,15 @@ theorem real_differentiable_sub
   prop real_differentiable f net --> real_differentiable g net --> real_differentiable (%x. f x - g x) net
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f net
     #[2] real_differentiable g net
     #[3] real_differentiable (λx. f x - g x) net
-  ← rewrite_goal real_minus_def sym=false goal=3
+  ← rewrite real_minus_def sym=false goal=3
     #[4] real_differentiable (λx. f x + -(g x)) net
-  ← apply_backward_step real_differentiable_add goal=4
+  ← rule real_differentiable_add goal=4
     #[5] real_differentiable (λx. -(g x)) net
-  ← apply_backward_step real_differentiable_neg goal=5
+  ← rule real_differentiable_neg goal=5
 qed
 
 theorem real_differentiable_mul_within
@@ -1001,29 +1001,29 @@ theorem real_differentiable_mul_within
   prop real_differentiable f (within (atreal x) s) --> real_differentiable g (within (atreal x) s) --> real_differentiable (%x1. f x1 * g x1) (within (atreal x) s)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f (within (atreal x) s)
     #[2] real_differentiable g (within (atreal x) s)
     #[3] real_differentiable (λx1. f x1 * g x1) (within (atreal x) s)
-  ← rewrite_goal real_differentiable_def sym=false goal=3
+  ← rewrite real_differentiable_def sym=false goal=3
     #[4] ∃f1. has_real_derivative (λx1. f x1 * g x1) f1 (within (atreal x) s)
-  → rewrite_fact real_differentiable_def sym=false goal=4 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=4 facts=[1]
     #[5] ∃f1. has_real_derivative f f1 (within (atreal x) s)
-  → rewrite_fact real_differentiable_def sym=false goal=4 facts=[2]
+  → rewrite target=fact real_differentiable_def sym=false goal=4 facts=[2]
     #[6] ∃f1. has_real_derivative g f1 (within (atreal x) s)
-  exists_elim f1 goal=4 facts=[5]
+  elim f1 goal=4 facts=[5]
     #[7] _VAR f1
     #[8] has_real_derivative f f1 (within (atreal x) s)
     #[9] ∃f1. has_real_derivative (λx1. f x1 * g x1) f1 (within (atreal x) s)
     #[10] real_differentiable (λx1. f x1 * g x1) (within (atreal x) s)
-  exists_elim g1 goal=9 facts=[6]
+  elim g1 goal=9 facts=[6]
     #[11] _VAR g1
     #[12] has_real_derivative g g1 (within (atreal x) s)
     #[13] ∃f1. has_real_derivative (λx1. f x1 * g x1) f1 (within (atreal x) s)
     #[14] real_differentiable (λx1. f x1 * g x1) (within (atreal x) s)
-  ← inst_exists_goal "f x * g1 + f1 * g x" goal=13
+  ← inst "f x * g1 + f1 * g x" goal=13
     #[15] has_real_derivative (λx1. f x1 * g x1) (f x * g1 + f1 * g x) (within (atreal x) s)
-  ← apply_backward_step has_real_derivative_mul_within goal=15
+  ← rule has_real_derivative_mul_within goal=15
 qed
 
 theorem real_differentiable_mul_atreal
@@ -1031,29 +1031,29 @@ theorem real_differentiable_mul_atreal
   prop real_differentiable f (atreal x) --> real_differentiable g (atreal x) --> real_differentiable (%x1. f x1 * g x1) (atreal x)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f (atreal x)
     #[2] real_differentiable g (atreal x)
     #[3] real_differentiable (λx1. f x1 * g x1) (atreal x)
-  ← rewrite_goal real_differentiable_def sym=false goal=3
+  ← rewrite real_differentiable_def sym=false goal=3
     #[4] ∃f1. has_real_derivative (λx1. f x1 * g x1) f1 (atreal x)
-  → rewrite_fact real_differentiable_def sym=false goal=4 facts=[2]
+  → rewrite target=fact real_differentiable_def sym=false goal=4 facts=[2]
     #[5] ∃f1. has_real_derivative g f1 (atreal x)
-  → rewrite_fact real_differentiable_def sym=false goal=4 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=4 facts=[1]
     #[6] ∃f1. has_real_derivative f f1 (atreal x)
-  exists_elim g1 goal=4 facts=[5]
+  elim g1 goal=4 facts=[5]
     #[7] _VAR g1
     #[8] has_real_derivative g g1 (atreal x)
     #[9] ∃f1. has_real_derivative (λx1. f x1 * g x1) f1 (atreal x)
     #[10] real_differentiable (λx1. f x1 * g x1) (atreal x)
-  exists_elim f1 goal=9 facts=[6]
+  elim f1 goal=9 facts=[6]
     #[11] _VAR f1
     #[12] has_real_derivative f f1 (atreal x)
     #[13] ∃f1. has_real_derivative (λx1. f x1 * g x1) f1 (atreal x)
     #[14] real_differentiable (λx1. f x1 * g x1) (atreal x)
-  ← inst_exists_goal "f x * g1 + f1 * g x" goal=13
+  ← inst "f x * g1 + f1 * g x" goal=13
     #[15] has_real_derivative (λx1. f x1 * g x1) (f x * g1 + f1 * g x) (atreal x)
-  ← apply_backward_step has_real_derivative_mul_atreal goal=15
+  ← rule has_real_derivative_mul_atreal goal=15
 qed
 
 theorem real_differentiable_pow_within
@@ -1061,35 +1061,35 @@ theorem real_differentiable_pow_within
   prop real_differentiable f (within (atreal x) s) --> real_differentiable (%x1. f x1 ^ n) (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f (within (atreal x) s)
     #[2] real_differentiable (λx1. f x1 ^ n) (within (atreal x) s)
-  ← rewrite_goal real_differentiable_def sym=false goal=2
+  ← rewrite real_differentiable_def sym=false goal=2
     #[3] ∃f1. has_real_derivative (λx1. f x1 ^ n) f1 (within (atreal x) s)
-  → rewrite_fact real_differentiable_def sym=false goal=3 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=3 facts=[1]
     #[4] ∃f1. has_real_derivative f f1 (within (atreal x) s)
-  exists_elim f1 goal=3 facts=[4]
+  elim f1 goal=3 facts=[4]
     #[5] _VAR f1
     #[6] has_real_derivative f f1 (within (atreal x) s)
     #[7] ∃f1. has_real_derivative (λx1. f x1 ^ n) f1 (within (atreal x) s)
     #[8] real_differentiable (λx1. f x1 ^ n) (within (atreal x) s)
-  ← inst_exists_goal "(of_nat n * f x ^ (n - 1) * f1)" goal=7
+  ← inst "(of_nat n * f x ^ (n - 1) * f1)" goal=7
     #[9] has_real_derivative (λx1. f x1 ^ n) (of_nat n * f x ^ (n - 1) * f1) (within (atreal x) s)
-  ← apply_backward_step has_real_derivative_pow_within goal=9
+  ← rule has_real_derivative_pow_within goal=9
 qed
 
 theorem real_differentiable_pow_atreal
   fixes f :: real => real, n :: nat, x :: real
   prop real_differentiable f (atreal x) --> real_differentiable (%x1. f x1 ^ n) (atreal x)
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f (atreal x)
     #[2] real_differentiable (λx1. f x1 ^ n) (atreal x)
-  ← rewrite_goal withinreal_univ sym=true goal=2
+  ← rewrite withinreal_univ sym=true goal=2
     #[3] real_differentiable (λx1. f x1 ^ n) (within (atreal x) univ)
-  → rewrite_fact withinreal_univ sym=true goal=3 facts=[1]
+  → rewrite target=fact withinreal_univ sym=true goal=3 facts=[1]
     #[4] real_differentiable f (within (atreal x) univ)
-  ← apply_backward_step real_differentiable_pow_within goal=3
+  ← rule real_differentiable_pow_within goal=3
 qed
 
 theorem real_differentiable_real_pow_atreal
@@ -1105,24 +1105,24 @@ theorem real_differentiable_transform_within
   prop 0 < d --> x Mem s --> (!x1. x1 Mem s --> abs (x1 - x) < d --> f x1 = g x1) --> real_differentiable f (within (atreal x) s) --> real_differentiable g (within (atreal x) s)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < d
     #[2] x ∈ s
     #[3] ∀x1. x1 ∈ s ⟶ abs (x1 - x) < d ⟶ f x1 = g x1
     #[4] real_differentiable f (within (atreal x) s)
     #[5] real_differentiable g (within (atreal x) s)
-  ← rewrite_goal real_differentiable_def sym=false goal=5
+  ← rewrite real_differentiable_def sym=false goal=5
     #[6] ∃f1. has_real_derivative g f1 (within (atreal x) s)
-  → rewrite_fact real_differentiable_def sym=false goal=6 facts=[4]
+  → rewrite target=fact real_differentiable_def sym=false goal=6 facts=[4]
     #[7] ∃f1. has_real_derivative f f1 (within (atreal x) s)
-  exists_elim f1 goal=6 facts=[7]
+  elim f1 goal=6 facts=[7]
     #[8] _VAR f1
     #[9] has_real_derivative f f1 (within (atreal x) s)
     #[10] ∃f1. has_real_derivative g f1 (within (atreal x) s)
     #[11] real_differentiable g (within (atreal x) s)
-  ← inst_exists_goal f1 goal=10
+  ← inst f1 goal=10
     #[12] has_real_derivative g f1 (within (atreal x) s)
-  ← apply_backward_step has_real_derivative_transform_within goal=12 facts=[1,2,3]
+  ← rule has_real_derivative_transform_within goal=12 facts=[1,2,3]
 qed
 
 theorem real_differentiable_inv_within
@@ -1130,22 +1130,22 @@ theorem real_differentiable_inv_within
   prop real_differentiable f (within (atreal x) s) --> ~(f x = 0) --> real_differentiable (%x1. real_inverse (f x1)) (within (atreal x) s)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f (within (atreal x) s)
     #[2] ¬(f x = 0)
     #[3] real_differentiable (λx1. real_inverse (f x1)) (within (atreal x) s)
-  ← rewrite_goal real_differentiable_def sym=false goal=3
+  ← rewrite real_differentiable_def sym=false goal=3
     #[4] ∃f1. has_real_derivative (λx1. real_inverse (f x1)) f1 (within (atreal x) s)
-  → rewrite_fact real_differentiable_def sym=false goal=4 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=4 facts=[1]
     #[5] ∃f1. has_real_derivative f f1 (within (atreal x) s)
-  exists_elim f1 goal=4 facts=[5]
+  elim f1 goal=4 facts=[5]
     #[6] _VAR f1
     #[7] has_real_derivative f f1 (within (atreal x) s)
     #[8] ∃f1. has_real_derivative (λx1. real_inverse (f x1)) f1 (within (atreal x) s)
     #[9] real_differentiable (λx1. real_inverse (f x1)) (within (atreal x) s)
-  ← inst_exists_goal "(-f1 / f x ^ (2::nat))" goal=8
+  ← inst "(-f1 / f x ^ (2::nat))" goal=8
     #[10] has_real_derivative (λx1. real_inverse (f x1)) (-f1 / f x ^ (2::nat)) (within (atreal x) s)
-  ← apply_backward_step has_real_derivative_inv_within goal=10
+  ← rule has_real_derivative_inv_within goal=10
 qed
 
 theorem real_differentiable_inv_atreal
@@ -1153,22 +1153,22 @@ theorem real_differentiable_inv_atreal
   prop real_differentiable f (atreal x) --> ~(f x = 0) --> real_differentiable (%x1. real_inverse (f x1)) (atreal x)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f (atreal x)
     #[2] ¬(f x = 0)
     #[3] real_differentiable (λx1. real_inverse (f x1)) (atreal x)
-  ← rewrite_goal real_differentiable_def sym=false goal=3
+  ← rewrite real_differentiable_def sym=false goal=3
     #[4] ∃f1. has_real_derivative (λx1. real_inverse (f x1)) f1 (atreal x)
-  → rewrite_fact real_differentiable_def sym=false goal=4 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=4 facts=[1]
     #[5] ∃f1. has_real_derivative f f1 (atreal x)
-  exists_elim f1 goal=4 facts=[5]
+  elim f1 goal=4 facts=[5]
     #[6] _VAR f1
     #[7] has_real_derivative f f1 (atreal x)
     #[8] ∃f1. has_real_derivative (λx1. real_inverse (f x1)) f1 (atreal x)
     #[9] real_differentiable (λx1. real_inverse (f x1)) (atreal x)
-  ← inst_exists_goal "(-f1 / f x ^ (2::nat))" goal=8
+  ← inst "(-f1 / f x ^ (2::nat))" goal=8
     #[10] has_real_derivative (λx1. real_inverse (f x1)) (-f1 / f x ^ (2::nat)) (atreal x)
-  ← apply_backward_step has_real_derivative_inv_atreal goal=10
+  ← rule has_real_derivative_inv_atreal goal=10
 qed
 
 theorem real_differentiable_div_within
@@ -1176,30 +1176,30 @@ theorem real_differentiable_div_within
   prop real_differentiable f (within (atreal x) s) --> real_differentiable g (within (atreal x) s) --> ~(g x = 0) --> real_differentiable (%x1. f x1 / g x1) (within (atreal x) s)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f (within (atreal x) s)
     #[2] real_differentiable g (within (atreal x) s)
     #[3] ¬(g x = 0)
     #[4] real_differentiable (λx1. f x1 / g x1) (within (atreal x) s)
-  ← rewrite_goal real_differentiable_def sym=false goal=4
+  ← rewrite real_differentiable_def sym=false goal=4
     #[5] ∃f1. has_real_derivative (λx1. f x1 / g x1) f1 (within (atreal x) s)
-  → rewrite_fact real_differentiable_def sym=false goal=5 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=5 facts=[1]
     #[6] ∃f1. has_real_derivative f f1 (within (atreal x) s)
-  → rewrite_fact real_differentiable_def sym=false goal=5 facts=[2]
+  → rewrite target=fact real_differentiable_def sym=false goal=5 facts=[2]
     #[7] ∃f1. has_real_derivative g f1 (within (atreal x) s)
-  exists_elim f2 goal=5 facts=[6]
+  elim f2 goal=5 facts=[6]
     #[8] _VAR f2
     #[9] has_real_derivative f f2 (within (atreal x) s)
     #[10] ∃f1. has_real_derivative (λx1. f x1 / g x1) f1 (within (atreal x) s)
     #[11] real_differentiable (λx1. f x1 / g x1) (within (atreal x) s)
-  exists_elim g2 goal=10 facts=[7]
+  elim g2 goal=10 facts=[7]
     #[12] _VAR g2
     #[13] has_real_derivative g g2 (within (atreal x) s)
     #[14] ∃f1. has_real_derivative (λx1. f x1 / g x1) f1 (within (atreal x) s)
     #[15] real_differentiable (λx1. f x1 / g x1) (within (atreal x) s)
-  ← inst_exists_goal "((f2 * g x - f x * g2) / g x ^ (2::nat))" goal=14
+  ← inst "((f2 * g x - f x * g2) / g x ^ (2::nat))" goal=14
     #[16] has_real_derivative (λx1. f x1 / g x1) ((f2 * g x - f x * g2) / g x ^ (2::nat)) (within (atreal x) s)
-  ← apply_backward_step has_real_derivative_div_within goal=16
+  ← rule has_real_derivative_div_within goal=16
 qed
 
 theorem real_differentiable_div_atreal
@@ -1207,30 +1207,30 @@ theorem real_differentiable_div_atreal
   prop real_differentiable f (atreal x) --> real_differentiable g (atreal x) --> ~(g x = 0) --> real_differentiable (%x1. f x1 / g x1) (atreal x)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable f (atreal x)
     #[2] real_differentiable g (atreal x)
     #[3] ¬(g x = 0)
     #[4] real_differentiable (λx1. f x1 / g x1) (atreal x)
-  ← rewrite_goal real_differentiable_def sym=false goal=4
+  ← rewrite real_differentiable_def sym=false goal=4
     #[5] ∃f1. has_real_derivative (λx1. f x1 / g x1) f1 (atreal x)
-  → rewrite_fact real_differentiable_def sym=false goal=5 facts=[1]
+  → rewrite target=fact real_differentiable_def sym=false goal=5 facts=[1]
     #[6] ∃f1. has_real_derivative f f1 (atreal x)
-  → rewrite_fact real_differentiable_def sym=false goal=5 facts=[2]
+  → rewrite target=fact real_differentiable_def sym=false goal=5 facts=[2]
     #[7] ∃f1. has_real_derivative g f1 (atreal x)
-  exists_elim f1 goal=5 facts=[6]
+  elim f1 goal=5 facts=[6]
     #[8] _VAR f1
     #[9] has_real_derivative f f1 (atreal x)
     #[10] ∃f1. has_real_derivative (λx1. f x1 / g x1) f1 (atreal x)
     #[11] real_differentiable (λx1. f x1 / g x1) (atreal x)
-  exists_elim g1 goal=10 facts=[7]
+  elim g1 goal=10 facts=[7]
     #[12] _VAR g1
     #[13] has_real_derivative g g1 (atreal x)
     #[14] ∃f1. has_real_derivative (λx1. f x1 / g x1) f1 (atreal x)
     #[15] real_differentiable (λx1. f x1 / g x1) (atreal x)
-  ← inst_exists_goal "((f1 * g x - f x * g1) / g x ^ (2::nat))" goal=14
+  ← inst "((f1 * g x - f x * g1) / g x ^ (2::nat))" goal=14
     #[16] has_real_derivative (λx1. f x1 / g x1) ((f1 * g x - f x * g1) / g x ^ (2::nat)) (atreal x)
-  ← apply_backward_step has_real_derivative_div_atreal goal=16
+  ← rule has_real_derivative_div_atreal goal=16
 qed
 
 theorem real_differentiable_transform
@@ -1238,34 +1238,34 @@ theorem real_differentiable_transform
   prop (!x. x Mem s --> f x = g x) --> real_differentiable_on f s --> real_differentiable_on g s
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. x ∈ s ⟶ f x = g x
     #[2] real_differentiable_on f s
     #[3] real_differentiable_on g s
-  ← rewrite_goal real_differentiable_on_def sym=false goal=3
+  ← rewrite real_differentiable_on_def sym=false goal=3
     #[4] ∀x. x ∈ s ⟶ (∃f1. has_real_derivative g f1 (within (atreal x) s))
-  ← introduction x goal=4
+  ← intro x goal=4
     #[5] _VAR x
     #[6] x ∈ s
     #[7] ∃f1. has_real_derivative g f1 (within (atreal x) s)
-  → rewrite_fact real_differentiable_on_differentiable sym=false goal=7 facts=[2]
+  → rewrite target=fact real_differentiable_on_differentiable sym=false goal=7 facts=[2]
     #[8] ∀x. x ∈ s ⟶ real_differentiable f (within (atreal x) s)
-  → apply_fact goal=7 facts=[8,6]
+  → forward goal=7 facts=[8,6]
     #[9] real_differentiable f (within (atreal x) s)
-  → rewrite_fact real_differentiable_def sym=false goal=7 facts=[9]
+  → rewrite target=fact real_differentiable_def sym=false goal=7 facts=[9]
     #[10] ∃f1. has_real_derivative f f1 (within (atreal x) s)
-  exists_elim f1 goal=7 facts=[10]
+  elim f1 goal=7 facts=[10]
     #[11] _VAR f1
     #[12] has_real_derivative f f1 (within (atreal x) s)
     #[13] ∃f1. has_real_derivative g f1 (within (atreal x) s)
-  ← inst_exists_goal f1 goal=13
+  ← inst f1 goal=13
     #[14] has_real_derivative g f1 (within (atreal x) s)
-  ← apply_backward_step has_real_derivative_transform_within param_d="(1::real)" param_f=f goal=14
+  ← rule has_real_derivative_transform_within param_d="(1::real)" param_f=f goal=14
     #[15] (0::real) < 1
     #[16] ∀x1. x1 ∈ s ⟶ abs (x1 - x) < 1 ⟶ f x1 = g x1
   ← z3 goal=15
     #[17] (0::real) < 1
-  ← introduction x1 goal=16
+  ← intro x1 goal=16
     #[18] _VAR x1
     #[19] x1 ∈ s
     #[20] abs (x1 - x) < 1
@@ -1277,22 +1277,22 @@ theorem real_differentiable_eq
   fixes f :: real => real, g :: real => real, s :: real set
   prop (!x. x Mem s --> f x = g x) --> real_differentiable_on f s <--> real_differentiable_on g s
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. x ∈ s ⟶ f x = g x
     #[2] real_differentiable_on f s ⟷ real_differentiable_on g s
-  ← apply_backward_step iffI goal=2
+  ← rule iffI goal=2
     #[3] real_differentiable_on f s ⟶ real_differentiable_on g s
     #[4] real_differentiable_on g s ⟶ real_differentiable_on f s
-  ← introduction goal=3
+  ← intro goal=3
     #[5] real_differentiable_on f s
     #[6] real_differentiable_on g s
-  ← apply_backward_step real_differentiable_transform goal=6 facts=[1,5]
-  ← introduction goal=4
+  ← rule real_differentiable_transform goal=6 facts=[1,5]
+  ← intro goal=4
     #[7] real_differentiable_on g s
     #[8] real_differentiable_on f s
-  → rewrite_fact eq_sym_eq sym=false goal=8 facts=[1]
+  → rewrite target=fact eq_sym_eq sym=false goal=8 facts=[1]
     #[9] ∀x. x ∈ s ⟶ g x = f x
-  ← apply_backward_step real_differentiable_transform goal=8 facts=[9,7]
+  ← rule real_differentiable_transform goal=8 facts=[9,7]
 qed
 
 theorem real_differentiable_transform_atreal
@@ -1300,23 +1300,23 @@ theorem real_differentiable_transform_atreal
   prop 0 < d --> (!x1. abs (x1 - x) < d --> f x1 = g x1) --> real_differentiable f (atreal x) --> real_differentiable g (atreal x)
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < d
     #[2] ∀x1. abs (x1 - x) < d ⟶ f x1 = g x1
     #[3] real_differentiable f (atreal x)
     #[4] real_differentiable g (atreal x)
-  ← rewrite_goal real_differentiable_def sym=false goal=4
+  ← rewrite real_differentiable_def sym=false goal=4
     #[5] ∃f1. has_real_derivative g f1 (atreal x)
-  → rewrite_fact real_differentiable_def sym=false goal=5 facts=[3]
+  → rewrite target=fact real_differentiable_def sym=false goal=5 facts=[3]
     #[6] ∃f1. has_real_derivative f f1 (atreal x)
-  exists_elim f1 goal=5 facts=[6]
+  elim f1 goal=5 facts=[6]
     #[7] _VAR f1
     #[8] has_real_derivative f f1 (atreal x)
     #[9] ∃f1. has_real_derivative g f1 (atreal x)
     #[10] real_differentiable g (atreal x)
-  ← inst_exists_goal f1 goal=9
+  ← inst f1 goal=9
     #[11] has_real_derivative g f1 (atreal x)
-  ← apply_backward_step has_real_derivative_transform_atreal goal=11 facts=[1,2]
+  ← rule has_real_derivative_transform_atreal goal=11 facts=[1,2]
 qed
 
 theorem real_differentiable_compose_within
@@ -1334,13 +1334,13 @@ theorem real_differentiable_on_const
   prop real_differentiable_on (%x. c) s
   [hint_backward]
 proof
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=0
+  ← rewrite real_differentiable_on_differentiable sym=false goal=0
     #[1] ∀x. x ∈ s ⟶ real_differentiable (λx1. c) (within (atreal x) s)
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ s
     #[4] real_differentiable (λx1. c) (within (atreal x) s)
-  ← apply_backward_step real_differentiable_const goal=4
+  ← rule real_differentiable_const goal=4
     #[5] real_differentiable (λx1. c) (within (atreal x) s)
 qed
 
@@ -1349,13 +1349,13 @@ theorem real_differentiable_on_id
   prop real_differentiable_on (%x. x) t
   [hint_backward]
 proof
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=0
+  ← rewrite real_differentiable_on_differentiable sym=false goal=0
     #[1] ∀x. x ∈ t ⟶ real_differentiable (λx1. x1) (within (atreal x) t)
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ t
     #[4] real_differentiable (λx1. x1) (within (atreal x) t)
-  ← apply_backward_step real_differentiable_id goal=4
+  ← rule real_differentiable_id goal=4
     #[5] real_differentiable (λx1. x1) (within (atreal x) t)
 qed
 
@@ -1369,18 +1369,18 @@ theorem real_differentiable_on_neg
   prop real_differentiable_on f t --> real_differentiable_on (%x. -(f x)) t
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f t
     #[2] real_differentiable_on (λx. -(f x)) t
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=2
+  ← rewrite real_differentiable_on_differentiable sym=false goal=2
     #[3] ∀x. x ∈ t ⟶ real_differentiable (λx1. -(f x1)) (within (atreal x) t)
-  → rewrite_fact real_differentiable_on_differentiable sym=false goal=3 facts=[1]
+  → rewrite target=fact real_differentiable_on_differentiable sym=false goal=3 facts=[1]
     #[4] ∀x. x ∈ t ⟶ real_differentiable f (within (atreal x) t)
-  ← introduction x goal=3
+  ← intro x goal=3
     #[5] _VAR x
     #[6] x ∈ t
     #[7] real_differentiable (λx1. -(f x1)) (within (atreal x) t)
-  ← apply_backward_step real_differentiable_neg goal=7
+  ← rule real_differentiable_neg goal=7
     #[8] real_differentiable f (within (atreal x) t)
   ← apply_prev goal=8 facts=[4]
 qed
@@ -1390,21 +1390,21 @@ theorem real_differentiable_on_add
   prop real_differentiable_on f t --> real_differentiable_on g t --> real_differentiable_on (%x. f x + g x) t
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f t
     #[2] real_differentiable_on g t
     #[3] real_differentiable_on (λx. f x + g x) t
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=3
+  ← rewrite real_differentiable_on_differentiable sym=false goal=3
     #[4] ∀x. x ∈ t ⟶ real_differentiable (λx1. f x1 + g x1) (within (atreal x) t)
-  → rewrite_fact real_differentiable_on_differentiable sym=false goal=4 facts=[1]
+  → rewrite target=fact real_differentiable_on_differentiable sym=false goal=4 facts=[1]
     #[5] ∀x. x ∈ t ⟶ real_differentiable f (within (atreal x) t)
-  → rewrite_fact real_differentiable_on_differentiable sym=false goal=4 facts=[2]
+  → rewrite target=fact real_differentiable_on_differentiable sym=false goal=4 facts=[2]
     #[6] ∀x. x ∈ t ⟶ real_differentiable g (within (atreal x) t)
-  ← introduction x goal=4
+  ← intro x goal=4
     #[7] _VAR x
     #[8] x ∈ t
     #[9] real_differentiable (λx1. f x1 + g x1) (within (atreal x) t)
-  ← apply_backward_step real_differentiable_add goal=9
+  ← rule real_differentiable_add goal=9
     #[10] real_differentiable f (within (atreal x) t)
     #[11] real_differentiable g (within (atreal x) t)
   ← apply_prev goal=10 facts=[5]
@@ -1416,15 +1416,15 @@ theorem real_differentiable_on_sub
   prop real_differentiable_on f t --> real_differentiable_on g t --> real_differentiable_on (%x. f x - g x) t
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f t
     #[2] real_differentiable_on g t
     #[3] real_differentiable_on (λx. f x - g x) t
-  ← rewrite_goal real_minus_def sym=false goal=3
+  ← rewrite real_minus_def sym=false goal=3
     #[4] real_differentiable_on (λx. f x + -(g x)) t
-  ← apply_backward_step real_differentiable_on_add goal=4
+  ← rule real_differentiable_on_add goal=4
     #[5] real_differentiable_on (λx. -(g x)) t
-  ← apply_backward_step real_differentiable_on_neg goal=5
+  ← rule real_differentiable_on_neg goal=5
 qed
 
 theorem real_differentiable_on_mul
@@ -1432,21 +1432,21 @@ theorem real_differentiable_on_mul
   prop real_differentiable_on f s --> real_differentiable_on g s --> real_differentiable_on (%x. f x * g x) s
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f s
     #[2] real_differentiable_on g s
     #[3] real_differentiable_on (λx. f x * g x) s
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=3
+  ← rewrite real_differentiable_on_differentiable sym=false goal=3
     #[4] ∀x. x ∈ s ⟶ real_differentiable (λx1. f x1 * g x1) (within (atreal x) s)
-  → rewrite_fact real_differentiable_on_differentiable sym=false goal=4 facts=[1]
+  → rewrite target=fact real_differentiable_on_differentiable sym=false goal=4 facts=[1]
     #[5] ∀x. x ∈ s ⟶ real_differentiable f (within (atreal x) s)
-  → rewrite_fact real_differentiable_on_differentiable sym=false goal=4 facts=[2]
+  → rewrite target=fact real_differentiable_on_differentiable sym=false goal=4 facts=[2]
     #[6] ∀x. x ∈ s ⟶ real_differentiable g (within (atreal x) s)
-  ← introduction x goal=4
+  ← intro x goal=4
     #[7] _VAR x
     #[8] x ∈ s
     #[9] real_differentiable (λx1. f x1 * g x1) (within (atreal x) s)
-  ← apply_backward_step real_differentiable_mul_within goal=9
+  ← rule real_differentiable_mul_within goal=9
     #[10] real_differentiable f (within (atreal x) s)
     #[11] real_differentiable g (within (atreal x) s)
   ← apply_prev goal=10 facts=[5]
@@ -1458,18 +1458,18 @@ theorem real_differentiable_on_pow
   prop real_differentiable_on f s --> real_differentiable_on (%x. f x ^ n) s
   [hint_backward,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f s
     #[2] real_differentiable_on (λx. f x ^ n) s
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=2
+  ← rewrite real_differentiable_on_differentiable sym=false goal=2
     #[3] ∀x. x ∈ s ⟶ real_differentiable (λx1. f x1 ^ n) (within (atreal x) s)
-  → rewrite_fact real_differentiable_on_differentiable sym=false goal=3 facts=[1]
+  → rewrite target=fact real_differentiable_on_differentiable sym=false goal=3 facts=[1]
     #[4] ∀x. x ∈ s ⟶ real_differentiable f (within (atreal x) s)
-  ← introduction x goal=3
+  ← intro x goal=3
     #[5] _VAR x
     #[6] x ∈ s
     #[7] real_differentiable (λx1. f x1 ^ n) (within (atreal x) s)
-  ← apply_backward_step real_differentiable_pow_within goal=7
+  ← rule real_differentiable_pow_within goal=7
     #[8] real_differentiable f (within (atreal x) s)
   ← apply_prev goal=8 facts=[4]
 qed
@@ -1479,19 +1479,19 @@ theorem real_differentiable_on_inv
   prop real_differentiable_on f s --> (!x. x Mem s --> ~(f x = 0)) --> real_differentiable_on (%x. real_inverse (f x)) s
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f s
     #[2] ∀x. x ∈ s ⟶ ¬(f x = 0)
     #[3] real_differentiable_on (λx. real_inverse (f x)) s
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=3
+  ← rewrite real_differentiable_on_differentiable sym=false goal=3
     #[4] ∀x. x ∈ s ⟶ real_differentiable (λx1. real_inverse (f x1)) (within (atreal x) s)
-  → rewrite_fact real_differentiable_on_differentiable sym=false goal=4 facts=[1]
+  → rewrite target=fact real_differentiable_on_differentiable sym=false goal=4 facts=[1]
     #[5] ∀x. x ∈ s ⟶ real_differentiable f (within (atreal x) s)
-  ← introduction x goal=4
+  ← intro x goal=4
     #[6] _VAR x
     #[7] x ∈ s
     #[8] real_differentiable (λx1. real_inverse (f x1)) (within (atreal x) s)
-  ← apply_backward_step real_differentiable_inv_within goal=8
+  ← rule real_differentiable_inv_within goal=8
     #[9] real_differentiable f (within (atreal x) s)
     #[10] ¬(f x = 0)
   ← apply_prev goal=9 facts=[5]
@@ -1503,22 +1503,22 @@ theorem real_differentiable_on_div
   prop real_differentiable_on f s --> real_differentiable_on g s --> (!x. x Mem s --> ~(g x = 0)) --> real_differentiable_on (%x. f x / g x) s
   [hint_backward,hint_backward1,hint_forward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f s
     #[2] real_differentiable_on g s
     #[3] ∀x. x ∈ s ⟶ ¬(g x = 0)
     #[4] real_differentiable_on (λx. f x / g x) s
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=4
+  ← rewrite real_differentiable_on_differentiable sym=false goal=4
     #[5] ∀x. x ∈ s ⟶ real_differentiable (λx1. f x1 / g x1) (within (atreal x) s)
-  → rewrite_fact real_differentiable_on_differentiable sym=false goal=5 facts=[1]
+  → rewrite target=fact real_differentiable_on_differentiable sym=false goal=5 facts=[1]
     #[6] ∀x. x ∈ s ⟶ real_differentiable f (within (atreal x) s)
-  → rewrite_fact real_differentiable_on_differentiable sym=false goal=5 facts=[2]
+  → rewrite target=fact real_differentiable_on_differentiable sym=false goal=5 facts=[2]
     #[7] ∀x. x ∈ s ⟶ real_differentiable g (within (atreal x) s)
-  ← introduction x goal=5
+  ← intro x goal=5
     #[8] _VAR x
     #[9] x ∈ s
     #[10] real_differentiable (λx1. f x1 / g x1) (within (atreal x) s)
-  ← apply_backward_step real_differentiable_div_within goal=10
+  ← rule real_differentiable_div_within goal=10
     #[11] real_differentiable f (within (atreal x) s)
     #[12] real_differentiable g (within (atreal x) s)
     #[13] ¬(g x = 0)
@@ -1542,9 +1542,9 @@ theorem has_real_derivative_exp_within
   prop has_real_derivative exp (exp x) (within (atreal x) s)
   [hint_backward]
 proof
-  ← apply_backward_step has_real_derivative_atreal_within goal=0
+  ← rule has_real_derivative_atreal_within goal=0
     #[1] has_real_derivative exp (exp x) (atreal x)
-  ← apply_backward_step has_real_derivative_exp goal=1
+  ← rule has_real_derivative_exp goal=1
 qed
 
 theorem real_derivative_exp
@@ -1560,11 +1560,11 @@ theorem real_differentiable_at_exp
   prop real_differentiable exp (atreal x)
   [hint_backward]
 proof
-  ← rewrite_goal real_differentiable_def sym=false goal=0
+  ← rewrite real_differentiable_def sym=false goal=0
     #[1] ∃f1. has_real_derivative exp f1 (atreal x)
-  ← inst_exists_goal "exp x" goal=1
+  ← inst "exp x" goal=1
     #[2] has_real_derivative exp (exp x) (atreal x)
-  ← apply_backward_step has_real_derivative_exp goal=2
+  ← rule has_real_derivative_exp goal=2
 qed
 
 theorem real_differentiable_at_exp_compose
@@ -1576,9 +1576,9 @@ theorem real_differentiable_within_exp
   prop real_differentiable exp (within (atreal x) s)
   [hint_backward]
 proof
-  ← apply_backward_step real_differentiable_atreal_within goal=0
+  ← rule real_differentiable_atreal_within goal=0
     #[1] real_differentiable exp (atreal x)
-  ← apply_backward_step real_differentiable_at_exp goal=1
+  ← rule real_differentiable_at_exp goal=1
 qed
 
 theorem real_differentiable_on_exp
@@ -1589,12 +1589,12 @@ theorem real_differentiable_on_exp_compose
   fixes f :: real => real, s :: real set
   prop real_differentiable_on f s --> real_differentiable_on (%x. exp (f x)) s
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f s
     #[2] real_differentiable_on (λx. exp (f x)) s
-  ← apply_backward_step real_differentiable_on_compose goal=2
+  ← rule real_differentiable_on_compose goal=2
     #[3] real_differentiable_on exp (image f s)
-  ← apply_backward_step real_differentiable_on_exp goal=3
+  ← rule real_differentiable_on_exp goal=3
     #[4] real_differentiable_on exp (image f s)
 qed
 
@@ -1603,9 +1603,9 @@ theorem real_continuous_at_exp
   prop real_continuous exp (atreal x)
   [hint_backward]
 proof
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=0
+  ← rule real_differentiable_imp_continuous_atreal goal=0
     #[1] real_differentiable exp (atreal x)
-  ← apply_backward_step real_differentiable_at_exp goal=1
+  ← rule real_differentiable_at_exp goal=1
 qed
 
 theorem real_continuous_within_exp
@@ -1613,22 +1613,22 @@ theorem real_continuous_within_exp
   prop real_continuous exp (within (atreal x) s)
   [hint_backward]
 proof
-  ← apply_backward_step real_differentiable_imp_continuous_withinreal goal=0
+  ← rule real_differentiable_imp_continuous_withinreal goal=0
     #[1] real_differentiable exp (within (atreal x) s)
-  ← apply_backward_step real_differentiable_within_exp goal=1
+  ← rule real_differentiable_within_exp goal=1
 qed
 
 theorem real_continuous_on_exp
   fixes s :: real set
   prop real_continuous_on exp s
 proof
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=0
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=0
     #[1] ∀x. x ∈ s ⟶ real_continuous exp (within (atreal x) s)
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ s
     #[4] real_continuous exp (within (atreal x) s)
-  ← apply_backward_step real_continuous_within_exp goal=4
+  ← rule real_continuous_within_exp goal=4
     #[5] real_continuous exp (within (atreal x) s)
 qed
 
@@ -1636,12 +1636,12 @@ theorem real_continuous_on_exp_compose
   fixes f :: real => real, s :: real set
   prop real_continuous_on f s --> real_continuous_on (%x. exp (f x)) s
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_continuous_on f s
     #[2] real_continuous_on (λx. exp (f x)) s
-  ← apply_backward_step real_continuous_on_compose goal=2
+  ← rule real_continuous_on_compose goal=2
     #[3] real_continuous_on exp (image f s)
-  ← apply_backward_step real_continuous_on_exp goal=3
+  ← rule real_continuous_on_exp goal=3
     #[4] real_continuous_on exp (image f s)
 qed
 
@@ -1667,11 +1667,11 @@ theorem real_differentiable_at_sin
   prop real_differentiable sin (atreal x)
   [hint_backward]
 proof
-  ← rewrite_goal real_differentiable_def sym=false goal=0
+  ← rewrite real_differentiable_def sym=false goal=0
     #[1] ∃f1. has_real_derivative sin f1 (atreal x)
-  ← inst_exists_goal "cos x" goal=1
+  ← inst "cos x" goal=1
     #[2] has_real_derivative sin (cos x) (atreal x)
-  ← apply_backward_step has_real_derivative_sin goal=2
+  ← rule has_real_derivative_sin goal=2
 qed
 
 theorem real_differentiable_at_sin_compose
@@ -1682,9 +1682,9 @@ theorem real_differentiable_within_sin
   fixes s :: real set, x :: real
   prop real_differentiable sin (within (atreal x) s)
 proof
-  ← apply_backward_step real_differentiable_atreal_within goal=0
+  ← rule real_differentiable_atreal_within goal=0
     #[1] real_differentiable sin (atreal x)
-  ← apply_backward_step real_differentiable_at_sin goal=1
+  ← rule real_differentiable_at_sin goal=1
 qed
 
 theorem real_differentiable_on_sin
@@ -1695,12 +1695,12 @@ theorem real_differentiable_on_sin_compose
   fixes f :: real => real, s :: real set
   prop real_differentiable_on f s --> real_differentiable_on (%x. sin (f x)) s
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f s
     #[2] real_differentiable_on (λx. sin (f x)) s
-  ← apply_backward_step real_differentiable_on_compose goal=2
+  ← rule real_differentiable_on_compose goal=2
     #[3] real_differentiable_on sin (image f s)
-  ← apply_backward_step real_differentiable_on_sin goal=3
+  ← rule real_differentiable_on_sin goal=3
     #[4] real_differentiable_on sin (image f s)
 qed
 
@@ -1709,9 +1709,9 @@ theorem real_continuous_at_sin
   prop real_continuous sin (atreal x)
   [hint_backward]
 proof
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=0
+  ← rule real_differentiable_imp_continuous_atreal goal=0
     #[1] real_differentiable sin (atreal x)
-  ← apply_backward_step real_differentiable_at_sin goal=1
+  ← rule real_differentiable_at_sin goal=1
 qed
 
 theorem real_continuous_within_sin
@@ -1719,9 +1719,9 @@ theorem real_continuous_within_sin
   prop real_continuous sin (within (atreal x) s)
   [hint_backward]
 proof
-  ← apply_backward_step real_continuous_atreal_withinreal goal=0
+  ← rule real_continuous_atreal_withinreal goal=0
     #[1] real_continuous sin (atreal x)
-  ← apply_backward_step real_continuous_at_sin goal=1
+  ← rule real_continuous_at_sin goal=1
 qed
 
 theorem real_continuous_on_sin
@@ -1729,13 +1729,13 @@ theorem real_continuous_on_sin
   prop real_continuous_on sin s
   [hint_backward]
 proof
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=0
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=0
     #[1] ∀x. x ∈ s ⟶ real_continuous sin (within (atreal x) s)
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ s
     #[4] real_continuous sin (within (atreal x) s)
-  ← apply_backward_step real_continuous_within_sin goal=4
+  ← rule real_continuous_within_sin goal=4
     #[5] real_continuous sin (within (atreal x) s)
 qed
 
@@ -1743,12 +1743,12 @@ theorem real_continuous_on_sin_compose
   fixes f :: real => real, s :: real set
   prop real_continuous_on f s --> real_continuous_on (%x. sin (f x)) s
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_continuous_on f s
     #[2] real_continuous_on (λx. sin (f x)) s
-  ← apply_backward_step real_continuous_on_compose goal=2
+  ← rule real_continuous_on_compose goal=2
     #[3] real_continuous_on sin (image f s)
-  ← apply_backward_step real_continuous_on_sin goal=3
+  ← rule real_continuous_on_sin goal=3
     #[4] real_continuous_on sin (image f s)
 qed
 
@@ -1762,31 +1762,31 @@ theorem has_real_derivative_cos_within
   prop has_real_derivative cos (-(sin x)) (within (atreal x) s)
   [hint_backward]
 proof
-  ← apply_backward_step has_real_derivative_atreal_within goal=0
+  ← rule has_real_derivative_atreal_within goal=0
     #[1] has_real_derivative cos (-(sin x)) (atreal x)
-  ← apply_backward_step has_real_derivative_cos goal=1
+  ← rule has_real_derivative_cos goal=1
 qed
 
 theorem real_derivative_cos
   fixes x :: real
   prop real_derivative cos x = -(sin x)
 proof
-  ← rewrite_goal real_derivative_def sym=false goal=0
+  ← rewrite real_derivative_def sym=false goal=0
     #[1] (THE f1. has_real_derivative cos f1 (atreal x)) = -(sin x)
-  → apply_forward_step has_real_derivative_cos param_x=x goal=1
+  → forward has_real_derivative_cos param_x=x goal=1
     #[2] has_real_derivative cos (-(sin x)) (atreal x)
-  → apply_forward_step theI param_P="(%f1. has_real_derivative cos f1 (atreal x))" param_a="-sin x" goal=1
+  → forward theI param_P="(%f1. has_real_derivative cos f1 (atreal x))" param_a="-sin x" goal=1
     #[3] has_real_derivative cos (-(sin x)) (atreal x) ⟶ (∀x1. has_real_derivative cos x1 (atreal x) ⟶ x1 = -(sin x)) ⟶ has_real_derivative cos (THE x1. has_real_derivative cos x1 (atreal x)) (atreal x)
-  → apply_fact goal=1 facts=[3,2]
+  → forward goal=1 facts=[3,2]
     #[4] (∀x1. has_real_derivative cos x1 (atreal x) ⟶ x1 = -(sin x)) ⟶ has_real_derivative cos (THE x1. has_real_derivative cos x1 (atreal x)) (atreal x)
   cut "(∀x1. has_real_derivative cos x1 (atreal x) ⟶ x1 = -(sin x))" goal=1
     #[5] ∀x1. has_real_derivative cos x1 (atreal x) ⟶ x1 = -(sin x)
-  ← introduction y goal=5
+  ← intro y goal=5
     #[6] _VAR y
     #[7] has_real_derivative cos y (atreal x)
     #[8] y = -(sin x)
-  ← apply_backward_step real_derivative_unique_atreal goal=8 facts=[7,2]
-  → apply_fact goal=1 facts=[4,5]
+  ← rule real_derivative_unique_atreal goal=8 facts=[7,2]
+  → forward goal=1 facts=[4,5]
     #[9] has_real_derivative cos (THE x1. has_real_derivative cos x1 (atreal x)) (atreal x)
   ← apply_prev goal=1 facts=[5]
 qed
@@ -1800,11 +1800,11 @@ theorem real_differentiable_at_cos
   prop real_differentiable cos (atreal x)
   [hint_backward]
 proof
-  ← rewrite_goal real_differentiable_def sym=false goal=0
+  ← rewrite real_differentiable_def sym=false goal=0
     #[1] ∃f1. has_real_derivative cos f1 (atreal x)
-  ← inst_exists_goal "-sin x" goal=1
+  ← inst "-sin x" goal=1
     #[2] has_real_derivative cos (-(sin x)) (atreal x)
-  ← apply_backward_step has_real_derivative_cos goal=2
+  ← rule has_real_derivative_cos goal=2
 qed
 
 theorem real_differentiable_at_cos_compose
@@ -1815,9 +1815,9 @@ theorem real_differentiable_within_cos
   fixes s :: real set, x :: real
   prop real_differentiable cos (within (atreal x) s)
 proof
-  ← apply_backward_step real_differentiable_atreal_within goal=0
+  ← rule real_differentiable_atreal_within goal=0
     #[1] real_differentiable cos (atreal x)
-  ← apply_backward_step real_differentiable_at_cos goal=1
+  ← rule real_differentiable_at_cos goal=1
 qed
 
 theorem real_differentiable_on_cos
@@ -1828,12 +1828,12 @@ theorem real_differentiable_on_cos_compose
   fixes f :: real => real, s :: real set
   prop real_differentiable_on f s --> real_differentiable_on (%x. cos (f x)) s
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_differentiable_on f s
     #[2] real_differentiable_on (λx. cos (f x)) s
-  ← apply_backward_step real_differentiable_on_compose goal=2
+  ← rule real_differentiable_on_compose goal=2
     #[3] real_differentiable_on cos (image f s)
-  ← apply_backward_step real_differentiable_on_cos goal=3
+  ← rule real_differentiable_on_cos goal=3
     #[4] real_differentiable_on cos (image f s)
 qed
 
@@ -1842,9 +1842,9 @@ theorem real_continuous_at_cos
   prop real_continuous cos (atreal x)
   [hint_backward]
 proof
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=0
+  ← rule real_differentiable_imp_continuous_atreal goal=0
     #[1] real_differentiable cos (atreal x)
-  ← apply_backward_step real_differentiable_at_cos goal=1
+  ← rule real_differentiable_at_cos goal=1
 qed
 
 theorem real_continuous_within_cos
@@ -1852,22 +1852,22 @@ theorem real_continuous_within_cos
   prop real_continuous cos (within (atreal x) s)
   [hint_backward]
 proof
-  ← apply_backward_step real_continuous_atreal_withinreal goal=0
+  ← rule real_continuous_atreal_withinreal goal=0
     #[1] real_continuous cos (atreal x)
-  ← apply_backward_step real_continuous_at_cos goal=1
+  ← rule real_continuous_at_cos goal=1
 qed
 
 theorem real_continuous_on_cos
   fixes s :: real set
   prop real_continuous_on cos s
 proof
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=0
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=0
     #[1] ∀x. x ∈ s ⟶ real_continuous cos (within (atreal x) s)
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ s
     #[4] real_continuous cos (within (atreal x) s)
-  ← apply_backward_step real_continuous_within_cos goal=4
+  ← rule real_continuous_within_cos goal=4
     #[5] real_continuous cos (within (atreal x) s)
 qed
 
@@ -1875,12 +1875,12 @@ theorem real_continuous_on_cos_compose
   fixes f :: real => real, s :: real set
   prop real_continuous_on f s --> real_continuous_on (%x. cos (f x)) s
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] real_continuous_on f s
     #[2] real_continuous_on (λx. cos (f x)) s
-  ← apply_backward_step real_continuous_on_compose goal=2
+  ← rule real_continuous_on_compose goal=2
     #[3] real_continuous_on cos (image f s)
-  ← apply_backward_step real_continuous_on_cos goal=3
+  ← rule real_continuous_on_cos goal=3
     #[4] real_continuous_on cos (image f s)
 qed
 
@@ -1903,12 +1903,12 @@ theorem real_differentiable_within_tan
   prop ~(cos x = 0) --> real_differentiable tan (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ¬(cos x = 0)
     #[2] real_differentiable tan (within (atreal x) s)
-  ← apply_backward_step real_differentiable_atreal_within goal=2
+  ← rule real_differentiable_atreal_within goal=2
     #[3] real_differentiable tan (atreal x)
-  ← apply_backward_step real_differentiable_at_tan goal=3
+  ← rule real_differentiable_at_tan goal=3
 qed
 
 theorem real_derivative_tan
@@ -1924,12 +1924,12 @@ theorem real_continuous_at_tan
   prop ~(cos x = 0) --> real_continuous tan (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ¬(cos x = 0)
     #[2] real_continuous tan (atreal x)
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=2
+  ← rule real_differentiable_imp_continuous_atreal goal=2
     #[3] real_differentiable tan (atreal x)
-  ← apply_backward_step real_differentiable_at_tan goal=3
+  ← rule real_differentiable_at_tan goal=3
 qed
 
 theorem real_continuous_within_tan
@@ -1937,12 +1937,12 @@ theorem real_continuous_within_tan
   prop ~(cos x = 0) --> real_continuous tan (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ¬(cos x = 0)
     #[2] real_continuous tan (within (atreal x) s)
-  ← apply_backward_step real_continuous_atreal_withinreal goal=2
+  ← rule real_continuous_atreal_withinreal goal=2
     #[3] real_continuous tan (atreal x)
-  ← apply_backward_step real_continuous_at_tan goal=3
+  ← rule real_continuous_at_tan goal=3
 qed
 
 theorem real_continuous_on_tan
@@ -1950,16 +1950,16 @@ theorem real_continuous_on_tan
   prop (!x. x Mem s --> ~(cos x = 0)) --> real_continuous_on tan s
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. x ∈ s ⟶ ¬(cos x = 0)
     #[2] real_continuous_on tan s
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=2
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=2
     #[3] ∀x. x ∈ s ⟶ real_continuous tan (within (atreal x) s)
-  ← introduction x goal=3
+  ← intro x goal=3
     #[4] _VAR x
     #[5] x ∈ s
     #[6] real_continuous tan (within (atreal x) s)
-  ← apply_backward_step real_continuous_within_tan goal=6
+  ← rule real_continuous_within_tan goal=6
     #[7] ¬(cos x = 0)
   ← apply_prev goal=7 facts=[1]
 qed
@@ -2050,14 +2050,14 @@ theorem real_differentiable_at_log
   prop 0 < x --> real_differentiable log (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < x
     #[2] real_differentiable log (atreal x)
-  ← rewrite_goal real_differentiable_def sym=false goal=2
+  ← rewrite real_differentiable_def sym=false goal=2
     #[3] ∃f1. has_real_derivative log f1 (atreal x)
-  ← inst_exists_goal "(real_inverse x)" goal=3
+  ← inst "(real_inverse x)" goal=3
     #[4] has_real_derivative log (real_inverse x) (atreal x)
-  ← apply_backward_step has_real_derivative_log goal=4
+  ← rule has_real_derivative_log goal=4
 qed
 
 theorem real_differentiable_at_log_compose
@@ -2069,12 +2069,12 @@ theorem real_differentiable_within_log
   prop 0 < x --> real_differentiable log (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < x
     #[2] real_differentiable log (within (atreal x) s)
-  ← apply_backward_step real_differentiable_atreal_within goal=2
+  ← rule real_differentiable_atreal_within goal=2
     #[3] real_differentiable log (atreal x)
-  ← apply_backward_step real_differentiable_at_log goal=3
+  ← rule real_differentiable_at_log goal=3
 qed
 
 theorem real_differentiable_on_log
@@ -2098,12 +2098,12 @@ theorem real_continuous_at_log
   prop 0 < x --> real_continuous log (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < x
     #[2] real_continuous log (atreal x)
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=2
+  ← rule real_differentiable_imp_continuous_atreal goal=2
     #[3] real_differentiable log (atreal x)
-  ← apply_backward_step real_differentiable_at_log goal=3
+  ← rule real_differentiable_at_log goal=3
 qed
 
 theorem real_continuous_within_log
@@ -2111,30 +2111,30 @@ theorem real_continuous_within_log
   prop 0 < x --> real_continuous log (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < x
     #[2] real_continuous log (within (atreal x) s)
-  ← apply_backward_step real_continuous_atreal_withinreal goal=2
+  ← rule real_continuous_atreal_withinreal goal=2
     #[3] real_continuous log (atreal x)
-  ← apply_backward_step real_continuous_at_log goal=3
+  ← rule real_continuous_at_log goal=3
 qed
 
 theorem real_continuous_on_log
   fixes s :: real set
   prop (!x. x Mem s --> 0 < x) --> real_continuous_on log s
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. x ∈ s ⟶ 0 < x
     #[2] real_continuous_on log s
-  ← apply_backward_step real_differentiable_on_imp_real_continuous_on goal=2
+  ← rule real_differentiable_on_imp_real_continuous_on goal=2
     #[3] real_differentiable_on log s
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=3
+  ← rewrite real_differentiable_on_differentiable sym=false goal=3
     #[4] ∀x. x ∈ s ⟶ real_differentiable log (within (atreal x) s)
-  ← introduction x goal=4
+  ← intro x goal=4
     #[5] _VAR x
     #[6] x ∈ s
     #[7] real_differentiable log (within (atreal x) s)
-  ← apply_backward_step real_differentiable_within_log goal=7
+  ← rule real_differentiable_within_log goal=7
     #[8] 0 < x
   ← apply_prev goal=8 facts=[1]
 qed
@@ -2153,14 +2153,14 @@ theorem real_differentiable_at_sqrt
   prop 0 < x --> real_differentiable sqrt (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < x
     #[2] real_differentiable sqrt (atreal x)
-  ← rewrite_goal real_differentiable_def sym=false goal=2
+  ← rewrite real_differentiable_def sym=false goal=2
     #[3] ∃f1. has_real_derivative sqrt f1 (atreal x)
-  ← inst_exists_goal "(real_inverse (2 * sqrt x))" goal=3
+  ← inst "(real_inverse (2 * sqrt x))" goal=3
     #[4] has_real_derivative sqrt (real_inverse (2 * sqrt x)) (atreal x)
-  ← apply_backward_step has_real_derivative_sqrt goal=4
+  ← rule has_real_derivative_sqrt goal=4
 qed
 
 theorem real_differentiable_at_sqrt_compose
@@ -2172,12 +2172,12 @@ theorem real_differentiable_within_sqrt
   prop 0 < x --> real_differentiable sqrt (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < x
     #[2] real_differentiable sqrt (within (atreal x) s)
-  ← apply_backward_step real_differentiable_atreal_within goal=2
+  ← rule real_differentiable_atreal_within goal=2
     #[3] real_differentiable sqrt (atreal x)
-  ← apply_backward_step real_differentiable_at_sqrt goal=3
+  ← rule real_differentiable_at_sqrt goal=3
 qed
 
 theorem real_differentiable_on_sqrt
@@ -2201,12 +2201,12 @@ theorem real_continuous_at_sqrt
   prop 0 < x --> real_continuous sqrt (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < x
     #[2] real_continuous sqrt (atreal x)
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=2
+  ← rule real_differentiable_imp_continuous_atreal goal=2
     #[3] real_differentiable sqrt (atreal x)
-  ← apply_backward_step real_differentiable_at_sqrt goal=3
+  ← rule real_differentiable_at_sqrt goal=3
 qed
 
 theorem real_continuous_within_sqrt
@@ -2214,12 +2214,12 @@ theorem real_continuous_within_sqrt
   prop 0 < x --> real_continuous sqrt (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < x
     #[2] real_continuous sqrt (within (atreal x) s)
-  ← apply_backward_step real_continuous_atreal_withinreal goal=2
+  ← rule real_continuous_atreal_withinreal goal=2
     #[3] real_continuous sqrt (atreal x)
-  ← apply_backward_step real_continuous_at_sqrt goal=3
+  ← rule real_continuous_at_sqrt goal=3
 qed
 
 theorem real_continuous_withinreal_sqrt_compose
@@ -2259,11 +2259,11 @@ theorem real_differentiable_at_atn
   prop real_differentiable atn (atreal x)
   [hint_backward]
 proof
-  ← rewrite_goal real_differentiable_def sym=false goal=0
+  ← rewrite real_differentiable_def sym=false goal=0
     #[1] ∃f1. has_real_derivative atn f1 (atreal x)
-  ← inst_exists_goal "(real_inverse (1 + x ^ (2::nat)))" goal=1
+  ← inst "(real_inverse (1 + x ^ (2::nat)))" goal=1
     #[2] has_real_derivative atn (real_inverse (1 + x ^ (2::nat))) (atreal x)
-  ← apply_backward_step has_real_derivative_atn goal=2
+  ← rule has_real_derivative_atn goal=2
 qed
 
 theorem real_differentiable_at_atn_compose
@@ -2275,9 +2275,9 @@ theorem real_differentiable_within_atn
   prop real_differentiable atn (within (atreal x) s)
   [hint_backward]
 proof
-  ← apply_backward_step real_differentiable_atreal_within goal=0
+  ← rule real_differentiable_atreal_within goal=0
     #[1] real_differentiable atn (atreal x)
-  ← apply_backward_step real_differentiable_at_atn goal=1
+  ← rule real_differentiable_at_atn goal=1
 qed
 
 theorem real_continuous_at_atn
@@ -2285,9 +2285,9 @@ theorem real_continuous_at_atn
   prop real_continuous atn (atreal x)
   [hint_backward]
 proof
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=0
+  ← rule real_differentiable_imp_continuous_atreal goal=0
     #[1] real_differentiable atn (atreal x)
-  ← apply_backward_step real_differentiable_at_atn goal=1
+  ← rule real_differentiable_at_atn goal=1
 qed
 
 theorem real_continuous_within_atn
@@ -2295,9 +2295,9 @@ theorem real_continuous_within_atn
   prop real_continuous atn (within (atreal x) s)
   [hint_backward]
 proof
-  ← apply_backward_step real_differentiable_imp_continuous_withinreal goal=0
+  ← rule real_differentiable_imp_continuous_withinreal goal=0
     #[1] real_differentiable atn (within (atreal x) s)
-  ← apply_backward_step real_differentiable_within_atn goal=1
+  ← rule real_differentiable_within_atn goal=1
 qed
 
 theorem real_continuous_on_atn
@@ -2305,13 +2305,13 @@ theorem real_continuous_on_atn
   prop real_continuous_on atn s
   [hint_backward]
 proof
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=0
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=0
     #[1] ∀x. x ∈ s ⟶ real_continuous atn (within (atreal x) s)
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ s
     #[4] real_continuous atn (within (atreal x) s)
-  ← apply_backward_step real_continuous_within_atn goal=4
+  ← rule real_continuous_within_atn goal=4
     #[5] real_continuous atn (within (atreal x) s)
 qed
 
@@ -2329,19 +2329,19 @@ theorem has_real_derivative_asn
   prop abs x < 1 --> has_real_derivative asn (real_inverse (sqrt (1 - x ^ (2::nat)))) (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] abs x < 1
     #[2] has_real_derivative asn (real_inverse (sqrt (1 - x ^ (2::nat)))) (atreal x)
-  → apply_forward_step has_real_derivative_asn_cos goal=2 facts=[1]
+  → forward has_real_derivative_asn_cos goal=2 facts=[1]
     #[3] has_real_derivative asn (real_inverse (cos (asn x))) (atreal x)
   cut "cos (asn x) = sqrt (1 - x ^ (2::nat))" goal=2 facts=[3]
     #[4] cos (asn x) = sqrt (1 - x ^ (2::nat))
-  ← apply_backward_step cos_asn goal=4
+  ← rule cos_asn goal=4
     #[5] -1 ≤ x
     #[6] x ≤ 1
   ← z3 goal=5 facts=[1]
   ← z3 goal=6 facts=[1]
-  → rewrite_fact_with_prev goal=2 facts=[4,3]
+  → rewrite target=fact source=prev goal=2 facts=[4,3]
 qed
 
 theorem real_differentiable_at_asn
@@ -2349,14 +2349,14 @@ theorem real_differentiable_at_asn
   prop abs x < 1 --> real_differentiable asn (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] abs x < 1
     #[2] real_differentiable asn (atreal x)
-  ← rewrite_goal real_differentiable_def sym=false goal=2
+  ← rewrite real_differentiable_def sym=false goal=2
     #[3] ∃f1. has_real_derivative asn f1 (atreal x)
-  ← inst_exists_goal "(real_inverse (sqrt (1 - x ^ (2::nat))))" goal=3
+  ← inst "(real_inverse (sqrt (1 - x ^ (2::nat))))" goal=3
     #[4] has_real_derivative asn (real_inverse (sqrt (1 - x ^ (2::nat)))) (atreal x)
-  ← apply_backward_step has_real_derivative_asn goal=4 facts=[1]
+  ← rule has_real_derivative_asn goal=4 facts=[1]
 qed
 
 theorem real_differentiable_within_asn
@@ -2364,12 +2364,12 @@ theorem real_differentiable_within_asn
   prop abs x < 1 --> real_differentiable asn (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] abs x < 1
     #[2] real_differentiable asn (within (atreal x) s)
-  ← apply_backward_step real_differentiable_atreal_within goal=2
+  ← rule real_differentiable_atreal_within goal=2
     #[3] real_differentiable asn (atreal x)
-  ← apply_backward_step real_differentiable_at_asn goal=3
+  ← rule real_differentiable_at_asn goal=3
 qed
 
 theorem real_continuous_at_asn
@@ -2377,12 +2377,12 @@ theorem real_continuous_at_asn
   prop abs x < 1 --> real_continuous asn (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] abs x < 1
     #[2] real_continuous asn (atreal x)
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=2
+  ← rule real_differentiable_imp_continuous_atreal goal=2
     #[3] real_differentiable asn (atreal x)
-  ← apply_backward_step real_differentiable_at_asn goal=3
+  ← rule real_differentiable_at_asn goal=3
 qed
 
 theorem real_continuous_within_asn
@@ -2390,12 +2390,12 @@ theorem real_continuous_within_asn
   prop abs x < 1 --> real_continuous asn (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] abs x < 1
     #[2] real_continuous asn (within (atreal x) s)
-  ← apply_backward_step real_continuous_atreal_withinreal goal=2
+  ← rule real_continuous_atreal_withinreal goal=2
     #[3] real_continuous asn (atreal x)
-  ← apply_backward_step real_continuous_at_asn goal=3
+  ← rule real_continuous_at_asn goal=3
 qed
 
 theorem has_real_derivative_acs_sin
@@ -2408,19 +2408,19 @@ theorem has_real_derivative_acs
   prop abs x < 1 --> has_real_derivative acs (-(real_inverse (sqrt (1 - x ^ (2::nat))))) (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] abs x < 1
     #[2] has_real_derivative acs (-(real_inverse (sqrt (1 - x ^ (2::nat))))) (atreal x)
-  → apply_forward_step has_real_derivative_acs_sin goal=2 facts=[1]
+  → forward has_real_derivative_acs_sin goal=2 facts=[1]
     #[3] has_real_derivative acs (-(real_inverse (sin (acs x)))) (atreal x)
   cut "sin (acs x) = sqrt (1 - x ^ (2::nat))" goal=2
     #[4] sin (acs x) = sqrt (1 - x ^ (2::nat))
-  ← apply_backward_step sin_acs goal=4
+  ← rule sin_acs goal=4
     #[5] -1 ≤ x
     #[6] x ≤ 1
   ← z3 goal=5 facts=[1]
   ← z3 goal=6 facts=[1]
-  → rewrite_fact_with_prev goal=2 facts=[4,3]
+  → rewrite target=fact source=prev goal=2 facts=[4,3]
 qed
 
 theorem real_differentiable_at_acs
@@ -2428,14 +2428,14 @@ theorem real_differentiable_at_acs
   prop abs x < 1 --> real_differentiable acs (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] abs x < 1
     #[2] real_differentiable acs (atreal x)
-  ← rewrite_goal real_differentiable_def sym=false goal=2
+  ← rewrite real_differentiable_def sym=false goal=2
     #[3] ∃f1. has_real_derivative acs f1 (atreal x)
-  ← inst_exists_goal "(-(real_inverse (sqrt (1 - x ^ (2::nat)))))" goal=3
+  ← inst "(-(real_inverse (sqrt (1 - x ^ (2::nat)))))" goal=3
     #[4] has_real_derivative acs (-(real_inverse (sqrt (1 - x ^ (2::nat))))) (atreal x)
-  ← apply_backward_step has_real_derivative_acs goal=4
+  ← rule has_real_derivative_acs goal=4
 qed
 
 theorem real_differentiable_within_acs
@@ -2443,12 +2443,12 @@ theorem real_differentiable_within_acs
   prop abs x < 1 --> real_differentiable acs (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] abs x < 1
     #[2] real_differentiable acs (within (atreal x) s)
-  ← apply_backward_step real_differentiable_atreal_within goal=2
+  ← rule real_differentiable_atreal_within goal=2
     #[3] real_differentiable acs (atreal x)
-  ← apply_backward_step real_differentiable_at_acs goal=3
+  ← rule real_differentiable_at_acs goal=3
 qed
 
 theorem real_continuous_at_acs
@@ -2456,12 +2456,12 @@ theorem real_continuous_at_acs
   prop abs x < 1 --> real_continuous acs (atreal x)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] abs x < 1
     #[2] real_continuous acs (atreal x)
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=2
+  ← rule real_differentiable_imp_continuous_atreal goal=2
     #[3] real_differentiable acs (atreal x)
-  ← apply_backward_step real_differentiable_at_acs goal=3
+  ← rule real_differentiable_at_acs goal=3
 qed
 
 theorem real_continuous_within_acs
@@ -2469,12 +2469,12 @@ theorem real_continuous_within_acs
   prop abs x < 1 --> real_continuous acs (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] abs x < 1
     #[2] real_continuous acs (within (atreal x) s)
-  ← apply_backward_step real_continuous_atreal_withinreal goal=2
+  ← rule real_continuous_atreal_withinreal goal=2
     #[3] real_continuous acs (atreal x)
-  ← apply_backward_step real_continuous_at_acs goal=3
+  ← rule real_continuous_at_acs goal=3
 qed
 
 theorem real_continuous_within_asn_strong
@@ -2487,19 +2487,19 @@ theorem real_continuous_on_asn
   prop (!x. x Mem s --> abs x <= 1) --> real_continuous_on asn s
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀x. x ∈ s ⟶ abs x ≤ 1
     #[2] real_continuous_on asn s
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=2
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=2
     #[3] ∀x. x ∈ s ⟶ real_continuous asn (within (atreal x) s)
-  ← introduction x goal=3
+  ← intro x goal=3
     #[4] _VAR x
     #[5] x ∈ s
     #[6] real_continuous asn (within (atreal x) s)
-  ← apply_backward_step real_continuous_withinreal_subset param_s="{t::real. abs t ≤ 1}" goal=6
+  ← rule real_continuous_withinreal_subset param_s="{t::real. abs t ≤ 1}" goal=6
     #[7] real_continuous asn (within (atreal x) ({t. abs t ≤ 1}))
     #[8] s ⊆ {t. abs t ≤ 1}
-  ← apply_backward_step real_continuous_within_asn_strong goal=7
+  ← rule real_continuous_within_asn_strong goal=7
     #[9] real_continuous asn (within (atreal x) ({t. abs t ≤ 1}))
   ← z3 goal=8 facts=[5,1]
 qed
@@ -2547,45 +2547,45 @@ theorem reallim_root_refl
   prop tendsto_real (%n. root n (of_nat n)) 1 sequentially
   [hint_backward]
 proof
-  ← apply_backward_step reallim_transform_eventually param_f="(%n. exp (log (of_nat n) / of_nat n))" goal=0
+  ← rule reallim_transform_eventually param_f="(%n. exp (log (of_nat n) / of_nat n))" goal=0
     #[1] eventually (λx. exp (log (of_nat x) / of_nat x) = root x (of_nat x)) sequentially
     #[2] tendsto_real (λn. exp (log (of_nat n) / of_nat n)) 1 sequentially
-  ← rewrite_goal eventually_sequentially sym=false goal=1
+  ← rewrite eventually_sequentially sym=false goal=1
     #[3] ∃N. ∀n. N ≤ n ⟶ exp (log (of_nat n) / of_nat n) = root n (of_nat n)
-  ← inst_exists_goal "(1::nat)" goal=3
+  ← inst "(1::nat)" goal=3
     #[4] ∀n. 1 ≤ n ⟶ exp (log (of_nat n) / of_nat n) = root n (of_nat n)
-  ← introduction n goal=4
+  ← intro n goal=4
     #[5] _VAR n
     #[6] 1 ≤ n
     #[7] exp (log (of_nat n) / of_nat n) = root n (of_nat n)
-  ← rewrite_goal root_def sym=false goal=7
+  ← rewrite root_def sym=false goal=7
     #[8] exp (log (of_nat n) / of_nat n) = real_sgn (of_nat n) * exp (log (abs (of_nat n)) / of_nat n)
-  ← rewrite_goal real_sgn_def sym=false goal=8
+  ← rewrite real_sgn_def sym=false goal=8
     #[9] exp (log (of_nat n) / of_nat n) = (if (0::real) < of_nat n then 1 else if of_nat n < (0::real) then -1 else 0) * exp (log (abs (of_nat n)) / of_nat n)
   cut "(0::real) < of_nat n" goal=9
     #[10] (0::real) < of_nat n
-  ← rewrite_goal real_less_def sym=false goal=10
+  ← rewrite real_less_def sym=false goal=10
     #[11] ¬(of_nat n ≤ (0::real))
-  ← rewrite_goal real_zero_def sym=false goal=11
+  ← rewrite real_zero_def sym=false goal=11
     #[12] ¬((of_nat::nat ⇒ real) n ≤ of_nat 0)
-  ← rewrite_goal real_of_nat_le sym=false goal=12
+  ← rewrite real_of_nat_le sym=false goal=12
     #[13] ¬(n ≤ 0)
-  ← rewrite_goal nat_less_eq_def_1 sym=false goal=13
+  ← rewrite nat_less_eq_def_1 sym=false goal=13
     #[14] ¬(n = 0)
   ← z3 goal=14 facts=[6]
-  ← rewrite_goal if_P sym=false goal=9 facts=[10]
+  ← rewrite if_P sym=false goal=9 facts=[10]
     #[15] exp (log (of_nat n) / of_nat n) = 1 * exp (log (abs (of_nat n)) / of_nat n)
-  ← rewrite_goal real_abs_nat sym=false goal=15
+  ← rewrite real_abs_nat sym=false goal=15
     #[16] exp (log (of_nat n) / of_nat n) = 1 * exp (log (of_nat n) / of_nat n)
-  ← rewrite_goal real_mul_lid sym=false goal=16
+  ← rewrite real_mul_lid sym=false goal=16
     #[17] exp (log (of_nat n) / of_nat n) = 1 * exp (log (of_nat n) / of_nat n)
-  ← rewrite_goal real_exp_0 sym=true goal=2
+  ← rewrite real_exp_0 sym=true goal=2
     #[18] tendsto_real (λn. exp (log (of_nat n) / of_nat n)) (exp 0) sequentially
-  ← apply_backward_step reallim_real_continuous_function goal=18
+  ← rule reallim_real_continuous_function goal=18
     #[19] real_continuous exp (atreal 0)
     #[20] tendsto_real (λx. log (of_nat x) / of_nat x) 0 sequentially
-  ← apply_backward_step real_continuous_at_exp goal=19
-  ← apply_backward_step reallim_log_over_n goal=20
+  ← rule real_continuous_at_exp goal=19
+  ← rule reallim_log_over_n goal=20
 qed
 
 theorem reallim_rpow_compose
@@ -2740,22 +2740,22 @@ theorem real_mvt
   prop a < b --> real_continuous_on f (real_closed_interval a b) --> (!x. x Mem real_open_interval a b --> has_real_derivative f (f1 x) (atreal x)) --> (?x. x Mem real_open_interval a b & f b - f a = f1 x * (b - a))
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] a < b
     #[2] real_continuous_on f (real_closed_interval a b)
     #[3] ∀x. x ∈ real_open_interval a b ⟶ has_real_derivative f (f1 x) (atreal x)
     #[4] ∃x. x ∈ real_open_interval a b ∧ f b - f a = f1 x * (b - a)
-  → apply_forward_step real_rolle param_a=a param_b=b param_f="(%x. f x - (f b - f a) / (b - a) * x)" param_f1="(%x. f1 x - (f b - f a) / (b - a))" goal=4
+  → forward real_rolle param_a=a param_b=b param_f="(%x. f x - (f b - f a) / (b - a) * x)" param_f1="(%x. f1 x - (f b - f a) / (b - a))" goal=4
     #[5] a < b ⟶ f a - (f b - f a) / (b - a) * a = f b - (f b - f a) / (b - a) * b ⟶ real_continuous_on (λx. f x - (f b - f a) / (b - a) * x) (real_closed_interval a b) ⟶ (∀x. x ∈ real_open_interval a b ⟶ has_real_derivative (λx1. f x1 - (f b - f a) / (b - a) * x1) (f1 x - (f b - f a) / (b - a)) (atreal x)) ⟶ (∃x. x ∈ real_open_interval a b ∧ f1 x - (f b - f a) / (b - a) = 0)
-  → apply_fact goal=4 facts=[5,1]
+  → forward goal=4 facts=[5,1]
     #[6] f a - (f b - f a) / (b - a) * a = f b - (f b - f a) / (b - a) * b ⟶ real_continuous_on (λx. f x - (f b - f a) / (b - a) * x) (real_closed_interval a b) ⟶ (∀x. x ∈ real_open_interval a b ⟶ has_real_derivative (λx1. f x1 - (f b - f a) / (b - a) * x1) (f1 x - (f b - f a) / (b - a)) (atreal x)) ⟶ (∃x. x ∈ real_open_interval a b ∧ f1 x - (f b - f a) / (b - a) = 0)
   cut "!fx. a < b --> fx - (f b - f a) / (b - a) = 0 <--> (f b - f a) = fx * (b - a)" goal=4 facts=[6]
     #[7] ∀fx. a < b ⟶ fx - (f b - f a) / (b - a) = 0 ⟷ f b - f a = fx * (b - a)
   ← z3 goal=7
     #[8] ∀fx. a < b ⟶ fx - (f b - f a) / (b - a) = 0 ⟷ f b - f a = fx * (b - a)
-  → apply_fact goal=4 facts=[8,1]
+  → forward goal=4 facts=[8,1]
     #[9] ∀fx. fx - (f b - f a) / (b - a) = 0 ⟷ f b - f a = fx * (b - a)
-  → rewrite_fact_with_prev goal=4 facts=[9,6]
+  → rewrite target=fact source=prev goal=4 facts=[9,6]
     #[10] f a - (f b - f a) / (b - a) * a = f b - (f b - f a) / (b - a) * b ⟶ real_continuous_on (λx. f x - (f b - f a) / (b - a) * x) (real_closed_interval a b) ⟶ (∀x. x ∈ real_open_interval a b ⟶ has_real_derivative (λx1. f x1 - (f b - f a) / (b - a) * x1) (f1 x - (f b - f a) / (b - a)) (atreal x)) ⟶ (∃x. x ∈ real_open_interval a b ∧ f b - f a = f1 x * (b - a))
   ← apply_prev goal=4 facts=[10]
     #[11] f a - (f b - f a) / (b - a) * a = f b - (f b - f a) / (b - a) * b
@@ -2763,27 +2763,27 @@ proof
     #[13] ∀x. x ∈ real_open_interval a b ⟶ has_real_derivative (λx1. f x1 - (f b - f a) / (b - a) * x1) (f1 x - (f b - f a) / (b - a)) (atreal x)
   ← z3 goal=11
     #[14] f a - (f b - f a) / (b - a) * a = f b - (f b - f a) / (b - a) * b
-  ← apply_backward_step real_continuous_on_sub goal=12
+  ← rule real_continuous_on_sub goal=12
     #[15] real_continuous_on (λx. (f b - f a) / (b - a) * x) (real_closed_interval a b)
-  ← apply_backward_step real_continuous_on_lmul goal=15
+  ← rule real_continuous_on_lmul goal=15
     #[16] real_continuous_on (λx. x) (real_closed_interval a b)
-  ← apply_backward_step real_continuous_on_id goal=16
+  ← rule real_continuous_on_id goal=16
     #[17] real_continuous_on (λx. x) (real_closed_interval a b)
-  ← introduction x goal=13
+  ← intro x goal=13
     #[18] _VAR x
     #[19] x ∈ real_open_interval a b
     #[20] has_real_derivative (λx1. f x1 - (f b - f a) / (b - a) * x1) (f1 x - (f b - f a) / (b - a)) (atreal x)
-  ← apply_backward_step has_real_derivative_sub goal=20
+  ← rule has_real_derivative_sub goal=20
     #[21] has_real_derivative f (f1 x) (atreal x)
     #[22] has_real_derivative (λx1. (f b - f a) / (b - a) * x1) ((f b - f a) / (b - a)) (atreal x)
   ← apply_prev goal=21 facts=[3]
   cut "has_real_derivative (λx1. (f b - f a) / (b - a) * x1) ((f b - f a) / (b - a) * 1) (atreal x)" goal=22
     #[23] has_real_derivative (λx1. (f b - f a) / (b - a) * x1) ((f b - f a) / (b - a) * 1) (atreal x)
-  ← apply_backward_step has_real_derivative_lmul_atreal goal=23
+  ← rule has_real_derivative_lmul_atreal goal=23
     #[24] has_real_derivative (λx1. x1) 1 (atreal x)
-  ← apply_backward_step has_real_derivative_id goal=24
+  ← rule has_real_derivative_id goal=24
     #[25] has_real_derivative (λx1. x1) 1 (atreal x)
-  → rewrite_fact real_mul_rid sym=false goal=22 facts=[23]
+  → rewrite target=fact real_mul_rid sym=false goal=22 facts=[23]
 qed
 
 theorem real_mvt_simple
@@ -2791,48 +2791,48 @@ theorem real_mvt_simple
   prop a < b --> (!x. x Mem real_closed_interval a b --> has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))) --> (?x. x Mem real_open_interval a b & f b - f a = f1 x * (b - a))
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] a < b
     #[2] ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))
     #[3] ∃x. x ∈ real_open_interval a b ∧ f b - f a = f1 x * (b - a)
-  ← apply_backward_step real_mvt goal=3
+  ← rule real_mvt goal=3
     #[4] real_continuous_on f (real_closed_interval a b)
     #[5] ∀x. x ∈ real_open_interval a b ⟶ has_real_derivative f (f1 x) (atreal x)
-  ← apply_backward_step real_differentiable_on_imp_real_continuous_on goal=4
+  ← rule real_differentiable_on_imp_real_continuous_on goal=4
     #[6] real_differentiable_on f (real_closed_interval a b)
-  ← rewrite_goal real_differentiable_on_def sym=false goal=6
+  ← rewrite real_differentiable_on_def sym=false goal=6
     #[7] ∀x. x ∈ real_closed_interval a b ⟶ (∃f1. has_real_derivative f f1 (within (atreal x) (real_closed_interval a b)))
-  ← introduction x goal=7
+  ← intro x goal=7
     #[8] _VAR x
     #[9] x ∈ real_closed_interval a b
     #[10] ∃f1. has_real_derivative f f1 (within (atreal x) (real_closed_interval a b))
-  → apply_fact goal=10 facts=[2,9]
+  → forward goal=10 facts=[2,9]
     #[11] has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))
-  ← apply_backward_step exI goal=10 facts=[11]
+  ← rule exI goal=10 facts=[11]
     #[12] ∃f1. has_real_derivative f f1 (within (atreal x) (real_closed_interval a b))
-  ← introduction x goal=5
+  ← intro x goal=5
     #[13] x ∈ real_open_interval a b
     #[14] has_real_derivative f (f1 x) (atreal x)
   cut "real_open (real_open_interval a b)" goal=14
     #[15] real_open (real_open_interval a b)
-  ← apply_backward_step real_open_real_interval goal=15
+  ← rule real_open_real_interval goal=15
     #[16] real_open (real_open_interval a b)
-  → apply_forward_step has_real_derivative_within_real_open param_f=f param_f1="f1 x" goal=14 facts=[13,16]
+  → forward has_real_derivative_within_real_open param_f=f param_f1="f1 x" goal=14 facts=[13,16]
     #[17] has_real_derivative f (f1 x) (within (atreal x) (real_open_interval a b)) ⟷ has_real_derivative f (f1 x) (atreal x)
-  → rewrite_fact eq_sym_eq sym=false goal=14 facts=[17]
+  → rewrite target=fact eq_sym_eq sym=false goal=14 facts=[17]
     #[18] has_real_derivative f (f1 x) (atreal x) ⟷ has_real_derivative f (f1 x) (within (atreal x) (real_open_interval a b))
-  ← rewrite_goal_with_prev goal=14 facts=[18]
+  ← rewrite source=prev goal=14 facts=[18]
     #[19] has_real_derivative f (f1 x) (within (atreal x) (real_open_interval a b))
-  ← apply_backward_step has_real_derivative_within_subset param_s="(real_closed_interval a b)" goal=19
+  ← rule has_real_derivative_within_subset param_s="(real_closed_interval a b)" goal=19
     #[20] has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))
     #[21] real_open_interval a b ⊆ real_closed_interval a b
   ← apply_prev goal=20 facts=[2]
     #[22] x ∈ real_closed_interval a b
   cut "real_open_interval a b ⊆ real_closed_interval a b" goal=22
-  ← apply_backward_step real_interval_open_subset_closed goal=21
+  ← rule real_interval_open_subset_closed goal=21
     #[23] real_open_interval a b ⊆ real_closed_interval a b
-  ← apply_backward_step subsetE goal=22 facts=[23]
-  ← apply_backward_step real_interval_open_subset_closed goal=21
+  ← rule subsetE goal=22 facts=[23]
+  ← rule real_interval_open_subset_closed goal=21
 qed
 
 theorem real_mvt_very_simple
@@ -2840,54 +2840,54 @@ theorem real_mvt_very_simple
   prop a <= b --> (!x. x Mem real_closed_interval a b --> has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))) --> (?x. x Mem real_closed_interval a b & f b - f a = f1 x * (b - a))
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] a ≤ b
     #[2] ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))
     #[3] ∃x. x ∈ real_closed_interval a b ∧ f b - f a = f1 x * (b - a)
-  → rewrite_fact real_le_lt sym=false goal=3 facts=[1]
+  → rewrite target=fact real_le_lt sym=false goal=3 facts=[1]
     #[4] a < b ∨ a = b
-  ← apply_backward_step disjE goal=3 facts=[4]
+  ← rule disjE goal=3 facts=[4]
     #[5] a < b ⟶ (∃x. x ∈ real_closed_interval a b ∧ f b - f a = f1 x * (b - a))
     #[6] a = b ⟶ (∃x. x ∈ real_closed_interval a b ∧ f b - f a = f1 x * (b - a))
-  ← introduction goal=5
+  ← intro goal=5
     #[7] a < b
     #[8] ∃x. x ∈ real_closed_interval a b ∧ f b - f a = f1 x * (b - a)
-  → apply_forward_step real_mvt_simple param_f=f param_f1=f1 goal=8 facts=[7]
+  → forward real_mvt_simple param_f=f param_f1=f1 goal=8 facts=[7]
     #[9] (∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))) ⟶ (∃x. x ∈ real_open_interval a b ∧ f b - f a = f1 x * (b - a))
-  → apply_fact goal=8 facts=[9,2]
+  → forward goal=8 facts=[9,2]
     #[10] ∃x. x ∈ real_open_interval a b ∧ f b - f a = f1 x * (b - a)
-  exists_elim x goal=8 facts=[10]
+  elim x goal=8 facts=[10]
     #[11] _VAR x
     #[12] x ∈ real_open_interval a b ∧ f b - f a = f1 x * (b - a)
     #[13] ∃x. x ∈ real_closed_interval a b ∧ f b - f a = f1 x * (b - a)
-  ← inst_exists_goal x goal=13
+  ← inst x goal=13
     #[14] x ∈ real_closed_interval a b ∧ f b - f a = f1 x * (b - a)
-  ← apply_backward_step conjI goal=14
+  ← rule conjI goal=14
     #[15] x ∈ real_closed_interval a b
     #[16] f b - f a = f1 x * (b - a)
-  → apply_forward_step conjD1 goal=15 facts=[12]
+  → forward conjD1 goal=15 facts=[12]
     #[17] x ∈ real_open_interval a b
-  ← apply_backward_step subsetE param_A="real_open_interval a b" goal=15
+  ← rule subsetE param_A="real_open_interval a b" goal=15
     #[18] real_open_interval a b ⊆ real_closed_interval a b
-  ← apply_backward_step real_interval_open_subset_closed goal=18
+  ← rule real_interval_open_subset_closed goal=18
     #[19] real_open_interval a b ⊆ real_closed_interval a b
-  ← apply_backward_step conjD2 goal=16 facts=[12]
+  ← rule conjD2 goal=16 facts=[12]
     #[20] f b - f a = f1 x * (b - a)
-  ← introduction goal=6
+  ← intro goal=6
     #[21] a = b
     #[22] ∃x. x ∈ real_closed_interval a b ∧ f b - f a = f1 x * (b - a)
-  ← rewrite_goal_with_prev goal=22 facts=[21]
+  ← rewrite source=prev goal=22 facts=[21]
     #[23] ∃x. x ∈ real_closed_interval b b ∧ f b - f b = f1 x * (b - b)
-  ← inst_exists_goal b goal=23
+  ← inst b goal=23
     #[24] b ∈ real_closed_interval b b ∧ f b - f b = f1 b * (b - b)
-  ← apply_backward_step conjI goal=24
+  ← rule conjI goal=24
     #[25] b ∈ real_closed_interval b b
     #[26] f b - f b = f1 b * (b - b)
-  ← rewrite_goal real_closed_interval_def sym=false goal=25
+  ← rewrite real_closed_interval_def sym=false goal=25
     #[27] b ∈ {p. b ≤ p ∧ p ≤ b}
-  ← rewrite_goal member_collect sym=false goal=27
+  ← rewrite member_collect sym=false goal=27
     #[28] b ≤ b ∧ b ≤ b
-  ← rewrite_goal real_le_antisym sym=false goal=28
+  ← rewrite real_le_antisym sym=false goal=28
     #[29] b ≤ b ∧ b ≤ b
   real_norm goal=26
     #[30] f b - f b = f1 b * (b - b)
@@ -2898,38 +2898,38 @@ theorem real_rolle_simple
   prop a < b --> f a = f b --> (!x. x Mem real_closed_interval a b --> has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))) --> (?x. x Mem real_open_interval a b & f1 x = 0)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] a < b
     #[2] f a = f b
     #[3] ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))
     #[4] ∃x. x ∈ real_open_interval a b ∧ f1 x = 0
-  → apply_forward_step real_mvt_simple goal=4 facts=[1,3]
+  → forward real_mvt_simple goal=4 facts=[1,3]
     #[5] ∃x. x ∈ real_open_interval a b ∧ f b - f a = f1 x * (b - a)
-  exists_elim x goal=4 facts=[5]
+  elim x goal=4 facts=[5]
     #[6] _VAR x
     #[7] x ∈ real_open_interval a b ∧ f b - f a = f1 x * (b - a)
     #[8] ∃x. x ∈ real_open_interval a b ∧ f1 x = 0
-  ← inst_exists_goal x goal=8
+  ← inst x goal=8
     #[9] x ∈ real_open_interval a b ∧ f1 x = 0
-  ← apply_backward_step conjI goal=9
+  ← rule conjI goal=9
     #[10] x ∈ real_open_interval a b
     #[11] f1 x = 0
-  ← apply_backward_step conjD1 goal=10 facts=[7]
+  ← rule conjD1 goal=10 facts=[7]
     #[12] x ∈ real_open_interval a b
-  → apply_forward_step conjD2 goal=11 facts=[7]
+  → forward conjD2 goal=11 facts=[7]
     #[13] f b - f a = f1 x * (b - a)
-  → rewrite_fact_with_prev goal=11 facts=[2,13]
+  → rewrite target=fact source=prev goal=11 facts=[2,13]
     #[14] f b - f b = f1 x * (b - a)
   cut "f b - f b = f1 x * (b - a) <--> f1 x = 0 | b = a" goal=11 facts=[14]
     #[15] f b - f b = f1 x * (b - a) ⟷ f1 x = 0 ∨ b = a
   ← z3 goal=15
     #[16] f b - f b = f1 x * (b - a) ⟷ f1 x = 0 ∨ b = a
-  → rewrite_fact_with_prev goal=11 facts=[16,14]
+  → rewrite target=fact source=prev goal=11 facts=[16,14]
     #[17] f1 x = 0 ∨ b = a
-  ← apply_backward_step disjE goal=11 facts=[17]
+  ← rule disjE goal=11 facts=[17]
     #[18] f1 x = 0 ⟶ f1 x = 0
     #[19] b = a ⟶ f1 x = 0
-  ← introduction goal=19
+  ← intro goal=19
     #[20] b = a
     #[21] f1 x = 0
   ← z3 goal=21 facts=[1,20]
@@ -2941,55 +2941,55 @@ theorem real_mvt_cauchy
   prop a < b --> real_continuous_on f (real_closed_interval a b) --> real_continuous_on g (real_closed_interval a b) --> (!x. x Mem real_open_interval a b --> has_real_derivative f (f1 x) (atreal x) & has_real_derivative g (g1 x) (atreal x)) --> (?x. x Mem real_open_interval a b & (f b - f a) * g1 x = (g b - g a) * f1 x)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] a < b
     #[2] real_continuous_on f (real_closed_interval a b)
     #[3] real_continuous_on g (real_closed_interval a b)
     #[4] ∀x. x ∈ real_open_interval a b ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x)
     #[5] ∃x. x ∈ real_open_interval a b ∧ (f b - f a) * g1 x = (g b - g a) * f1 x
-  → apply_forward_step real_mvt param_f="(%x. f x * (g b - g a) - g x * (f b - f a))" param_f1="(%x. f1 x * (g b - g a) - g1 x * (f b - f a))" goal=5 facts=[1]
+  → forward real_mvt param_f="(%x. f x * (g b - g a) - g x * (f b - f a))" param_f1="(%x. f1 x * (g b - g a) - g1 x * (f b - f a))" goal=5 facts=[1]
     #[6] real_continuous_on (λx. f x * (g b - g a) - g x * (f b - f a)) (real_closed_interval a b) ⟶ (∀x. x ∈ real_open_interval a b ⟶ has_real_derivative (λx1. f x1 * (g b - g a) - g x1 * (f b - f a)) (f1 x * (g b - g a) - g1 x * (f b - f a)) (atreal x)) ⟶ (∃x. x ∈ real_open_interval a b ∧ f b * (g b - g a) - g b * (f b - f a) - (f a * (g b - g a) - g a * (f b - f a)) = (f1 x * (g b - g a) - g1 x * (f b - f a)) * (b - a))
   cut "real_continuous_on (λx. f x * (g b - g a) - g x * (f b - f a)) (real_closed_interval a b)" goal=5
     #[7] real_continuous_on (λx. f x * (g b - g a) - g x * (f b - f a)) (real_closed_interval a b)
-  ← apply_backward_step real_continuous_on_sub goal=7
+  ← rule real_continuous_on_sub goal=7
     #[8] real_continuous_on (λx. f x * (g b - g a)) (real_closed_interval a b)
     #[9] real_continuous_on (λx. g x * (f b - f a)) (real_closed_interval a b)
-  ← apply_backward_step real_continuous_on_rmul goal=8
-  ← apply_backward_step real_continuous_on_rmul goal=9
-  → apply_fact goal=5 facts=[6,7]
+  ← rule real_continuous_on_rmul goal=8
+  ← rule real_continuous_on_rmul goal=9
+  → forward goal=5 facts=[6,7]
     #[10] (∀x. x ∈ real_open_interval a b ⟶ has_real_derivative (λx1. f x1 * (g b - g a) - g x1 * (f b - f a)) (f1 x * (g b - g a) - g1 x * (f b - f a)) (atreal x)) ⟶ (∃x. x ∈ real_open_interval a b ∧ f b * (g b - g a) - g b * (f b - f a) - (f a * (g b - g a) - g a * (f b - f a)) = (f1 x * (g b - g a) - g1 x * (f b - f a)) * (b - a))
   cut "(∀x. x ∈ real_open_interval a b ⟶ has_real_derivative (λx1. f x1 * (g b - g a) - g x1 * (f b - f a)) (f1 x * (g b - g a) - g1 x * (f b - f a)) (atreal x))" goal=5 facts=[10]
     #[11] ∀x. x ∈ real_open_interval a b ⟶ has_real_derivative (λx1. f x1 * (g b - g a) - g x1 * (f b - f a)) (f1 x * (g b - g a) - g1 x * (f b - f a)) (atreal x)
-  ← introduction x goal=11
+  ← intro x goal=11
     #[12] _VAR x
     #[13] x ∈ real_open_interval a b
     #[14] has_real_derivative (λx1. f x1 * (g b - g a) - g x1 * (f b - f a)) (f1 x * (g b - g a) - g1 x * (f b - f a)) (atreal x)
-  ← apply_backward_step has_real_derivative_sub goal=14
+  ← rule has_real_derivative_sub goal=14
     #[15] has_real_derivative (λx1. f x1 * (g b - g a)) (f1 x * (g b - g a)) (atreal x)
     #[16] has_real_derivative (λx1. g x1 * (f b - f a)) (g1 x * (f b - f a)) (atreal x)
-  ← apply_backward_step has_real_derivative_rmul_atreal goal=15
+  ← rule has_real_derivative_rmul_atreal goal=15
     #[17] has_real_derivative f (f1 x) (atreal x)
-  → apply_fact goal=17 facts=[4,13]
+  → forward goal=17 facts=[4,13]
     #[18] has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x)
-  ← apply_backward_step conjD1 goal=17 facts=[18]
+  ← rule conjD1 goal=17 facts=[18]
     #[19] has_real_derivative f (f1 x) (atreal x)
-  ← apply_backward_step has_real_derivative_rmul_atreal goal=16
+  ← rule has_real_derivative_rmul_atreal goal=16
     #[20] has_real_derivative g (g1 x) (atreal x)
-  ← apply_backward_step conjD2 goal=20 facts=[18]
+  ← rule conjD2 goal=20 facts=[18]
     #[21] has_real_derivative g (g1 x) (atreal x)
-  → apply_fact goal=5 facts=[10,11]
+  → forward goal=5 facts=[10,11]
     #[22] ∃x. x ∈ real_open_interval a b ∧ f b * (g b - g a) - g b * (f b - f a) - (f a * (g b - g a) - g a * (f b - f a)) = (f1 x * (g b - g a) - g1 x * (f b - f a)) * (b - a)
-  exists_elim x goal=5 facts=[22]
+  elim x goal=5 facts=[22]
     #[23] x ∈ real_open_interval a b ∧ f b * (g b - g a) - g b * (f b - f a) - (f a * (g b - g a) - g a * (f b - f a)) = (f1 x * (g b - g a) - g1 x * (f b - f a)) * (b - a)
     #[24] ∃x. x ∈ real_open_interval a b ∧ (f b - f a) * g1 x = (g b - g a) * f1 x
-  ← inst_exists_goal x goal=24
+  ← inst x goal=24
     #[25] x ∈ real_open_interval a b ∧ (f b - f a) * g1 x = (g b - g a) * f1 x
-  ← apply_backward_step conjI goal=25
+  ← rule conjI goal=25
     #[26] x ∈ real_open_interval a b
     #[27] (f b - f a) * g1 x = (g b - g a) * f1 x
-  ← apply_backward_step conjD1 goal=26 facts=[23]
+  ← rule conjD1 goal=26 facts=[23]
     #[28] x ∈ real_open_interval a b
-  → apply_forward_step conjD2 goal=27 facts=[23]
+  → forward conjD2 goal=27 facts=[23]
     #[29] f b * (g b - g a) - g b * (f b - f a) - (f a * (g b - g a) - g a * (f b - f a)) = (f1 x * (g b - g a) - g1 x * (f b - f a)) * (b - a)
   ← z3 goal=27 facts=[1,29]
     #[30] (f b - f a) * g1 x = (g b - g a) * f1 x
@@ -3000,7 +3000,7 @@ theorem lhospital_lemma
   prop 0 < d --> (!x. 0 < abs (x - c) --> abs (x - c) < d --> has_real_derivative f (f1 x) (atreal x) & has_real_derivative g (g1 x) (atreal x) & ~(g1 x = 0)) --> f c = 0 --> g c = 0 --> tendsto_real f 0 (atreal c) --> tendsto_real g 0 (atreal c) --> tendsto_real (%x. f1 x / g1 x) l (atreal c) --> tendsto_real (%x. f x / g x) l (atreal c)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < d
     #[2] ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x) ∧ has_real_derivative g (g1 x) (atreal x) ∧ ¬(g1 x = 0)
     #[3] f c = 0
@@ -3013,29 +3013,29 @@ proof
     #[9] ∀p. ∀q. ∀r. (p ⟶ q ∧ r) ⟷ (p ⟶ q) ∧ (p ⟶ r)
   ← z3 goal=9
     #[10] ∀p. ∀q. ∀r. (p ⟶ q ∧ r) ⟷ (p ⟶ q) ∧ (p ⟶ r)
-  → rewrite_fact_with_prev goal=8 facts=[10,2]
+  → rewrite target=fact source=prev goal=8 facts=[10,2]
     #[11] ∀x. 0 < abs (x - c) ⟶ (abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x)) ∧ (abs (x - c) < d ⟶ has_real_derivative g (g1 x) (atreal x) ∧ ¬(g1 x = 0))
-  → rewrite_fact_with_prev goal=8 facts=[10,11]
+  → rewrite target=fact source=prev goal=8 facts=[10,11]
     #[12] ∀x. (0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x)) ∧ (0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative g (g1 x) (atreal x) ∧ ¬(g1 x = 0))
-  → rewrite_fact_with_prev goal=8 facts=[10,12]
+  → rewrite target=fact source=prev goal=8 facts=[10,12]
     #[13] ∀x. (0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x)) ∧ (0 < abs (x - c) ⟶ (abs (x - c) < d ⟶ has_real_derivative g (g1 x) (atreal x)) ∧ (abs (x - c) < d ⟶ ¬(g1 x = 0)))
-  → rewrite_fact_with_prev goal=8 facts=[10,13]
+  → rewrite target=fact source=prev goal=8 facts=[10,13]
     #[14] ∀x. (0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x)) ∧ (0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative g (g1 x) (atreal x)) ∧ (0 < abs (x - c) ⟶ abs (x - c) < d ⟶ ¬(g1 x = 0))
-  → apply_forward_step all_conj_distrib goal=8 facts=[14]
+  → forward all_conj_distrib goal=8 facts=[14]
     #[15] (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x)) ∧ (∀x. (0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative g (g1 x) (atreal x)) ∧ (0 < abs (x - c) ⟶ abs (x - c) < d ⟶ ¬(g1 x = 0)))
-  → apply_forward_step conjD1 goal=8 facts=[15]
+  → forward conjD1 goal=8 facts=[15]
     #[16] ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative f (f1 x) (atreal x)
-  → apply_forward_step conjD2 goal=8 facts=[15]
+  → forward conjD2 goal=8 facts=[15]
     #[17] ∀x. (0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative g (g1 x) (atreal x)) ∧ (0 < abs (x - c) ⟶ abs (x - c) < d ⟶ ¬(g1 x = 0))
-  → apply_forward_step all_conj_distrib goal=8 facts=[17]
+  → forward all_conj_distrib goal=8 facts=[17]
     #[18] (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative g (g1 x) (atreal x)) ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ ¬(g1 x = 0))
-  → apply_forward_step conjD1 goal=8 facts=[18]
+  → forward conjD1 goal=8 facts=[18]
     #[19] ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ has_real_derivative g (g1 x) (atreal x)
-  → apply_forward_step conjD2 goal=8 facts=[18]
+  → forward conjD2 goal=8 facts=[18]
     #[20] ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ ¬(g1 x = 0)
   cut "!x.  abs (x - c) < d --> real_continuous f (atreal x)" goal=8
     #[21] ∀x. abs (x - c) < d ⟶ real_continuous f (atreal x)
-  ← introduction x goal=21
+  ← intro x goal=21
     #[22] _VAR x
     #[23] abs (x - c) < d
     #[24] real_continuous f (atreal x)
@@ -3043,269 +3043,269 @@ proof
     #[25] x = c ∨ 0 < abs (x - c)
   ← z3 goal=25
     #[26] x = c ∨ 0 < abs (x - c)
-  ← apply_backward_step disjE goal=24 facts=[26]
+  ← rule disjE goal=24 facts=[26]
     #[27] x = c ⟶ real_continuous f (atreal x)
     #[28] 0 < abs (x - c) ⟶ real_continuous f (atreal x)
-  ← introduction goal=27
+  ← intro goal=27
     #[29] x = c
     #[30] real_continuous f (atreal x)
-  ← rewrite_goal_with_prev goal=30 facts=[29]
+  ← rewrite source=prev goal=30 facts=[29]
     #[31] real_continuous f (atreal c)
-  ← rewrite_goal real_continuous_atreal sym=false goal=31
+  ← rewrite real_continuous_atreal sym=false goal=31
     #[32] tendsto_real f (f c) (atreal c)
-  ← rewrite_goal_with_prev goal=32 facts=[3]
-  ← introduction goal=28
+  ← rewrite source=prev goal=32 facts=[3]
+  ← intro goal=28
     #[33] 0 < abs (x - c)
     #[34] real_continuous f (atreal x)
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=34
+  ← rule real_differentiable_imp_continuous_atreal goal=34
     #[35] real_differentiable f (atreal x)
-  ← rewrite_goal real_differentiable_def sym=false goal=35
+  ← rewrite real_differentiable_def sym=false goal=35
     #[36] ∃f1. has_real_derivative f f1 (atreal x)
-  → apply_fact goal=36 facts=[16,33,23]
+  → forward goal=36 facts=[16,33,23]
     #[37] has_real_derivative f (f1 x) (atreal x)
-  ← apply_backward_step exI goal=36 facts=[37]
+  ← rule exI goal=36 facts=[37]
     #[38] ∃f1. has_real_derivative f f1 (atreal x)
   cut "∀x. abs (x - c) < d ⟶ real_continuous g (atreal x)" goal=8 facts=[21]
     #[39] ∀x. abs (x - c) < d ⟶ real_continuous g (atreal x)
-  ← introduction x goal=39
+  ← intro x goal=39
     #[40] real_continuous g (atreal x)
   cut "x = c ∨ 0 < abs (x - c)" goal=40
   ← z3 goal=25
-  ← apply_backward_step disjE goal=40 facts=[26]
+  ← rule disjE goal=40 facts=[26]
     #[41] x = c ⟶ real_continuous g (atreal x)
     #[42] 0 < abs (x - c) ⟶ real_continuous g (atreal x)
-  ← introduction goal=41
+  ← intro goal=41
     #[43] real_continuous g (atreal x)
-  ← rewrite_goal_with_prev goal=43 facts=[29]
+  ← rewrite source=prev goal=43 facts=[29]
     #[44] real_continuous g (atreal c)
-  ← rewrite_goal real_continuous_atreal sym=false goal=44
+  ← rewrite real_continuous_atreal sym=false goal=44
     #[45] tendsto_real g (g c) (atreal c)
-  ← rewrite_goal_with_prev goal=45 facts=[4]
-  ← introduction goal=42
+  ← rewrite source=prev goal=45 facts=[4]
+  ← intro goal=42
     #[46] real_continuous g (atreal x)
-  → apply_fact goal=46 facts=[19,33,23]
+  → forward goal=46 facts=[19,33,23]
     #[47] has_real_derivative g (g1 x) (atreal x)
-  ← apply_backward_step has_real_derivative_imp_continuous_atreal param_f1="g1 x" goal=46
+  ← rule has_real_derivative_imp_continuous_atreal param_f1="g1 x" goal=46
   cut "!x. 0 < abs (x - c) ⟶  abs (x - c) < d ⟶ ¬(g x = 0)" goal=8
     #[48] ∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ ¬(g x = 0)
-  ← introduction x goal=48
+  ← intro x goal=48
     #[49] ¬(g x = 0)
   cut "c < x | x < c" goal=49
     #[50] c < x ∨ x < c
   ← z3 goal=50 facts=[33]
     #[51] c < x ∨ x < c
-  ← apply_backward_step disjE goal=49 facts=[51]
+  ← rule disjE goal=49 facts=[51]
     #[52] c < x ⟶ ¬(g x = 0)
     #[53] x < c ⟶ ¬(g x = 0)
-  ← introduction goal=52
+  ← intro goal=52
     #[54] c < x
     #[55] ¬(g x = 0)
-  → apply_forward_step real_rolle param_f=g param_f1=g1 goal=55 facts=[54]
+  → forward real_rolle param_f=g param_f1=g1 goal=55 facts=[54]
     #[56] g c = g x ⟶ real_continuous_on g (real_closed_interval c x) ⟶ (∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval c x ∧ g1 x1 = 0)
-  ← apply_backward_step contrapositive goal=55 facts=[56]
+  ← rule contrapositive goal=55 facts=[56]
     #[57] ¬¬(g x = 0) ⟶ ¬(g c = g x ⟶ real_continuous_on g (real_closed_interval c x) ⟶ (∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval c x ∧ g1 x1 = 0))
-  ← introduction goal=57
+  ← intro goal=57
     #[58] ¬¬(g x = 0)
     #[59] ¬(g c = g x ⟶ real_continuous_on g (real_closed_interval c x) ⟶ (∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval c x ∧ g1 x1 = 0))
-  → rewrite_fact double_neg sym=false goal=59 facts=[58]
+  → rewrite target=fact double_neg sym=false goal=59 facts=[58]
     #[60] g x = 0
-  ← rewrite_goal not_imp sym=false goal=59
+  ← rewrite not_imp sym=false goal=59
     #[61] g c = g x ∧ ¬(real_continuous_on g (real_closed_interval c x) ⟶ (∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval c x ∧ g1 x1 = 0))
-  ← apply_backward_step conjI goal=61
+  ← rule conjI goal=61
     #[62] g c = g x
     #[63] ¬(real_continuous_on g (real_closed_interval c x) ⟶ (∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval c x ∧ g1 x1 = 0))
-  ← rewrite_goal_with_prev goal=62 facts=[60]
-  ← rewrite_goal not_imp sym=false goal=63
+  ← rewrite source=prev goal=62 facts=[60]
+  ← rewrite not_imp sym=false goal=63
     #[64] real_continuous_on g (real_closed_interval c x) ∧ ¬((∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval c x ∧ g1 x1 = 0))
-  ← apply_backward_step conjI goal=64
+  ← rule conjI goal=64
     #[65] real_continuous_on g (real_closed_interval c x)
     #[66] ¬((∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval c x ∧ g1 x1 = 0))
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=65
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=65
     #[67] ∀x1. x1 ∈ real_closed_interval c x ⟶ real_continuous g (within (atreal x1) (real_closed_interval c x))
-  ← introduction x1 goal=67
+  ← intro x1 goal=67
     #[68] _VAR x1
     #[69] x1 ∈ real_closed_interval c x
     #[70] real_continuous g (within (atreal x1) (real_closed_interval c x))
-  ← apply_backward_step real_continuous_atreal_withinreal goal=70
+  ← rule real_continuous_atreal_withinreal goal=70
     #[71] real_continuous g (atreal x1)
   ← apply_prev goal=71 facts=[39]
     #[72] abs (x1 - c) < d
-  → rewrite_fact real_closed_interval_def sym=false goal=72 facts=[69]
+  → rewrite target=fact real_closed_interval_def sym=false goal=72 facts=[69]
     #[73] x1 ∈ {p. c ≤ p ∧ p ≤ x}
-  → rewrite_fact member_collect sym=false goal=72 facts=[73]
+  → rewrite target=fact member_collect sym=false goal=72 facts=[73]
     #[74] c ≤ x1 ∧ x1 ≤ x
   ← z3 goal=72 facts=[74,23]
     #[75] abs (x1 - c) < d
-  ← rewrite_goal not_imp sym=false goal=66
+  ← rewrite not_imp sym=false goal=66
     #[76] (∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative g (g1 x1) (atreal x1)) ∧ ¬(∃x1. x1 ∈ real_open_interval c x ∧ g1 x1 = 0)
-  ← apply_backward_step conjI goal=76
+  ← rule conjI goal=76
     #[77] ∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative g (g1 x1) (atreal x1)
     #[78] ¬(∃x1. x1 ∈ real_open_interval c x ∧ g1 x1 = 0)
-  ← introduction x1 goal=77
+  ← intro x1 goal=77
     #[79] x1 ∈ real_open_interval c x
     #[80] has_real_derivative g (g1 x1) (atreal x1)
   ← apply_prev goal=80 facts=[19]
     #[81] 0 < abs (x1 - c)
     #[82] abs (x1 - c) < d
-  → rewrite_fact real_open_interval_def sym=false goal=81 facts=[79]
+  → rewrite target=fact real_open_interval_def sym=false goal=81 facts=[79]
     #[83] x1 ∈ {p. c < p ∧ p < x}
-  → rewrite_fact member_collect sym=false goal=81 facts=[83]
+  → rewrite target=fact member_collect sym=false goal=81 facts=[83]
     #[84] c < x1 ∧ x1 < x
   ← z3 goal=81 facts=[84]
     #[85] 0 < abs (x1 - c)
   ← z3 goal=82 facts=[84,23,54]
     #[86] abs (x1 - c) < d
-  ← rewrite_goal not_exists sym=false goal=78
+  ← rewrite not_exists sym=false goal=78
     #[87] ∀x1. ¬(x1 ∈ real_open_interval c x ∧ g1 x1 = 0)
-  ← introduction x1 goal=87
+  ← intro x1 goal=87
     #[88] ¬(x1 ∈ real_open_interval c x ∧ g1 x1 = 0)
-  ← apply_backward_step negI goal=88
+  ← rule negI goal=88
     #[89] x1 ∈ real_open_interval c x ∧ g1 x1 = 0 ⟶ false
-  ← introduction goal=89
+  ← intro goal=89
     #[90] x1 ∈ real_open_interval c x ∧ g1 x1 = 0
     #[91] false
-  → apply_forward_step conjD2 goal=91 facts=[90]
+  → forward conjD2 goal=91 facts=[90]
     #[92] g1 x1 = 0
-  ← apply_backward_step contrapositive goal=91 facts=[92]
+  ← rule contrapositive goal=91 facts=[92]
     #[93] ¬false ⟶ ¬(g1 x1 = 0)
-  ← introduction goal=93
+  ← intro goal=93
     #[94] ¬false
     #[95] ¬(g1 x1 = 0)
   ← apply_prev goal=95 facts=[20]
     #[96] 0 < abs (x1 - c)
     #[97] abs (x1 - c) < d
-  → apply_forward_step conjD1 goal=96 facts=[90]
+  → forward conjD1 goal=96 facts=[90]
     #[98] x1 ∈ real_open_interval c x
-  → rewrite_fact real_open_interval_def sym=false goal=96 facts=[98]
+  → rewrite target=fact real_open_interval_def sym=false goal=96 facts=[98]
     #[99] x1 ∈ {p. c < p ∧ p < x}
-  → rewrite_fact member_collect sym=false goal=96 facts=[99]
+  → rewrite target=fact member_collect sym=false goal=96 facts=[99]
     #[100] c < x1 ∧ x1 < x
   ← z3 goal=96 facts=[100]
     #[101] 0 < abs (x1 - c)
   ← z3 goal=97 facts=[100,54,23]
     #[102] abs (x1 - c) < d
-  ← introduction goal=53
+  ← intro goal=53
     #[103] x < c
     #[104] ¬(g x = 0)
-  → apply_forward_step real_rolle param_f=g param_f1=g1 goal=104 facts=[103]
+  → forward real_rolle param_f=g param_f1=g1 goal=104 facts=[103]
     #[105] g x = g c ⟶ real_continuous_on g (real_closed_interval x c) ⟶ (∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval x c ∧ g1 x1 = 0)
-  ← apply_backward_step contrapositive goal=104 facts=[105]
+  ← rule contrapositive goal=104 facts=[105]
     #[106] ¬¬(g x = 0) ⟶ ¬(g x = g c ⟶ real_continuous_on g (real_closed_interval x c) ⟶ (∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval x c ∧ g1 x1 = 0))
-  ← introduction goal=106
+  ← intro goal=106
     #[107] ¬(g x = g c ⟶ real_continuous_on g (real_closed_interval x c) ⟶ (∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval x c ∧ g1 x1 = 0))
-  → rewrite_fact double_neg sym=false goal=107 facts=[58]
-  ← rewrite_goal not_imp sym=false goal=107
+  → rewrite target=fact double_neg sym=false goal=107 facts=[58]
+  ← rewrite not_imp sym=false goal=107
     #[108] g x = g c ∧ ¬(real_continuous_on g (real_closed_interval x c) ⟶ (∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval x c ∧ g1 x1 = 0))
-  ← apply_backward_step conjI goal=108
+  ← rule conjI goal=108
     #[109] g x = g c
     #[110] ¬(real_continuous_on g (real_closed_interval x c) ⟶ (∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval x c ∧ g1 x1 = 0))
-  ← rewrite_goal_with_prev goal=109 facts=[4]
-  ← rewrite_goal not_imp sym=false goal=110
+  ← rewrite source=prev goal=109 facts=[4]
+  ← rewrite not_imp sym=false goal=110
     #[111] real_continuous_on g (real_closed_interval x c) ∧ ¬((∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval x c ∧ g1 x1 = 0))
-  ← apply_backward_step conjI goal=111
+  ← rule conjI goal=111
     #[112] real_continuous_on g (real_closed_interval x c)
     #[113] ¬((∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval x c ∧ g1 x1 = 0))
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=112
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=112
     #[114] ∀x1. x1 ∈ real_closed_interval x c ⟶ real_continuous g (within (atreal x1) (real_closed_interval x c))
-  ← introduction x1 goal=114
+  ← intro x1 goal=114
     #[115] x1 ∈ real_closed_interval x c
     #[116] real_continuous g (within (atreal x1) (real_closed_interval x c))
-  ← apply_backward_step real_continuous_atreal_withinreal goal=116
+  ← rule real_continuous_atreal_withinreal goal=116
     #[117] real_continuous g (atreal x1)
   ← apply_prev goal=117 facts=[39]
     #[118] abs (x1 - c) < d
-  → rewrite_fact real_closed_interval_def sym=false goal=118 facts=[115]
+  → rewrite target=fact real_closed_interval_def sym=false goal=118 facts=[115]
     #[119] x1 ∈ {p. x ≤ p ∧ p ≤ c}
-  → rewrite_fact member_collect sym=false goal=118 facts=[119]
+  → rewrite target=fact member_collect sym=false goal=118 facts=[119]
     #[120] x ≤ x1 ∧ x1 ≤ c
   ← z3 goal=118 facts=[120,103,23]
     #[121] abs (x1 - c) < d
-  ← rewrite_goal not_imp sym=false goal=113
+  ← rewrite not_imp sym=false goal=113
     #[122] (∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative g (g1 x1) (atreal x1)) ∧ ¬(∃x1. x1 ∈ real_open_interval x c ∧ g1 x1 = 0)
-  ← apply_backward_step conjI goal=122
+  ← rule conjI goal=122
     #[123] ∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative g (g1 x1) (atreal x1)
     #[124] ¬(∃x1. x1 ∈ real_open_interval x c ∧ g1 x1 = 0)
-  ← introduction x1 goal=123
+  ← intro x1 goal=123
     #[125] x1 ∈ real_open_interval x c
     #[126] has_real_derivative g (g1 x1) (atreal x1)
   ← apply_prev goal=126 facts=[19]
     #[127] 0 < abs (x1 - c)
     #[128] abs (x1 - c) < d
-  → rewrite_fact real_open_interval_def sym=false goal=127 facts=[125]
+  → rewrite target=fact real_open_interval_def sym=false goal=127 facts=[125]
     #[129] x1 ∈ {p. x < p ∧ p < c}
-  → rewrite_fact member_collect sym=false goal=127 facts=[129]
+  → rewrite target=fact member_collect sym=false goal=127 facts=[129]
     #[130] x < x1 ∧ x1 < c
   ← z3 goal=127 facts=[130]
     #[131] 0 < abs (x1 - c)
   ← z3 goal=128 facts=[130,103,23]
     #[132] abs (x1 - c) < d
-  ← rewrite_goal not_exists sym=false goal=124
+  ← rewrite not_exists sym=false goal=124
     #[133] ∀x1. ¬(x1 ∈ real_open_interval x c ∧ g1 x1 = 0)
-  ← introduction x1 goal=133
+  ← intro x1 goal=133
     #[134] ¬(x1 ∈ real_open_interval x c ∧ g1 x1 = 0)
-  ← apply_backward_step negI goal=134
+  ← rule negI goal=134
     #[135] x1 ∈ real_open_interval x c ∧ g1 x1 = 0 ⟶ false
-  ← introduction goal=135
+  ← intro goal=135
     #[136] x1 ∈ real_open_interval x c ∧ g1 x1 = 0
     #[137] false
-  → apply_forward_step conjD2 goal=137 facts=[136]
+  → forward conjD2 goal=137 facts=[136]
     #[138] g1 x1 = 0
-  ← apply_backward_step contrapositive goal=137 facts=[138]
+  ← rule contrapositive goal=137 facts=[138]
     #[139] ¬false ⟶ ¬(g1 x1 = 0)
-  ← introduction goal=139
+  ← intro goal=139
     #[140] ¬(g1 x1 = 0)
   ← apply_prev goal=140 facts=[20]
     #[141] 0 < abs (x1 - c)
     #[142] abs (x1 - c) < d
-  → apply_forward_step conjD1 goal=141 facts=[136]
+  → forward conjD1 goal=141 facts=[136]
     #[143] x1 ∈ real_open_interval x c
-  → rewrite_fact real_open_interval_def sym=false goal=141 facts=[143]
+  → rewrite target=fact real_open_interval_def sym=false goal=141 facts=[143]
     #[144] x1 ∈ {p. x < p ∧ p < c}
-  → rewrite_fact member_collect sym=false goal=141 facts=[144]
+  → rewrite target=fact member_collect sym=false goal=141 facts=[144]
     #[145] x < x1 ∧ x1 < c
   ← z3 goal=141 facts=[145]
     #[146] 0 < abs (x1 - c)
   ← z3 goal=142 facts=[145,103,23]
     #[147] abs (x1 - c) < d
-  ← rewrite_goal reallim_atreal sym=false goal=8
+  ← rewrite reallim_atreal sym=false goal=8
     #[148] ∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs (f x / g x - l) < e))
-  → rewrite_fact reallim_atreal sym=false goal=148 facts=[7]
+  → rewrite target=fact reallim_atreal sym=false goal=148 facts=[7]
     #[149] ∀e. 0 < e ⟶ (∃d. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs (f1 x / g1 x - l) < e))
-  ← introduction e goal=148
+  ← intro e goal=148
     #[150] _VAR e
     #[151] 0 < e
     #[152] ∃d. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs (f x / g x - l) < e)
-  → apply_fact goal=152 facts=[149,151]
+  → forward goal=152 facts=[149,151]
     #[153] ∃d. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs (f1 x / g1 x - l) < e)
-  exists_elim k goal=152 facts=[153]
+  elim k goal=152 facts=[153]
     #[154] _VAR k
     #[155] 0 < k ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < k ⟶ abs (f1 x / g1 x - l) < e)
     #[156] ∃d. 0 < d ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < d ⟶ abs (f x / g x - l) < e)
-  ← inst_exists_goal "min d k" goal=156
+  ← inst "min d k" goal=156
     #[157] 0 < min d k ∧ (∀x. 0 < abs (x - c) ⟶ abs (x - c) < min d k ⟶ abs (f x / g x - l) < e)
-  ← apply_backward_step conjI goal=157
+  ← rule conjI goal=157
     #[158] 0 < min d k
     #[159] ∀x. 0 < abs (x - c) ⟶ abs (x - c) < min d k ⟶ abs (f x / g x - l) < e
-  → apply_forward_step conjD1 goal=158 facts=[155]
+  → forward conjD1 goal=158 facts=[155]
     #[160] 0 < k
   ← z3 goal=158 facts=[160,1]
     #[161] 0 < min d k
-  ← introduction x goal=159
+  ← intro x goal=159
     #[162] abs (x - c) < min d k
     #[163] abs (f x / g x - l) < e
-  → apply_forward_step conjD2 goal=163 facts=[155]
+  → forward conjD2 goal=163 facts=[155]
     #[164] ∀x. 0 < abs (x - c) ⟶ abs (x - c) < k ⟶ abs (f1 x / g1 x - l) < e
   cut "∃y. 0 < abs (y - c) ∧ abs (y - c) < abs (x - c) ∧ f x / g x = f1 y / g1 y" goal=163
     #[165] ∃y. 0 < abs (y - c) ∧ abs (y - c) < abs (x - c) ∧ f x / g x = f1 y / g1 y
   cut "c < x ∨ x < c" goal=165
     #[166] c < x ∨ x < c
   ← z3 goal=166 facts=[33]
-  ← apply_backward_step disjE goal=165 facts=[51]
+  ← rule disjE goal=165 facts=[51]
     #[167] c < x ⟶ (∃y. 0 < abs (y - c) ∧ abs (y - c) < abs (x - c) ∧ f x / g x = f1 y / g1 y)
     #[168] x < c ⟶ (∃y. 0 < abs (y - c) ∧ abs (y - c) < abs (x - c) ∧ f x / g x = f1 y / g1 y)
-  ← introduction goal=167
+  ← intro goal=167
     #[169] ∃y. 0 < abs (y - c) ∧ abs (y - c) < abs (x - c) ∧ f x / g x = f1 y / g1 y
-  → apply_forward_step real_mvt_cauchy param_f=f param_f1=f1 param_g=g param_g1=g1 goal=169 facts=[54]
+  → forward real_mvt_cauchy param_f=f param_f1=f1 param_g=g param_g1=g1 goal=169 facts=[54]
     #[170] real_continuous_on f (real_closed_interval c x) ⟶ real_continuous_on g (real_closed_interval c x) ⟶ (∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative f (f1 x1) (atreal x1) ∧ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval c x ∧ (f x - f c) * g1 x1 = (g x - g c) * f1 x1)
   cut "(∃x1. x1 ∈ real_open_interval c x ∧ (f x - f c) * g1 x1 = (g x - g c) * f1 x1)" goal=169
     #[171] ∃x1. x1 ∈ real_open_interval c x ∧ (f x - f c) * g1 x1 = (g x - g c) * f1 x1
@@ -3313,70 +3313,70 @@ proof
     #[172] real_continuous_on f (real_closed_interval c x)
     #[173] real_continuous_on g (real_closed_interval c x)
     #[174] ∀x1. x1 ∈ real_open_interval c x ⟶ has_real_derivative f (f1 x1) (atreal x1) ∧ has_real_derivative g (g1 x1) (atreal x1)
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=172
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=172
     #[175] ∀x1. x1 ∈ real_closed_interval c x ⟶ real_continuous f (within (atreal x1) (real_closed_interval c x))
-  ← introduction x1 goal=175
+  ← intro x1 goal=175
     #[176] real_continuous f (within (atreal x1) (real_closed_interval c x))
-  ← apply_backward_step real_continuous_atreal_withinreal goal=176
+  ← rule real_continuous_atreal_withinreal goal=176
     #[177] real_continuous f (atreal x1)
   ← apply_prev goal=177 facts=[21]
     #[178] abs (x1 - c) < d
-  → rewrite_fact real_closed_interval_def sym=false goal=178 facts=[69]
-  → rewrite_fact member_collect sym=false goal=178 facts=[73]
+  → rewrite target=fact real_closed_interval_def sym=false goal=178 facts=[69]
+  → rewrite target=fact member_collect sym=false goal=178 facts=[73]
   ← z3 goal=178 facts=[74,54,162]
     #[179] abs (x1 - c) < d
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=173
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=173
     #[180] ∀x1. x1 ∈ real_closed_interval c x ⟶ real_continuous g (within (atreal x1) (real_closed_interval c x))
-  ← introduction x1 goal=180
+  ← intro x1 goal=180
     #[181] real_continuous g (within (atreal x1) (real_closed_interval c x))
-  ← apply_backward_step real_continuous_atreal_withinreal goal=181
+  ← rule real_continuous_atreal_withinreal goal=181
     #[182] real_continuous g (atreal x1)
   ← apply_prev goal=182 facts=[39]
-  → rewrite_fact real_closed_interval_def sym=false goal=178 facts=[69]
-  → rewrite_fact member_collect sym=false goal=178 facts=[73]
+  → rewrite target=fact real_closed_interval_def sym=false goal=178 facts=[69]
+  → rewrite target=fact member_collect sym=false goal=178 facts=[73]
   ← z3 goal=178 facts=[74,54,162]
-  ← introduction x1 goal=174
+  ← intro x1 goal=174
     #[183] has_real_derivative f (f1 x1) (atreal x1) ∧ has_real_derivative g (g1 x1) (atreal x1)
-  ← apply_backward_step conjI goal=183
+  ← rule conjI goal=183
     #[184] has_real_derivative f (f1 x1) (atreal x1)
     #[185] has_real_derivative g (g1 x1) (atreal x1)
   ← apply_prev goal=184 facts=[16]
     #[186] 0 < abs (x1 - c)
     #[187] abs (x1 - c) < d
-  → rewrite_fact real_open_interval_def sym=false goal=186 facts=[79]
-  → rewrite_fact member_collect sym=false goal=186 facts=[83]
+  → rewrite target=fact real_open_interval_def sym=false goal=186 facts=[79]
+  → rewrite target=fact member_collect sym=false goal=186 facts=[83]
   ← z3 goal=186 facts=[84]
   ← z3 goal=187 facts=[84,162,54]
     #[188] abs (x1 - c) < d
   ← apply_prev goal=185 facts=[19]
-  exists_elim x1 goal=169 facts=[171]
+  elim x1 goal=169 facts=[171]
     #[189] x1 ∈ real_open_interval c x ∧ (f x - f c) * g1 x1 = (g x - g c) * f1 x1
     #[190] ∃y. 0 < abs (y - c) ∧ abs (y - c) < abs (x - c) ∧ f x / g x = f1 y / g1 y
-  ← inst_exists_goal x1 goal=190
+  ← inst x1 goal=190
     #[191] 0 < abs (x1 - c) ∧ abs (x1 - c) < abs (x - c) ∧ f x / g x = f1 x1 / g1 x1
-  ← apply_backward_step conjI goal=191
+  ← rule conjI goal=191
     #[192] 0 < abs (x1 - c)
     #[193] abs (x1 - c) < abs (x - c) ∧ f x / g x = f1 x1 / g1 x1
-  → apply_forward_step conjD1 goal=192 facts=[189]
+  → forward conjD1 goal=192 facts=[189]
     #[194] x1 ∈ real_open_interval c x
-  → rewrite_fact real_open_interval_def sym=false goal=192 facts=[194]
+  → rewrite target=fact real_open_interval_def sym=false goal=192 facts=[194]
     #[195] x1 ∈ {p. c < p ∧ p < x}
-  → rewrite_fact member_collect sym=false goal=192 facts=[195]
+  → rewrite target=fact member_collect sym=false goal=192 facts=[195]
     #[196] c < x1 ∧ x1 < x
   ← z3 goal=192 facts=[196]
     #[197] 0 < abs (x1 - c)
-  ← apply_backward_step conjI goal=193
+  ← rule conjI goal=193
     #[198] abs (x1 - c) < abs (x - c)
     #[199] f x / g x = f1 x1 / g1 x1
   ← z3 goal=198 facts=[196]
     #[200] abs (x1 - c) < abs (x - c)
-  → apply_forward_step conjD2 goal=199 facts=[189]
+  → forward conjD2 goal=199 facts=[189]
     #[201] (f x - f c) * g1 x1 = (g x - g c) * f1 x1
-  → rewrite_fact_with_prev goal=199 facts=[3,201]
+  → rewrite target=fact source=prev goal=199 facts=[3,201]
     #[202] (f x - 0) * g1 x1 = (g x - g c) * f1 x1
-  → rewrite_fact_with_prev goal=199 facts=[4,202]
+  → rewrite target=fact source=prev goal=199 facts=[4,202]
     #[203] (f x - 0) * g1 x1 = (g x - 0) * f1 x1
-  → rewrite_fact real_sub_rzero sym=false goal=199 facts=[203]
+  → rewrite target=fact real_sub_rzero sym=false goal=199 facts=[203]
     #[204] f x * g1 x1 = g x * f1 x1
   cut "f x * g1 x1 = g x * f1 x1 --> ~(g x = 0) --> ~(g1 x1 = 0) --> f x / g x = f1 x1 / g1 x1" goal=199
     #[205] f x * g1 x1 = g x * f1 x1 ⟶ ¬(g x = 0) ⟶ ¬(g1 x1 = 0) ⟶ f x / g x = f1 x1 / g1 x1
@@ -3391,11 +3391,11 @@ proof
     #[210] abs (x - c) < d
   ← apply_prev goal=208 facts=[20]
     #[211] abs (x1 - c) < d
-  ← apply_backward_step real_lt_trans goal=211 facts=[200,210]
+  ← rule real_lt_trans goal=211 facts=[200,210]
     #[212] abs (x1 - c) < d
-  ← introduction goal=168
+  ← intro goal=168
     #[213] ∃y. 0 < abs (y - c) ∧ abs (y - c) < abs (x - c) ∧ f x / g x = f1 y / g1 y
-  → apply_forward_step real_mvt_cauchy param_f=f param_f1=f1 param_g=g param_g1=g1 goal=213 facts=[103]
+  → forward real_mvt_cauchy param_f=f param_f1=f1 param_g=g param_g1=g1 goal=213 facts=[103]
     #[214] real_continuous_on f (real_closed_interval x c) ⟶ real_continuous_on g (real_closed_interval x c) ⟶ (∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative f (f1 x1) (atreal x1) ∧ has_real_derivative g (g1 x1) (atreal x1)) ⟶ (∃x1. x1 ∈ real_open_interval x c ∧ (f c - f x) * g1 x1 = (g c - g x) * f1 x1)
   cut "(∃x1. x1 ∈ real_open_interval x c ∧ (f c - f x) * g1 x1 = (g c - g x) * f1 x1)" goal=213
     #[215] ∃x1. x1 ∈ real_open_interval x c ∧ (f c - f x) * g1 x1 = (g c - g x) * f1 x1
@@ -3403,59 +3403,59 @@ proof
     #[216] real_continuous_on f (real_closed_interval x c)
     #[217] real_continuous_on g (real_closed_interval x c)
     #[218] ∀x1. x1 ∈ real_open_interval x c ⟶ has_real_derivative f (f1 x1) (atreal x1) ∧ has_real_derivative g (g1 x1) (atreal x1)
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=216
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=216
     #[219] ∀x1. x1 ∈ real_closed_interval x c ⟶ real_continuous f (within (atreal x1) (real_closed_interval x c))
-  ← introduction x1 goal=219
+  ← intro x1 goal=219
     #[220] real_continuous f (within (atreal x1) (real_closed_interval x c))
-  ← apply_backward_step real_continuous_atreal_withinreal goal=220
+  ← rule real_continuous_atreal_withinreal goal=220
     #[221] real_continuous f (atreal x1)
   ← apply_prev goal=221 facts=[21]
     #[222] abs (x1 - c) < d
-  → rewrite_fact real_closed_interval_def sym=false goal=222 facts=[115]
-  → rewrite_fact member_collect sym=false goal=222 facts=[119]
+  → rewrite target=fact real_closed_interval_def sym=false goal=222 facts=[115]
+  → rewrite target=fact member_collect sym=false goal=222 facts=[119]
   ← z3 goal=222 facts=[120,162]
     #[223] abs (x1 - c) < d
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=217
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=217
     #[224] ∀x1. x1 ∈ real_closed_interval x c ⟶ real_continuous g (within (atreal x1) (real_closed_interval x c))
-  ← introduction x1 goal=224
+  ← intro x1 goal=224
     #[225] real_continuous g (within (atreal x1) (real_closed_interval x c))
-  ← apply_backward_step real_continuous_atreal_withinreal goal=225
+  ← rule real_continuous_atreal_withinreal goal=225
     #[226] real_continuous g (atreal x1)
   ← apply_prev goal=226 facts=[39]
-  → rewrite_fact real_closed_interval_def sym=false goal=222 facts=[115]
-  → rewrite_fact member_collect sym=false goal=222 facts=[119]
+  → rewrite target=fact real_closed_interval_def sym=false goal=222 facts=[115]
+  → rewrite target=fact member_collect sym=false goal=222 facts=[119]
   ← z3 goal=222 facts=[120,162]
-  ← introduction x1 goal=218
+  ← intro x1 goal=218
     #[227] has_real_derivative f (f1 x1) (atreal x1) ∧ has_real_derivative g (g1 x1) (atreal x1)
-  ← apply_backward_step conjI goal=227
+  ← rule conjI goal=227
     #[228] has_real_derivative f (f1 x1) (atreal x1)
     #[229] has_real_derivative g (g1 x1) (atreal x1)
   ← apply_prev goal=228 facts=[16]
     #[230] 0 < abs (x1 - c)
     #[231] abs (x1 - c) < d
-  → rewrite_fact real_open_interval_def sym=false goal=230 facts=[125]
-  → rewrite_fact member_collect sym=false goal=230 facts=[129]
+  → rewrite target=fact real_open_interval_def sym=false goal=230 facts=[125]
+  → rewrite target=fact member_collect sym=false goal=230 facts=[129]
   ← z3 goal=230 facts=[130]
   ← z3 goal=231 facts=[130,162]
     #[232] abs (x1 - c) < d
   ← apply_prev goal=229 facts=[19]
-  exists_elim x1 goal=213 facts=[215]
+  elim x1 goal=213 facts=[215]
     #[233] x1 ∈ real_open_interval x c ∧ (f c - f x) * g1 x1 = (g c - g x) * f1 x1
     #[234] ∃y. 0 < abs (y - c) ∧ abs (y - c) < abs (x - c) ∧ f x / g x = f1 y / g1 y
-  ← inst_exists_goal x1 goal=234
+  ← inst x1 goal=234
     #[235] 0 < abs (x1 - c) ∧ abs (x1 - c) < abs (x - c) ∧ f x / g x = f1 x1 / g1 x1
-  ← apply_backward_step conjI goal=235
+  ← rule conjI goal=235
     #[236] 0 < abs (x1 - c)
     #[237] abs (x1 - c) < abs (x - c) ∧ f x / g x = f1 x1 / g1 x1
-  → apply_forward_step conjD1 goal=236 facts=[233]
+  → forward conjD1 goal=236 facts=[233]
     #[238] x1 ∈ real_open_interval x c
-  → rewrite_fact real_open_interval_def sym=false goal=236 facts=[238]
+  → rewrite target=fact real_open_interval_def sym=false goal=236 facts=[238]
     #[239] x1 ∈ {p. x < p ∧ p < c}
-  → rewrite_fact member_collect sym=false goal=236 facts=[239]
+  → rewrite target=fact member_collect sym=false goal=236 facts=[239]
     #[240] x < x1 ∧ x1 < c
   ← z3 goal=236 facts=[240]
     #[241] 0 < abs (x1 - c)
-  ← apply_backward_step conjI goal=237
+  ← rule conjI goal=237
     #[242] abs (x1 - c) < abs (x - c)
     #[243] f x / g x = f1 x1 / g1 x1
   ← z3 goal=242 facts=[240]
@@ -3463,15 +3463,15 @@ proof
   cut "f x * g1 x1 = g x * f1 x1 --> ~(g x = 0) --> ~(g1 x1 = 0) --> f x / g x = f1 x1 / g1 x1" goal=243
     #[245] f x * g1 x1 = g x * f1 x1 ⟶ ¬(g x = 0) ⟶ ¬(g1 x1 = 0) ⟶ f x / g x = f1 x1 / g1 x1
   ← z3 goal=245
-  → apply_forward_step conjD2 goal=243 facts=[233]
+  → forward conjD2 goal=243 facts=[233]
     #[246] (f c - f x) * g1 x1 = (g c - g x) * f1 x1
-  → rewrite_fact_with_prev goal=243 facts=[3,246]
+  → rewrite target=fact source=prev goal=243 facts=[3,246]
     #[247] (0 - f x) * g1 x1 = (g c - g x) * f1 x1
-  → rewrite_fact_with_prev goal=243 facts=[4,247]
+  → rewrite target=fact source=prev goal=243 facts=[4,247]
     #[248] (0 - f x) * g1 x1 = (0 - g x) * f1 x1
-  → rewrite_fact real_minus_def sym=false goal=243 facts=[248]
+  → rewrite target=fact real_minus_def sym=false goal=243 facts=[248]
     #[249] (0 + -(f x)) * g1 x1 = (0 + -(g x)) * f1 x1
-  → rewrite_fact real_add_lid sym=false goal=243 facts=[249]
+  → rewrite target=fact real_add_lid sym=false goal=243 facts=[249]
     #[250] -(f x) * g1 x1 = -(g x) * f1 x1
   ← apply_prev goal=243 facts=[206]
     #[251] f x * g1 x1 = g x * f1 x1
@@ -3484,25 +3484,25 @@ proof
   ← z3 goal=255 facts=[162]
   ← apply_prev goal=253 facts=[20]
     #[256] abs (x1 - c) < d
-  ← apply_backward_step real_lt_trans goal=256 facts=[244,210]
+  ← rule real_lt_trans goal=256 facts=[244,210]
     #[257] abs (x1 - c) < d
-  exists_elim y goal=163 facts=[165]
+  elim y goal=163 facts=[165]
     #[258] _VAR y
     #[259] 0 < abs (y - c) ∧ abs (y - c) < abs (x - c) ∧ f x / g x = f1 y / g1 y
     #[260] abs (f x / g x - l) < e
-  → apply_forward_step conjD2 goal=260 facts=[259]
+  → forward conjD2 goal=260 facts=[259]
     #[261] abs (y - c) < abs (x - c) ∧ f x / g x = f1 y / g1 y
-  → apply_forward_step conjD2 goal=261 facts=[259]
-  → apply_forward_step conjD2 goal=260 facts=[261]
+  → forward conjD2 goal=261 facts=[259]
+  → forward conjD2 goal=260 facts=[261]
     #[262] f x / g x = f1 y / g1 y
-  ← rewrite_goal_with_prev goal=260 facts=[262]
+  ← rewrite source=prev goal=260 facts=[262]
     #[263] abs (f1 y / g1 y - l) < e
   ← apply_prev goal=263 facts=[164]
     #[264] 0 < abs (y - c)
     #[265] abs (y - c) < k
-  ← apply_backward_step conjD1 goal=264 facts=[259]
+  ← rule conjD1 goal=264 facts=[259]
     #[266] 0 < abs (y - c)
-  → apply_forward_step conjD1 goal=265 facts=[261]
+  → forward conjD1 goal=265 facts=[261]
     #[267] abs (y - c) < abs (x - c)
   ← z3 goal=265 facts=[267,162]
     #[268] abs (y - c) < k
@@ -3523,33 +3523,33 @@ theorem real_derivative_ivt_decreasing
   prop a <= b --> (!x. x Mem real_closed_interval a b --> has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))) --> (!t. f1 b <= t --> t <= f1 a --> (?x. x Mem real_closed_interval a b & f1 x = t))
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] a ≤ b
     #[2] ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))
     #[3] ∀t. f1 b ≤ t ⟶ t ≤ f1 a ⟶ (∃x. x ∈ real_closed_interval a b ∧ f1 x = t)
-  → apply_forward_step real_derivative_ivt_increasing param_f="(%x. -f x)" param_f1="(%x. -f1 x)" goal=3 facts=[1]
+  → forward real_derivative_ivt_increasing param_f="(%x. -f x)" param_f1="(%x. -f1 x)" goal=3 facts=[1]
     #[4] (∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative (λx1. -(f x1)) (-(f1 x)) (within (atreal x) (real_closed_interval a b))) ⟶ (∀t. -(f1 a) ≤ t ⟶ t ≤ -(f1 b) ⟶ (∃x. x ∈ real_closed_interval a b ∧ -(f1 x) = t))
   cut "(∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative (λx1. -(f x1)) (-(f1 x)) (within (atreal x) (real_closed_interval a b)))" goal=3
     #[5] ∀x. x ∈ real_closed_interval a b ⟶ has_real_derivative (λx1. -(f x1)) (-(f1 x)) (within (atreal x) (real_closed_interval a b))
-  ← introduction x goal=5
+  ← intro x goal=5
     #[6] _VAR x
     #[7] x ∈ real_closed_interval a b
     #[8] has_real_derivative (λx1. -(f x1)) (-(f1 x)) (within (atreal x) (real_closed_interval a b))
-  ← apply_backward_step has_real_derivative_neg goal=8
+  ← rule has_real_derivative_neg goal=8
     #[9] has_real_derivative f (f1 x) (within (atreal x) (real_closed_interval a b))
   ← apply_prev goal=9 facts=[2]
-  → apply_fact goal=3 facts=[4,5]
+  → forward goal=3 facts=[4,5]
     #[10] ∀t. -(f1 a) ≤ t ⟶ t ≤ -(f1 b) ⟶ (∃x. x ∈ real_closed_interval a b ∧ -(f1 x) = t)
-  ← introduction t goal=3
+  ← intro t goal=3
     #[11] _VAR t
     #[12] f1 b ≤ t
     #[13] t ≤ f1 a
     #[14] ∃x. x ∈ real_closed_interval a b ∧ f1 x = t
-  → forall_elim -t goal=14 facts=[10]
+  → inst target=fact -t goal=14 facts=[10]
     #[15] -(f1 a) ≤ -t ⟶ -t ≤ -(f1 b) ⟶ (∃x. x ∈ real_closed_interval a b ∧ -(f1 x) = -t)
-  → rewrite_fact real_eq_neg2 sym=false goal=14 facts=[15]
+  → rewrite target=fact real_eq_neg2 sym=false goal=14 facts=[15]
     #[16] -(f1 a) ≤ -t ⟶ -t ≤ -(f1 b) ⟶ (∃x. x ∈ real_closed_interval a b ∧ f1 x = t)
-  → rewrite_fact real_le_lneg2 sym=false goal=14 facts=[16]
+  → rewrite target=fact real_le_lneg2 sym=false goal=14 facts=[16]
     #[17] t ≤ f1 a ⟶ f1 b ≤ t ⟶ (∃x. x ∈ real_closed_interval a b ∧ f1 x = t)
   ← apply_prev goal=14 facts=[17]
 qed

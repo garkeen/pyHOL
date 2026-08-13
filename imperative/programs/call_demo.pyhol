@@ -14,7 +14,7 @@ theorem double
   prop Valid (λst. true) (AssignV (λst. 0) (λst. x + x)) (λst. reg st 0 = x * 4)
 proof
   ← vcg goal=0
-  ← apply_backward_step double_vc_0 goal=1
+  ← rule double_vc_0 goal=1
 qed
 
 theorem inc_vc_0
@@ -29,7 +29,7 @@ theorem inc
   prop Valid (λst. true) (AssignV (λst. 0) (λst. x + 1)) (λst. reg st 0 = x + 1)
 proof
   ← vcg goal=0
-  ← apply_backward_step inc_vc_0 goal=1
+  ← rule inc_vc_0 goal=1
 qed
 
 theorem main_vc_0
@@ -72,9 +72,9 @@ theorem main
   prop Valid (λst. a = 3) (Seq (Cond (λst. true) (AssignV (λst. 0) (λst. a * 4)) (While (λst. true) (λst. false) Skip)) (Seq (Cond (λst. reg st 0 = 6) Skip (While (λst. true) (λst. false) Skip)) (Cond (λst. true) (AssignV (λst. 1) (λst. reg st 0 + 1)) (While (λst. true) (λst. false) Skip)))) (λst. reg st 1 = 7)
 proof
   ← vcg goal=0
-  ← apply_backward_step main_vc_0 goal=1
-  ← apply_backward_step main_vc_1 goal=2
-  ← apply_backward_step main_vc_2 goal=3
-  ← apply_backward_step main_vc_3 goal=4
-  ← apply_backward_step main_vc_4 goal=5
+  ← rule main_vc_0 goal=1
+  ← rule main_vc_1 goal=2
+  ← rule main_vc_2 goal=3
+  ← rule main_vc_3 goal=4
+  ← rule main_vc_4 goal=5
 qed

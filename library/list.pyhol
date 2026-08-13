@@ -29,38 +29,38 @@ theorem append_right_neutral
   prop xs @ [] = xs
   [hint_rewrite]
 proof
-  ← induction xs list_induct goal=0
+  ← induct xs list_induct goal=0
     #[1] ([]::'a list) @ [] = []
     #[2] ∀x::'a. ∀xs. xs @ [] = xs ⟶ (x # xs) @ [] = x # xs
-  ← rewrite_goal append_def_1 goal=1
-  ← introduction x,xs goal=2
+  ← rewrite append_def_1 goal=1
+  ← intro x,xs goal=2
     #[3] _VAR x
     #[4] _VAR xs
     #[5] xs @ [] = xs
     #[6] (x # xs) @ [] = x # xs
-  ← rewrite_goal append_def_2 goal=6
+  ← rewrite append_def_2 goal=6
     #[7] x # xs @ [] = x # xs
-  ← rewrite_goal_with_prev goal=7 facts=[5]
+  ← rewrite source=prev goal=7 facts=[5]
 qed
 
 theorem append_assoc
   fixes x :: 'a, xs :: 'a list, ys :: 'a list, zs :: 'a list
   prop (xs @ ys) @ zs = xs @ ys @ zs
 proof
-  ← induction xs list_induct goal=0
+  ← induct xs list_induct goal=0
     #[1] ([] @ ys) @ zs = [] @ ys @ zs
     #[2] ∀x. ∀xs. (xs @ ys) @ zs = xs @ ys @ zs ⟶ ((x # xs) @ ys) @ zs = (x # xs) @ ys @ zs
-  ← rewrite_goal append_def_1 goal=1
-  ← introduction x,xs goal=2
+  ← rewrite append_def_1 goal=1
+  ← intro x,xs goal=2
     #[3] _VAR x
     #[4] _VAR xs
     #[5] (xs @ ys) @ zs = xs @ ys @ zs
     #[6] ((x # xs) @ ys) @ zs = (x # xs) @ ys @ zs
-  ← rewrite_goal append_def_2 goal=6
+  ← rewrite append_def_2 goal=6
     #[7] (x # xs @ ys) @ zs = x # xs @ ys @ zs
-  ← rewrite_goal append_def_2 goal=7
+  ← rewrite append_def_2 goal=7
     #[8] x # (xs @ ys) @ zs = x # xs @ ys @ zs
-  ← rewrite_goal_with_prev goal=8 facts=[5]
+  ← rewrite source=prev goal=8 facts=[5]
 qed
 
 theorem length_append
@@ -68,26 +68,26 @@ theorem length_append
   prop length (xs @ ys) = length xs + length ys
   [hint_rewrite]
 proof
-  ← induction xs list_induct goal=0
+  ← induct xs list_induct goal=0
     #[1] length ([] @ ys) = length ([]::'a list) + length ys
     #[2] ∀x. ∀xs. length (xs @ ys) = length xs + length ys ⟶ length ((x # xs) @ ys) = length (x # xs) + length ys
-  ← rewrite_goal append_def_1 goal=1
+  ← rewrite append_def_1 goal=1
     #[3] length ys = length ([]::'a list) + length ys
-  ← rewrite_goal length_def_1 goal=3
+  ← rewrite length_def_1 goal=3
     #[4] length ys = 0 + length ys
-  ← rewrite_goal nat_plus_def_1 goal=4
-  ← introduction x,xs goal=2
+  ← rewrite nat_plus_def_1 goal=4
+  ← intro x,xs goal=2
     #[5] _VAR x
     #[6] _VAR xs
     #[7] length (xs @ ys) = length xs + length ys
     #[8] length ((x # xs) @ ys) = length (x # xs) + length ys
-  ← rewrite_goal append_def_2 goal=8
+  ← rewrite append_def_2 goal=8
     #[9] length (x # xs @ ys) = length (x # xs) + length ys
-  ← rewrite_goal length_def_2 goal=9
+  ← rewrite length_def_2 goal=9
     #[10] Suc (length (xs @ ys)) = Suc (length xs) + length ys
-  ← rewrite_goal_with_prev goal=10 facts=[7]
+  ← rewrite source=prev goal=10 facts=[7]
     #[11] Suc (length xs + length ys) = Suc (length xs) + length ys
-  ← rewrite_goal nat_plus_def_2 goal=11
+  ← rewrite nat_plus_def_2 goal=11
     #[12] Suc (length xs + length ys) = Suc (length xs) + length ys
 qed
 
@@ -96,26 +96,26 @@ theorem rev_append
   prop rev (xs @ ys) = rev ys @ rev xs
   [hint_rewrite]
 proof
-  ← induction xs list_induct goal=0
+  ← induct xs list_induct goal=0
     #[1] rev ([] @ ys) = rev ys @ rev []
     #[2] ∀x. ∀xs. rev (xs @ ys) = rev ys @ rev xs ⟶ rev ((x # xs) @ ys) = rev ys @ rev (x # xs)
-  ← rewrite_goal append_def_1 goal=1
+  ← rewrite append_def_1 goal=1
     #[3] rev ys = rev ys @ rev []
-  ← rewrite_goal rev_def_1 goal=3
+  ← rewrite rev_def_1 goal=3
     #[4] rev ys = rev ys @ []
-  ← rewrite_goal append_right_neutral goal=4
-  ← introduction x,xs goal=2
+  ← rewrite append_right_neutral goal=4
+  ← intro x,xs goal=2
     #[5] _VAR x
     #[6] _VAR xs
     #[7] rev (xs @ ys) = rev ys @ rev xs
     #[8] rev ((x # xs) @ ys) = rev ys @ rev (x # xs)
-  ← rewrite_goal append_def_2 goal=8
+  ← rewrite append_def_2 goal=8
     #[9] rev (x # xs @ ys) = rev ys @ rev (x # xs)
-  ← rewrite_goal rev_def_2 goal=9
+  ← rewrite rev_def_2 goal=9
     #[10] rev (xs @ ys) @ [x] = rev ys @ rev xs @ [x]
-  ← rewrite_goal_with_prev goal=10 facts=[7]
+  ← rewrite source=prev goal=10 facts=[7]
     #[11] (rev ys @ rev xs) @ [x] = rev ys @ rev xs @ [x]
-  ← rewrite_goal append_assoc goal=11
+  ← rewrite append_assoc goal=11
     #[12] (rev ys @ rev xs) @ [x] = rev ys @ rev xs @ [x]
 qed
 
@@ -123,58 +123,58 @@ theorem rev_rev
   fixes xs :: 'a list
   prop rev (rev xs) = xs
 proof
-  ← induction xs list_induct goal=0
+  ← induct xs list_induct goal=0
     #[1] rev (rev ([]::'a list)) = []
     #[2] ∀x::'a. ∀xs. rev (rev xs) = xs ⟶ rev (rev (x # xs)) = x # xs
-  ← rewrite_goal rev_def_1 goal=1
+  ← rewrite rev_def_1 goal=1
     #[3] rev ([]::'a list) = []
-  ← rewrite_goal rev_def_1 goal=3
-  ← introduction x,xs goal=2
+  ← rewrite rev_def_1 goal=3
+  ← intro x,xs goal=2
     #[4] _VAR x
     #[5] _VAR xs
     #[6] rev (rev xs) = xs
     #[7] rev (rev (x # xs)) = x # xs
-  ← rewrite_goal rev_def_2 goal=7
+  ← rewrite rev_def_2 goal=7
     #[8] rev (rev xs @ [x]) = x # xs
-  ← rewrite_goal rev_append goal=8
+  ← rewrite rev_append goal=8
     #[9] rev [x] @ rev (rev xs) = x # xs
-  ← rewrite_goal rev_def_2 goal=9
+  ← rewrite rev_def_2 goal=9
     #[10] (rev [] @ [x]) @ rev (rev xs) = x # xs
-  ← rewrite_goal rev_def_1 goal=10
+  ← rewrite rev_def_1 goal=10
     #[11] ([] @ [x]) @ rev (rev xs) = x # xs
-  ← rewrite_goal append_def_1 goal=11
+  ← rewrite append_def_1 goal=11
     #[12] [x] @ rev (rev xs) = x # xs
-  ← rewrite_goal append_def_2 goal=12
+  ← rewrite append_def_2 goal=12
     #[13] x # [] @ rev (rev xs) = x # xs
-  ← rewrite_goal append_def_1 goal=13
+  ← rewrite append_def_1 goal=13
     #[14] x # rev (rev xs) = x # xs
-  ← rewrite_goal_with_prev goal=14 facts=[6]
+  ← rewrite source=prev goal=14 facts=[6]
 qed
 
 theorem rev_length
   fixes xs :: 'a list
   prop length (rev xs) = length xs
 proof
-  ← induction xs list_induct goal=0
+  ← induct xs list_induct goal=0
     #[1] length (rev ([]::'a list)) = length ([]::'a list)
     #[2] ∀x::'a. ∀xs. length (rev xs) = length xs ⟶ length (rev (x # xs)) = length (x # xs)
-  ← rewrite_goal rev_def_1 goal=1
-  ← introduction x,xs goal=2
+  ← rewrite rev_def_1 goal=1
+  ← intro x,xs goal=2
     #[3] _VAR x
     #[4] _VAR xs
     #[5] length (rev xs) = length xs
     #[6] length (rev (x # xs)) = length (x # xs)
-  ← rewrite_goal length_def_2 goal=6
+  ← rewrite length_def_2 goal=6
     #[7] length (rev (x # xs)) = Suc (length xs)
-  ← rewrite_goal rev_def_2 goal=7
+  ← rewrite rev_def_2 goal=7
     #[8] length (rev xs @ [x]) = Suc (length xs)
-  ← rewrite_goal length_append goal=8
+  ← rewrite length_append goal=8
     #[9] length (rev xs) + length [x] = Suc (length xs)
-  ← rewrite_goal length_def_2 goal=9
+  ← rewrite length_def_2 goal=9
     #[10] length (rev xs) + Suc (length ([]::'a list)) = Suc (length xs)
-  ← rewrite_goal length_def_1 goal=10
+  ← rewrite length_def_1 goal=10
     #[11] length (rev xs) + Suc 0 = Suc (length xs)
-  ← rewrite_goal_with_prev goal=11 facts=[5]
+  ← rewrite source=prev goal=11 facts=[5]
     #[12] length xs + Suc 0 = Suc (length xs)
   nat_norm goal=12
     #[13] length xs + Suc 0 = Suc (length xs)
@@ -192,22 +192,22 @@ theorem not_member_nil
   fixes x :: 'a
   prop ~(x Mem set []) <--> true
 proof
-  ← rewrite_goal set_def_1 sym=false goal=0
+  ← rewrite set_def_1 sym=false goal=0
     #[1] ¬(x ∈ ∅) ⟷ true
-  ← rewrite_goal member_empty_simp sym=false goal=1
+  ← rewrite member_empty_simp sym=false goal=1
     #[2] ¬false ⟷ true
-  ← apply_backward_step iffI goal=2
+  ← rule iffI goal=2
     #[3] ¬false ⟶ true
     #[4] true ⟶ ¬false
-  ← introduction goal=3
+  ← intro goal=3
     #[5] ¬false
     #[6] true
-  ← apply_backward_step trueI goal=6
+  ← rule trueI goal=6
     #[7] true
-  ← introduction goal=4
+  ← intro goal=4
     #[8] true
     #[9] ¬false
-  ← apply_backward_step negI goal=9
+  ← rule negI goal=9
     #[10] false ⟶ false
 qed
 
@@ -215,24 +215,24 @@ theorem not_member_cons
   fixes x :: 'a, y :: 'a, ys :: 'a list
   prop ~(x Mem set (y # ys)) <--> ~(x = y) & ~(x Mem set ys)
 proof
-  ← apply_backward_step iffI goal=0
+  ← rule iffI goal=0
     #[1] ¬(x ∈ set (y # ys)) ⟶ ¬(x = y) ∧ ¬(x ∈ set ys)
     #[2] ¬(x = y) ∧ ¬(x ∈ set ys) ⟶ ¬(x ∈ set (y # ys))
-  ← introduction goal=1
+  ← intro goal=1
     #[3] ¬(x ∈ set (y # ys))
     #[4] ¬(x = y) ∧ ¬(x ∈ set ys)
-  → rewrite_fact set_def_2 sym=false goal=4 facts=[3]
+  → rewrite target=fact set_def_2 sym=false goal=4 facts=[3]
     #[5] ¬(x ∈ insert y (set ys))
-  → rewrite_fact member_insert sym=false goal=4 facts=[5]
+  → rewrite target=fact member_insert sym=false goal=4 facts=[5]
     #[6] ¬(x = y ∨ x ∈ set ys)
-  → rewrite_fact de_morgan_thm2 sym=false goal=4 facts=[6]
-  ← introduction goal=2
+  → rewrite target=fact de_morgan_thm2 sym=false goal=4 facts=[6]
+  ← intro goal=2
     #[7] ¬(x = y) ∧ ¬(x ∈ set ys)
     #[8] ¬(x ∈ set (y # ys))
-  ← rewrite_goal set_def_2 sym=false goal=8
+  ← rewrite set_def_2 sym=false goal=8
     #[9] ¬(x ∈ insert y (set ys))
-  ← rewrite_goal member_insert sym=false goal=9
+  ← rewrite member_insert sym=false goal=9
     #[10] ¬(x = y ∨ x ∈ set ys)
-  ← rewrite_goal de_morgan_thm2 sym=false goal=10
+  ← rewrite de_morgan_thm2 sym=false goal=10
 qed
 

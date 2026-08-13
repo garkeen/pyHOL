@@ -20,11 +20,11 @@ theorem natseg_combine_r
   prop m <= p + 1 --> p <= n --> {m..p} Un {p + 1..n} = {m..n}
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] m ≤ p + 1
     #[2] p ≤ n
     #[3] {m..p} ∪ {p + 1..n} = {m..n}
-  ← rewrite_goal nat_interval_def sym=false goal=3
+  ← rewrite nat_interval_def sym=false goal=3
     #[4] {p1. m ≤ p1 ∧ p1 ≤ p} ∪ {p1. p + 1 ≤ p1 ∧ p1 ≤ n} = {p1. m ≤ p1 ∧ p1 ≤ n}
   ← z3 goal=4 facts=[1,2]
 qed
@@ -34,11 +34,11 @@ theorem natseg_combine_l
   prop m <= p --> p <= n + 1 --> {m..p - 1} Un {p..n} = {m..n}
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] m ≤ p
     #[2] p ≤ n + 1
     #[3] {m..p - 1} ∪ {p..n} = {m..n}
-  ← rewrite_goal nat_interval_def sym=false goal=3
+  ← rewrite nat_interval_def sym=false goal=3
     #[4] {p1. m ≤ p1 ∧ p1 ≤ p - 1} ∪ {p1. p ≤ p1 ∧ p1 ≤ n} = {p1. m ≤ p1 ∧ p1 ≤ n}
   ← z3 goal=4 facts=[1,2]
 qed
@@ -48,10 +48,10 @@ theorem natseg_lrec
   prop m <= n --> {m..n} = insert m ({m + 1..n})
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] m ≤ n
     #[2] {m..n} = insert m ({m + 1..n})
-  ← rewrite_goal nat_interval_def sym=false goal=2
+  ← rewrite nat_interval_def sym=false goal=2
     #[3] {p. m ≤ p ∧ p ≤ n} = insert m ({p. m + 1 ≤ p ∧ p ≤ n})
   ← z3 goal=3 facts=[1]
 qed
@@ -61,10 +61,10 @@ theorem natseg_rrec
   prop m <= n --> insert n ({m..n - 1}) = {m..n}
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] m ≤ n
     #[2] insert n ({m..n - 1}) = {m..n}
-  ← rewrite_goal nat_interval_def sym=false goal=2
+  ← rewrite nat_interval_def sym=false goal=2
     #[3] insert n ({p. m ≤ p ∧ p ≤ n - 1}) = {p. m ≤ p ∧ p ≤ n}
   ← z3 goal=3 facts=[1]
 qed
@@ -74,14 +74,14 @@ theorem natseg_rec
   prop m <= Suc n --> {m..Suc n} = insert (Suc n) ({m..n})
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] m ≤ Suc n
     #[2] {m..Suc n} = insert (Suc n) ({m..n})
-  → apply_forward_step natseg_rrec goal=2 facts=[1]
+  → forward natseg_rrec goal=2 facts=[1]
     #[3] insert (Suc n) ({m..Suc n - 1}) = {m..Suc n}
-  → rewrite_fact suc_sub1 sym=false goal=2 facts=[3]
+  → rewrite target=fact suc_sub1 sym=false goal=2 facts=[3]
     #[4] insert (Suc n) ({m..n}) = {m..Suc n}
-  ← rewrite_goal_with_prev goal=2 facts=[4]
+  ← rewrite source=prev goal=2 facts=[4]
 qed
 
 theorem member_natseg
@@ -89,9 +89,9 @@ theorem member_natseg
   prop p Mem {m..n} <--> m <= p & p <= n
   [hint_rewrite]
 proof
-  ← rewrite_goal nat_interval_def sym=false goal=0
+  ← rewrite nat_interval_def sym=false goal=0
     #[1] p ∈ {p1. m ≤ p1 ∧ p1 ≤ n} ⟷ m ≤ p ∧ p ≤ n
-  ← rewrite_goal member_collect sym=false goal=1
+  ← rewrite member_collect sym=false goal=1
 qed
 
 theorem member_natseg_0
@@ -99,7 +99,7 @@ theorem member_natseg_0
   prop p Mem {0..n} <--> p <= n
   [hint_rewrite]
 proof
-  ← rewrite_goal member_natseg sym=false goal=0
+  ← rewrite member_natseg sym=false goal=0
     #[1] 0 ≤ p ∧ p ≤ n ⟷ p ≤ n
   ← z3 goal=1
 qed
@@ -109,9 +109,9 @@ theorem natseg_empty
   prop {m..n} = {} <--> n < m
   [hint_rewrite]
 proof
-  ← rewrite_goal set_equal_iff sym=false goal=0
+  ← rewrite set_equal_iff sym=false goal=0
     #[1] (∀x. x ∈ {m..n} ⟷ x ∈ ∅) ⟷ n < m
-  ← rewrite_goal member_natseg sym=false goal=1
+  ← rewrite member_natseg sym=false goal=1
     #[2] (∀x. m ≤ x ∧ x ≤ n ⟷ x ∈ ∅) ⟷ n < m
   ← z3 goal=2
 qed
@@ -121,10 +121,10 @@ theorem natseg_emptyI
   prop n < m --> {m..n} = {}
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] n < m
     #[2] {m..n} = ∅
-  ← rewrite_goal natseg_empty sym=false goal=2
+  ← rewrite natseg_empty sym=false goal=2
 qed
 
 theorem natseg_sing
@@ -132,7 +132,7 @@ theorem natseg_sing
   prop {n..n} = {n}
   [hint_rewrite]
 proof
-  ← rewrite_goal nat_interval_def sym=false goal=0
+  ← rewrite nat_interval_def sym=false goal=0
     #[1] {p. n ≤ p ∧ p ≤ n} = {n}
   ← z3 goal=1
 qed
@@ -157,13 +157,13 @@ theorem has_size_natseg
   prop has_size ({m..n}) (n + 1 - m)
   [hint_backward]
 proof
-  ← rewrite_goal has_size_def sym=false goal=0
+  ← rewrite has_size_def sym=false goal=0
     #[1] finite ({m..n}) ∧ card ({m..n}) = n + 1 - m
-  ← apply_backward_step conjI goal=1
+  ← rule conjI goal=1
     #[2] finite ({m..n})
     #[3] card ({m..n}) = n + 1 - m
-  ← apply_backward_step finite_natseg goal=2
-  ← rewrite_goal card_natseg sym=false goal=3
+  ← rule finite_natseg goal=2
+  ← rewrite card_natseg sym=false goal=3
 qed
 
 theorem card_natseg_1
@@ -171,11 +171,11 @@ theorem card_natseg_1
   prop card ({1..n}) = n
   [hint_rewrite]
 proof
-  ← rewrite_goal card_natseg sym=false goal=0
+  ← rewrite card_natseg sym=false goal=0
     #[1] n + 1 - 1 = n
-  ← rewrite_goal add_comm sym=false goal=1
+  ← rewrite add_comm sym=false goal=1
     #[2] 1 + n - 1 = n
-  ← rewrite_goal nat_plus_minus_2 sym=false goal=2
+  ← rewrite nat_plus_minus_2 sym=false goal=2
 qed
 
 theorem has_size_natseg_1
@@ -183,13 +183,13 @@ theorem has_size_natseg_1
   prop has_size ({1..n}) n
   [hint_backward]
 proof
-  ← rewrite_goal has_size_def sym=false goal=0
+  ← rewrite has_size_def sym=false goal=0
     #[1] finite ({1..n}) ∧ card ({1..n}) = n
-  ← apply_backward_step conjI goal=1
+  ← rule conjI goal=1
     #[2] finite ({1..n})
     #[3] card ({1..n}) = n
-  ← apply_backward_step finite_natseg goal=2
-  ← rewrite_goal card_natseg_1 sym=false goal=3
+  ← rule finite_natseg goal=2
+  ← rewrite card_natseg_1 sym=false goal=3
 qed
 
 theorem natseg_0
@@ -200,23 +200,23 @@ proof
   ← cases "m = 0" goal=0
     #[1] m = 0 ⟶ {m..0} = (if m = 0 then {0} else ∅)
     #[2] ¬(m = 0) ⟶ {m..0} = (if m = 0 then {0} else ∅)
-  ← introduction goal=1
+  ← intro goal=1
     #[3] m = 0
     #[4] {m..0} = (if m = 0 then {0} else ∅)
-  ← rewrite_goal if_P sym=false goal=4 facts=[3]
+  ← rewrite if_P sym=false goal=4 facts=[3]
     #[5] {m..0} = {0}
-  ← rewrite_goal_with_prev goal=5 facts=[3]
+  ← rewrite source=prev goal=5 facts=[3]
     #[6] {0..0} = {0}
-  ← rewrite_goal natseg_sing sym=false goal=6
+  ← rewrite natseg_sing sym=false goal=6
     #[7] {0..0} = {0}
-  ← introduction goal=2
+  ← intro goal=2
     #[8] ¬(m = 0)
     #[9] {m..0} = (if m = 0 then {0} else ∅)
-  ← rewrite_goal if_not_P sym=false goal=9 facts=[8]
+  ← rewrite if_not_P sym=false goal=9 facts=[8]
     #[10] {m..0} = ∅
-  → apply_forward_step le_1_1 goal=10 facts=[8]
+  → forward le_1_1 goal=10 facts=[8]
     #[11] 0 < m
-  ← apply_backward_step natseg_emptyI goal=10 facts=[11]
+  ← rule natseg_emptyI goal=10 facts=[11]
 qed
 
 theorem natseg_Suc
@@ -227,33 +227,33 @@ proof
   ← cases "m ≤ Suc n" goal=0
     #[1] m ≤ Suc n ⟶ {m..Suc n} = (if m ≤ Suc n then insert (Suc n) ({m..n}) else {m..n})
     #[2] ¬(m ≤ Suc n) ⟶ {m..Suc n} = (if m ≤ Suc n then insert (Suc n) ({m..n}) else {m..n})
-  ← introduction goal=1
+  ← intro goal=1
     #[3] m ≤ Suc n
     #[4] {m..Suc n} = (if m ≤ Suc n then insert (Suc n) ({m..n}) else {m..n})
-  ← rewrite_goal if_P sym=false goal=4 facts=[3]
+  ← rewrite if_P sym=false goal=4 facts=[3]
     #[5] {m..Suc n} = insert (Suc n) ({m..n})
-  ← apply_backward_step natseg_rec goal=5 facts=[3]
-  ← introduction goal=2
+  ← rule natseg_rec goal=5 facts=[3]
+  ← intro goal=2
     #[6] ¬(m ≤ Suc n)
     #[7] {m..Suc n} = (if m ≤ Suc n then insert (Suc n) ({m..n}) else {m..n})
-  ← rewrite_goal if_not_P sym=false goal=7 facts=[6]
+  ← rewrite if_not_P sym=false goal=7 facts=[6]
     #[8] {m..Suc n} = {m..n}
-  → rewrite_fact not_le sym=false goal=8 facts=[6]
+  → rewrite target=fact not_le sym=false goal=8 facts=[6]
     #[9] Suc n < m
   cut "{m..n} = {}" goal=8
     #[10] {m..n} = ∅
-  ← rewrite_goal natseg_empty sym=false goal=10
+  ← rewrite natseg_empty sym=false goal=10
     #[11] n < m
-  → rewrite_fact nat_less_eq_def_2 sym=false goal=11 facts=[6]
+  → rewrite target=fact nat_less_eq_def_2 sym=false goal=11 facts=[6]
     #[12] ¬(m = Suc n ∨ m ≤ n)
-  → rewrite_fact de_morgan_thm2 sym=false goal=11 facts=[12]
+  → rewrite target=fact de_morgan_thm2 sym=false goal=11 facts=[12]
     #[13] ¬(m = Suc n) ∧ ¬(m ≤ n)
-  → rewrite_fact not_le sym=false goal=11 facts=[13]
+  → rewrite target=fact not_le sym=false goal=11 facts=[13]
     #[14] ¬(m = Suc n) ∧ n < m
-  ← apply_backward_step conjD2 goal=11 facts=[14]
-  ← rewrite_goal_with_prev goal=8 facts=[10]
+  ← rule conjD2 goal=11 facts=[14]
+  ← rewrite source=prev goal=8 facts=[10]
     #[15] {m..Suc n} = ∅
-  ← rewrite_goal natseg_empty sym=false goal=15
+  ← rewrite natseg_empty sym=false goal=15
 qed
 
 theorem inter_natseg
@@ -261,7 +261,7 @@ theorem inter_natseg
   prop {m..n} Int {p..q} = {max m p..min n q}
   [hint_rewrite]
 proof
-  ← rewrite_goal nat_interval_def sym=false goal=0
+  ← rewrite nat_interval_def sym=false goal=0
     #[1] {p1. m ≤ p1 ∧ p1 ≤ n} ∩ {p1. p ≤ p1 ∧ p1 ≤ q} = {p1. max m p ≤ p1 ∧ p1 ≤ min n q}
   ← z3 goal=1
 qed
@@ -271,11 +271,11 @@ theorem disjoint_natseg
   prop disjoint ({m..n}) ({p..q}) <--> n < p | q < m | n < m | q < p
   [hint_rewrite]
 proof
-  ← rewrite_goal disjoint_def sym=false goal=0
+  ← rewrite disjoint_def sym=false goal=0
     #[1] {m..n} ∩ {p..q} = ∅ ⟷ n < p ∨ q < m ∨ n < m ∨ q < p
-  ← rewrite_goal inter_natseg sym=false goal=1
+  ← rewrite inter_natseg sym=false goal=1
     #[2] {max m p..min n q} = ∅ ⟷ n < p ∨ q < m ∨ n < m ∨ q < p
-  ← rewrite_goal natseg_empty sym=false goal=2
+  ← rewrite natseg_empty sym=false goal=2
     #[3] min n q < max m p ⟷ n < p ∨ q < m ∨ n < m ∨ q < p
   ← z3 goal=3
 qed
@@ -295,9 +295,9 @@ theorem subset_natseg
   prop {m..n} Sub {p..q} <--> n < m | p <= m & n <= q
   [hint_rewrite]
 proof
-  ← rewrite_goal subset_def sym="" goal=0
+  ← rewrite subset_def sym="" goal=0
     #[1] (∀x. x ∈ {m..n} ⟶ x ∈ {p..q}) ⟷ n < m ∨ p ≤ m ∧ n ≤ q
-  ← rewrite_goal member_natseg sym=false goal=1
+  ← rewrite member_natseg sym=false goal=1
     #[2] (∀x. m ≤ x ∧ x ≤ n ⟶ p ≤ x ∧ x ≤ q) ⟷ n < m ∨ p ≤ m ∧ n ≤ q
   ← z3 goal=2
 qed
@@ -330,9 +330,9 @@ theorem in_support
   prop x Mem support op f s <--> x Mem s & ~(f x = neutral op)
   [hint_rewrite]
 proof
-  ← rewrite_goal support_def sym=false goal=0
+  ← rewrite support_def sym=false goal=0
     #[1] x ∈ {x1. x1 ∈ s ∧ ¬(f x1 = neutral op)} ⟷ x ∈ s ∧ ¬(f x = neutral op)
-  ← rewrite_goal member_collect sym=false goal=1
+  ← rewrite member_collect sym=false goal=1
 qed
 
 theorem support_support
@@ -360,7 +360,7 @@ theorem support_empty
   prop support op f {} = {}
   [hint_rewrite]
 proof
-  ← rewrite_goal support_def sym=false goal=0
+  ← rewrite support_def sym=false goal=0
     #[1] {x. x ∈ ∅ ∧ ¬(f x = neutral op)} = ∅
   ← z3 goal=1
 qed
@@ -405,9 +405,9 @@ theorem iterate_support
   prop iterate op (support op f s) f = iterate op s f
   [hint_rewrite]
 proof
-  ← rewrite_goal iterate_def sym=false goal=0
+  ← rewrite iterate_def sym=false goal=0
     #[1] (if finite (support op f (support op f s)) then itset (λx. λa. op (f x) a) (support op f (support op f s)) (neutral op) else neutral op) = (if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op)
-  ← rewrite_goal support_support sym=false goal=1
+  ← rewrite support_support sym=false goal=1
 qed
 
 theorem iterate_expand_cases
@@ -415,23 +415,23 @@ theorem iterate_expand_cases
   prop iterate op s f = (if finite (support op f s) then iterate op (support op f s) f else neutral op)
   [hint_rewrite]
 proof
-  ← rewrite_goal iterate_def sym=false goal=0
+  ← rewrite iterate_def sym=false goal=0
     #[1] (if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op) = (if finite (support op f s) then if finite (support op f (support op f s)) then itset (λx. λa. op (f x) a) (support op f (support op f s)) (neutral op) else neutral op else neutral op)
-  ← rewrite_goal support_support sym=false goal=1
+  ← rewrite support_support sym=false goal=1
     #[2] (if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op) = (if finite (support op f s) then if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op else neutral op)
   ← cases "finite (support op f s)" goal=2
     #[3] finite (support op f s) ⟶ (if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op) = (if finite (support op f s) then if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op else neutral op)
     #[4] ¬(finite (support op f s)) ⟶ (if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op) = (if finite (support op f s) then if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op else neutral op)
-  ← introduction goal=3
+  ← intro goal=3
     #[5] finite (support op f s)
     #[6] (if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op) = (if finite (support op f s) then if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op else neutral op)
-  ← rewrite_goal if_P sym=false goal=6 facts=[5]
+  ← rewrite if_P sym=false goal=6 facts=[5]
     #[7] itset (λx. λa. op (f x) a) (support op f s) (neutral op) = (if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op)
-  ← rewrite_goal if_P sym=false goal=7 facts=[5]
-  ← introduction goal=4
+  ← rewrite if_P sym=false goal=7 facts=[5]
+  ← intro goal=4
     #[8] ¬(finite (support op f s))
     #[9] (if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op) = (if finite (support op f s) then if finite (support op f s) then itset (λx. λa. op (f x) a) (support op f s) (neutral op) else neutral op else neutral op)
-  ← rewrite_goal if_not_P sym=false goal=9 facts=[8]
+  ← rewrite if_not_P sym=false goal=9 facts=[8]
 qed
 
 theorem iterate_empty
@@ -449,13 +449,13 @@ theorem iterate_insert
   prop monoidal op --> finite s --> iterate op (insert x s) f = (if x Mem s then iterate op s f else op (f x) (iterate op s f))
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] monoidal op
     #[2] finite s
     #[3] iterate op (insert x s) f = (if x ∈ s then iterate op s f else op (f x) (iterate op s f))
-  ← apply_backward_step iterate_insert_gen goal=3 facts=[1]
+  ← rule iterate_insert_gen goal=3 facts=[1]
     #[4] finite (support op f s)
-  ← apply_backward_step finite_support goal=4
+  ← rule finite_support goal=4
 qed
 
 theorem iterate_union
@@ -513,60 +513,60 @@ theorem iterate_delta
   prop monoidal op --> iterate op s (%x. if x = a then f x else neutral op) = (if a Mem s then f a else neutral op)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] monoidal op
     #[2] iterate op s (λx. if x = a then f x else neutral op) = (if a ∈ s then f a else neutral op)
-  ← rewrite_goal iterate_support sym=true goal=2
+  ← rewrite iterate_support sym=true goal=2
     #[3] iterate op (support op (λx. if x = a then f x else neutral op) s) (λx. if x = a then f x else neutral op) = (if a ∈ s then f a else neutral op)
-  ← rewrite_goal support_delta sym=false goal=3
+  ← rewrite support_delta sym=false goal=3
     #[4] iterate op (if a ∈ s then support op f ({a}) else ∅) (λx. if x = a then f x else neutral op) = (if a ∈ s then f a else neutral op)
   ← cases "a ∈ s" goal=4
     #[5] a ∈ s ⟶ iterate op (if a ∈ s then support op f ({a}) else ∅) (λx. if x = a then f x else neutral op) = (if a ∈ s then f a else neutral op)
     #[6] ¬(a ∈ s) ⟶ iterate op (if a ∈ s then support op f ({a}) else ∅) (λx. if x = a then f x else neutral op) = (if a ∈ s then f a else neutral op)
-  ← introduction goal=5
+  ← intro goal=5
     #[7] a ∈ s
     #[8] iterate op (if a ∈ s then support op f ({a}) else ∅) (λx. if x = a then f x else neutral op) = (if a ∈ s then f a else neutral op)
-  ← rewrite_goal if_P sym=false goal=8 facts=[7]
+  ← rewrite if_P sym=false goal=8 facts=[7]
     #[9] iterate op (support op f ({a})) (λx. if x = a then f x else neutral op) = f a
-  ← rewrite_goal support_insert sym=false goal=9
+  ← rewrite support_insert sym=false goal=9
     #[10] iterate op (if f a = neutral op then support op f ∅ else insert a (support op f ∅)) (λx. if x = a then f x else neutral op) = f a
   ← cases "f a = neutral op" goal=10
     #[11] f a = neutral op ⟶ iterate op (if f a = neutral op then support op f ∅ else insert a (support op f ∅)) (λx. if x = a then f x else neutral op) = f a
     #[12] ¬(f a = neutral op) ⟶ iterate op (if f a = neutral op then support op f ∅ else insert a (support op f ∅)) (λx. if x = a then f x else neutral op) = f a
-  ← introduction goal=11
+  ← intro goal=11
     #[13] f a = neutral op
     #[14] iterate op (if f a = neutral op then support op f ∅ else insert a (support op f ∅)) (λx. if x = a then f x else neutral op) = f a
-  ← rewrite_goal if_P sym=false goal=14 facts=[13]
+  ← rewrite if_P sym=false goal=14 facts=[13]
     #[15] iterate op (support op f ∅) (λx. if x = a then f x else neutral op) = f a
-  ← rewrite_goal support_empty sym=false goal=15
+  ← rewrite support_empty sym=false goal=15
     #[16] iterate op ∅ (λx. if x = a then f x else neutral op) = f a
-  → apply_forward_step iterate_empty param_f="(λx. if x = a then f x else neutral op)" goal=16 facts=[1]
+  → forward iterate_empty param_f="(λx. if x = a then f x else neutral op)" goal=16 facts=[1]
     #[17] iterate op ∅ (λx. if x = a then f x else neutral op) = neutral op
-  ← rewrite_goal_with_prev goal=16 facts=[17]
+  ← rewrite source=prev goal=16 facts=[17]
     #[18] neutral op = f a
-  ← rewrite_goal_with_prev goal=18 facts=[13]
+  ← rewrite source=prev goal=18 facts=[13]
     #[19] neutral op = f a
-  ← introduction goal=12
+  ← intro goal=12
     #[20] ¬(f a = neutral op)
     #[21] iterate op (if f a = neutral op then support op f ∅ else insert a (support op f ∅)) (λx. if x = a then f x else neutral op) = f a
-  ← rewrite_goal if_not_P sym=false goal=21 facts=[20]
+  ← rewrite if_not_P sym=false goal=21 facts=[20]
     #[22] iterate op (insert a (support op f ∅)) (λx. if x = a then f x else neutral op) = f a
-  ← rewrite_goal support_empty sym=false goal=22
+  ← rewrite support_empty sym=false goal=22
     #[23] iterate op ({a}) (λx. if x = a then f x else neutral op) = f a
-  → apply_forward_step iterate_sing param_f="(λx. if x = a then f x else neutral op)" param_x=a goal=23 facts=[1]
+  → forward iterate_sing param_f="(λx. if x = a then f x else neutral op)" param_x=a goal=23 facts=[1]
     #[24] iterate op ({a}) (λx. if x = a then f x else neutral op) = (if a = a then f a else neutral op)
   cut "a = a" goal=23
     #[25] a = a
-  ← apply_backward_step eq_refl goal=25
+  ← rule eq_refl goal=25
     #[26] a = a
-  → rewrite_fact if_P sym=false goal=23 facts=[24,26]
+  → rewrite target=fact if_P sym=false goal=23 facts=[24,26]
     #[27] iterate op ({a}) (λx. if x = a then f x else neutral op) = f a
-  ← introduction goal=6
+  ← intro goal=6
     #[28] ¬(a ∈ s)
     #[29] iterate op (if a ∈ s then support op f ({a}) else ∅) (λx. if x = a then f x else neutral op) = (if a ∈ s then f a else neutral op)
-  ← rewrite_goal if_not_P sym=false goal=29 facts=[28]
+  ← rewrite if_not_P sym=false goal=29 facts=[28]
     #[30] iterate op ∅ (λx. if x = a then f x else neutral op) = neutral op
-  ← apply_backward_step iterate_empty goal=30
+  ← rule iterate_empty goal=30
 qed
 
 theorem iterate_image
@@ -589,36 +589,36 @@ theorem iterate_restrict_set
   prop monoidal op --> iterate op ({x. x Mem s & P x}) f = iterate op s (%x. if P x then f x else neutral op)
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] monoidal op
     #[2] iterate op ({x. x ∈ s ∧ P x}) f = iterate op s (λx. if P x then f x else neutral op)
-  ← rewrite_goal iterate_support sym=true goal=2
+  ← rewrite iterate_support sym=true goal=2
     #[3] iterate op (support op f ({x. x ∈ s ∧ P x})) f = iterate op (support op (λx. if P x then f x else neutral op) s) (λx. if P x then f x else neutral op)
-  ← rewrite_goal support_def sym=false goal=3
+  ← rewrite support_def sym=false goal=3
     #[4] iterate op ({x. x ∈ {x1. x1 ∈ s ∧ P x1} ∧ ¬(f x = neutral op)}) f = iterate op ({x. x ∈ s ∧ ¬((if P x then f x else neutral op) = neutral op)}) (λx. if P x then f x else neutral op)
-  ← rewrite_goal member_collect sym=false goal=4
+  ← rewrite member_collect sym=false goal=4
     #[5] iterate op ({x. (x ∈ s ∧ P x) ∧ ¬(f x = neutral op)}) f = iterate op ({x. x ∈ s ∧ ¬((if P x then f x else neutral op) = neutral op)}) (λx. if P x then f x else neutral op)
   cut "∀x. ∀a. ¬((if P x then f x else a) = a) ⟷ P x ∧ ¬(f x = a)" goal=5
     #[6] ∀x. ∀a. ¬((if P x then f x else a) = a) ⟷ P x ∧ ¬(f x = a)
   ← z3 goal=6
     #[7] ∀x. ∀a. ¬((if P x then f x else a) = a) ⟷ P x ∧ ¬(f x = a)
-  ← rewrite_goal_with_prev goal=5 facts=[7]
+  ← rewrite source=prev goal=5 facts=[7]
     #[8] iterate op ({x. (x ∈ s ∧ P x) ∧ ¬(f x = neutral op)}) f = iterate op ({x. x ∈ s ∧ P x ∧ ¬(f x = neutral op)}) (λx. if P x then f x else neutral op)
-  ← rewrite_goal conj_assoc sym=false goal=8
+  ← rewrite conj_assoc sym=false goal=8
     #[9] iterate op ({x. (x ∈ s ∧ P x) ∧ ¬(f x = neutral op)}) f = iterate op ({x. (x ∈ s ∧ P x) ∧ ¬(f x = neutral op)}) (λx. if P x then f x else neutral op)
-  ← apply_backward_step iterate_eq goal=9
+  ← rule iterate_eq goal=9
     #[10] ∀x. x ∈ {x1. (x1 ∈ s ∧ P x1) ∧ ¬(f x1 = neutral op)} ⟶ f x = (if P x then f x else neutral op)
-  ← rewrite_goal member_collect sym=false goal=10
+  ← rewrite member_collect sym=false goal=10
     #[11] ∀x. (x ∈ s ∧ P x) ∧ ¬(f x = neutral op) ⟶ f x = (if P x then f x else neutral op)
-  ← introduction x goal=11
+  ← intro x goal=11
     #[12] _VAR x
     #[13] (x ∈ s ∧ P x) ∧ ¬(f x = neutral op)
     #[14] f x = (if P x then f x else neutral op)
-  → apply_forward_step conjD1 goal=14 facts=[13]
+  → forward conjD1 goal=14 facts=[13]
     #[15] x ∈ s ∧ P x
-  → apply_forward_step conjD2 goal=14 facts=[15]
+  → forward conjD2 goal=14 facts=[15]
     #[16] P x
-  ← rewrite_goal if_P sym=false goal=14 facts=[16]
+  ← rewrite if_P sym=false goal=14 facts=[16]
     #[17] f x = (if P x then f x else neutral op)
 qed
 
@@ -632,68 +632,68 @@ theorem iterate_eq_general_inverses
   prop monoidal op --> (!y. y Mem t --> k y Mem s & h (k y) = y) --> (!x. x Mem s --> h x Mem t & k (h x) = x & g (h x) = f x) --> iterate op s f = iterate op t g
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] monoidal op
     #[2] ∀y. y ∈ t ⟶ k y ∈ s ∧ h (k y) = y
     #[3] ∀x. x ∈ s ⟶ h x ∈ t ∧ k (h x) = x ∧ g (h x) = f x
     #[4] iterate op s f = iterate op t g
-  ← apply_backward_step iterate_eq_general param_h=h goal=4 facts=[1]
+  ← rule iterate_eq_general param_h=h goal=4 facts=[1]
     #[5] ∀y. y ∈ t ⟶ (∃!x. x ∈ s ∧ h x = y)
     #[6] ∀x. x ∈ s ⟶ h x ∈ t ∧ g (h x) = f x
-  ← introduction y goal=5
+  ← intro y goal=5
     #[7] _VAR y
     #[8] y ∈ t
     #[9] ∃!x. x ∈ s ∧ h x = y
-  → apply_fact goal=9 facts=[2,8]
+  → forward goal=9 facts=[2,8]
     #[10] k y ∈ s ∧ h (k y) = y
-  ← rewrite_goal exists1_def sym="" goal=9
+  ← rewrite exists1_def sym="" goal=9
     #[11] ∃x. (x ∈ s ∧ h x = y) ∧ (∀y1. y1 ∈ s ∧ h y1 = y ⟶ y1 = x)
-  ← inst_exists_goal "k y" goal=11
+  ← inst "k y" goal=11
     #[12] (k y ∈ s ∧ h (k y) = y) ∧ (∀y1. y1 ∈ s ∧ h y1 = y ⟶ y1 = k y)
-  ← apply_backward_step conjI goal=12
+  ← rule conjI goal=12
     #[13] ∀y1. y1 ∈ s ∧ h y1 = y ⟶ y1 = k y
-  ← introduction y1 goal=13
+  ← intro y1 goal=13
     #[14] _VAR y1
     #[15] y1 ∈ s ∧ h y1 = y
     #[16] y1 = k y
-  → apply_forward_step conjD1 goal=16 facts=[15]
+  → forward conjD1 goal=16 facts=[15]
     #[17] y1 ∈ s
-  → apply_forward_step conjD2 goal=16 facts=[15]
+  → forward conjD2 goal=16 facts=[15]
     #[18] h y1 = y
-  → apply_fact goal=16 facts=[3,17]
+  → forward goal=16 facts=[3,17]
     #[19] h y1 ∈ t ∧ k (h y1) = y1 ∧ g (h y1) = f y1
-  → apply_forward_step conjD1 goal=16 facts=[19]
+  → forward conjD1 goal=16 facts=[19]
     #[20] h y1 ∈ t
-  → apply_fact goal=16 facts=[2,20]
+  → forward goal=16 facts=[2,20]
     #[21] k (h y1) ∈ s ∧ h (k (h y1)) = h y1
-  → apply_forward_step conjD2 goal=16 facts=[21]
+  → forward conjD2 goal=16 facts=[21]
     #[22] h (k (h y1)) = h y1
-  → apply_forward_step conjD2 goal=16 facts=[15]
-  → rewrite_fact_with_prev goal=16 facts=[18,22]
+  → forward conjD2 goal=16 facts=[15]
+  → rewrite target=fact source=prev goal=16 facts=[18,22]
     #[23] h (k y) = y
-  → rewrite_fact eq_sym_eq sym=false goal=16 facts=[18]
+  → rewrite target=fact eq_sym_eq sym=false goal=16 facts=[18]
     #[24] y = h y1
-  ← rewrite_goal_with_prev goal=16 facts=[24]
+  ← rewrite source=prev goal=16 facts=[24]
     #[25] y1 = k (h y1)
-  → apply_forward_step conjD2 goal=25 facts=[19]
+  → forward conjD2 goal=25 facts=[19]
     #[26] k (h y1) = y1 ∧ g (h y1) = f y1
-  → apply_forward_step conjD1 goal=25 facts=[26]
+  → forward conjD1 goal=25 facts=[26]
     #[27] k (h y1) = y1
-  ← rewrite_goal_with_prev goal=25 facts=[27]
+  ← rewrite source=prev goal=25 facts=[27]
     #[28] y1 = k (h y1)
-  ← introduction x goal=6
+  ← intro x goal=6
     #[29] _VAR x
     #[30] x ∈ s
     #[31] h x ∈ t ∧ g (h x) = f x
-  → apply_fact goal=31 facts=[3,30]
+  → forward goal=31 facts=[3,30]
     #[32] h x ∈ t ∧ k (h x) = x ∧ g (h x) = f x
-  → apply_forward_step conjD1 goal=31 facts=[32]
+  → forward conjD1 goal=31 facts=[32]
     #[33] h x ∈ t
-  → apply_forward_step conjD2 goal=31 facts=[32]
+  → forward conjD2 goal=31 facts=[32]
     #[34] k (h x) = x ∧ g (h x) = f x
-  → apply_forward_step conjD2 goal=31 facts=[34]
+  → forward conjD2 goal=31 facts=[34]
     #[35] g (h x) = f x
-  ← apply_backward_step conjI goal=31
+  ← rule conjI goal=31
 qed
 
 theorem iterate_injection
@@ -721,38 +721,38 @@ theorem iterate_univ
   prop monoidal op --> support op f univ Sub s --> iterate op s f = iterate op univ f
   [hint_backward,hint_backward1]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] monoidal op
     #[2] support op f univ ⊆ s
     #[3] iterate op s f = iterate op univ f
-  → rewrite_fact support_def sym=false goal=3 facts=[2]
+  → rewrite target=fact support_def sym=false goal=3 facts=[2]
     #[4] {x. x ∈ univ ∧ ¬(f x = neutral op)} ⊆ s
-  ← rewrite_goal eq_sym_eq sym=false goal=3
+  ← rewrite eq_sym_eq sym=false goal=3
     #[5] iterate op univ f = iterate op s f
-  ← apply_backward_step iterate_superset goal=5 facts=[1]
+  ← rule iterate_superset goal=5 facts=[1]
     #[6] s ⊆ univ
     #[7] ∀x. x ∈ univ ⟶ ¬(x ∈ s) ⟶ f x = neutral op
-  ← apply_backward_step subset_univ goal=6
+  ← rule subset_univ goal=6
     #[8] s ⊆ univ
-  ← introduction x goal=7
+  ← intro x goal=7
     #[9] _VAR x
     #[10] x ∈ univ
     #[11] ¬(x ∈ s)
     #[12] f x = neutral op
-  → apply_forward_step subsetE param_x=x goal=12 facts=[4]
+  → forward subsetE param_x=x goal=12 facts=[4]
     #[13] x ∈ {x1. x1 ∈ univ ∧ ¬(f x1 = neutral op)} ⟶ x ∈ s
-  → rewrite_fact member_collect sym=false goal=12 facts=[13]
+  → rewrite target=fact member_collect sym=false goal=12 facts=[13]
     #[14] x ∈ univ ∧ ¬(f x = neutral op) ⟶ x ∈ s
-  ← apply_backward_step contrapositive goal=12 facts=[11]
+  ← rule contrapositive goal=12 facts=[11]
     #[15] ¬(f x = neutral op) ⟶ ¬¬(x ∈ s)
-  ← rewrite_goal double_neg sym=false goal=15
+  ← rewrite double_neg sym=false goal=15
     #[16] ¬(f x = neutral op) ⟶ x ∈ s
-  ← introduction goal=16
+  ← intro goal=16
     #[17] ¬(f x = neutral op)
     #[18] x ∈ s
   ← apply_prev goal=18 facts=[14]
     #[19] x ∈ univ ∧ ¬(f x = neutral op)
-  ← apply_backward_step conjI goal=19
+  ← rule conjI goal=19
 qed
 
 theorem iterate_swap
@@ -785,27 +785,27 @@ theorem iterate_natseg_0
   prop monoidal op --> iterate op ({m..0}) f = (if m = 0 then f 0 else neutral op)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] monoidal op
     #[2] iterate op ({m..0}) f = (if m = 0 then f 0 else neutral op)
-  ← rewrite_goal natseg_0 sym=false goal=2
+  ← rewrite natseg_0 sym=false goal=2
     #[3] iterate op (if m = 0 then {0} else ∅) f = (if m = 0 then f 0 else neutral op)
   ← cases "m = 0" goal=3
     #[4] m = 0 ⟶ iterate op (if m = 0 then {0} else ∅) f = (if m = 0 then f 0 else neutral op)
     #[5] ¬(m = 0) ⟶ iterate op (if m = 0 then {0} else ∅) f = (if m = 0 then f 0 else neutral op)
-  ← introduction goal=4
+  ← intro goal=4
     #[6] m = 0
     #[7] iterate op (if m = 0 then {0} else ∅) f = (if m = 0 then f 0 else neutral op)
-  ← rewrite_goal if_P sym=false goal=7 facts=[6]
+  ← rewrite if_P sym=false goal=7 facts=[6]
     #[8] iterate op ({0}) f = f 0
-  ← apply_backward_step iterate_sing goal=8 facts=[1]
+  ← rule iterate_sing goal=8 facts=[1]
     #[9] iterate op ({0}) f = f 0
-  ← introduction goal=5
+  ← intro goal=5
     #[10] ¬(m = 0)
     #[11] iterate op (if m = 0 then {0} else ∅) f = (if m = 0 then f 0 else neutral op)
-  ← rewrite_goal if_not_P sym=false goal=11 facts=[10]
+  ← rewrite if_not_P sym=false goal=11 facts=[10]
     #[12] iterate op ∅ f = neutral op
-  ← apply_backward_step iterate_empty goal=12
+  ← rule iterate_empty goal=12
 qed
 
 theorem iterate_natseg_Suc

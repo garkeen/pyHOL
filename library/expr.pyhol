@@ -20,18 +20,18 @@ fun aval :: aexp ⇒ (nat ⇒ nat) ⇒ nat
 theorem aval_test1
   prop aval (Plus (V 1) (N 5)) ((%x. 0)(1 := 7)) = 12
 proof
-  ← rewrite_goal aval_def_3 goal=0
+  ← rewrite aval_def_3 goal=0
     #[1] aval (V 1) ((λx. 0)(1 := 7)) + aval (N 5) ((λx. 0)(1 := 7)) = 12
-  ← rewrite_goal aval_def_1 goal=1
+  ← rewrite aval_def_1 goal=1
     #[2] aval (V 1) ((λx. 0)(1 := 7)) + 5 = 12
-  ← rewrite_goal aval_def_2 goal=2
+  ← rewrite aval_def_2 goal=2
     #[3] (λx::nat. (0::nat))(1 := 7) 1 + 5 = 12
-  ← rewrite_goal fun_upd_def goal=3
+  ← rewrite fun_upd_def goal=3
     #[4] (if (1::nat) = 1 then (7::nat) else 0) + 5 = 12
   cut "(1::nat) = 1" goal=4
     #[5] (1::nat) = 1
-  ← apply_backward_step eq_refl goal=5
-  ← rewrite_goal if_P goal=4 facts=[5]
+  ← rule eq_refl goal=5
+  ← rewrite if_P goal=4 facts=[5]
     #[6] (7::nat) + 5 = 12
   nat_norm goal=6
 qed
@@ -39,20 +39,20 @@ qed
 theorem aval_test2
   prop aval (Plus (V 0) (N 5)) ((%x. 0)(1 := 7)) = 5
 proof
-  ← rewrite_goal aval_def_3 goal=0
+  ← rewrite aval_def_3 goal=0
     #[1] aval (V 0) ((λx. 0)(1 := 7)) + aval (N 5) ((λx. 0)(1 := 7)) = 5
-  ← rewrite_goal aval_def_1 goal=1
+  ← rewrite aval_def_1 goal=1
     #[2] aval (V 0) ((λx. 0)(1 := 7)) + 5 = 5
-  ← rewrite_goal aval_def_2 goal=2
+  ← rewrite aval_def_2 goal=2
     #[3] (λx::nat. (0::nat))(1 := 7) 0 + 5 = 5
-  ← rewrite_goal fun_upd_def goal=3
+  ← rewrite fun_upd_def goal=3
     #[4] (if (0::nat) = 1 then (7::nat) else 0) + 5 = 5
   cut "~(0::nat) = 1" goal=4
     #[5] ¬((0::nat) = 1)
   nat_const_ineq goal=5
-  ← rewrite_goal if_not_P goal=4 facts=[5]
+  ← rewrite if_not_P goal=4 facts=[5]
     #[6] (0::nat) + 5 = 5
-  ← rewrite_goal nat_plus_def_1 goal=6
+  ← rewrite nat_plus_def_1 goal=6
 qed
 
 inductive avalI :: (nat ⇒ nat) ⇒ aexp ⇒ nat ⇒ bool

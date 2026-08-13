@@ -337,30 +337,20 @@ def _export_anns(step):
 
 # Method -> (positional_keys, remaining_keys are named)
 _METHOD_POSITIONAL = {
-    'induction': ['var', 'theorem'],
-    'rewrite_goal': ['theorem'],
-    'rewrite_fact': ['theorem'],
-    'apply_backward_step': ['theorem'],
-    'apply_forward_step': ['theorem'],
-    'apply_resolve_step': ['theorem'],
-    'introduction': ['names'],
+    'induct': ['var', 'theorem'],
+    'rewrite': ['theorem'],
+    'rule': ['theorem'],
+    'forward': ['theorem'],
+    'resolve': ['theorem'],
+    'intro': ['names'],
     'apply_prev': [],
-    'rewrite_goal_with_prev': [],
-    'rewrite_fact_with_prev': [],
-    'apply_fact': [],
     'cut': ['cut_goal'],
     'cases': ['case'],
-    'forall_elim': ['s'],
-    'exists_elim': ['names'],
-    'inst_exists_goal': ['s'],
-    'insert': ['theorem'],
-    'frule': ['theorem'],
+    'inst': ['s'],
+    'elim': ['names'],
     'unfold': ['theorem'],
-    'fold': ['theorem'],
-    'subst': ['theorem'],
-    'new_var': ['name', 'type'],
-    'rewrite_goal_with_prev': [],
-    'rewrite_fact_with_prev': [],
+    'var': ['name', 'type'],
+    'simp': [],
 }
 
 # Keys to skip (goal_id and method_name are handled separately)
@@ -381,7 +371,10 @@ def _export_step(step):
     # New format: goal is an int
     if 'goal' in step and isinstance(step.get('goal'), int):
         from server.stable_state import BACKWARD, FORWARD
-        if method in BACKWARD:
+        # Dual-mode methods: fact mode is a forward step.
+        if method in ('rewrite', 'inst') and step.get('target') == 'fact':
+            prefix = '→ '
+        elif method in BACKWARD:
             prefix = '← '
         elif method in FORWARD:
             prefix = '→ '
@@ -1024,19 +1017,23 @@ def _parse_step_line(line):
             continue
         remaining.append(tok)
 
-    # Parse remaining as positional + named args
+    # Parse remaining as positional + named args. The positional
+    # index counts only positional tokens (named tokens may be
+    # interleaved anywhere).
     pos_keys = _METHOD_POSITIONAL.get(method_name, [])
-    for i, tok in enumerate(remaining):
+    pos_idx = 0
+    for tok in remaining:
         if '=' in tok and not tok.startswith('"'):
             k, v = tok.split('=', 1)
             if v.startswith('"') and v.endswith('"'):
                 v = v[1:-1]
             step[k] = v
-        elif i < len(pos_keys):
+        elif pos_idx < len(pos_keys):
             val = tok
             if val.startswith('"') and val.endswith('"'):
                 val = val[1:-1]
-            step[pos_keys[i]] = val
+            step[pos_keys[pos_idx]] = val
+            pos_idx += 1
         else:
             # Extra positional arg
             pass

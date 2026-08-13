@@ -568,3 +568,24 @@ auto 宏内部递归、对外仍是一行受检证明，已证明该模式可行
      骨架均入索引），干跑验证不变；严格候选列表测试全部通过
    - resolve 保留全扫（hint_resolve 定理极少且 ~A 结论不适用骨架索引）
    - 实测剪枝：real 理论 389 条 hint_rewrite → 9 候选（0.0025s）
+
+### 追加完成（第三轮：旧名清零 + simp 实现）
+
+8. **旧方法名全部移除**：
+   - METHOD_ALIASES 删除，apply_method 直接按新名派发
+   - 类改名新词表（rule/resolve/intro/induct/elim/var/refl/eq_intro/
+     rewrite/forward/inst/...），内部实现类改 _impl 后缀，insert 类删除
+   - 库录制步骤全量迁移：18,184 步 / 39 个 .pyhol 文件改名，
+     fact 模式步骤内联 target=fact / source=prev 标记；json 缓存
+     不含方法名，无需迁移
+   - 步骤解析修复：位置参数索引不再把命名 token 计入（标记可任意穿插）
+   - 双模式 method（rewrite/inst）由状态形状推断模式，标记可覆盖；
+     fact 模式指向缺口位置时必须显式 target='fact'（歧义说明已入文档）
+   - stable_state BACKWARD/FORWARD 集合、导出箭头、search_forward
+     过滤同步新词表；imp_compile 生成步骤改 rule
+9. **simp 实现**（修复 C8/C9，此前“暂不实现”解除）：
+   - 全量 hint_rewrite 无前提定理参与，top_conv 逐定理扫一轮 +
+     beta 归一，**循环到不动点**（上限 100 轮防交换律循环）
+   - must-change：无可简化报错；整个简化经 rewrite_goal_with_conv
+     落成单个可见步骤（展开为受检原语行）
+   - 冒烟验证：~~A→A、~~~~A 两轮定点→A、无变化报错均通过

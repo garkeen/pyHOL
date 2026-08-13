@@ -16,10 +16,10 @@ theorem countable_restrict
   prop countable s --> countable ({x. x Mem s & P x})
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] countable s
     #[2] countable ({x. x ∈ s ∧ P x})
-  ← apply_backward_step countable_subset goal=2 facts=[1]
+  ← rule countable_subset goal=2 facts=[1]
     #[3] {x. x ∈ s ∧ P x} ⊆ s
   ← z3 goal=3
     #[4] {x. x ∈ s ∧ P x} ⊆ s
@@ -30,11 +30,11 @@ theorem countable_subset_nat
   prop countable s
   [hint_backward]
 proof
-  ← apply_backward_step countable_subset param_t="(univ::nat set)" goal=0
+  ← rule countable_subset param_t="(univ::nat set)" goal=0
     #[1] countable (univ::nat set)
     #[2] s ⊆ univ
-  ← apply_backward_step nat_countable goal=1
-  ← apply_backward_step subset_univ goal=2
+  ← rule nat_countable goal=1
+  ← rule subset_univ goal=2
 qed
 
 theorem finite_imp_countable

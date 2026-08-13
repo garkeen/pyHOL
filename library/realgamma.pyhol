@@ -30,12 +30,12 @@ theorem real_differentiable_within_gamma
   prop (!n. ~(x + of_nat n = 0)) --> real_differentiable gamma (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀n. ¬(x + of_nat n = 0)
     #[2] real_differentiable gamma (within (atreal x) s)
-  ← apply_backward_step real_differentiable_atreal_within goal=2
+  ← rule real_differentiable_atreal_within goal=2
     #[3] real_differentiable gamma (atreal x)
-  ← apply_backward_step real_differentiable_at_gamma goal=3
+  ← rule real_differentiable_at_gamma goal=3
 qed
 
 theorem real_differentiable_on_gamma
@@ -43,20 +43,20 @@ theorem real_differentiable_on_gamma
   prop s Sub {x. !n. ~(x + of_nat n = 0)} --> real_differentiable_on gamma s
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] s ⊆ {x. ∀n. ¬(x + of_nat n = 0)}
     #[2] real_differentiable_on gamma s
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=2
+  ← rewrite real_differentiable_on_differentiable sym=false goal=2
     #[3] ∀x. x ∈ s ⟶ real_differentiable gamma (within (atreal x) s)
-  ← introduction x goal=3
+  ← intro x goal=3
     #[4] _VAR x
     #[5] x ∈ s
     #[6] real_differentiable gamma (within (atreal x) s)
-  → apply_forward_step subsetE param_x=x goal=6 facts=[1]
+  → forward subsetE param_x=x goal=6 facts=[1]
     #[7] x ∈ s ⟶ x ∈ {x1. ∀n. ¬(x1 + of_nat n = 0)}
-  → rewrite_fact member_collect sym=false goal=6 facts=[7]
+  → rewrite target=fact member_collect sym=false goal=6 facts=[7]
     #[8] x ∈ s ⟶ (∀n. ¬(x + of_nat n = 0))
-  ← apply_backward_step real_differentiable_within_gamma goal=6
+  ← rule real_differentiable_within_gamma goal=6
     #[9] ∀n. ¬(x + of_nat n = 0)
   ← apply_prev goal=9 facts=[8]
 qed
@@ -71,12 +71,12 @@ theorem real_continuous_within_gamma
   prop (!n. ~(x + of_nat n = 0)) --> real_continuous gamma (within (atreal x) s)
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] ∀n. ¬(x + of_nat n = 0)
     #[2] real_continuous gamma (within (atreal x) s)
-  ← apply_backward_step real_continuous_atreal_withinreal goal=2
+  ← rule real_continuous_atreal_withinreal goal=2
     #[3] real_continuous gamma (atreal x)
-  ← apply_backward_step real_continuous_atreal_gamma goal=3
+  ← rule real_continuous_atreal_gamma goal=3
 qed
 
 theorem real_continuous_on_gamma
@@ -84,20 +84,20 @@ theorem real_continuous_on_gamma
   prop s Sub {x. !n. ~(x + of_nat n = 0)} --> real_continuous_on gamma s
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] s ⊆ {x. ∀n. ¬(x + of_nat n = 0)}
     #[2] real_continuous_on gamma s
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=2
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=2
     #[3] ∀x. x ∈ s ⟶ real_continuous gamma (within (atreal x) s)
-  ← introduction x goal=3
+  ← intro x goal=3
     #[4] _VAR x
     #[5] x ∈ s
     #[6] real_continuous gamma (within (atreal x) s)
-  ← apply_backward_step real_continuous_within_gamma goal=6
+  ← rule real_continuous_within_gamma goal=6
     #[7] ∀n. ¬(x + of_nat n = 0)
-  → apply_forward_step subsetE param_x=x goal=7 facts=[1]
+  → forward subsetE param_x=x goal=7 facts=[1]
     #[8] x ∈ s ⟶ x ∈ {x1. ∀n. ¬(x1 + of_nat n = 0)}
-  → rewrite_fact member_collect sym=false goal=7 facts=[8]
+  → rewrite target=fact member_collect sym=false goal=7 facts=[8]
     #[9] x ∈ s ⟶ (∀n. ¬(x + of_nat n = 0))
   ← apply_prev goal=7 facts=[9]
 qed
@@ -112,9 +112,9 @@ theorem real_differentiable_within_recip_gamma
   prop real_differentiable (real_inverse O gamma) (within (atreal x) s)
   [hint_backward]
 proof
-  ← apply_backward_step real_differentiable_atreal_within goal=0
+  ← rule real_differentiable_atreal_within goal=0
     #[1] real_differentiable (real_inverse ∘ gamma) (atreal x)
-  ← apply_backward_step real_differentiable_atreal_recip_gamma goal=1
+  ← rule real_differentiable_atreal_recip_gamma goal=1
 qed
 
 theorem real_differentiable_on_recip_gamma
@@ -122,13 +122,13 @@ theorem real_differentiable_on_recip_gamma
   prop real_differentiable_on (real_inverse O gamma) s
   [hint_backward]
 proof
-  ← rewrite_goal real_differentiable_on_differentiable sym=false goal=0
+  ← rewrite real_differentiable_on_differentiable sym=false goal=0
     #[1] ∀x. x ∈ s ⟶ real_differentiable (real_inverse ∘ gamma) (within (atreal x) s)
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ s
     #[4] real_differentiable (real_inverse ∘ gamma) (within (atreal x) s)
-  ← apply_backward_step real_differentiable_within_recip_gamma goal=4
+  ← rule real_differentiable_within_recip_gamma goal=4
     #[5] real_differentiable (real_inverse ∘ gamma) (within (atreal x) s)
 qed
 
@@ -137,9 +137,9 @@ theorem real_continuous_atreal_recip_gamma:
   prop real_continuous (real_inverse O gamma) (atreal x)
   [hint_backward]
 proof
-  ← apply_backward_step real_differentiable_imp_continuous_atreal goal=0
+  ← rule real_differentiable_imp_continuous_atreal goal=0
     #[1] real_differentiable (real_inverse ∘ gamma) (atreal x)
-  ← apply_backward_step real_differentiable_atreal_recip_gamma goal=1
+  ← rule real_differentiable_atreal_recip_gamma goal=1
 qed
 
 theorem real_continuous_withinreal_recip_gamm
@@ -147,9 +147,9 @@ theorem real_continuous_withinreal_recip_gamm
   prop real_continuous (real_inverse O gamma) (within (atreal x) s)
   [hint_backward]
 proof
-  ← apply_backward_step real_continuous_atreal_withinreal goal=0
+  ← rule real_continuous_atreal_withinreal goal=0
     #[1] real_continuous (real_inverse ∘ gamma) (atreal x)
-  ← apply_backward_step real_continuous_atreal_recip_gamma: goal=1
+  ← rule real_continuous_atreal_recip_gamma: goal=1
 qed
 
 theorem real_continuous_on_recip_gamm
@@ -157,13 +157,13 @@ theorem real_continuous_on_recip_gamm
   prop real_continuous_on (real_inverse O gamma) s
   [hint_backward]
 proof
-  ← rewrite_goal real_continuous_on_eq_continuous_within sym=false goal=0
+  ← rewrite real_continuous_on_eq_continuous_within sym=false goal=0
     #[1] ∀x. x ∈ s ⟶ real_continuous (real_inverse ∘ gamma) (within (atreal x) s)
-  ← introduction x goal=1
+  ← intro x goal=1
     #[2] _VAR x
     #[3] x ∈ s
     #[4] real_continuous (real_inverse ∘ gamma) (within (atreal x) s)
-  ← apply_backward_step real_continuous_withinreal_recip_gamm goal=4
+  ← rule real_continuous_withinreal_recip_gamm goal=4
     #[5] real_continuous (real_inverse ∘ gamma) (within (atreal x) s)
 qed
 
@@ -226,9 +226,9 @@ theorem gamma_legendre
   prop gamma x * gamma (x + 1 / 2) = 2 ^ (1 - 2 * x) * sqrt pi * gamma (2 * x)
   [hint_rewrite]
 proof
-  ← rewrite_goal gamma_legendre_lt sym=false goal=0
+  ← rewrite gamma_legendre_lt sym=false goal=0
     #[1] 2 ^ (1 - 2 * x) * gamma (1 / 2) * gamma (2 * x) = 2 ^ (1 - 2 * x) * sqrt pi * gamma (2 * x)
-  ← rewrite_goal gamma_half sym=false goal=1
+  ← rewrite gamma_half sym=false goal=1
 qed
 
 theorem gamma_weierstrass
@@ -256,12 +256,12 @@ theorem euler_real_integral
   prop 0 < x --> real_integral ({t. 0 <= t}) (%t. t ^ (x - 1) / exp t) = gamma x
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < x
     #[2] real_integral ({t. 0 ≤ t}) (λt. t ^ (x - 1) / exp t) = gamma x
-  ← apply_backward_step real_integral_unique goal=2
+  ← rule real_integral_unique goal=2
     #[3] has_real_integral (λt. t ^ (x - 1) / exp t) (gamma x) ({t. 0 ≤ t})
-  ← apply_backward_step euler_has_real_integral_gamma goal=3
+  ← rule euler_has_real_integral_gamma goal=3
 qed
 
 theorem euler_real_integrable
@@ -269,14 +269,14 @@ theorem euler_real_integrable
   prop 0 < x --> real_integrable_on (%t. t ^ (x - 1) / exp t) ({t. 0 <= t})
   [hint_backward]
 proof
-  ← introduction goal=0
+  ← intro goal=0
     #[1] 0 < x
     #[2] real_integrable_on (λt. t ^ (x - 1) / exp t) ({t. 0 ≤ t})
-  ← rewrite_goal real_integrable_on_def sym=false goal=2
+  ← rewrite real_integrable_on_def sym=false goal=2
     #[3] ∃y. has_real_integral (λt. t ^ (x - 1) / exp t) y ({t. 0 ≤ t})
-  ← inst_exists_goal "gamma x" goal=3
+  ← inst "gamma x" goal=3
     #[4] has_real_integral (λt. t ^ (x - 1) / exp t) (gamma x) ({t. 0 ≤ t})
-  ← apply_backward_step euler_has_real_integral_gamma goal=4 facts=[1]
+  ← rule euler_has_real_integral_gamma goal=4 facts=[1]
 qed
 
 theorem euler_original_real_integrable
