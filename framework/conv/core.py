@@ -185,6 +185,27 @@ def arg1_conv(cv: Conv) -> Conv:
 def binop_conv(cv: Conv) -> Conv:
     return combination_conv(arg_conv(cv), cv)
 
+def loc_conv(loc: str, cv: Conv) -> Conv:
+    """Convert a location string to a conv combinator.
+
+    loc format:
+    - "0": go to function part of f(x) -> fun_conv
+    - "1": go to argument part of f(x) -> arg_conv
+    - "0.1": argument of function -> fun_conv(arg_conv(...))
+    - "1.0": function of argument -> arg_conv(fun_conv(...))
+
+    Each digit selects which part of a Comb(f, a) to descend into.
+
+    """
+    for digit in reversed(loc.split('.')):
+        if digit == '0':
+            cv = fun_conv(cv)
+        elif digit == '1':
+            cv = arg_conv(cv)
+        else:
+            raise AssertionError("loc: invalid digit '%s', expected 0 or 1" % digit)
+    return cv
+
 def every_conv(*args):
     if len(args) == 0:
         return all_conv()

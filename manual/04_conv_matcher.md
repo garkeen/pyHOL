@@ -1,6 +1,6 @@
 # 转换与匹配
 
-> 代码事实以 `logic/conv/core.py`（转换）、`logic/matcher.py`（匹配）、`kernel/term.py`（替换）为准。
+> 代码事实以 `framework/conv/core.py`（转换）、`framework/matcher.py`（匹配）、`kernel/term.py`（替换）为准。
 
 转换（Conversion）与匹配（Matching）是自动化的基础设施。转换做"等价变换"，匹配做"模式实例化"。
 
@@ -118,7 +118,7 @@ pt = refl(t).on_rhs(
 
 ### 1.9 领域转换
 
-算术归一化等转换分散在 `logic/conv/{nat,integer,real,proplogic,function,interval}.py`。这些是领域相关的，见 [`07_system.md`](07_system.md)。
+算术归一化等转换分散在 `domains/{nat,integer,real,function,logic}/conv.py`。这些是领域相关的，见 [`07_system.md`](07_system.md)。
 
 ## 2. 匹配（Matcher）
 

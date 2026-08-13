@@ -608,5 +608,219 @@ class MethodTest(unittest.TestCase):
         )
 
 
+class AcceptMethodTest(unittest.TestCase):
+    """accept semantics: stripped-conclusion match + C6 whole-prop fallback."""
+
+    def _sps(self, prop, vars, steps=()):
+        from server.stable_state import StableProofState
+        sps = StableProofState.create(prop, vars)
+        for s in steps:
+            self.assertTrue(sps.apply_method_dict(s), "step failed: %s" % s)
+        return sps
+
+    def testAcceptWholeProp(self):
+        """accept closes an implication-shaped goal (not yet intro'd) via
+        the C6 whole-prop fallback, recording a single macro line."""
+        context.set_context('logic')
+        sps = self._sps('~ (p | q) --> ~ q', {'p': 'bool', 'q': 'bool'},
+                        [{'method_name': 'rewrite', 'theorem': 'disj_comm',
+                          'sym': 'false', 'goal': 0}])
+        ok = sps.apply_method_dict({'method_name': 'accept',
+                                    'theorem': 'not_or_elim1', 'goal': 1})
+        self.assertTrue(ok)
+        self.assertEqual(sps.num_gaps, 0)
+        # One apply_theorem_inst line replaces the goal; no raw primitive lines.
+        items = sps.state.prf.items
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0].rule, 'apply_theorem_inst')
+        rpt = sps.state.check_proof(no_gaps=True)
+        self.assertTrue(rpt is not None)
+
+    def testAcceptStripped(self):
+        """accept on an already-intro'd goal discharges premises from hyps."""
+        test_method(self,
+            'logic',
+            vars={'p': 'bool', 'q': 'bool'},
+            assms=['~(p | q)'],
+            concl='~p',
+            method_name='accept',
+            args={'theorem': 'not_or_elim1'},
+            gaps=False
+        )
+
+    def testAcceptFailsNoMatch(self):
+        """accept fails when neither stage matches."""
+        context.set_context('logic')
+        sps = self._sps('~ (p | q) --> p', {'p': 'bool', 'q': 'bool'})
+        ok = sps.apply_method_dict({'method_name': 'accept',
+                                    'theorem': 'not_or_elim1', 'goal': 0})
+        self.assertFalse(ok)
+        self.assertEqual(sps.num_gaps, 1)
+
+    def testAcceptSearchSuggests(self):
+        """backward search suggests accept via the C1 exact-match channel."""
+        context.set_context('logic')
+        sps = self._sps('~ (p | q) --> ~ q', {'p': 'bool', 'q': 'bool'},
+                        [{'method_name': 'rewrite', 'theorem': 'disj_comm',
+                          'sym': 'false', 'goal': 0}])
+        res = sps.search_backward(1, [])
+        acc = [r for r in res['results'] if r.get('method_name') == 'accept']
+        self.assertTrue(any(r.get('theorem') == 'not_or_elim1' for r in acc))
+        self.assertTrue(any(r.get('_goal') == [] for r in acc))
+        # rule must NOT be suggested for a theorem that only matches
+        # whole-propositionally (no C6 fallback on rule anymore).
+        rul = [r for r in res['results'] if r.get('method_name') == 'rule'
+               and r.get('theorem') == 'not_or_elim1']
+        self.assertEqual(rul, [])
+
+    def testRuleNoWholePropFallback(self):
+        """rule has no C6 fallback (MATCH_MP_TAC semantics): it fails on
+        an un-intro'd implication goal; accept closes it."""
+        context.set_context('logic')
+        sps = self._sps('~ (p | q) --> ~ q', {'p': 'bool', 'q': 'bool'},
+                        [{'method_name': 'rewrite', 'theorem': 'disj_comm',
+                          'sym': 'false', 'goal': 0}])
+        ok = sps.apply_method_dict({'method_name': 'rule',
+                                    'theorem': 'not_or_elim1', 'goal': 1})
+        self.assertFalse(ok)
+        self.assertEqual(sps.num_gaps, 1)
+        # The goal must be intro'd before rule applies.
+        sps2 = self._sps('~ (p | q) --> ~ q', {'p': 'bool', 'q': 'bool'},
+                         [{'method_name': 'rewrite', 'theorem': 'disj_comm',
+                           'sym': 'false', 'goal': 0}])
+        ok2 = sps2.apply_method_dict({'method_name': 'intro', 'goal': 1})
+        self.assertTrue(ok2)
+        # The inner subgoal (¬q under hyp ¬(q∨p)) carries a new sid.
+        inner_sid = sps2.get_open_goals()[0][0]
+        ok3 = sps2.apply_method_dict({'method_name': 'accept',
+                                      'theorem': 'not_or_elim1', 'goal': inner_sid})
+        self.assertTrue(ok3)
+        self.assertEqual(sps2.num_gaps, 0)
+
+
+    def testAcceptPyholRoundTrip(self):
+        """accept steps survive .pyhol export/parse (positional theorem)."""
+        from syntax import pyhol
+        step = {'method_name': 'accept', 'theorem': 'not_or_elim1',
+                'goal': 1, 'new_ids': [], 'new_items': []}
+        data = {'name': 't', 'imports': ['logic'], 'domains': [],
+                'description': '',
+                'content': [{'ty': 'thm', 'name': 't',
+                             'vars': {'p': 'bool', 'q': 'bool'},
+                             'prop': '~ (p | q) --> ~ q', 'attributes': [],
+                             'steps': [step]}]}
+        text = pyhol.export_pyhol(data)
+        parsed = pyhol.parse_pyhol(text)
+        self.assertEqual(parsed['content'][0]['steps'][0]['method_name'], 'accept')
+        self.assertEqual(parsed['content'][0]['steps'][0]['theorem'], 'not_or_elim1')
+        self.assertEqual(parsed['content'][0]['steps'][0]['goal'], 1)
+
+
+class LineModelTest(unittest.TestCase):
+    """Single-line recording and explicit visible closures (line model):
+    every goal must be explicitly introduced and closed, and each
+    method step records a bounded number of lines (no primitive chains).
+    """
+
+    def _sps(self, prop, vars, steps=()):
+        from server.stable_state import StableProofState
+        sps = StableProofState.create(prop, vars)
+        for s in steps:
+            self.assertTrue(sps.apply_method_dict(s), "step failed: %s" % s)
+        return sps
+
+    def _rules(self, sps):
+        return [l['rule'] for l in sps._export_proof_lines()]
+
+    def testIntroNoFakeCloseLine(self):
+        """Plain intro hides its intros frame: no spurious close_by line."""
+        context.set_context('logic')
+        sps = self._sps('A --> B', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0}])
+        self.assertEqual(self._rules(sps), ['subproof', 'assume', 'sorry'])
+
+    def testAutoCloseLineVisible(self):
+        """Explicit auto-closure records a VISIBLE close_by line."""
+        context.set_context('logic')
+        sps = self._sps('(A & B) --> A', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0}])
+        inner = sps.get_open_goals()[0][0]
+        self.assertTrue(sps.apply_method_dict(
+            {'method_name': 'forward', 'theorem': 'conjD1',
+             'goal': inner, 'facts': [1]}))
+        self.assertIn('close_by', self._rules(sps))
+
+    def testAcceptStrippedSingleLine(self):
+        """accept stage 1 records ONE accept line (no assume noise)."""
+        context.set_context('logic')
+        sps = self._sps('~ (p | q) --> ~ p', {'p': 'bool', 'q': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0}])
+        inner = sps.get_open_goals()[0][0]
+        self.assertTrue(sps.apply_method_dict(
+            {'method_name': 'accept', 'theorem': 'not_or_elim1', 'goal': inner}))
+        self.assertEqual(self._rules(sps), ['subproof', 'assume', 'accept'])
+        self.assertEqual(sps.num_gaps, 0)
+
+    def testSimpSingleLine(self):
+        """simp records one simp line + the new-goal sorry (no conv chain)."""
+        context.set_context('logic')
+        sps = self._sps('(p & q) & r = p & (q & r)',
+                        {'p': 'bool', 'q': 'bool', 'r': 'bool'},
+                        [{'method_name': 'simp', 'goal': 0}])
+        self.assertEqual(self._rules(sps), ['sorry', 'simp'])
+        self.assertEqual(sps.num_gaps, 1)
+
+    def testUnfoldSingleLine(self):
+        context.set_context('logic')
+        sps = self._sps('(A & B) = (B & A)', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'unfold', 'theorem': 'conj_comm', 'goal': 0}])
+        self.assertEqual(self._rules(sps), ['sorry', 'unfold'])
+
+    def testRewriteLocSingleLine(self):
+        """loc rewrite records one rewrite_goal_loc line; reflexive result
+        closes without a sorry."""
+        context.set_context('logic')
+        sps = self._sps('(A & B) = (B & A)', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'rewrite', 'theorem': 'conj_comm',
+                          'loc': '1', 'goal': 0}])
+        self.assertEqual(self._rules(sps), ['rewrite_goal_loc'])
+        self.assertEqual(sps.num_gaps, 0)
+
+    def testResolveC4ShapesSingleLine(self):
+        """resolve with A --> false / A = false shapes closes with one
+        resolve_theorem line."""
+        from kernel.term import Var, Eq, false
+        from kernel.type import BoolType
+        from kernel.thm import Thm
+        # Theorems are stored with plain Vars; get_theorem converts
+        # them to schematic variables on retrieval.
+        A_v = Var('A', BoolType)
+        context.set_context('logic_base')
+        theory.thy.add_theorem('__test_A_imp_false', Thm(Implies(A_v, false)))
+        theory.thy.add_theorem('__test_A_eq_false', Thm(Eq(A_v, false)))
+        for thm_name in ('__test_A_imp_false', '__test_A_eq_false'):
+            sps = self._sps('A --> B', {'A': 'bool', 'B': 'bool'},
+                            [{'method_name': 'intro', 'goal': 0}])
+            inner = sps.get_open_goals()[0][0]
+            ok = sps.apply_method_dict({'method_name': 'resolve', 'theorem': thm_name,
+                                        'goal': inner, 'facts': [1]})
+            self.assertTrue(ok, thm_name)
+            self.assertEqual(sps.num_gaps, 0)
+            self.assertIn('resolve_theorem', self._rules(sps))
+
+    def testResolveNotAShape(self):
+        """resolve with the ~A shape records one resolve_theorem line."""
+        context.set_context('logic_base')
+        sps = self._sps('false --> B', {'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0}])
+        inner = sps.get_open_goals()[0][0]
+        ok = sps.apply_method_dict({'method_name': 'resolve',
+                                    'theorem': 'not_false_res',
+                                    'goal': inner, 'facts': [1]})
+        self.assertTrue(ok)
+        self.assertEqual(sps.num_gaps, 0)
+        self.assertIn('resolve_theorem', self._rules(sps))
+
+
 if __name__ == "__main__":
     unittest.main()

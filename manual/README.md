@@ -8,7 +8,7 @@ holpy 是一个用 Python 实现的高阶逻辑（HOL）定理证明器，基于
 kernel/          逻辑内核（Type/Term/Thm/15原语/ProofTerm/Theory）
   │   15 条原语是唯一凭空构造定理的入口
   ▼
-logic/           逻辑层（Conv/Tactic/Macro/Matcher/Context）
+framework/       逻辑层（Conv/Tactic/Macro/Matcher/Context/Auto/Search）
   │   组合原语与宏，提供自动化基础设施
   ▼
 server/ + app/   应用层（Method/ProofState/Flask API）
@@ -64,18 +64,24 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 ### 核心宏
 
-`apply_theorem` / `apply_theorem_for` / `apply_induct` / `apply_fact` / `rewrite_goal` / `rewrite_fact` / `intros` / `trivial` / `beta_norm` / `resolution` / `imp_conj` / `imp_disj`
+`framework/macros/core.py` 注册（领域无关）：
+
+`intros` / `resolve_theorem` / `beta_norm` / `apply_theorem` / `apply_theorem_for` / `apply_theorem_inst` / `apply_induct` / `apply_fact` / `apply_fact_for` / `rewrite_goal` / `rewrite_goal_sym` / `rewrite_goal_with_prev` / `rewrite_goal_with_prev_sym` / `rewrite_fact` / `rewrite_fact_sym` / `rewrite_fact_with_prev` / `forall_elim_gen` / `trivial` / `close_by`
+
+领域宏示例：`imp_conj` / `imp_disj` / `resolution`（domains/logic）、`nat_norm` / `real_norm`、`eval_Sem` / `vcg`（imperative）、`z3`（framework/macros/z3.py，oracle）。
 
 ### 内置策略
 
-`rule` / `resolve` / `var_induct` / `intros` / `rewrite_goal` / `rewrite_goal_with_prev` / `apply_prev` / `cases` / `inst_exists_goal` / `assumption` / `reflexive` / `equal_intr` / `elim_tac`
+向后：`rule` / `resolve` / `var_induct` / `datatype_cases` / `intros` / `rewrite_goal` / `rewrite_goal_with_conv` / `rewrite_goal_with_prev` / `apply_prev` / `cases` / `inst_exists_goal` / `assumption` / `reflexive` / `equal_intr` / `trans` / `trivial` / `accept` / `elim_exists`
+
+正向：`apply_theorem_forward` / `rewrite_fact_forward` / `apply_fact_forward` / `rewrite_fact_with_prev_forward` / `forall_elim_forward`
 
 ### 方法分发模式
 
-- **A 策略路径**：`rule` / `intro` / `cases` / `type_cases` / `rewrite`（goal）/ `induct` / `refl` / `eq_intro` / `trans` / `unfold` / `simp` / ...
+- **A 策略路径**：`rule` / `cases` / `type_cases` / `rewrite`（goal）/ `induct` / `refl` / `eq_intro` / `trans` / `unfold` / `simp` / ...
 - **B 受检宏调用**：`norm` / 领域宏方法（`nat_norm` / `real_norm` / `eval_Sem` / ...）
 - **C 正向路径**：`forward` / `rewrite`（fact）/ `inst`（fact）
-- **D 直接操作**：`cut` / `var` / `elim` / `z3`
+- **D 直接操作**：`cut` / `var` / `elim` / `intro` / `z3`
 
 > 行不可变：fact/goal 生成后不可改写，已移除 `thin` / `sym` / `revert_intro` / `drule` 等行改写方法。
 

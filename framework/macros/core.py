@@ -53,7 +53,8 @@ class intros_macro(Macro):
 
 
 class resolve_theorem_macro(Macro):
-    """Given a theorem of the form ~A, and a fact A, prove any goal."""
+    """Given a negation-shaped theorem (~A, A = false, or A --> false,
+    C4 shape normalization) and a fact A, prove any goal."""
     def __init__(self):
         self.level = 1
         self.sig = Tuple[str, Term]
@@ -62,13 +63,32 @@ class resolve_theorem_macro(Macro):
     def get_proof_term(self, args, pts):
         th_name, goal = args
         pt = ProofTerm.theorem(th_name)
-        assert pt.prop.is_not(), "resolve_theorem_macro"
+        assert len(pts) == 1, "resolve_theorem_macro"
 
-        # Match for variables in pt.
-        inst = matcher.first_order_match(pt.prop.arg, pts[0].prop)
-        pt = pt.subst_type(inst.tyinst).substitution(inst)
-        pt = apply_theorem('negE', pt, pts[0])  # false
-        return apply_theorem('falseE', pt, concl=goal)
+        # Shape normalization (C4): derive |- ~A from related shapes.
+        if pt.prop.is_not():
+            neg_pt = pt
+        elif pt.prop.is_implies() and pt.prop.arg == false:
+            # |- A --> false, combined with negI: |- (A --> false) --> ~A
+            neg_pt = apply_theorem('negI', pt)
+        elif pt.prop.is_equals() and pt.prop.rhs == false:
+            # |- A = false. Under assumption A, rewrite A to false via
+            # equal_elim, discharge to A --> false, then negI.
+            A = pt.prop.lhs
+            asm = ProofTerm.assume(A)
+            false_pt = ProofTerm('equal_elim', None, [pt, asm])
+            imp_pt = false_pt.implies_intr(A)
+            neg_pt = apply_theorem('negI', imp_pt)
+        else:
+            raise AssertionError(
+                "resolve_theorem_macro: %s is not a negation "
+                "(accepted shapes: ~A, A --> false, A = false)" % th_name)
+
+        # Match ~A against the fact, derive false, eliminate to the goal.
+        inst = matcher.first_order_match(neg_pt.prop.arg, pts[0].prop)
+        neg_pt = neg_pt.subst_type(inst.tyinst).substitution(inst)
+        false_pt = apply_theorem('negE', neg_pt, pts[0])  # false
+        return apply_theorem('falseE', false_pt, concl=goal)
 
 
 class beta_norm_macro(Macro):
@@ -87,10 +107,31 @@ class beta_norm_macro(Macro):
         assert args is None, "beta_norm_macro"
         return pts[0].on_prop(beta_norm_conv())
 
+class apply_theorem_inst_macro(Macro):
+    """Apply a theorem with an explicit full instantiation, consuming
+    no premises: the theorem's proposition directly proves the goal
+    (whole-proposition closure). Expands to theorem + subst_type +
+    substitution primitives, fully checked by the kernel.
+
+    """
+    def __init__(self):
+        self.level = 1
+        self.sig = Tuple[str, Inst]
+        self.limit = None
+
+    def get_proof_term(self, args, pts):
+        name, inst = args
+        assert len(pts) == 0, "apply_theorem_inst"
+        pt = ProofTerm.theorem(name)
+        if inst.tyinst:
+            pt = pt.subst_type(inst.tyinst)
+        if inst:
+            pt = pt.substitution(inst)
+        return pt
+
 class apply_theorem_macro(Macro):
     """Apply existing theorem in the theory to a list of current
     results in the proof.
-
     If with_inst is set, the signature is (th_name, inst),
     where th_name is the name of the theorem, and inst are
     the instantiations of type and term variables.
@@ -183,6 +224,100 @@ class apply_theorem_macro(Macro):
             pt = pt.forall_intr(v)
 
         return pt
+
+class accept_macro(Macro):
+    """Kernel expansion of the accept tactic's stage 1: assume the
+    matched hypotheses, apply the instantiated theorem, and discharge
+    its premises by implies_elim. Recorded as a single line.
+    """
+    def __init__(self):
+        self.level = 1
+        self.sig = Tuple[str, Inst, List[Term]]
+        self.limit = None
+
+    def get_proof_term(self, args, pts):
+        th_name, inst, hyps = args
+        assert len(pts) == 0, "accept_macro"
+        pt = ProofTerm.theorem(th_name)
+        if inst.tyinst:
+            pt = pt.subst_type(inst.tyinst)
+        if inst:
+            pt = pt.substitution(inst)
+        for h in hyps:
+            pt = pt.implies_elim(ProofTerm.assume(h))
+        return pt
+
+class simp_macro(Macro):
+    """Kernel expansion of the simp tactic: iterated rewriting with all
+    unconditional hint_rewrite theorems of the current theory, to a
+    fixed point. args = goal proposition; pts[0] (optional) is the
+    new-goal sorry created by the tactic. Recorded as a single line.
+    """
+    def __init__(self):
+        self.level = 1
+        self.sig = Term
+        self.limit = None
+
+    def get_proof_term(self, args, pts):
+        from framework.tactic import simp_sweep
+        C = args
+        cv_acc, current = simp_sweep(C)
+        assert cv_acc is not None and current != C, \
+            "simp_macro: nothing to simplify"
+        pt = cv_acc.get_proof_term(C).symmetric()  # current = C
+        if len(pts) == 0:
+            # The result is reflexive: close with reflexivity.
+            assert pt.prop.lhs.is_equals() and pt.prop.lhs.lhs == pt.prop.lhs.rhs, \
+                "simp_macro: expected reflexive result"
+            return pt.equal_elim(refl(pt.prop.lhs.lhs))
+        assert len(pts) == 1 and pts[0].th.prop == current, \
+            "simp_macro: sweep mismatch"
+        return pt.equal_elim(pts[0])
+
+class unfold_macro(Macro):
+    """Kernel expansion of the unfold tactic: top-level rewriting with
+    a definitional theorem (sym=True for fold). Recorded as a single
+    line.
+    """
+    def __init__(self, *, sym=False):
+        self.level = 1
+        self.sig = Tuple[str, Term]
+        self.sym = sym
+        self.limit = None
+
+    def get_proof_term(self, args, pts):
+        th_name, C = args
+        cv = then_conv(top_conv(rewr_conv(th_name, sym=self.sym)), beta_norm_conv())
+        pt = cv.get_proof_term(C).symmetric()
+        if len(pts) == 0:
+            assert pt.prop.lhs.is_equals() and pt.prop.lhs.lhs == pt.prop.lhs.rhs, \
+                "unfold_macro: expected reflexive result"
+            return pt.equal_elim(refl(pt.prop.lhs.lhs))
+        assert len(pts) == 1, "unfold_macro"
+        return pt.equal_elim(pts[0])
+
+class rewrite_goal_loc_macro(Macro):
+    """Kernel expansion of position-specific goal rewriting (loc string
+    selects the subterm). Recorded as a single line.
+    """
+    def __init__(self, *, sym=False):
+        self.level = 1
+        self.sig = Tuple[str, str, Term]
+        self.sym = sym
+        self.limit = None
+
+    def get_proof_term(self, args, pts):
+        from framework.conv import loc_conv
+        th_name, loc, C = args
+        cv = then_conv(loc_conv(loc, rewr_conv(th_name, sym=self.sym)),
+                       beta_norm_conv())
+        pt = cv.get_proof_term(C).symmetric()
+        if len(pts) == 0:
+            assert pt.prop.lhs.is_equals() and pt.prop.lhs.lhs == pt.prop.lhs.rhs, \
+                "rewrite_goal_loc_macro: expected reflexive result"
+            return pt.equal_elim(refl(pt.prop.lhs.lhs))
+        assert len(pts) == 1, "rewrite_goal_loc_macro"
+        return pt.equal_elim(pts[0])
 
 class apply_induct_macro(Macro):
     """Apply induction. Directly invokes apply_theorem."""
@@ -486,6 +621,13 @@ theory.global_macros.update({
     "beta_norm": beta_norm_macro(),
     "apply_theorem": apply_theorem_macro(),
     "apply_theorem_for": apply_theorem_macro(with_inst=True),
+    "apply_theorem_inst": apply_theorem_inst_macro(),
+    "accept": accept_macro(),
+    "simp": simp_macro(),
+    "unfold": unfold_macro(),
+    "unfold_sym": unfold_macro(sym=True),
+    "rewrite_goal_loc": rewrite_goal_loc_macro(),
+    "rewrite_goal_loc_sym": rewrite_goal_loc_macro(sym=True),
     "apply_induct": apply_induct_macro(),
     "apply_fact": apply_fact_macro(),
     "apply_fact_for": apply_fact_macro(with_inst=True),

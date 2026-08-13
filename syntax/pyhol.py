@@ -342,6 +342,7 @@ _METHOD_POSITIONAL = {
     'rule': ['theorem'],
     'forward': ['theorem'],
     'resolve': ['theorem'],
+    'accept': ['theorem'],
     'intro': ['names'],
     'apply_prev': [],
     'cut': ['cut_goal'],

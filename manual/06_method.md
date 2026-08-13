@@ -46,11 +46,11 @@ class ProofState:
 
 1. 取当前 `sorry` 行的目标 `cur_item.th`。
 2. `pt = tactic.get_proof_term(args=args, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)`（goal 作为 prevs[0]）。
-3. 若 `pt.rule == 'atom'`：直接用事实替换 sorry 行。
-4. 否则 `new_prf = pt.export(prefix=id, subproof=False)`，插入新行。
+3. 若 `pt.rule == 'atom'`（事实直接证明目标）且该事实能匹配证明目标：目标行改写为 `close_by` 可见行（`prevs=[fact_id]`），结束。
+4. 否则 `new_prf = pt.export(prefix=id, subproof=False)`，插入新行（最后一条导出项覆盖原 goal 行，行数不变）。
 5. `check_proof(compute_only=True)` 校验。
-6. 对新 `sorry` 行调 `find_goal`：若已有证明能解，自动替换。
-7. 对新 `sorry` 行调 `trivial` 策略：构造成功则自动关闭。
+6. 对新 `sorry` 行调 `_find_and_close`：若先行行能匹配证明，落可见 `close_by` 行。
+7. 对新 `sorry` 行尝试 `trivial` 宏：构造成功则落可见 `trivial` 行。
 
 `StableProofState.apply_method_dict` 在此之上添加稳定 ID 管理：翻译 `goal=N`/`facts=[N]` 为位置 ID，调用 `apply_tactic`，然后为新 item 分配稳定 ID。
 
@@ -62,7 +62,7 @@ class ProofState:
 ```
 method.apply -> state.apply_tactic(tactic) -> tactic.get_proof_term -> ProofTerm
 ```
-典型：`rule`、`intro`、`cases`、`rewrite`（goal 模式）、`apply_prev`、`inst`（goal 模式）、`induct`、`refl`、`eq_intro`、`unfold`、`simp`、`assumption`、`accept`。
+典型：`rule`、`cases`、`type_cases`、`rewrite`（goal 模式）、`apply_prev`、`inst`（goal 模式）、`induct`、`refl`、`eq_intro`、`trans`、`unfold`、`simp`、`assumption`、`accept`。
 
 ### 模式 B：受检宏调用（领域计算）
 ```
@@ -81,9 +81,11 @@ method.apply -> tactic.X_forward().get_proof_term(args, prevs) -> ProofTerm
 
 ### 模式 D：直接操作
 ```
-method.apply -> state.set_line(rule, args, prevs, th)
+method.apply -> state.set_line(rule, args, prevs, th) / 直接改写行结构
 ```
-典型：`cut`、`var`、`elim`、`z3`。
+典型：`cut`、`var`、`elim`、`intro`、`z3`。
+
+> `intro` 属于模式 D 的特例：不经过 `apply_tactic`，而是用 `tactic.intros().get_proof_term(...)` 得到证明项后，把目标行直接改写为 `subproof` 行（`cur_item.rule = "subproof"; cur_item.subproof = pt.export(prefix=id)`），再对子目标行做显式自动闭合。
 
 > **行不可变约束**：已删除所有"改写已有行"的方法（`thin` / `sym` / `revert_intro` / `drule`）。fact 与 goal 一旦生成不可变：向后推理通过证明项展开覆盖 goal 行、以新 sorry 行产生子目标；正向推理只插入新事实行。`add_line_before` / `remove_line` / `replace_id` / `set_line` 仍在底层保留，但只用于 IDE 结构性编辑与上述路径，不用于改写已存在行的命题。
 
@@ -104,12 +106,12 @@ method.apply -> state.set_line(rule, args, prevs, th)
 
 | 方法 | 参数 | 分发 | 说明 |
 |---|---|---|---|
-| `rule` | `[theorem]` | A | **最常用**：向后应用定理分解目标（整条命题匹配 + 前提子目标） |
-| `resolve` | `[theorem]` | A | 消解（`~A` + fact `A` -> 任意目标） |
+| `rule` | `[theorem]` | A | **最常用**：向后应用定理分解目标（stripped-conclusion 匹配，未匹配前提变子目标）；不闭合未 intro 的蕴含形目标（用 `intro` 或 `accept`） |
+| `resolve` | `[theorem]` | A | 消解（`~A` + fact `A` -> 任意目标）；定理接受 `~A`、`A = false`、`A --> false` 三种形状（C4） |
 | `apply_prev` | `[]` | A | 向后应用已有事实（可带 `param_*` 实例化） |
-| `accept` | `[theorem]` | A | 直接用定理关闭：结论匹配 goal、前提匹配假设，无子目标 |
+| `accept` | `[theorem]` | A | 直接用定理关闭，无子目标：结论匹配 goal、前提匹配假设；对未 intro 的蕴含形目标走 C6 整条命题回退（单条 `apply_theorem_inst` 行） |
 | `rewrite` | `[theorem, sym]` | A/C | 双模式：goal 模式重写目标（支持 `loc`），fact 模式重写事实；无 theorem 时用选中事实作重写规则 |
-| `intro` | `[names]` | A | 引入变量与假设（names 为逗号分隔列表） |
+| `intro` | `[names]` | D | 引入变量与假设（names 为逗号分隔列表）；直接把目标行改写为 subproof 行（内含 intros 证明项），不经过 apply_tactic |
 | `elim` | `[names]` | D | 消除存在量词事实（引入新变量 + 假设） |
 | `inst` | `[s]` | A/C | 双模式：goal 模式用见证实例化存在目标，fact 模式实例化全称事实 |
 | `cases` | `[case]` | A | 布尔分情况 `A⟶C` 与 `¬A⟶C`（classical_cases 包装，cases_thm 可换） |
@@ -129,7 +131,7 @@ method.apply -> state.set_line(rule, args, prevs, th)
 | 方法 | 分发 | 说明 |
 |---|---|---|
 | `simp` | A | 全体 `hint_rewrite` 无前提定理定点迭代重写 + β 归一，must-change |
-| `norm` | B | 归一化，按类型选 nat/real 领域 conv |
+| `norm` | B | 归一化：按目标类型经 `norm_registry` 分发到领域宏（`nat_norm`/`real_norm`/`int_norm`），受检宏调用 |
 | `eval_Sem` | B | 计算命令式程序小步语义 `Sem com st st2`（imperative） |
 | `z3` | D | Z3 SMT 求解器（oracle 宏行，直接 `set_line`） |
 | `vcg` | A | Hoare 逻辑 VCG：将 `Valid P c Q` 分解为验证条件子目标 |
@@ -172,7 +174,8 @@ method.apply -> state.set_line(rule, args, prevs, th)
 
 - **#0** = 要证明的定理（隐含，不写）
 - **#[N]**（N≥1）= method 调用产生的 item（fact 或 subgoal）
-- 命题有蕴含时，第一步必须是 `← intro goal=0` 显式拆分
+- 约定：命题有蕴含时，第一步通常 `← intro goal=0` 显式拆分（#0 是整条命题的 sorry）；直接对 #0 应用其他方法也可行，但库中定理证明遵循 intro 拆分的约定
+- 方向箭头按 `stable_state.BACKWARD`/`FORWARD` 集合导出：`accept`/`cut`/`var`/`elim` 不在其中，导出的步骤行无箭头
 - `fixes` 变量在上下文中，不需要 `#[N]`
 - replay 时 `#[N]` 的 ID 用于引用映射，命题不验证
 
@@ -197,17 +200,17 @@ qed
 
 搜索逻辑在前端触发、后端 `app/ide_v2.py` + `server/stable_state.py` 执行：
 
-- `rule.search`：遍历所有带 `hint_backward`/`hint_backward1` 属性的定理，尝试 `rule().get_proof_term`，成功则记录子目标。另有精确匹配通道：全局模式网中整条命题匹配 goal 的定理一律作为 `rule` 建议。
-- 双模式方法在搜索层同时贡献两种模式的结果，以 `target`/`source` 标记区分；正向搜索只保留 fact 模式结果。
+- `rule.search`：经模式网（`candidates_for`）取带 `hint_backward`/`hint_backward1` 属性的候选定理，逐条试跑 `rule().get_proof_term`，成功则记录子目标。另有精确匹配通道（C1，见 §7.1）：全局模式网中整条命题匹配 goal 的定理一律作为 `rule` 建议（不看属性）。
+- 双模式方法在搜索层同时贡献两种模式的结果，以 `target`/`source` 标记区分；正向搜索只保留 fact 模式结果（`stable_state.search_forward` 对 `rewrite`/`inst` 过滤 `target == 'fact'`）。
 - 自动闭合（显式）：每步应用后对新缺口按**匹配**（first_order_match + hyps 子集）查找先行证明行，命中则落 `close_by` 可见行；未命中尝试 `trivial` 策略，成功落 `trivial` 行。
-- 每个方法按 `no_order` 属性决定是否对 `prevs` 做排列。
-- 若有结果能"solves"（`_goal` 为空），只保留 solves 的结果。
+- 每个方法按 `no_order` 属性决定是否对 `prevs` 做排列：有 `no_order` 的方法只按原始事实顺序搜索；其余方法额外生成模糊结果（其他排列与子集，从大到小）。
+- 搜索结果不做"solves 过滤"：前端按 `_goal` 是否为空显示 `closes` / `N subgoals`，两种结果都保留。
 
 ### 7.1 搜索后端：模式网络（framework/search.py）
 
 搜索是数据驱动的表查询，不是逐方法的全量扫描：
 
-- **全局精确匹配网**（最高优先级，**不看属性**）：对当前理论内所有定理建网，查询与定理结论可统一者——命中即产生 `('rule', thm)` 精确建议。无任何 `hint_*` 属性的定理也能被搜到（对齐 Isabelle：`rule` 不带参数时搜全部规则库）。
+- **全局精确匹配网**（最高优先级，**不看属性**）：对当前理论内所有定理建网，查询与定理结论可统一者——命中即产生 `('accept', thm)` 精确建议（经试跑；`accept` 是唯一的直接闭合方法）。无任何 `hint_*` 属性的定理也能被搜到。
 - **分类别网**（次优先级）：`hint_rewrite`/`hint_backward`/`hint_forward`/`hint_resolve` 等按结论 head 骨架分桶（常数/自由变量抽象为 key），查询取 goal/fact 子项作 key 得候选集，再做精确 match + 试跑，复杂度 O(N) → O(候选数)。
 - `hint_*` 属性仅作搜索建议用途，不做上下文/依赖划分；新定理在 `.pyhol` 标注属性即自动入网。
 
@@ -257,7 +260,7 @@ class my_method(Method):
 
 | 层 | 允许 | 禁止 |
 |---|---|---|
-| Method | 解码参数、search 试跑、经 apply_tactic / apply_macro / apply_forward 三入口之一执行 | 直接构造 ProofTerm、动态宏名字符串 |
+| Method | 解码参数、search 试跑；向后推理经 `apply_tactic` / `apply_macro` 执行；正向推理先经正向策略 `get_proof_term` 得出受检 ProofTerm，再以 `add_line_before` + `set_line(pt.rule, pt.args, prevs)` 插入行（`apply_forward` 为预留受检入口，当前实现未使用）；结构性直接操作（`cut`/`var`/`elim`/`intro`）只重排/插入受检内容，随后 `check_proof` | 直接构造证明内容的 ProofTerm、动态宏名字符串、绕过校验的隐式消缺口 |
 | Tactic | 组合原语与宏字面量、调用 conv | 动态宏名字符串 |
 | apply_macro | 注册表检查后执行单条宏（唯一的宏入口，无 MacroTactic） | — |
 

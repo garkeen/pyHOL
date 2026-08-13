@@ -11,7 +11,7 @@ from kernel.proofterm import ProofTerm, TacticException
 from framework import logic
 from framework import matcher
 from framework.conv import then_conv, top_conv, rewr_conv, beta_conv, beta_norm_conv, \
-    top_sweep_conv, has_rewrite
+    top_sweep_conv, has_rewrite, loc_conv
 from framework.logic import apply_theorem
 
 
@@ -33,13 +33,13 @@ class Tactic:
 
 def _whole_prop_match(th_name: str, goal: Thm):
     """Try to match the whole proposition of the theorem against the
-    goal proposition (Isabelle rule semantics). This handles goals with
-    an object-level implication head, which the stripped-conclusion
-    matching in _backward_rule can never reach.
+    goal proposition (MATCH_ACCEPT_TAC semantics). This handles goals
+    with an object-level implication head, which the stripped-conclusion
+    matching can never reach. Used by the accept tactic only.
 
     Returns a proof term of the instantiated theorem when successful,
-    or None otherwise. The proof term is a primitive chain
-    (theorem + subst_type + substitution), fully checked by the kernel.
+    or None otherwise. The closure is recorded as a single
+    apply_theorem_inst macro line, fully checked by the kernel.
 
     """
     th = theory.get_theorem(th_name)
@@ -56,11 +56,11 @@ def _whole_prop_match(th_name: str, goal: Thm):
     if unmatched_ty:
         raise theory.ParameterQueryException(list("param_" + name for name in unmatched_ty))
 
-    pt = ProofTerm.theorem(th_name)
-    if inst.tyinst:
-        pt = pt.subst_type(inst.tyinst)
-    if inst:
-        pt = pt.substitution(inst)
+    # Single-line recording: the whole-proposition closure is committed
+    # as one apply_theorem_inst macro line (expands to theorem +
+    # subst_type + substitution on check), keeping the proof area free
+    # of raw primitive reference lines.
+    pt = ProofTerm('apply_theorem_inst', (th_name, inst), [])
     assert pt.th.prop == goal.prop, "_whole_prop_match: instantiation mismatch"
     return pt
 
@@ -111,16 +111,13 @@ class rule(Tactic):
     args is either a pair of theorem name and instantiation, or the
     theorem name alone.
 
-    Matching is attempted in two stages:
-    1. Stripped-conclusion match: object-level implications of the
-       theorem become premises; the final conclusion is matched against
-       the goal; unmatched premises become subgoals. (Tried FIRST, so
-       that recorded proofs replay byte-identically.)
-    2. Whole-proposition match (C6, fallback): the entire theorem
-       proposition is matched against the goal. This closes
-       implication-shaped goals with implication-shaped theorems in
-       one step (Isabelle semantics), reachable only where stage 1
-       fails -- exactly the cases the old semantics could not handle.
+    Stripped-conclusion matching only (MATCH_MP_TAC semantics): the
+    object-level implications of the theorem become premises; the final
+    conclusion is matched against the goal; unmatched premises become
+    subgoals. There is NO whole-proposition fallback: an implication-
+    shaped goal that is not yet introduced must be intro'd first, or
+    closed directly with the accept tactic (MATCH_ACCEPT_TAC semantics,
+    C6 whole-proposition fallback).
     """
     def get_proof_term(self, *, args=None, prevs=None):
         goal = prevs[0].th
@@ -132,14 +129,7 @@ class rule(Tactic):
         assert isinstance(th_name, str), "rule: theorem name must be a string"
         if prevs is None:
             prevs = []
-        try:
-            return _backward_rule(th_name, goal, inst, prevs)
-        except (AssertionError, matcher.MatchException):
-            if inst is None and len(prevs) == 0:
-                pt = _whole_prop_match(th_name, goal)
-                if pt is not None:
-                    return pt
-            raise
+        return _backward_rule(th_name, goal, inst, prevs)
 
 class resolve(Tactic):
     """Given any goal, a theorem of the form ~A (or a theorem that can
@@ -147,9 +137,12 @@ class resolve(Tactic):
     goal.
 
     Accepted theorem shapes (C4 shape normalization):
-    - ~A                    used directly via the resolve_theorem macro
-    - A = false             rewritten to ~A, then derived by primitives
-    - A --> false           ~A derived by primitives
+    - ~A
+    - A = false
+    - A --> false
+
+    All shapes are recorded as a single resolve_theorem macro line;
+    the shape normalization and matching happen inside the macro.
     """
     def get_proof_term(self, *, args=None, prevs=None):
         goal = prevs[0].th
@@ -158,34 +151,14 @@ class resolve(Tactic):
         th_name = args
         th = theory.get_theorem(th_name)
 
-        if th.prop.is_not():
-            # Checking that the theorem matches the fact is done in the macro.
-            return ProofTerm('resolve_theorem', (args, goal.prop), prevs)
+        assert (th.prop.is_not() or
+                (th.prop.is_implies() and th.prop.arg == false) or
+                (th.prop.is_equals() and th.prop.rhs == false)), \
+            "resolve: theorem %s is not a negation " \
+            "(accepted shapes: ~A, A --> false, A = false)" % th_name
 
-        # Shape normalization (C4): derive |- ~A from related shapes.
-        neg_pt = None
-        if th.prop.is_implies() and th.prop.rhs == false:
-            # |- A --> false, combined with negI: |- (A --> false) --> ~A
-            neg_pt = apply_theorem('negI', ProofTerm.theorem(th_name))
-        elif th.prop.is_equals() and th.prop.rhs == false:
-            # |- A = false. Under assumption A, rewrite A to false via
-            # symmetric equal_elim, discharge to A --> false, then negI.
-            A = th.prop.lhs
-            asm = ProofTerm.assume(A)
-            false_pt = ProofTerm('equal_elim', None, [
-                ProofTerm('symmetric', None, [ProofTerm.theorem(th_name)]), asm])
-            imp_pt = false_pt.implies_intr(A)
-            neg_pt = apply_theorem('negI', imp_pt)
-        else:
-            raise AssertionError(
-                "resolve: theorem %s is not a negation "
-                "(accepted shapes: ~A, A --> false, A = false)" % th_name)
-
-        # Match ~A against the fact, derive false, eliminate to the goal.
-        inst = matcher.first_order_match(neg_pt.prop.arg, prevs[0].prop)
-        neg_pt = neg_pt.subst_type(inst.tyinst).substitution(inst)
-        false_pt = neg_pt.implies_elim(prevs[0])
-        return apply_theorem('falseE', false_pt, concl=goal.prop)
+        # Matching against the fact is done in the macro.
+        return ProofTerm('resolve_theorem', (args, goal.prop), prevs)
 
 class intros(Tactic):
     """Given a goal of form !x_1 ... x_n. A_1 --> ... --> A_n --> C,
@@ -244,6 +217,72 @@ class var_induct(Tactic):
         As = As[:num_orig]
         pts = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in As]
         return ProofTerm("apply_induct", (th_name, var, goal.prop), pts)
+
+def simp_sweep(C, *, max_rounds=100):
+    """Iterated rewrite sweep: apply all unconditional hint_rewrite
+    theorems of the current theory to C, round by round, until a fixed
+    point (bounded). Returns (cv_acc, current) where cv_acc converts C
+    to current, or (None, C) when nothing can be simplified.
+
+    Shared between the simp tactic (pre-check) and the simp macro
+    (kernel expansion).
+
+    """
+    th_names = []
+    attrs = theory.thy.get_data('attributes')
+    for nm, a in attrs.items():
+        if 'hint_rewrite' not in a:
+            continue
+        try:
+            th = theory.thy.get_theorem(nm)
+        except theory.TheoryException:
+            continue
+        if len(th.assums) == 0:
+            th_names.append(nm)
+
+    cv_acc = None
+    current = C
+    for _ in range(max_rounds):
+        round_cv = None
+        for nm in th_names:
+            try:
+                top_conv(rewr_conv(nm)).get_proof_term(current)
+            except Exception:
+                continue
+            cv_i = top_conv(rewr_conv(nm))
+            round_cv = cv_i if round_cv is None else then_conv(round_cv, cv_i)
+        if round_cv is None:
+            break
+        round_cv = then_conv(round_cv, beta_norm_conv())
+        new_prop = round_cv.eval(current).prop.rhs
+        cv_acc = round_cv if cv_acc is None else then_conv(cv_acc, round_cv)
+        if new_prop == current:
+            break
+        current = new_prop
+
+    return cv_acc, current
+
+
+class simp(Tactic):
+    """Simplify the goal by iterated rewriting with all unconditional
+    hint_rewrite theorems of the current theory, to a fixed point
+    (bounded). Must-change: fails when nothing can be simplified.
+
+    The whole simplification is committed as a single visible simp
+    macro line (the kernel expands the conv chain on check).
+    """
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
+        assert len(prevs) == 0, "simp"
+        cv_acc, new_goal = simp_sweep(goal.prop)
+        assert cv_acc is not None and new_goal != goal.prop, \
+            "simp: nothing to simplify"
+        if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
+            return ProofTerm('simp', goal.prop, [])
+        return ProofTerm('simp', goal.prop,
+                         [ProofTerm.sorry(Thm(new_goal, goal.hyps))])
+
 
 class rewrite_goal(Tactic):
     """Rewrite the goal using a theorem."""
@@ -472,6 +511,59 @@ class inst_exists_goal(Tactic):
         return _backward_rule(exists_intro_thm, goal, Inst(P=C.arg, a=witness), [])
 
 
+class unfold(Tactic):
+    """Unfold (or fold, with sym=True) a definition by top-level
+    rewriting with the definitional theorem. Recorded as a single
+    unfold / unfold_sym macro line.
+    """
+    def __init__(self, *, sym=False):
+        self.sym = sym
+
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
+        assert len(prevs) == 0, "unfold"
+        th_name = args
+        assert isinstance(th_name, str), "unfold"
+        theory.get_theorem(th_name)
+        cv = then_conv(top_conv(rewr_conv(th_name, sym=self.sym)), beta_norm_conv())
+        eq_th = cv.eval(goal.prop)
+        new_goal = eq_th.prop.rhs
+        assert new_goal != goal.prop, "unfold: no effect"
+        macro_name = 'unfold_sym' if self.sym else 'unfold'
+        if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
+            return ProofTerm(macro_name, (th_name, goal.prop), [])
+        return ProofTerm(macro_name, (th_name, goal.prop),
+                         [ProofTerm.sorry(Thm(new_goal, goal.hyps))])
+
+
+class rewrite_goal_loc(Tactic):
+    """Rewrite the goal at a specific subterm position (loc string).
+    Recorded as a single rewrite_goal_loc macro line.
+    """
+    def __init__(self, *, sym=False, loc=''):
+        self.sym = sym
+        self.loc = loc
+
+    def get_proof_term(self, *, args=None, prevs=None):
+        goal = prevs[0].th
+        prevs = prevs[1:]
+        assert len(prevs) == 0, "rewrite_goal_loc"
+        th_name = args
+        assert isinstance(th_name, str), "rewrite_goal_loc"
+        theory.get_theorem(th_name)
+        cv = then_conv(loc_conv(self.loc, rewr_conv(th_name, sym=self.sym)),
+                       beta_norm_conv())
+        eq_th = cv.eval(goal.prop)
+        new_goal = eq_th.prop.rhs
+        assert new_goal != goal.prop, "rewrite_goal_loc: no effect"
+        macro_name = 'rewrite_goal_loc_sym' if self.sym else 'rewrite_goal_loc'
+        if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
+            return ProofTerm(macro_name, (th_name, self.loc, goal.prop), [])
+        return ProofTerm(macro_name, (th_name, self.loc, goal.prop),
+                         [ProofTerm.sorry(Thm(new_goal, goal.hyps))])
+
+
 class assumption(Tactic):
     def get_proof_term(self, *, args=None, prevs=None):
         goal = prevs[0].th
@@ -571,12 +663,32 @@ class accept(Tactic):
     whose instantiation directly proves the goal is accepted without
     going through backward chaining). It fails when the conclusion does
     not match, or when some premise is not matched by any assumption.
+
+    Matching is attempted in two stages:
+    1. Stripped-conclusion match: the theorem's conclusion is matched
+       against the goal's proposition, each premise against one of the
+       goal's assumptions (goals already introduced).
+    2. Whole-proposition match (C6, fallback): the entire theorem
+       proposition is first-order matched against the goal proposition,
+       recording a single apply_theorem_inst macro line. This closes
+       implication-shaped goals with implication-shaped theorems before
+       any intro step (Isabelle / MATCH_ACCEPT_TAC semantics).
     """
     def get_proof_term(self, *, args=None, prevs=None):
         goal = prevs[0].th
         prevs = prevs[1:]
         assert isinstance(args, str), "accept: theorem name must be a string"
         th_name = args
+        try:
+            return self._stripped_accept(th_name, goal)
+        except (TacticException, matcher.MatchException):
+            if len(prevs) == 0:
+                pt = _whole_prop_match(th_name, goal)
+                if pt is not None:
+                    return pt
+            raise
+
+    def _stripped_accept(self, th_name, goal):
         th = theory.get_theorem(th_name)
         As, C = th.assums, th.concl
 
@@ -625,9 +737,9 @@ class accept(Tactic):
                 list("param_" + name for name in unmatched_stvars))
 
         # Return the theorem application with the matched assumptions
-        # recorded as premises. This expands to an explicit apply line.
-        assume_pts = [ProofTerm.assume(h) for h in matched_hs]
-        return ProofTerm('apply_theorem_for', (th_name, inst), assume_pts)
+        # recorded as premises, committed as a single accept macro line
+        # (expands to assume + theorem + implies_elim chain on check).
+        return ProofTerm('accept', (th_name, inst, matched_hs), [])
 
 class apply_theorem_forward(Tactic):
     """Forward: apply a theorem to facts to derive a new fact. No goal.

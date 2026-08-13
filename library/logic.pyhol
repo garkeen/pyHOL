@@ -287,12 +287,12 @@ proof
   ← intro x goal=3
     #[5] _VAR x
     #[6] A x
-  → inst target=fact x goal=6 facts=[1]
+  → inst x target=fact goal=6 facts=[1]
     #[7] A x ∧ B x
   ← rule conjD1 goal=6 facts=[7]
   ← intro x goal=4
     #[8] B x
-  → inst target=fact x goal=8 facts=[1]
+  → inst x target=fact goal=8 facts=[1]
   ← rule conjD2 goal=8 facts=[7]
 qed
 
@@ -473,11 +473,11 @@ proof
     #[29] A ∨ C
   → forward conjD2 goal=28 facts=[21]
     #[30] B ∨ C
-  → rewrite target=fact disj_comm sym=false goal=28 facts=[29]
+  → rewrite disj_comm sym=false target=fact goal=28 facts=[29]
     #[31] C ∨ A
   → forward resolution_left goal=28 facts=[31,26]
     #[32] A
-  → rewrite target=fact disj_comm sym=false goal=28 facts=[30]
+  → rewrite disj_comm sym=false target=fact goal=28 facts=[30]
     #[33] C ∨ B
   → forward resolution_left goal=28 facts=[33,26]
     #[34] B
@@ -708,7 +708,7 @@ proof
     #[14] A ⟶ false
   ← intro goal=14
     #[15] false
-  → rewrite target=fact source=prev goal=15 facts=[12,7]
+  → rewrite source=prev target=fact goal=15 facts=[12,7]
 qed
 
 theorem not_true
@@ -720,7 +720,7 @@ proof
   ← intro goal=1
     #[3] ¬true
     #[4] false
-  forward trueI goal=4
+  → forward trueI goal=4
     #[5] true
   ← rule negE goal=4 facts=[3,5]
   ← intro goal=2
@@ -932,7 +932,7 @@ proof
   ← intro goal=2
     #[8] ¬(∀x. P x)
     #[9] ∃x. P x ⟶ (∀x1. P x1)
-  → rewrite target=fact not_all sym=false goal=9 facts=[8]
+  → rewrite not_all sym=false target=fact goal=9 facts=[8]
     #[10] ∃x. ¬(P x)
   elim x goal=9 facts=[10]
     #[11] ¬(P x)
@@ -1015,7 +1015,7 @@ proof
   ← intro x goal=5
     #[6] _VAR x
     #[7] P x (Some (P x))
-  → inst target=fact x goal=7 facts=[3]
+  → inst x target=fact goal=7 facts=[3]
     #[8] ∃y. P x y
   elim y goal=7 facts=[8]
     #[9] _VAR y
@@ -1070,7 +1070,7 @@ proof
   ← rule disjI1 goal=9
   ← rule disjI2 goal=10
     #[11] B
-  → rewrite target=fact source=prev goal=11 facts=[3,7]
+  → rewrite source=prev target=fact goal=11 facts=[3,7]
   ← intro goal=6
     #[12] ¬A
     #[13] (A ∨ ¬B) ∧ (¬A ∨ B)
@@ -1079,7 +1079,7 @@ proof
     #[15] ¬A ∨ B
   ← rule disjI2 goal=14
     #[16] ¬B
-  → rewrite target=fact source=prev goal=16 facts=[3,12]
+  → rewrite source=prev target=fact goal=16 facts=[3,12]
   ← rule disjI1 goal=15
   ← intro goal=2
     #[17] (A ∨ ¬B) ∧ (¬A ∨ B)
@@ -1301,6 +1301,7 @@ theorem not_or_elim2
 proof
   ← rewrite disj_comm sym=false goal=0
     #[1] ¬(q ∨ p) ⟶ ¬q
+  ← accept not_or_elim1 goal=1
 qed
 
 theorem conj_true_left

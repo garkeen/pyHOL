@@ -353,28 +353,6 @@ def register_method(name):
     return decorator
 
 
-def _loc_to_conv(loc, base_cv):
-    """Convert a location string to a conv combinator.
-    
-    loc format:
-    - "0": go to function part of f(x) → fun_conv
-    - "1": go to argument part of f(x) → arg_conv
-    - "0.1": argument of function → fun_conv(arg_conv(...))
-    - "1.0": function of argument → arg_conv(fun_conv(...))
-    
-    Each digit selects which part of a Comb(f, a) to descend into.
-    """
-    cv = base_cv
-    for digit in reversed(loc.split('.')):
-        if digit == '0':
-            cv = conv.fun_conv(cv)
-        elif digit == '1':
-            cv = conv.arg_conv(cv)
-        else:
-            raise AssertionError("loc: invalid digit '%s', expected 0 or 1" % digit)
-    return cv
-
-
 class Method:
     """Methods represent potential actions on the state."""
     list_params = set()  # param names that are comma-separated lists (rendered as +/- fields)
@@ -592,14 +570,11 @@ class rewrite_thm_impl(Method):
         loc = data.get('loc', '')
         
         if loc:
-            # Position-specific rewriting using conv combinators
-            # loc format: "0" = function part, "1" = argument part
+            # Position-specific rewriting (single rewrite_goal_loc macro
+            # line); loc format: "0" = function part, "1" = argument part,
             # "0.1" = argument of function, etc.
-            thm = theory.thy.get_theorem(data['theorem'])
-            base_cv = conv.rewr_conv(thm, sym=sym_b)
-            cv = _loc_to_conv(loc, base_cv)
-            cv = conv.then_conv(cv, conv.beta_norm_conv())
-            state.apply_tactic(id, tactic.rewrite_goal_with_conv(cv), prevs=prevs)
+            state.apply_tactic(id, tactic.rewrite_goal_loc(sym=sym_b, loc=loc),
+                               args=data['theorem'], prevs=prevs)
         else:
             # Full goal rewriting (original behavior)
             state.apply_tactic(id, tactic.rewrite_goal(sym=sym_b), args=data['theorem'], prevs=prevs)
@@ -1470,11 +1445,8 @@ class unfold(Method):
         thm_name = data.get('theorem')
         if not thm_name:
             raise AssertionError("unfold: theorem required")
-        thm = theory.thy.get_theorem(thm_name)
         sym_b = 'sym' in data and data['sym'] == 'true'
-        cv = conv.then_conv(conv.top_conv(conv.rewr_conv(thm, sym=sym_b)),
-                            conv.beta_norm_conv())
-        state.apply_tactic(id, tactic.rewrite_goal_with_conv(cv), prevs=prevs)
+        state.apply_tactic(id, tactic.unfold(sym=sym_b), args=thm_name, prevs=prevs)
 
 
 """Registry of normalization macros by type (replaces the former
@@ -1534,16 +1506,12 @@ class simp(Method):
     """Simplify the goal by rewriting with all hint_rewrite theorems
     of the current theory, iterating to a fixed point (bounded).
 
-    Each round sweeps every applicable theorem once over the goal
-    (top_conv per theorem) followed by beta-normalization; rounds
-    repeat until nothing changes or the iteration cap is reached.
+    The whole simplification is committed as a single visible simp
+    macro line (the conv chain expands inside the kernel on check).
     Only unconditional rewrite theorems participate (conditional ones
     are left to rewrite with explicit facts). Fails when nothing can
-    be simplified (must-change semantics). The whole simplification is
-    committed as a single visible step via rewrite_goal_with_conv.
+    be simplified (must-change semantics).
     """
-    MAX_ROUNDS = 100
-
     def __init__(self):
         self.sig = []
         self.limit = None
@@ -1563,46 +1531,7 @@ class simp(Method):
         return pprint.N("simp")
 
     def apply(self, state, id, data, prevs):
-        cur_item = state.get_proof_item(id)
-        goal_prop = cur_item.th.prop
-
-        # Unconditional hint_rewrite theorems of the current theory.
-        th_names = []
-        attrs = theory.thy.get_data('attributes')
-        for nm, a in attrs.items():
-            if 'hint_rewrite' not in a:
-                continue
-            try:
-                th = theory.thy.get_theorem(nm)
-            except theory.TheoryException:
-                continue
-            if len(th.assums) == 0:
-                th_names.append(nm)
-
-        cv_acc = None
-        current = goal_prop
-        for _ in range(self.MAX_ROUNDS):
-            round_cv = None
-            for nm in th_names:
-                try:
-                    conv.top_conv(conv.rewr_conv(nm)).get_proof_term(current)
-                except Exception:
-                    continue
-                cv_i = conv.top_conv(conv.rewr_conv(nm))
-                round_cv = cv_i if round_cv is None else conv.then_conv(round_cv, cv_i)
-            if round_cv is None:
-                break
-            round_cv = conv.then_conv(round_cv, conv.beta_norm_conv())
-            new_prop = round_cv.eval(current).prop.rhs
-            cv_acc = round_cv if cv_acc is None else conv.then_conv(cv_acc, round_cv)
-            if new_prop == current:
-                break
-            current = new_prop
-
-        assert cv_acc is not None and current != goal_prop, \
-            "simp: nothing to simplify"
-
-        state.apply_tactic(id, tactic.rewrite_goal_with_conv(cv_acc), prevs=prevs)
+        state.apply_tactic(id, tactic.simp(), prevs=prevs)
 
 
 def register_macro_method(name: str, *, limit=None):

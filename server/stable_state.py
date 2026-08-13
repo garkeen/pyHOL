@@ -14,6 +14,7 @@ from copy import copy
 from kernel.term import Term, Var
 from kernel.thm import Thm
 from kernel.proof import Proof, ItemID, ProofStateException
+from kernel.proofterm import ProofTerm
 from kernel import theory
 from syntax import parser, printer
 from syntax.settings import global_setting
@@ -334,26 +335,48 @@ class StableProofState:
         """Export proof tree as flat list with stable IDs."""
         lines = []
         for item in _traverse(self.state.prf):
-            # Kernel auto-solves a leaf goal and records the closure as an
-            # 'intros' item whose prevs reference the proving lines. Surface
-            # it as an explicit close line (display only).
-            if item.rule == 'intros' and item.prevs:
-                try:
-                    prev_item = self.state.prf.find_item(item.prevs[0])
-                    witness = prev_item.th
-                except (ProofStateException, AttributeError):
-                    witness = None
-                if witness is not None:
-                    lines.append({
-                        'id': str(item.id),
-                        'sid': self._ensure_sid(item.th),
-                        'rule': 'close_by',
-                        'args': '',
-                        'prevs': [self._ensure_sid(witness)],
-                        'th': printer.print_term(item.th.prop),
-                        'is_goal': False,
-                        'indent': len(item.id.id),
-                    })
+            # An elim-rewired enclosing intros line (args non-empty: the
+            # exists prop prepended by the elim method) auto-solves its
+            # conclusion from the rewired prevs. Surface it as an
+            # explicit closure line (display only). Plain intro intros
+            # lines (args None) are mechanical frames and stay hidden.
+            if item.rule == 'intros' and item.prevs and item.args:
+                lines.append({
+                    'id': str(item.id),
+                    'sid': self._ensure_sid(item.th),
+                    'rule': 'close_by',
+                    'args': '',
+                    'prevs': [],
+                    'th': printer.print_term(item.th.prop),
+                    'is_goal': False,
+                    'indent': len(item.id.id),
+                })
+                continue
+
+            # Explicit closure lines (close_by) are part of the
+            # immutable-line model: they must be visible. They carry no
+            # new content (same th as the closed goal, no new sid).
+            if item.rule == 'close_by':
+                prev_sids = []
+                for prev_id in item.prevs:
+                    try:
+                        prev_item = self.state.prf.find_item(prev_id)
+                        if _trackable(prev_item):
+                            prev_sids.append(self._ensure_sid(prev_item.th))
+                    except ProofStateException:
+                        pass
+                with global_setting(unicode=True):
+                    th_str = printer.print_term(item.th.prop) if item.th else ''
+                lines.append({
+                    'id': str(item.id),
+                    'sid': self._ensure_sid(item.th),
+                    'rule': 'close_by',
+                    'args': '',
+                    'prevs': prev_sids,
+                    'th': th_str,
+                    'is_goal': False,
+                    'indent': len(item.id.id),
+                })
                 continue
 
             if not _trackable(item):
@@ -477,18 +500,30 @@ class StableProofState:
 
         # Exact-closure channel (C1): the global pattern net suggests
         # every theorem whose whole proposition matches the goal,
-        # regardless of hint attributes. These apply via the rule
-        # method (whole-prop fallback, C6).
+        # regardless of hint attributes. These apply via the accept
+        # method (the only direct-closure method: premises discharged
+        # from assumptions, or the C6 whole-proposition fallback).
         try:
             from framework import search as fw_search
             goal_prop = self.state.get_proof_item(goal_id).th.prop
             existing = {(r.get('method_name'), r.get('theorem')) for r in results}
             for th_name in fw_search.exact_match_theorems(goal_prop):
-                if ('rule', th_name) in existing:
+                if ('accept', th_name) in existing:
                     continue
-                results.append({'method_name': 'rule', 'theorem': th_name,
-                                'fact_ids': [str(p) for p in prevs],
-                                '_exact': True, 'fuzzy': False})
+                try:
+                    goal_pt = ProofTerm.atom(goal_id, self.state.get_proof_item(goal_id).th)
+                    pt = tactic.accept().get_proof_term(args=th_name, prevs=[goal_pt])
+                    results.append({'method_name': 'accept', 'theorem': th_name,
+                                    'fact_ids': [str(p) for p in prevs],
+                                    '_goal': [gap.prop for gap in pt.gaps],
+                                    '_exact': True, 'fuzzy': False})
+                except theory.ParameterQueryException as e:
+                    results.append({'method_name': 'accept', 'theorem': th_name,
+                                    'fact_ids': [str(p) for p in prevs],
+                                    '_needs_params': list(e.params),
+                                    '_exact': True, 'fuzzy': False})
+                except Exception:
+                    pass
         except Exception:
             pass
 
