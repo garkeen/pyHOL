@@ -5,21 +5,23 @@
        @mouseenter="hover = can_select"
        @mouseleave="hover = false">
     <span style="display:inline-block;width:40px">#{{line.id || line.sid}}</span>
-    <span class="dir-mark" :class="dirClass">{{dirMark}}</span>
     <span class="item-text" v-html="indent"/>
     <span v-if="line.rule === 'assume'">
       <span class="item-text keyword2">assume </span>
+      <span class="sid-inline">[{{line.sid}}]</span>
       <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
         <Expression v-if="propDisplay" :line="propDisplay"/>
       </span>
     </span>
     <span v-else-if="line.rule === 'variable'">
       <span class="item-text keyword2">fix </span>
+      <span class="sid-inline">[{{line.sid}}]</span>
       <Expression v-if="argDisplay" :line="argDisplay"/>
     </span>
     <span v-else-if="line.rule === 'subproof'">
       <span v-if="line.case" class="item-text keyword3">case {{line.case}}: </span>
       <span class="item-text keyword1">have </span>
+      <span class="sid-inline">[{{line.sid}}]</span>
       <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
         <Expression v-if="propDisplay" :line="propDisplay"/>
       </span>
@@ -27,10 +29,11 @@
     </span>
     <span v-else-if="line.rule === 'obtain'">
       <span class="item-text keyword2">obtain </span>
+      <span class="sid-inline">[{{line.sid}}]</span>
       <span class="item-text">{{line.args}}</span>
       <span v-if="line.prevs && line.prevs.length > 0">
         <span class="item-text keyword3"> from </span>
-        <span class="item-text">#{{line.prevs.join(', #')}}</span>
+        <span class="item-text">[{{line.prevs.join(', ')}}]</span>
       </span>
     </span>
     <span v-else>
@@ -38,6 +41,7 @@
       <span v-if="line.origin === 'cut'" class="item-text keyword2">cut </span>
       <span v-else-if="line.goal_pos !== false" class="item-text keyword2">show </span>
       <span v-else class="item-text keyword1">have </span>
+      <span class="sid-inline">[{{line.sid}}]</span>
       <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
         <Expression v-if="propDisplay" :line="propDisplay"/>
       </span>
@@ -51,7 +55,7 @@
       </span>
       <span v-if="line.prevs && line.prevs.length > 0">
         <span class="item-text keyword3"> from </span>
-        <span class="item-text">#{{line.prevs.join(', #')}}</span>
+        <span class="item-text">[{{line.prevs.join(', ')}}]</span>
       </span>
     </span>
   </div>
@@ -84,23 +88,7 @@ defineEmits(['select-fact', 'select-goal'])
 
 const hover = ref(false)
 
-const FORWARD_RULES = new Set(['apply_theorem', 'apply_theorem_for', 'rewrite_fact', 'rewrite_fact_sym', 'forall_elim_gen', 'apply_fact'])
-const BACKWARD_RULES = new Set(['sorry', 'subproof', 'trivial', 'auto_close', 'apply_prev', 'obtain'])
 const APPLY_THEOREM_RULES = ['apply_theorem', 'apply_theorem_for', 'apply_theorem_inst', 'rewrite_fact', 'rewrite_fact_sym', 'resolve_theorem']
-
-const dirMark = computed(() => {
-  if (!props.line) return ''
-  if (FORWARD_RULES.has(props.line.rule)) return '→'
-  if (BACKWARD_RULES.has(props.line.rule)) return '←'
-  return ''
-})
-
-const dirClass = computed(() => {
-  if (!props.line) return ''
-  if (FORWARD_RULES.has(props.line.rule)) return 'dir-forward'
-  if (BACKWARD_RULES.has(props.line.rule)) return 'dir-backward'
-  return 'dir-none'
-})
 
 const indent = computed(() => {
   let result = ''
@@ -139,10 +127,7 @@ const styleObject = computed(() => {
 </script>
 
 <style scoped>
-.dir-mark { display: inline-block; width: 24px; font-weight: bold; text-align: center; }
-.dir-forward { color: #28a745; }
-.dir-backward { color: #dc3545; }
-.dir-none { color: transparent; }
+.sid-inline { color: #888; font-size: 10px; }
 .fact-clickable { cursor: pointer; border-radius: 2px; padding: 0 2px; }
 .fact-clickable:hover { background: #e8f0fe; }
 .fact-selected { background: #ffd54f; font-weight: 600; }

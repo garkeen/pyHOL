@@ -673,8 +673,14 @@ const statusIcon = (s) => ({
 const formatHistory = (h) => {
   if (h === undefined || h === null) return ''
   // Stable-ID pipeline: the backend builds a display summary
-  // (method + args, e.g. 'rule conjI', 'cut A & B').
-  if (h.display) return h.display
+  // (method + args, e.g. 'rule conjI', 'cut A & B'); append the
+  // fact/goal references, e.g. 'rule conjI from #1 #2 goal=3'.
+  if (h.display) {
+    let s = h.display
+    if (h.facts && h.facts.length) s += ' from #' + h.facts.join(' #')
+    if (h.goal !== undefined && h.goal !== null && h.goal !== 0) s += ' goal=' + h.goal
+    return s
+  }
   if (h.step_output) {
     if (Array.isArray(h.step_output)) {
       return h.step_output.map(item => item.text || String(item)).join('')
