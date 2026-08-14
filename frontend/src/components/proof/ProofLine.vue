@@ -18,14 +18,25 @@
       <Expression v-if="argDisplay" :line="argDisplay"/>
     </span>
     <span v-else-if="line.rule === 'subproof'">
+      <span v-if="line.case" class="item-text keyword3">case {{line.case}}: </span>
       <span class="item-text keyword1">have </span>
       <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
         <Expression v-if="propDisplay" :line="propDisplay"/>
       </span>
       <span class="item-text keyword1"> with</span>
     </span>
+    <span v-else-if="line.rule === 'obtain'">
+      <span class="item-text keyword2">obtain </span>
+      <span class="item-text">{{line.args}}</span>
+      <span v-if="line.prevs && line.prevs.length > 0">
+        <span class="item-text keyword3"> from </span>
+        <span class="item-text">#{{line.prevs.join(', #')}}</span>
+      </span>
+    </span>
     <span v-else>
-      <span v-if="is_last_id" class="item-text keyword2">show </span>
+      <span v-if="line.case" class="item-text keyword3">case {{line.case}}: </span>
+      <span v-if="line.origin === 'cut'" class="item-text keyword2">cut </span>
+      <span v-else-if="line.goal_pos !== false" class="item-text keyword2">show </span>
       <span v-else class="item-text keyword1">have </span>
       <span :class="{'fact-clickable': can_select, 'fact-selected': is_fact}" @click.stop="$emit('select-fact')">
         <Expression v-if="propDisplay" :line="propDisplay"/>
@@ -33,7 +44,7 @@
       <span class="item-text keyword3"> by </span>
       <span v-if="line.rule === 'sorry'" class="sorry-clickable" 
             :class="{'sorry-goal': is_goal}"
-            @click.stop="$emit('select-goal')">sorry</span>
+            @click.stop="$emit('select-goal')">{{line.origin === 'cut' ? 'cut' : 'sorry'}}</span>
       <span v-else-if="!APPLY_THEOREM_RULES.includes(line.rule)" class="item-text">{{line.rule}} </span>
       <span v-if="argDisplay">
         <Expression :line="argDisplay"/>
@@ -55,10 +66,6 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  is_last_id: {
-    type: Boolean,
-    default: false
-  },
   is_goal: {
     type: Boolean,
     default: false
@@ -78,8 +85,8 @@ defineEmits(['select-fact', 'select-goal'])
 const hover = ref(false)
 
 const FORWARD_RULES = new Set(['apply_theorem', 'apply_theorem_for', 'rewrite_fact', 'rewrite_fact_sym', 'forall_elim_gen', 'apply_fact'])
-const BACKWARD_RULES = new Set(['sorry', 'subproof', 'trivial', 'close_by'])
-const APPLY_THEOREM_RULES = ['apply_theorem', 'apply_theorem_for', 'apply_theorem_inst']
+const BACKWARD_RULES = new Set(['sorry', 'subproof', 'trivial', 'auto_close', 'apply_prev', 'obtain'])
+const APPLY_THEOREM_RULES = ['apply_theorem', 'apply_theorem_for', 'apply_theorem_inst', 'rewrite_fact', 'rewrite_fact_sym', 'resolve_theorem']
 
 const dirMark = computed(() => {
   if (!props.line) return ''

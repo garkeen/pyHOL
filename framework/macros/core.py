@@ -586,31 +586,31 @@ class trivial_macro(Macro):
             pt = pt.forall_intr(v)
         return pt
 
-class close_by_macro(Macro):
-    """Explicit closure line.
+class auto_close_macro(Macro):
+    """Explicit automatic closure line.
 
-    rule: close_by, prevs = [X]. The current line's goal is closed by
+    rule: auto_close, prevs = [X]. The current line's goal is closed by
     reusing the existing proved item X. Semantics: the result is X's
     theorem; the can_prove (hyp subset) check in the checker adapts it
     to the current line's statement. No new information is derived;
-    this line only records that closure happens explicitly and visibly
-    in the linear proof.
+    this line only records that the closure is automatic and happens
+    explicitly and visibly in the linear proof.
 
     """
     def __init__(self):
-        # A close_by line only references an already-verified line. No
-        # new derivation is performed, so it is trusted at level 0
+        # An auto_close line only references an already-verified line.
+        # No new derivation is performed, so it is trusted at level 0
         # (never expanded, always resolved by evaluation).
         self.level = 0
         self.sig = None
         self.limit = None
 
     def eval(self, args, ths):
-        assert args is None and len(ths) == 1, "close_by_macro"
+        assert args is None and len(ths) == 1, "auto_close_macro"
         return ths[0]
 
     def get_proof_term(self, args, pts):
-        assert args is None and len(pts) == 1, "close_by_macro"
+        assert args is None and len(pts) == 1, "auto_close_macro"
         return pts[0]
 
 
@@ -640,5 +640,5 @@ theory.global_macros.update({
     "rewrite_fact_with_prev": rewrite_fact_with_prev_macro(),
     "forall_elim_gen": forall_elim_gen_macro(),
     "trivial": trivial_macro(),
-    "close_by": close_by_macro(),
+    "auto_close": auto_close_macro(),
 })

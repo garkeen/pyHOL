@@ -66,7 +66,7 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 `framework/macros/core.py` 注册（领域无关）：
 
-`intros` / `resolve_theorem` / `beta_norm` / `apply_theorem` / `apply_theorem_for` / `apply_theorem_inst` / `apply_induct` / `apply_fact` / `apply_fact_for` / `rewrite_goal` / `rewrite_goal_sym` / `rewrite_goal_with_prev` / `rewrite_goal_with_prev_sym` / `rewrite_fact` / `rewrite_fact_sym` / `rewrite_fact_with_prev` / `forall_elim_gen` / `trivial` / `close_by`
+`intros` / `resolve_theorem` / `beta_norm` / `apply_theorem` / `apply_theorem_for` / `apply_theorem_inst` / `apply_induct` / `apply_fact` / `apply_fact_for` / `rewrite_goal` / `rewrite_goal_sym` / `rewrite_goal_with_prev` / `rewrite_goal_with_prev_sym` / `rewrite_fact` / `rewrite_fact_sym` / `rewrite_fact_with_prev` / `forall_elim_gen` / `trivial` / `auto_close`
 
 领域宏示例：`imp_conj` / `imp_disj` / `resolution`（domains/logic）、`nat_norm` / `real_norm`、`eval_Sem` / `vcg`（imperative）、`z3`（framework/macros/z3.py，oracle）。
 

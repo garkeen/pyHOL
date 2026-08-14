@@ -26,7 +26,7 @@ from framework import context
 # Items with these rules carry no new goal/fact content: they only
 # reference already-registered lines. They get a positional ItemID for
 # display, but no stable ID of their own.
-_SKIP_RULES = {'intros', 'close_by'}
+_SKIP_RULES = {'intros', 'auto_close'}
 
 # Method direction classification
 BACKWARD = {
@@ -338,25 +338,46 @@ class StableProofState:
             # An elim-rewired enclosing intros line (args non-empty: the
             # exists prop prepended by the elim method) auto-solves its
             # conclusion from the rewired prevs. Surface it as an
-            # explicit closure line (display only). Plain intro intros
-            # lines (args None) are mechanical frames and stay hidden.
+            # explicit obtain line (display only): the fresh variables
+            # and the exists-body assumption, witnessed by the exists
+            # fact. Plain intro intros lines (args None) are mechanical
+            # frames and stay hidden.
             if item.rule == 'intros' and item.prevs and item.args:
+                exists_prop = item.args[0]
+                exists_vars, exists_body = exists_prop.strip_exists()
+                exists_fact = None
+                for prev_id in item.prevs:
+                    try:
+                        prev_item = self.state.prf.find_item(prev_id)
+                        if _trackable(prev_item) and prev_item.th is not None \
+                                and prev_item.th.prop == exists_prop:
+                            exists_fact = self._ensure_sid(prev_item.th)
+                            break
+                    except ProofStateException:
+                        pass
+                with global_setting(unicode=True):
+                    obtain_args = ' '.join(v.name for v in exists_vars) \
+                        + ' where ' + printer.print_term(exists_body)
                 lines.append({
                     'id': str(item.id),
                     'sid': self._ensure_sid(item.th),
-                    'rule': 'close_by',
-                    'args': '',
-                    'prevs': [],
+                    'rule': 'obtain',
+                    'args': obtain_args,
+                    'prevs': [exists_fact] if exists_fact is not None else [],
                     'th': printer.print_term(item.th.prop),
                     'is_goal': False,
+                    'goal_pos': True,
                     'indent': len(item.id.id),
                 })
                 continue
 
-            # Explicit closure lines (close_by) are part of the
+            # Explicit closure lines (auto_close) are part of the
             # immutable-line model: they must be visible. They carry no
             # new content (same th as the closed goal, no new sid).
-            if item.rule == 'close_by':
+            # Manual closures (the user's apply_prev) display as
+            # apply_prev, automatic ones as auto_close.
+            if item.rule == 'auto_close':
+                meta = self.state.line_meta.get(str(item.id), {})
                 prev_sids = []
                 for prev_id in item.prevs:
                     try:
@@ -367,14 +388,19 @@ class StableProofState:
                         pass
                 with global_setting(unicode=True):
                     th_str = printer.print_term(item.th.prop) if item.th else ''
+                    case_str = ' & '.join(printer.print_term(t) for t in meta['case']) \
+                        if meta.get('case') else None
                 lines.append({
                     'id': str(item.id),
                     'sid': self._ensure_sid(item.th),
-                    'rule': 'close_by',
+                    'rule': 'apply_prev' if meta.get('manual') else 'auto_close',
                     'args': '',
                     'prevs': prev_sids,
                     'th': th_str,
                     'is_goal': False,
+                    'goal_pos': True,
+                    'origin': meta.get('origin'),
+                    'case': case_str,
                     'indent': len(item.id.id),
                 })
                 continue
@@ -382,6 +408,7 @@ class StableProofState:
             if not _trackable(item):
                 continue
             sid = self._ensure_sid(item.th)
+            meta = self.state.line_meta.get(str(item.id), {})
             prev_sids = []
             for prev_id in item.prevs:
                 try:
@@ -393,6 +420,8 @@ class StableProofState:
 
             with global_setting(unicode=True):
                 th_str = printer.print_term(item.th.prop) if item.th else ''
+                case_str = ' & '.join(printer.print_term(t) for t in meta['case']) \
+                    if meta.get('case') else None
 
             lines.append({
                 'id': str(item.id),
@@ -402,6 +431,9 @@ class StableProofState:
                 'prevs': prev_sids,
                 'th': th_str,
                 'is_goal': item.rule == 'sorry',
+                'goal_pos': not meta.get('fact', False),
+                'origin': meta.get('origin'),
+                'case': case_str,
                 'indent': len(item.id.id),
             })
         return lines

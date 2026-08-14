@@ -672,6 +672,9 @@ const statusIcon = (s) => ({
 
 const formatHistory = (h) => {
   if (h === undefined || h === null) return ''
+  // Stable-ID pipeline: the backend builds a display summary
+  // (method + args, e.g. 'rule conjI', 'cut A & B').
+  if (h.display) return h.display
   if (h.step_output) {
     if (Array.isArray(h.step_output)) {
       return h.step_output.map(item => item.text || String(item)).join('')

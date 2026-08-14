@@ -733,14 +733,14 @@ class LineModelTest(unittest.TestCase):
         return [l['rule'] for l in sps._export_proof_lines()]
 
     def testIntroNoFakeCloseLine(self):
-        """Plain intro hides its intros frame: no spurious close_by line."""
+        """Plain intro hides its intros frame: no spurious auto_close line."""
         context.set_context('logic')
         sps = self._sps('A --> B', {'A': 'bool', 'B': 'bool'},
                         [{'method_name': 'intro', 'goal': 0}])
         self.assertEqual(self._rules(sps), ['subproof', 'assume', 'sorry'])
 
     def testAutoCloseLineVisible(self):
-        """Explicit auto-closure records a VISIBLE close_by line."""
+        """Explicit auto-closure records a VISIBLE auto_close line."""
         context.set_context('logic')
         sps = self._sps('(A & B) --> A', {'A': 'bool', 'B': 'bool'},
                         [{'method_name': 'intro', 'goal': 0}])
@@ -748,7 +748,7 @@ class LineModelTest(unittest.TestCase):
         self.assertTrue(sps.apply_method_dict(
             {'method_name': 'forward', 'theorem': 'conjD1',
              'goal': inner, 'facts': [1]}))
-        self.assertIn('close_by', self._rules(sps))
+        self.assertIn('auto_close', self._rules(sps))
 
     def testAcceptStrippedSingleLine(self):
         """accept stage 1 records ONE accept line (no assume noise)."""
@@ -820,6 +820,113 @@ class LineModelTest(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(sps.num_gaps, 0)
         self.assertIn('resolve_theorem', self._rules(sps))
+
+    def _meta(self, sps, item_id):
+        for l in sps._export_proof_lines():
+            if l['id'] == item_id:
+                return l
+        return None
+
+    def testCutOrigin(self):
+        """cut inserts a sorry line marked with origin='cut'."""
+        context.set_context('logic')
+        sps = self._sps('A', {'A': 'bool'},
+                        [{'method_name': 'cut', 'cut_goal': 'A', 'goal': 0}])
+        cut_line = self._meta(sps, '0')
+        self.assertEqual(cut_line['rule'], 'sorry')
+        self.assertEqual(cut_line['origin'], 'cut')
+
+    def testCutOriginInherited(self):
+        """A cut goal covered by a rule keeps origin='cut' on the closing
+        line, and the exported subgoals do NOT inherit it (no stale meta)."""
+        context.set_context('logic')
+        sps = self._sps('(A & B) --> A', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0}])
+        inner = sps.get_open_goals()[0][0]
+        self.assertTrue(sps.apply_method_dict(
+            {'method_name': 'cut', 'cut_goal': 'A & B', 'goal': inner}))
+        cut_goal = [sid for sid, th in sps.get_open_goals()
+                    if str(th.prop) == 'A & B'][0]
+        self.assertTrue(sps.apply_method_dict(
+            {'method_name': 'rule', 'theorem': 'conjI', 'goal': cut_goal}))
+        lines = {l['id']: l for l in sps._export_proof_lines()}
+        closing = [l for l in lines.values() if l['rule'] == 'apply_theorem'][0]
+        self.assertEqual(closing['origin'], 'cut')
+        for l in lines.values():
+            if l['rule'] == 'sorry':
+                self.assertIsNone(l['origin'], l['id'])
+
+    def testForwardLineNoGoalPos(self):
+        """Forward fact lines are have-lines (goal_pos False)."""
+        context.set_context('logic')
+        sps = self._sps('(A & B) --> A', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0}])
+        inner = sps.get_open_goals()[0][0]
+        self.assertTrue(sps.apply_method_dict(
+            {'method_name': 'forward', 'theorem': 'conjD1',
+             'goal': inner, 'facts': [1]}))
+        for l in sps._export_proof_lines():
+            if l['rule'] == 'apply_theorem_for':
+                self.assertFalse(l['goal_pos'])
+
+    def testManualApplyPrev(self):
+        """A manual apply_prev closure exports as rule='apply_prev'
+        (vs auto_close for automatic ones) and keeps the cut origin."""
+        context.set_context('logic')
+        sps = self._sps('B --> A --> C', {'A': 'bool', 'B': 'bool', 'C': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0}])
+        inner = sps.get_open_goals()[0][0]
+        self.assertTrue(sps.apply_method_dict(
+            {'method_name': 'cut', 'cut_goal': 'A', 'goal': inner}))
+        p2s = sps._build_pos2sid()
+        cut_goal = [sid for sid, th in sps.get_open_goals()
+                    if str(th.prop) == 'A' and len(th.hyps) == 2][0]
+        self.assertTrue(sps.apply_method_dict(
+            {'method_name': 'apply_prev', 'goal': cut_goal,
+             'facts': [p2s['0.1']]}))
+        line = self._meta(sps, '0.2')
+        self.assertEqual(line['rule'], 'apply_prev')
+        self.assertEqual(line['origin'], 'cut')
+        self.assertEqual(line['prevs'], [p2s['0.1']])
+
+    def testCasesLabels(self):
+        """cases branches carry case labels (case expression)."""
+        context.set_context('logic')
+        sps = self._sps('(A | B) --> (B | A)', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0}])
+        inner = sps.get_open_goals()[0][0]
+        self.assertTrue(sps.apply_method_dict(
+            {'method_name': 'cases', 'case': 'A', 'goal': inner}))
+        lines = {l['id']: l for l in sps._export_proof_lines()}
+        self.assertEqual(lines['0.1']['rule'], 'sorry')
+        self.assertEqual(lines['0.1']['case'], 'A')
+        self.assertEqual(lines['0.2']['case'], '¬A')
+
+    def testInductLabels(self):
+        """induct branches carry case labels reconstructed from the
+        induction theorem's premises."""
+        context.set_context('nat')
+        sps = self._sps('n + 0 = n', {'n': 'nat'},
+                        [{'method_name': 'induct', 'theorem': 'nat_induct',
+                          'var': 'n', 'goal': 0}])
+        lines = {l['id']: l for l in sps._export_proof_lines()}
+        self.assertEqual(lines['0']['case'], '(0::nat)')
+        self.assertEqual(lines['1']['case'], 'Suc n')
+
+    def testElimObtain(self):
+        """elim records an explicit obtain line witnessing the exists
+        fact with the fresh variable and body."""
+        context.set_context('nat')
+        sps = self._sps('(∃n::nat. n + 1 = 2) --> false', {},
+                        [{'method_name': 'intro', 'goal': 0}])
+        inner = sps.get_open_goals()[0][0]
+        self.assertTrue(sps.apply_method_dict(
+            {'method_name': 'elim', 'names': 'n', 'goal': inner,
+             'facts': [1]}))
+        obtain = [l for l in sps._export_proof_lines() if l['rule'] == 'obtain']
+        self.assertEqual(len(obtain), 1)
+        self.assertEqual(obtain[0]['args'], 'n where n + 1 = 2')
+        self.assertEqual(len(obtain[0]['prevs']), 1)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@
       <div v-if="proof !== undefined" class="proof-lines">
         <div v-for="(line, idx) in proof" :key="line.sid || idx"
              class="proof-line-row" :class="{'line-goal': goal === idx, 'line-fact': facts.includes(idx)}">
-          <ProofLine :line="line" :is_last_id="is_last_id(idx)" :is_goal="goal === idx"
+          <ProofLine :line="line" :is_goal="goal === idx"
                      :is_fact="facts.includes(idx)" :can_select="can_select(idx)"
                      @select-fact="mark_fact(idx)"
                      @select-goal="mark_goal(idx)"/>
@@ -309,11 +309,6 @@ const formatProofLine = (line) => {
     return String(line.th)
   }
   return ''
-}
-
-const is_last_id = (idx) => {
-  if (!proof.value) return false
-  return idx === proof.value.length - 1
 }
 
 const can_depend_on = (aIdStr, bIdStr) => {

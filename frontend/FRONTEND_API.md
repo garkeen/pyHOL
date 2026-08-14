@@ -186,10 +186,19 @@
     "state": {
         "vars": { "A": "bool", "B": "bool" },
         "proof": [
-            { "id": "0", "th": "A ⟹ B ⟹ A ∧ B ⟹ ...", "rule": "assume", "args": "", "prevs": [] },
-            { "id": "1", "th": "...", "rule": "sorry", "args": "", "prevs": [] },
-            { "id": "2", "th": "...", "rule": "intros", "args": "", "prevs": ["0","1"] }
+            { "id": "0", "th": "A ⟹ B ⟹ A ∧ B ⟹ ...", "rule": "assume", "args": "", "prevs": [], "goal_pos": true, "origin": null, "case": null },
+            { "id": "1", "th": "...", "rule": "sorry", "args": "", "prevs": [], "goal_pos": true, "origin": null, "case": null },
+            { "id": "2", "th": "...", "rule": "intros", "args": "", "prevs": ["0","1"], "goal_pos": true, "origin": null, "case": null }
         ],
+```
+
+证明行的显示语义（动词即身份）：
+- `goal_pos: false` — 前向推导的事实行，显示为 `have ... by ...`。
+- `goal_pos: true` — 目标行，显示为 `show ... by ...`。
+- `origin: "cut"` — 该行是 cut 引入的中间目标（行被覆盖时标记随结论行继承），未证时显示裸 `cut <prop>`，已证时动词用 `cut`。
+- `case: "<expr>"` — cases/disjE/induct 的分支行，前缀 `case <expr>:`；cases/induct 分支的标记在分支被 intro 覆盖时随 subproof 行继承。
+- `rule: "obtain"` — elim 的显示行，渲染为 `obtain <args> from #<prevs>`（`args` 形如 `n where n + 1 = 2`）。
+- `rule: "apply_prev"` — 手动 apply_prev 闭合；`rule: "auto_close"` — 自动闭合。
         "num_gaps": 1,
         "method_sig": { "cut": ["cut_goal"], "rule": ["theorem"], ... },
         "method_list_params": { "intro": ["names"], "elim": ["names"] }
@@ -445,7 +454,7 @@
 ### components/proof/ProofLine.vue（证明行）
 
 - 双击命题 → 选中为事实；双击 sorry 行 → 选中为目标
-- 方向标记：`→` 正向推导（apply_theorem/apply_fact/rewrite_fact 等行级规则）、`←` 反向应用（sorry/subproof/trivial/close_by）
+- 方向标记：`→` 正向推导（apply_theorem/apply_fact/rewrite_fact 等行级规则）、`←` 反向应用（sorry/subproof/trivial/auto_close）
 - `can_select` 控制可点击性（无目标模式允许同层 + 外层事实）
 
 ### components/proof/ProofContext.vue（上下文面板）

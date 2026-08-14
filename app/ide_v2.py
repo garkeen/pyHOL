@@ -17,6 +17,31 @@ from framework import context
 from server.stable_state import StableProofState, BACKWARD, FORWARD
 
 
+# Method args whose value carries the meaningful display content
+# (theorem name, case expression, ...); shown in the history list.
+
+
+def _step_display(step: dict) -> str:
+    """Human-readable step summary for the history list, e.g.
+    'rule conjI', 'cut A & B', 'induct nat_induct n', 'rewrite conj_comm'."""
+    name = step.get('method_name', '')
+    if not name:
+        return ''
+    parts = [name]
+    for k in ('theorem', 'cut_goal', 'case', 'var', 's'):
+        v = step.get(k)
+        if v:
+            parts.append(str(v))
+    if step.get('sym'):
+        parts.append('sym')
+    if step.get('loc'):
+        parts.append('loc=' + str(step['loc']))
+    names = step.get('names')
+    if names:
+        parts.append(str(names))
+    return ' '.join(parts)
+
+
 def _load_theory(thy_name, thm_name, prop, vars):
     """Set up theory context for proof operations.
 
@@ -85,7 +110,8 @@ def v2_init_saved_proof():
             ok = sps.apply_method_dict(step)
             entry = {'method_name': step.get('method_name', ''),
                      'goal': step.get('goal', 0),
-                     'facts': step.get('facts', [])}
+                     'facts': step.get('facts', []),
+                     'display': _step_display(step)}
             if not ok:
                 entry['error'] = 'replay failed at step %d' % i
             history.append(entry)

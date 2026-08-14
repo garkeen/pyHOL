@@ -6,7 +6,7 @@ import traceback
 
 from kernel.type import TyInst
 from kernel import term
-from kernel.term import Term, Var, Inst
+from kernel.term import Term, Var, SVar, Inst, Implies
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import report
 from kernel.proof import ProofItem, ItemID, Proof, ProofStateException
@@ -38,6 +38,48 @@ def _can_prove_match(fact_th, target_th):
     return set(fact_th.hyps).issubset(set(target_th.hyps))
 
 
+def _branch_label(prop, covered_prop):
+    """Case-branch label for a subgoal of a backward step.
+
+    The subgoal is a branch of the covered goal when its prop is a
+    leading-implication chain that ends at the covered goal (cases,
+    disjE-style backward applications). Returns the list of the
+    antecedent terms not part of the covered goal, or None.
+    """
+    As, C = prop.strip_implies()
+    t = C
+    for j in range(len(As), -1, -1):
+        if t == covered_prop:
+            extra = As[:j]
+            return extra if extra else None
+        if j > 0:
+            t = Implies(As[j - 1], t)
+    return None
+
+
+def _induct_labels(th_name):
+    """Constructor labels for the branches of an induction theorem.
+
+    The branch subgoal props are beta-reduced (the predicate instantiation
+    is applied), so the constructor term must be reconstructed from the
+    theorem's premises: the final consequent of each premise, with a
+    schematic head and a single argument, is a constructor application.
+    Returns a list of label Terms (None for premises without one).
+    """
+    th = theory.get_theorem(th_name)
+    orig_As, _ = th.prop.strip_implies()
+    labels = []
+    for A in orig_As:
+        _, body = A.strip_forall()
+        _, C = body.strip_implies()
+        f, args = C.strip_comb()
+        if isinstance(f, term.SVar) and len(args) == 1 and not args[0].is_var():
+            labels.append(args[0])
+        else:
+            labels.append(None)
+    return labels
+
+
 class ProofState():
     """Represents proof state on the server side."""
 
@@ -46,6 +88,10 @@ class ProofState():
         self.vars = []
         self.prf = Proof()
         self.rpt = None
+        # Display metadata keyed by item id (str): 'origin' (cut),
+        # 'manual' (apply_prev closure), 'fact' (forward line),
+        # 'case' (list of Terms, the case-branch label).
+        self.line_meta = {}
 
     def get_vars(self, id):
         """Obtain the context at the given id."""
@@ -76,6 +122,7 @@ class ProofState():
         res.vars = copy.copy(self.vars)
         res.prf = copy.copy(self.prf)
         res.rpt = copy.copy(self.rpt)
+        res.line_meta = dict(self.line_meta)
         return res
 
     def export_proof(self):
@@ -178,19 +225,25 @@ class ProofState():
 
         Export the proof term onto the goal line, then perform EXPLICIT
         auto-close: every gap already proved by a preceding line becomes
-        a visible close_by line, every trivial gap a visible trivial
+        a visible auto_close line, every trivial gap a visible trivial
         line. Implicit gap removal is forbidden by design (proof state
         is an immutable, fully visible line list).
         """
         # When the proof term is an atom, the fact directly proves the
-        # goal. The goal line is rewritten in place as a close_by line
+        # goal. The goal line is rewritten in place as an auto_close line
         # (a witness line: same line, same count; no new goal/fact).
         if pt.rule == 'atom':
             fact_id = pt.args  # ItemID of the fact
             fact_item = self.get_proof_item(fact_id)
             if fact_item.th is not None and _can_prove_match(fact_item.th, self.get_proof_item(id).th):
-                self.set_line(id, 'close_by', prevs=[fact_id], th=self.get_proof_item(id).th)
+                self.set_line(id, 'auto_close', prevs=[fact_id], th=self.get_proof_item(id).th)
+                # Manual closure (user's apply_prev): record the marker
+                # (merged, so a cut/case origin on the goal survives).
+                self.line_meta.setdefault(str(id), {})['manual'] = True
             return None
+
+        covered_th = self.get_proof_item(id).th
+        covered_meta = self.line_meta.get(str(id))
 
         new_prf = pt.export(prefix=id, subproof=False)
 
@@ -204,9 +257,45 @@ class ProofState():
             prf.items[cur_id.last()] = item
         self.check_proof(compute_only=True)
 
+        # The covered goal moved to id+len-1; its metadata entry at the
+        # original id is stale (the position now holds the first exported
+        # item) and is reattached to the covering item below.
+        self.line_meta.pop(str(id), None)
+
+        # Case-branch labels: subgoals of the expansion whose prop is a
+        # leading-implication chain ending at the covered goal (cases,
+        # disjE-style backward applications) are case branches.
+        for item in new_prf.items:
+            if item.rule == 'sorry' and item.th is not None:
+                label = _branch_label(item.th.prop, covered_th.prop)
+                if label:
+                    self.line_meta[str(item.id)] = {'case': label}
+
+        # Induction branches: reconstruct the constructor labels from
+        # the induction theorem's premises (the branch props are
+        # beta-reduced, so the constructor term is not in them).
+        if pt.rule == 'apply_induct':
+            labels = _induct_labels(pt.args[0])
+            sorry_items = [item for item in new_prf.items if item.rule == 'sorry']
+            if len(labels) == len(sorry_items):
+                for item, label in zip(sorry_items, labels):
+                    if label is not None and 'case' not in self.line_meta.get(str(item.id), {}):
+                        self.line_meta[str(item.id)] = {'case': [label]}
+
+        # The line covering the old goal (the item whose prop equals the
+        # covered goal's, else the conclusion) inherits its metadata:
+        # cut origin and case labels survive coverage.
+        if covered_meta:
+            cover_id = new_prf.items[-1].id
+            for item in new_prf.items:
+                if item.th is not None and item.th.prop == covered_th.prop:
+                    cover_id = item.id
+                    break
+            self.line_meta[str(cover_id)] = covered_meta
+
         # Explicit auto-close: every gap of the expansion that is already
-        # proved by a preceding line is closed by a visible close_by line
-        # (same line count as the previous gap line).
+        # proved by a preceding line is closed by a visible auto_close
+        # line (same line count as the previous gap line).
         for item in new_prf.items:
             if item.rule == 'sorry':
                 self._find_and_close(item.id)
@@ -268,8 +357,8 @@ class ProofState():
         """Checked entry point for forward steps: the tactic derives a
         new fact, which is recorded as a visible line inserted before
         id. The line rule comes from the tactic's proof term (no method
-        ever names a macro directly). Auto-close of gaps the new fact
-        proves is explicit (visible close_by lines).
+        ever names a macro directly).         Auto-close of gaps the new fact
+        proves is explicit (visible auto_close lines).
         """
         id = ItemID(id)
         prevs = [ItemID(prev) for prev in prevs] if prevs else []
@@ -280,6 +369,7 @@ class ProofState():
 
         self.add_line_before(id, 1)
         self.set_line(id, pt.rule, args=pt.args, prevs=prevs, th=pt.th)
+        self.line_meta[str(id)] = {'fact': True}
 
         id2 = id.incr_id(1)
         self._find_and_close(id2)
@@ -287,10 +377,10 @@ class ProofState():
 
     def _find_and_close(self, id2):
         """Explicit auto-close: if some preceding line proves the given
-        gap, record the closure as a visible close_by line."""
+        gap, record the closure as a visible auto_close line."""
         new_id = self.find_goal(self.get_proof_item(id2).th, id2)
         if new_id is not None:
-            self.set_line(id2, 'close_by', prevs=[new_id],
+            self.set_line(id2, 'auto_close', prevs=[new_id],
                           th=self.get_proof_item(id2).th)
 
 
@@ -403,6 +493,7 @@ class cut_method(Method):
 
         state.add_line_before(id, 1)
         state.set_line(id, 'sorry', th=Thm(C, hyps))
+        state.line_meta[str(id)] = {'origin': 'cut'}
 
 
 @register_method('cases')
@@ -630,6 +721,7 @@ class rewrite_fact_thm_impl(Method):
             state.set_line(id, 'rewrite_fact_sym', args=data['theorem'], prevs=prevs)
         else:
             state.set_line(id, 'rewrite_fact', args=data['theorem'], prevs=prevs)
+        state.line_meta[str(id)] = {'fact': True}
 
         id2 = id.incr_id(1)
         state._find_and_close(id2)
@@ -660,6 +752,7 @@ class rewrite_fact_prev_impl(Method):
 
         state.add_line_before(id, 1)
         state.set_line(id, 'rewrite_fact_with_prev', prevs=prevs)
+        state.line_meta[str(id)] = {'fact': True}
 
         id2 = id.incr_id(1)
         state._find_and_close(id2)
@@ -721,6 +814,7 @@ class forward_thm_impl(Method):
 
         state.add_line_before(id, 1)
         state.set_line(id, pt.rule, args=pt.args, prevs=prevs)
+        state.line_meta[str(id)] = {'fact': True}
 
         id2 = id.incr_id(1)
         state._find_and_close(id2)
@@ -922,7 +1016,8 @@ class intro(Method):
         state.check_proof(compute_only=True)
 
         # Exhibit auto-close of the subgoal lines: those already proved
-        # by a preceding line are recorded as visible close_by lines.
+        # Exhibit auto-close of the subgoal lines: those already proved
+        # by a preceding line are recorded as visible auto_close lines.
         for item in cur_item.subproof.items:
             state._find_and_close(item.id)
 
@@ -1044,6 +1139,7 @@ class inst_forall_impl(Method):
         tactic.forall_elim_forward().get_proof_term(args=t, prevs=prev_pts)
         state.add_line_before(id, 1)
         state.set_line(id, 'forall_elim_gen', args=t, prevs=prevs)
+        state.line_meta[str(id)] = {'fact': True}
 
 
 class inst_exists_impl(Method):
@@ -1164,6 +1260,7 @@ class forward_fact_impl(Method):
         tactic.apply_fact_forward().get_proof_term(args=None, prevs=prev_pts)
         state.add_line_before(id, 1)
         state.set_line(id, 'apply_fact', prevs=prevs)
+        state.line_meta[str(id)] = {'fact': True}
 
 
 # ==================== Unified vocabulary methods ====================

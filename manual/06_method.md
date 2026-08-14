@@ -46,10 +46,10 @@ class ProofState:
 
 1. 取当前 `sorry` 行的目标 `cur_item.th`。
 2. `pt = tactic.get_proof_term(args=args, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)`（goal 作为 prevs[0]）。
-3. 若 `pt.rule == 'atom'`（事实直接证明目标）且该事实能匹配证明目标：目标行改写为 `close_by` 可见行（`prevs=[fact_id]`），结束。
+3. 若 `pt.rule == 'atom'`（事实直接证明目标）且该事实能匹配证明目标：目标行改写为 `auto_close` 可见行（`prevs=[fact_id]`），结束。
 4. 否则 `new_prf = pt.export(prefix=id, subproof=False)`，插入新行（最后一条导出项覆盖原 goal 行，行数不变）。
 5. `check_proof(compute_only=True)` 校验。
-6. 对新 `sorry` 行调 `_find_and_close`：若先行行能匹配证明，落可见 `close_by` 行。
+6. 对新 `sorry` 行调 `_find_and_close`：若先行行能匹配证明，落可见 `auto_close` 行。
 7. 对新 `sorry` 行尝试 `trivial` 宏：构造成功则落可见 `trivial` 行。
 
 `StableProofState.apply_method_dict` 在此之上添加稳定 ID 管理：翻译 `goal=N`/`facts=[N]` 为位置 ID，调用 `apply_tactic`，然后为新 item 分配稳定 ID。
@@ -202,7 +202,7 @@ qed
 
 - `rule.search`：经模式网（`candidates_for`）取带 `hint_backward`/`hint_backward1` 属性的候选定理，逐条试跑 `rule().get_proof_term`，成功则记录子目标。另有精确匹配通道（C1，见 §7.1）：全局模式网中整条命题匹配 goal 的定理一律作为 `rule` 建议（不看属性）。
 - 双模式方法在搜索层同时贡献两种模式的结果，以 `target`/`source` 标记区分；正向搜索只保留 fact 模式结果（`stable_state.search_forward` 对 `rewrite`/`inst` 过滤 `target == 'fact'`）。
-- 自动闭合（显式）：每步应用后对新缺口按**匹配**（first_order_match + hyps 子集）查找先行证明行，命中则落 `close_by` 可见行；未命中尝试 `trivial` 策略，成功落 `trivial` 行。
+- 自动闭合（显式）：每步应用后对新缺口按**匹配**（first_order_match + hyps 子集）查找先行证明行，命中则落 `auto_close` 可见行；未命中尝试 `trivial` 策略，成功落 `trivial` 行。
 - 每个方法按 `no_order` 属性决定是否对 `prevs` 做排列：有 `no_order` 的方法只按原始事实顺序搜索；其余方法额外生成模糊结果（其他排列与子集，从大到小）。
 - 搜索结果不做"solves 过滤"：前端按 `_goal` 是否为空显示 `closes` / `N subgoals`，两种结果都保留。
 
@@ -268,7 +268,7 @@ class my_method(Method):
 
 - **行不可变**：goal/fact 一旦生成不可改写；向后推理通过证明项展开覆盖 goal 行，正向推理只插入新行。行变异类方法（thin/sym/revert_intro/drule）已删除。
 - **must-change**：应用定理/重写必须产生变化，否则报错（无效果 no-op 不合法）。
-- **显式自动闭合**：自动关闭缺口必须落成可见的 `close_by`/`trivial` 行，禁止隐式消缺口。
+- **显式自动闭合**：自动关闭缺口必须落成可见的 `auto_close`/`trivial` 行，禁止隐式消缺口。
 - **method 级无控制组合子**：THEN/ORELSE/REPEAT 产生不可见中间状态，与“每步可见受检行”冲突。迭代下沉到宏内部（auto/simp 定点），顺序组合外化为步骤线性顺序，选择外化为建议+用户点击。
 - 接受的代价：无 fact 消费（事实只增不减）、无假设改写/thin。
 
