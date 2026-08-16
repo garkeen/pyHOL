@@ -16,6 +16,7 @@ from syntax import printer
 from syntax import pprint
 from syntax.settings import settings, global_setting
 from server.struct_recursion import check_fun_recursion, StructRecursionError
+from server.struct_recursion import check_datatype_positivity
 
 
 class ItemException(Exception):
@@ -738,6 +739,10 @@ class Datatype(Item):
                     'cname': theory.thy.get_overload_const_name(constr['name'], constr_type),
                     'args': constr['args']
                 })
+
+            # Check that the datatype occurs strictly positive in the
+            # arguments of its constructors.
+            check_datatype_positivity(self.name, self.constrs)
         except Exception as error:
             self.constrs = data['constrs']
             self.error = error

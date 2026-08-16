@@ -450,6 +450,8 @@ datatype nat =
 - **distinct**（互异性）：`zero ≠ Suc n`。
 - **归纳定理**（induction）：要证 `∀x. P x`，只需证 `P zero` 和 `∀n. P n ⟶ P (Suc n)`。
 
+归纳类型声明须满足**严格正性**（strict positivity）：构造器参数中，类型自身只能出现在正位置——直接作为参数，或位于函数类型的值域。例如 `nat ⇒ nat` 允许，而 `(nat ⇒ nat) ⇒ nat`（类型出现于函数定义域，负出现）与 `nat list`（嵌套于其他归纳类型）都被拒绝。否则注入性公理会与 Cantor 定理矛盾，导致理论不一致。
+
 ### 8.2 递归定义
 
 加法通过**递归定义**（fun）给出：
@@ -461,6 +463,18 @@ fun plus :: nat ⇒ nat ⇒ nat
 ```
 
 每条等式作为一条**重写规则**定理（如 `nat_plus_def_1`、`nat_plus_def_2`），可用于化简。
+
+`fun` 定义须满足**结构递归**（structural recursion）检查：恰有一个参数在每条等式中匹配构造器模式，其余参数是普通变量；每个递归调用必须作用于该参数模式的构造器子项（如 `Suc m` 的子项 `m`）。非结构递归（如 `gcd` 这类）走描述性定义（`SOME`）+ 良基定理的路线，见 [`gcd.pyhol`](../library/gcd.pyhol)。
+
+例如 `nth` 采用 EL 式写法（与 HOL Light 的 `EL` 一致）：
+
+```
+fun nth :: 'a list ⇒ nat ⇒ 'a
+  nth l 0 = hd l
+  nth l (Suc n) = nth (tl l) n
+```
+
+递归发生在自然数参数上（`0`/`Suc n` 模式），列表参数是变量，递归调用中经 `tl` 变换。直接对两个参数同时做模式匹配（如 `nth (x # xs) (Suc n) = nth xs n`）会被拒绝；这种"漂亮"方程作为定理（`nth_cons_zero`、`nth_cons_suc`）从 `hd`/`tl` 的等式重写得到。通过检查的等式必有一实现（沿归纳定理构造），作为公理加入是安全的。
 
 乘法类似：
 

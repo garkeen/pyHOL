@@ -359,7 +359,7 @@ class Theory:
 
 1. **15 原语是唯一凭空构造定理的入口**，但 `Thm` 构造器本身不强制走原语（比 HOL Light 的抽象 `thm` 类型宽松）。
 2. **`check_proof` 是可选的**：生产路径 `unchecked_extend` 不校验，直接信任定义与公理。
-3. **定义/归纳类型不查良基性**：`Fun`/`Definition`/`Datatype` 经 `unchecked_extend` 作为公理加入。`Datatype` 只产 `_induct` 不产 `_RECURSION`。
+3. **定义合法性检查**：`Fun`（`def.ind`）须通过**结构递归**检查（恰一个构造器模式参数、递归调用限于模式子项），`Datatype`（`type.ind`）须通过**严格正性**检查（类型不出现于函数定义域、不嵌套于其他归纳类型），否则解析失败拒收。通过检查的等式/类型必存在实现/模型，作为公理加入是一致的。`Definition` 与其他显式公理直接信任。
 4. **宏的信任级别**：普通宏永远展开（最可信）；可信宏（带 `level`+`eval`）可跳过展开换效率；oracle（如 Z3，level 0）不可展开，依赖外部求解器。
 5. **证明可独立重验**：任何 `ProofTerm` 可 `export` 为线性 `Proof`，由 `check_proof` 独立校验。
 

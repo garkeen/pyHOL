@@ -100,6 +100,57 @@ def _walk(t, f_const, n, r, pattern_args, name, eq_no, in_call=False,
               in_call=False, no_pattern=no_pattern)
 
 
+def _occurs(name, U):
+    """Whether the type constructor with the given name occurs
+    anywhere in the type U.
+
+    """
+    if U.is_tconst():
+        return U.name == name or any(_occurs(name, a) for a in U.args)
+    return False
+
+
+def _check_positive(name, U, cname, i):
+    """Check that the datatype name occurs strictly positive in the
+    type U (an argument of the constructor cname).
+
+    """
+    if U.is_fun():
+        if _occurs(name, U.domain_type()):
+            raise StructRecursionError(
+                "datatype %s: constructor %s: negative occurrence of %s "
+                "in the domain of argument %d" % (
+                    name, cname, name, i))
+        _check_positive(name, U.range_type(), cname, i)
+    elif U.is_tconst():
+        if U.name == name:
+            return
+        for a in U.args:
+            if _occurs(name, a):
+                raise StructRecursionError(
+                    "datatype %s: constructor %s: occurrence of %s "
+                    "inside %s is not supported" % (name, cname, name, U))
+    # Type variables contain no occurrence of name.
+
+
+def check_datatype_positivity(name, constrs):
+    """Check that the datatype name occurs strictly positive in the
+    arguments of its constructors.  Raises StructRecursionError if not.
+
+    constrs is a list of parsed constructor dicts with 'name' and
+    'type' fields.
+
+    """
+    for constr in constrs:
+        args, result = constr['type'].strip_type()
+        if not result.is_tconst() or result.name != name:
+            raise StructRecursionError(
+                "datatype %s: constructor %s does not return the "
+                "datatype" % (name, constr['name']))
+        for i, a in enumerate(args):
+            _check_positive(name, a, constr['name'], i + 1)
+
+
 def check_fun_recursion(name, type, rules):
     """Check that the equations of the fun `name :: type` are
     structural recursion.

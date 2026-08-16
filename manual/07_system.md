@@ -51,7 +51,7 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 五种 `Extension`（见 [`02_kernel.md`](02_kernel.md) §8）：`TConst`、`Constant`、`Theorem`、`Attribute`、`Overload`。
 
-`unchecked_extend` 遍历 exts，按类型分发。**不校验证明**（定义/公理直接信任）。
+`unchecked_extend` 遍历 exts，按类型分发。**不校验证明**（显式公理直接信任；`fun`/`datatype` 在解析时另有语法合法性检查，见 §2.6）。
 
 ### 2.5 自动生成的定理
 
@@ -59,6 +59,13 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 - `Fun`：每条 rule 一条 `_def_N` 定理 + `hint_rewrite` 属性。
 - `Inductive`：每条 intro rule + `hint_backward` 属性 + `_cases` 消除定理。
 - `Definition`：生成 `<cname>_def` 定理。
+
+### 2.6 定义合法性检查
+
+两项语法检查（`server/struct_recursion.py`）在解析时执行，失败则报错拒收：
+
+- `Fun`（`def.ind`）：**结构递归**。恰有一个参数在每条等式中匹配构造器模式（其余参数是普通变量）；每个递归调用必须作用于该参数模式的构造器子项（如 `Suc m` 的子项 `m`），其他参数可经 `hd`/`tl` 等全函数变换；同一构造器不得有重复等式。通过即存在实现，等式作为公理一致。
+- `Datatype`（`type.ind`）：**严格正性**。构造器参数中类型自身只能正出现：直接作为参数，或位于函数类型值域；出现于函数定义域（负出现，如 `(bad ⇒ bad) ⇒ bad`）或嵌套于其他归纳类型（如 `bad list`）则拒绝。否则注入性公理与 Cantor 定理矛盾。
 
 ## 3. 领域扩展机制
 

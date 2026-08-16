@@ -241,6 +241,50 @@ class StructRecursionTest(unittest.TestCase):
         self.assertIsNotNone(item.error)
         self.assertIn('must be plain variables', str(item.error))
 
+    def testDatatypeBadNegative(self):
+        # A constructor whose argument has the datatype in a function
+        # domain (negative occurrence) must be rejected.
+        basic.load_theory('logic_base')
+        item = items.parse_item({
+            "args": [],
+            "constrs": [
+                {"args": ["f"], "name": "B", "type": "(bad => bad) => bad"}
+            ],
+            "name": "bad",
+            "ty": "type.ind"
+        })
+        self.assertIsNotNone(item.error)
+        self.assertIn('negative occurrence', str(item.error))
+
+    def testDatatypeBadNested(self):
+        # An occurrence of the datatype inside another datatype (here
+        # 'bad list') is not supported and must be rejected.
+        basic.load_theory('list')
+        item = items.parse_item({
+            "args": [],
+            "constrs": [
+                {"args": ["l"], "name": "B", "type": "bad list => bad"}
+            ],
+            "name": "bad",
+            "ty": "type.ind"
+        })
+        self.assertIsNotNone(item.error)
+        self.assertIn('not supported', str(item.error))
+
+    def testDatatypePositive(self):
+        # The datatype in the range of a function argument is a
+        # strictly positive occurrence and must be accepted.
+        basic.load_theory('nat', limit=('def', 'one'))
+        item = items.parse_item({
+            "args": [],
+            "constrs": [
+                {"args": ["f"], "name": "B", "type": "(nat => bad) => bad"}
+            ],
+            "name": "bad",
+            "ty": "type.ind"
+        })
+        self.assertIsNone(item.error)
+
 
 if __name__ == "__main__":
     unittest.main()
