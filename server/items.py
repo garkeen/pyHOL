@@ -15,6 +15,7 @@ from syntax import parser
 from syntax import printer
 from syntax import pprint
 from syntax.settings import settings, global_setting
+from server.struct_recursion import check_fun_recursion, StructRecursionError
 
 
 class ItemException(Exception):
@@ -449,6 +450,9 @@ class Fun(Item):
                             self.name, ", ".join(v for v in rhs_vars - lhs_vars)))
 
                 self.rules.append({'prop': prop})
+
+            # Check that the equations are structural recursion.
+            check_fun_recursion(self.name, self.type, self.rules)
             
         except Exception as error:
             self.type = data['type']
@@ -772,6 +776,11 @@ class Datatype(Item):
                                                      Thm(Eq(proj(A(*constr_args)), arg))))
         for constr in self.constrs:
             res.append(extension.Constant(constr['name'], constr['type'], ref_name=constr['cname']))
+
+        # Register the constructors for the structural-recursion check
+        # of fun definitions.
+        theory.thy.add_datatype_constrs(
+            self.name, [Const(c['name'], c['type']) for c in self.constrs])
 
         # Add non-equality theorems.
         for constr1, constr2 in itertools.combinations(self.constrs, 2):

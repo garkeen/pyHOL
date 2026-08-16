@@ -125,6 +125,22 @@ class Theory:
         """
         self.add_data("type_sig", name, n)
 
+    def add_datatype_constrs(self, name, constrs):
+        """Register the list of constructors of the datatype with the
+        given name. Each constructor is a Const term.
+
+        """
+        if "datatype_constrs" not in self.data:
+            self.add_data_type("datatype_constrs")
+        self.add_data("datatype_constrs", name, constrs)
+
+    def get_datatype_constrs(self, name):
+        """Return the list of constructor Consts of the datatype with the
+        given name, or None if the type is not an inductive datatype.
+
+        """
+        return self.data.get("datatype_constrs", {}).get(name)
+
     def has_type_sig(self, name):
         return name in self.get_data("type_sig")
 

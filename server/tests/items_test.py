@@ -145,5 +145,102 @@ class ItemsTest(unittest.TestCase):
             self.assertEqual(printer.print_extensions(ext), '\n'.join(ext_output))
 
 
+class StructRecursionTest(unittest.TestCase):
+    """The structural-recursion check for fun (def.ind) definitions."""
+
+    def testFunRecurseParamTransform(self):
+        # EL-style: recursion on nat, the list parameter is transformed
+        # by rev in the recursive call.  This must pass.
+        basic.load_theory('list')
+        item = items.parse_item({
+            "name": "el",
+            "rules": [
+                {"prop": "el 0 l = l"},
+                {"prop": "el (Suc n) l = el n (rev l)"}
+            ],
+            "ty": "def.ind",
+            "type": "nat => 'a list => 'a list"
+        })
+        self.assertIsNone(item.error)
+
+    def testFunBadMultiPatterns(self):
+        # Constructor patterns on two arguments (the current nth
+        # definition) must be rejected.
+        basic.load_theory('list')
+        item = items.parse_item({
+            "name": "nth",
+            "rules": [
+                {"prop": "nth (x # xs) 0 = x"},
+                {"prop": "nth (x # xs) (Suc n) = nth xs n"}
+            ],
+            "ty": "def.ind",
+            "type": "'a list => nat => 'a"
+        })
+        self.assertIsNotNone(item.error)
+        self.assertIn('only one argument may have patterns', str(item.error))
+
+    def testFunBadNotSubterm(self):
+        # A recursive call on the whole pattern (Suc n) rather than a
+        # subterm (n) must be rejected.
+        basic.load_theory('nat', limit=('def', 'one'))
+        item = items.parse_item({
+            "name": "bad",
+            "rules": [
+                {"prop": "bad 0 = 0"},
+                {"prop": "bad (Suc n) = bad (Suc n)"}
+            ],
+            "ty": "def.ind",
+            "type": "nat => nat"
+        })
+        self.assertIsNotNone(item.error)
+        self.assertIn('not on a subterm', str(item.error))
+
+    def testFunBadNoPattern(self):
+        # Recursive calls with no constructor pattern at all must be
+        # rejected.
+        basic.load_theory('nat', limit=('def', 'one'))
+        item = items.parse_item({
+            "name": "bad",
+            "rules": [
+                {"prop": "bad n = bad n"}
+            ],
+            "ty": "def.ind",
+            "type": "nat => nat"
+        })
+        self.assertIsNotNone(item.error)
+        self.assertIn('without any constructor pattern', str(item.error))
+
+    def testFunBadDuplicate(self):
+        # Two equations for the same constructor must be rejected.
+        basic.load_theory('nat', limit=('def', 'one'))
+        item = items.parse_item({
+            "name": "bad",
+            "rules": [
+                {"prop": "bad 0 = 0"},
+                {"prop": "bad 0 = 1"}
+            ],
+            "ty": "def.ind",
+            "type": "nat => nat"
+        })
+        self.assertIsNotNone(item.error)
+        self.assertIn('duplicate equations', str(item.error))
+
+    def testFunBadParamNotVar(self):
+        # A non-recursion argument with a non-variable pattern must be
+        # rejected.
+        basic.load_theory('nat', limit=('def.ind', 'plus'))
+        item = items.parse_item({
+            "name": "bad",
+            "rules": [
+                {"prop": "bad 0 (m + 1) = 0"},
+                {"prop": "bad (Suc n) m = n"}
+            ],
+            "ty": "def.ind",
+            "type": "nat => nat => nat"
+        })
+        self.assertIsNotNone(item.error)
+        self.assertIn('must be plain variables', str(item.error))
+
+
 if __name__ == "__main__":
     unittest.main()

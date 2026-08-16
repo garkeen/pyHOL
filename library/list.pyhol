@@ -12,9 +12,15 @@ fun length :: 'a list ⇒ nat
   | length ([]::'a list) = 0
   | length (x # xs) = Suc (length xs)
 
+fun hd :: 'a list ⇒ 'a
+  | hd (x # xs) = x
+
+fun tl :: 'a list ⇒ 'a list
+  | tl (x # xs) = xs
+
 fun nth :: 'a list ⇒ nat ⇒ 'a
-  | nth (x # xs) 0 = x
-  | nth (x # xs) (Suc n) = nth xs n
+  | nth l 0 = hd l
+  | nth l (Suc n) = nth (tl l) n
 
 fun append :: 'a list ⇒ 'a list ⇒ 'a list
   | [] @ xs = xs
@@ -23,6 +29,24 @@ fun append :: 'a list ⇒ 'a list ⇒ 'a list
 fun rev :: 'a list ⇒ 'a list
   | rev ([]::'a list) = []
   | rev (x # xs) = rev xs @ [x]
+
+theorem nth_cons_zero
+  fixes x :: 'a, xs :: 'a list
+  prop nth (x # xs) 0 = x
+  [hint_rewrite]
+proof
+  ← rewrite nth_def_1 goal=0
+  ← rewrite hd_def_1 goal=1
+qed
+
+theorem nth_cons_suc
+  fixes x :: 'a, xs :: 'a list, n :: nat
+  prop nth (x # xs) (Suc n) = nth xs n
+  [hint_rewrite]
+proof
+  ← rewrite nth_def_2 goal=0
+  ← rewrite tl_def_1 goal=1
+qed
 
 theorem append_right_neutral
   fixes xs :: 'a list
