@@ -1,8 +1,11 @@
 # util/integer.py - Integer utility functions
 
+from syntax import numeral
 from fractions import Fraction
-from kernel.type import TFun, NatType, IntType, BoolType
-from kernel.term import Term, Const, Eq, Binary, Nat, Inst, greater_eq, less_eq, greater, less
+from kernel.type import TFun, BoolType
+from syntax.numeral import NatType, IntType
+from kernel.term import Term, Const, Eq, Inst
+from syntax.numeral import Binary, Nat, greater_eq, less_eq, greater, less
 from kernel.thm import Thm
 from kernel import term
 from kernel.proofterm import ProofTerm
@@ -15,16 +18,16 @@ from util import poly
 # Basic definitions
 zero = Const('zero', IntType)
 one = Const('one', IntType)
-plus = term.plus(IntType)
-minus = term.minus(IntType)
-uminus = term.uminus(IntType)
-times = term.times(IntType)
+plus = numeral.plus(IntType)
+minus = numeral.minus(IntType)
+uminus = numeral.uminus(IntType)
+times = numeral.times(IntType)
 equals = term.equals(IntType)
-less_eq = term.less_eq(IntType)
-less = term.less(IntType)
-greater_eq = term.greater_eq(IntType)
-greater = term.greater(IntType)
-of_nat = term.of_nat(IntType)
+less_eq = numeral.less_eq(IntType)
+less = numeral.less(IntType)
+greater_eq = numeral.greater_eq(IntType)
+greater = numeral.greater(IntType)
+of_nat = numeral.of_nat(IntType)
 
 int_of_nat = Const("int_of_nat", TFun(NatType, IntType))
 

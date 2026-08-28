@@ -6,7 +6,8 @@ Chapter 3, Handbook of Practical Logic and Automated Reasoning.
 
 from kernel.type import TFun
 from kernel import term
-from kernel.term import Term, Var, Abs, And, Or, Implies, Not, Forall, false, true
+from kernel.term import Term, Var, Abs, Implies, Forall
+from syntax.logicops import And, Or, Not, false, true, exists
 from framework import logic
 from util import name
 
@@ -127,7 +128,7 @@ def nnf(fm):
                       And(nnf(Not(p.arg1)), nnf(p.arg)))
         elif p.is_forall():
             assert p.arg.is_abs()
-            return term.exists(p.arg.var_T)(Abs(p.arg.var_name, p.arg.var_T, nnf(Not(p.arg.body))))
+            return exists(p.arg.var_T)(Abs(p.arg.var_name, p.arg.var_T, nnf(Not(p.arg.body))))
         elif p.is_exists():
             assert p.arg.is_abs()
             return term.forall(p.arg.var_T)(Abs(p.arg.var_name, p.arg.var_T, nnf(Not(p.arg.body))))

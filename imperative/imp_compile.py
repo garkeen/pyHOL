@@ -23,13 +23,17 @@ Limitations:
 * Heap safety is not checked: !p := v is a total function update.
 """
 
+from syntax import logicops
 import os
 import re
 import textwrap
 
-from kernel.type import NatType, IntType, TFun, TConst
+from kernel.type import TFun, TConst
+from syntax.numeral import NatType, IntType
 from kernel import term
-from kernel.term import Term, Var, Lambda, Number, Eq, Not, true, false, Const
+from kernel.term import Term, Var, Lambda, Eq, Const
+from syntax.numeral import Number
+from syntax.logicops import Not, true, false
 from kernel import theory
 from framework import basic
 from framework.logic import mk_if
@@ -88,7 +92,8 @@ def _load_theories(imports):
 def _register_predicates():
     """Register inductive predicates of the loaded theories for use in
     assertions (e.g. ll(p, s)).  This is safe to call multiple times."""
-    from kernel.type import TFun, BoolType, NatType
+    from kernel.type import TFun, BoolType
+    from syntax.numeral import NatType
     for pred in _assertion_preds:
         if theory.thy.has_term_sig(pred) and pred not in expr_mod.global_fnames:
             T = theory.thy.get_term_sig(pred)
@@ -107,8 +112,9 @@ def _register_recursive_preds():
     P args = (base | ~(arg = null) & step_prems) is built from the two
     theorem props, with null rewritten via null_def.
     """
-    from kernel.term import Var, Forall, Eq, Or, And, Const
-    from kernel.type import NatType
+    from kernel.term import Var, Forall, Eq, Const
+    from syntax.logicops import Or, And
+    from syntax.numeral import NatType
     from framework import conv
 
     def strip_foralls(t):
@@ -455,9 +461,9 @@ class Translator:
                 elif e.op == ">":
                     return b < a
                 elif e.op == "&":
-                    return term.And(a, b)
+                    return logicops.And(a, b)
                 elif e.op == "|":
-                    return term.Or(a, b)
+                    return logicops.Or(a, b)
                 elif e.op == "-->":
                     return term.Implies(a, b)
                 elif e.op == "<-->":
@@ -531,7 +537,7 @@ class Translator:
             ctx = self.loop_stack[-1]
             if ctx['flag'] is None:
                 raise CompileError("break: internal error (no flag).")
-            pc = term.And(*self.pc_stack) if self.pc_stack else true
+            pc = logicops.And(*self.pc_stack) if self.pc_stack else true
             ctx['breaks'].append(pc)
             return imp.AssignV(self.T)(Lambda(self.st, Number(NatType, self.state_idx[ctx['flag']])),
                                        Lambda(self.st, Number(NatType, 1)))
@@ -591,12 +597,12 @@ class Translator:
         zero = Number(NatType, 0)
         one = Number(NatType, 1)
         flag = self._reg(Number(NatType, self.state_idx[ctx['flag']]))
-        flag_in_01 = term.Or(Eq(flag, zero), Eq(flag, one))
+        flag_in_01 = logicops.Or(Eq(flag, zero), Eq(flag, one))
         if not ctx['breaks']:
-            return Lambda(self.st, term.And(inv, flag_in_01))
+            return Lambda(self.st, logicops.And(inv, flag_in_01))
         flag_eq_1 = Eq(flag, one)
-        return Lambda(self.st, term.And(inv, flag_in_01,
-                                        term.Implies(flag_eq_1, term.Or(*ctx['breaks']))))
+        return Lambda(self.st, logicops.And(inv, flag_in_01,
+                                        term.Implies(flag_eq_1, logicops.Or(*ctx['breaks']))))
 
     def translate_while(self, com, flag, guard=False):
         """Translate a While.  A fresh break flag is introduced only if the
@@ -609,7 +615,7 @@ class Translator:
             self.loop_stack.append(ctx)
             body = self.guard_after_break(com.c, flag=f)
             self.loop_stack.pop()
-            b = Lambda(self.st, term.And(self.translate_expr(com.b),
+            b = Lambda(self.st, logicops.And(self.translate_expr(com.b),
                                          Eq(self._reg(Number(NatType, self.state_idx[f])), Number(NatType, 0))))
             inv = self.loop_invariant(inv_term, ctx)
             wh = imp.While(self.T)(b, inv, body)
@@ -648,14 +654,14 @@ class Translator:
         val_term = self.translate_expr(com.e)
 
         # Bounds check: 0 <= i AND i < size
-        bounds = term.And(
+        bounds = logicops.And(
             nat.less_eq(Number(NatType, 0), idx_term),
             nat.less(idx_term, Number(NatType, size))
         )
 
         assign = imp.AssignV(self.T)(Lambda(self.st, state_idx), Lambda(self.st, val_term))
         skip = imp.Skip(self.T)
-        b_true = Lambda(self.st, term.true)
+        b_true = Lambda(self.st, logicops.true)
         stuck = imp.While(self.T)(b_true, Lambda(self.st, false), skip)
         return imp.Cond(self.T)(Lambda(self.st, bounds), assign, stuck)
 
@@ -693,7 +699,7 @@ class Translator:
         """
         P = self.translate_expr(com.cond)
         skip = imp.Skip(self.T)
-        b_true = Lambda(self.st, term.true)
+        b_true = Lambda(self.st, logicops.true)
         # While(true, false, Skip): invariant=false means WP=false.
         # Cond(P, Skip, While(true,false,Skip)) gives WP = P ∧ Q:
         #   true branch: P ⟶ Q
@@ -738,7 +744,7 @@ class Translator:
         assign = imp.AssignV(self.T)(Lambda(self.st, result_idx), Lambda(self.st, value_term))
 
         skip = imp.Skip(self.T)
-        b_true = Lambda(self.st, term.true)
+        b_true = Lambda(self.st, logicops.true)
         stuck = imp.While(self.T)(b_true, Lambda(self.st, false), skip)
         return imp.Cond(self.T)(Lambda(self.st, pre_term), assign, stuck)
 
@@ -754,7 +760,7 @@ class Translator:
             self.loop_stack.append(ctx)
             body = self.guard_after_break(com.c, flag=f)
             self.loop_stack.pop()
-            b = Lambda(self.st, term.And(self.translate_expr(com.cond),
+            b = Lambda(self.st, logicops.And(self.translate_expr(com.cond),
                                          Eq(self._reg(Number(NatType, self.state_idx[f])), Number(NatType, 0))))
             inv = self.loop_invariant(inv_term, ctx)
             body = imp.Seq(self.T)(body, step)

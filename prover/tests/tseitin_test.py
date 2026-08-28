@@ -1,7 +1,8 @@
 import unittest
 
 from kernel.type import BoolType
-from kernel.term import Term, Var, Implies, And, Or
+from kernel.term import Term, Var, Implies
+from syntax.logicops import And, Or
 from kernel import report
 from kernel import theory
 from framework import basic

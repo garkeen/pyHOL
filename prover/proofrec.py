@@ -9,8 +9,11 @@ from z3.z3consts import *
 from domains.integer import conv as integer
 from domains.logic import conv as proplogic
 from domains.real.conv import norm_neg_real_ineq_conv, real_const_eq_conv, real_eval_conv, real_norm_comparison
-from kernel.type import TFun, BoolType, NatType, IntType, RealType, STVar, TVar
+from kernel.type import TFun, BoolType, STVar, TVar
+from syntax.numeral import NatType, IntType, RealType
 from kernel.term import *
+from syntax.numeral import *  # noqa: F401,F403  (numeral sugar moved out of kernel)
+from syntax.logicops import *  # noqa: F401,F403  (logic sugar moved out of kernel)
 from kernel.thm import Thm
 from kernel.proofterm import ProofTerm, refl
 from kernel.macro import Macro

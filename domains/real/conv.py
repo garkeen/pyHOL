@@ -1,13 +1,17 @@
 # Author: Bohua Zhan
 
+from syntax import numeral
 from fractions import Fraction
 import math
 from sympy.ntheory.factor_ import factorint
 import typing
 
-from kernel.type import TFun, RealType
+from kernel.type import TFun
+from syntax.numeral import RealType
 from kernel import term
-from kernel.term import Term, Const, Eq, Nat, Real, Sum, Prod, true, false, Var, Exists, And, Implies, Not, false
+from kernel.term import Term, Const, Eq, Var, Implies
+from syntax.numeral import Nat, Real, Sum, Prod
+from syntax.logicops import true, false, Exists, And, Not, false
 from kernel.thm import Thm
 from kernel import theory
 from kernel.theory import register_macro
@@ -32,19 +36,19 @@ import functools
 
 zero = Const('zero', RealType)
 one = Const('one', RealType)
-plus = term.plus(RealType)
-minus = term.minus(RealType)
-uminus = term.uminus(RealType)
-times = term.times(RealType)
-divides = term.divides(RealType)
-nat_power = term.nat_power(RealType)
-real_power = term.real_power(RealType)
-of_nat = term.of_nat(RealType)
+plus = numeral.plus(RealType)
+minus = numeral.minus(RealType)
+uminus = numeral.uminus(RealType)
+times = numeral.times(RealType)
+divides = numeral.divides(RealType)
+nat_power = numeral.nat_power(RealType)
+real_power = numeral.real_power(RealType)
+of_nat = numeral.of_nat(RealType)
 equals = term.equals(RealType)
-less_eq = term.less_eq(RealType)
-less = term.less(RealType)
-greater_eq = term.greater_eq(RealType)
-greater = term.greater(RealType)
+less_eq = numeral.less_eq(RealType)
+less = numeral.less(RealType)
+greater_eq = numeral.greater_eq(RealType)
+greater = numeral.greater(RealType)
 
 inverse = Const("real_inverse", TFun(RealType, RealType))
 sqrt = Const("sqrt", TFun(RealType, RealType))

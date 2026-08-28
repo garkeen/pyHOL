@@ -4,7 +4,8 @@ import unittest
 
 from kernel.type import TVar, TFun, BoolType
 from kernel import term
-from kernel.term import Term, Var, Abs, Bound, And, Or, Eq, Forall, Exists
+from kernel.term import Term, Var, Abs, Bound, Eq, Forall
+from syntax.logicops import And, Or, Exists
 from kernel.thm import Thm
 from kernel.proof import Proof
 from kernel.report import ProofReport

@@ -5,7 +5,10 @@ import unittest
 from kernel import type as hol_type
 from kernel.type import STVar, TVar, TFun, TyInst
 from kernel import term
-from kernel.term import SVar, Var, Const, Comb, Abs, Bound, And, Or, Lambda, Binary, Inst
+from syntax import numeral, logicops
+from kernel.term import SVar, Var, Const, Comb, Abs, Bound, Lambda, Inst
+from syntax.logicops import And, Or
+from syntax.numeral import Binary
 from kernel.term import TermException, TypeCheckException
 
 Ta = TVar("a")
@@ -251,10 +254,10 @@ class TermTest(unittest.TestCase):
 
     def testConj(self):
         test_data = [
-            ([], term.true),
+            ([], logicops.true),
             ([a], a),
-            ([a, b], term.conj(a, b)),
-            ([a, b, a], term.conj(a, term.conj(b, a)))
+            ([a, b], logicops.conj(a, b)),
+            ([a, b, a], logicops.conj(a, logicops.conj(b, a)))
         ]
 
         for ts, res in test_data:
@@ -274,10 +277,10 @@ class TermTest(unittest.TestCase):
 
     def testDisj(self):
         test_data = [
-            ([], term.false),
+            ([], logicops.false),
             ([a], a),
-            ([a, b], term.disj(a, b)),
-            ([a, b, a], term.disj(a, term.disj(b, a)))
+            ([a, b], logicops.disj(a, b)),
+            ([a, b, a], logicops.disj(a, logicops.disj(b, a)))
         ]
 
         for ts, res in test_data:
@@ -296,10 +299,10 @@ class TermTest(unittest.TestCase):
             self.assertEqual(t.strip_disj(), res)
 
     def testBinary(self):
-        zero = term.nat_zero
-        one = term.nat_one
-        bit0 = term.bit0
-        bit1 = term.bit1
+        zero = numeral.nat_zero
+        one = numeral.nat_one
+        bit0 = numeral.bit0
+        bit1 = numeral.bit1
         test_data = [
             (0, zero),
             (1, one),
@@ -326,10 +329,10 @@ class TermTest(unittest.TestCase):
             self.assertEqual(Binary(n).dest_binary(), n)
 
     def testIsBinary(self):
-        zero = term.nat_zero
-        one = term.nat_one
-        bit0 = term.bit0
-        bit1 = term.bit1
+        zero = numeral.nat_zero
+        one = numeral.nat_one
+        bit0 = numeral.bit0
+        bit1 = numeral.bit1
         test_data = [
             (zero, True),
             (one, True),

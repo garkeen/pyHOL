@@ -5,7 +5,8 @@ import itertools
 
 from kernel.type import TVar, TConst, TFun, BoolType
 from kernel import term
-from kernel.term import Term, Var, Const, And, Implies, Not, Eq, Forall
+from kernel.term import Term, Var, Const, Implies, Eq, Forall
+from syntax.logicops import And, Not
 from kernel.thm import Thm
 from kernel import theory
 from kernel import extension

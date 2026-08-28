@@ -1,7 +1,9 @@
 # Author: Bohua Zhan
 
-from kernel.type import TConst, TFun, BoolType, NatType
-from kernel.term import Term, Var, Const, Lambda, Inst, Bound, true
+from kernel.type import TConst, TFun, BoolType
+from syntax.numeral import NatType
+from kernel.term import Term, Var, Const, Lambda, Inst, Bound
+from syntax.logicops import true
 from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro

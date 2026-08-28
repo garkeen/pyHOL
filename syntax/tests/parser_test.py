@@ -3,7 +3,8 @@
 import unittest
 
 from kernel.type import TVar, TConst, TFun, Type, BoolType
-from kernel.term import Var, Term, And, Eq, Inst
+from kernel.term import Var, Term, Eq, Inst
+from syntax.logicops import And
 from kernel.thm import Thm
 from kernel.proof import ProofItem
 from framework import basic

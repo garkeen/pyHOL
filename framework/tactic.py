@@ -4,7 +4,8 @@ from copy import copy
 
 from kernel.type import TyInst, TConst
 from kernel import term
-from kernel.term import Term, Implies, Not, Lambda, Inst, Eq, false
+from kernel.term import Term, Implies, Lambda, Inst, Eq
+from syntax.logicops import Not, false
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import theory
 from kernel.proofterm import ProofTerm, TacticException

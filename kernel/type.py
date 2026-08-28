@@ -354,10 +354,6 @@ class Type:
         else:
             raise TypeError
 
-    def is_numeral_type(self):
-        return self in (NatType, IntType, RealType)
-
-
 class STVar(Type):
     """Schematic type variable."""
     def __init__(self, name):
@@ -388,8 +384,3 @@ def TFun(*args):
 
 # Boolean type
 BoolType = TConst("bool")
-
-# Numeral types
-NatType = TConst('nat')
-IntType = TConst('int')
-RealType = TConst('real')

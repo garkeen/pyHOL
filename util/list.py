@@ -1,6 +1,7 @@
 # Author: Bohua Zhan
 
-from kernel.type import TVar, TConst, TFun, NatType, BoolType
+from kernel.type import TVar, TConst, TFun, BoolType
+from syntax.numeral import NatType
 from kernel.term import Term, Const
 
 """Utility functions for lists."""

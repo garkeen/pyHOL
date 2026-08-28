@@ -2,14 +2,17 @@
 
 import unittest
 
-from kernel.type import TVar, TConst, TFun, BoolType, NatType, IntType, RealType
-from kernel.term import SVar, Var, Const, Comb, Abs, Bound, Term, And, Or, Implies, \
-    Not, Eq, Forall, Lambda, Exists, true, false, Nat, Int, Real
+from kernel.type import TVar, TConst, TFun, BoolType
+from syntax.numeral import NatType, IntType, RealType
+from kernel.term import SVar, Var, Const, Comb, Abs, Bound, Term, Implies, \
+    Eq, Forall, Lambda
+from syntax.logicops import And, Or, Not, Exists, true, false
+from syntax.numeral import Nat, Int, Real
 from kernel.thm import Thm
 from framework import basic
 from framework import logic
 from domains.nat import conv as nat
-from kernel.term import less, less_eq
+from syntax.numeral import less, less_eq
 nat.less = less(NatType)
 nat.less_eq = less_eq(NatType)
 from domains.real import conv as real

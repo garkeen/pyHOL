@@ -3,7 +3,8 @@ Tseitin encoding from formulae in holpy to CNF.
 """
 
 from kernel.type import BoolType
-from kernel.term import Term, Var, And, Or, Not, Implies, Eq
+from kernel.term import Term, Var, Implies, Eq
+from syntax.logicops import And, Or, Not
 from kernel.thm import Thm
 from kernel import term_ord
 from kernel.proofterm import ProofTerm

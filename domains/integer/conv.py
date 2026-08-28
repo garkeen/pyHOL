@@ -1,5 +1,9 @@
-from kernel.type import TFun, IntType
-from kernel.term import Var, Int, Eq, Term, Sum, Prod, equals, Const, less, less_eq, greater, greater_eq, Not, int_power, Nat
+from kernel.type import TFun
+from syntax.numeral import IntType
+from kernel.term import Var, Term, equals, Const
+from syntax.numeral import Eq  # Eq with Python-number sugar (int_eval results)
+from syntax.numeral import Int, Sum, Prod, less, less_eq, greater, greater_eq, int_power, Nat
+from syntax.logicops import Not
 from kernel import term_ord
 from kernel import theory
 from kernel.proofterm import ProofTerm, refl

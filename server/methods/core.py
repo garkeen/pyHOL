@@ -20,6 +20,7 @@ from framework import search as fw_search
 from framework.tactic import Tactic, trivial
 from framework import conv
 from syntax import parser, printer, pprint
+from syntax.numeral import NatType, RealType, IntType
 from syntax.settings import settings, global_setting
 
 
@@ -1555,7 +1556,7 @@ norm_registry = dict()
 def register_norm(T, macro_name: str):
     norm_registry[T] = macro_name
 
-from kernel.type import NatType, RealType, IntType
+    from syntax.numeral import NatType, RealType, IntType
 register_norm(NatType, 'nat_norm')
 register_norm(RealType, 'real_norm')
 register_norm(IntType, 'int_norm')

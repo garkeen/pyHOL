@@ -4,18 +4,24 @@ from typing import List, Tuple
 
 from kernel.type import TVar, TFun, TyInst, BoolType
 from kernel import term
-from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, \
-    Not, And, Or, Eq, true, false
+from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, Eq, \
+    TermException
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import term_ord
 from kernel import theory
 from kernel.proofterm import ProofTerm, refl
 from framework import matcher
+from syntax.logicops import true, false, neg, conj, disj, Not, And, Or, \
+    exists, Exists  # noqa: F401  (re-export; also installs Term methods)
 from util import name
 from util import typecheck
 
 
-"""Utility functions for logic (domain-independent)."""
+"""Utility functions for logic (domain-independent).
+
+The base logical constants true/false/neg/conj/disj/exists are declared
+in the library theory logic_base; their Python-side sugar lives in
+syntax/logicops.py and is re-exported here for convenience."""
 
 def is_exists1(t):
     """Whether t is of the form ?!x. P x."""

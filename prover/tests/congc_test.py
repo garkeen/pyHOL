@@ -3,7 +3,8 @@
 import unittest
 
 from prover import congc
-from kernel.type import TVar, TFun, NatType
+from kernel.type import TVar, TFun
+from syntax.numeral import NatType
 from kernel.term import Term, Eq
 from kernel.thm import Thm
 from kernel import theory

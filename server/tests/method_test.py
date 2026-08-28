@@ -789,7 +789,8 @@ class LineModelTest(unittest.TestCase):
     def testResolveC4ShapesSingleLine(self):
         """resolve with A --> false / A = false shapes closes with one
         resolve_theorem line."""
-        from kernel.term import Var, Eq, false
+        from kernel.term import Var, Eq
+        from syntax.logicops import false
         from kernel.type import BoolType
         from kernel.thm import Thm
         # Theorems are stored with plain Vars; get_theorem converts

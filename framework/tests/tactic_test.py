@@ -2,7 +2,8 @@
 
 import unittest
 
-from kernel.type import BoolType, NatType
+from kernel.type import BoolType
+from syntax.numeral import NatType
 from kernel.term import Term, Var, Eq, Lambda, Inst
 from kernel.thm import Thm
 from kernel.proof import Proof, ProofItem, ItemID

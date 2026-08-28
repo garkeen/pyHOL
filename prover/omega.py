@@ -6,6 +6,7 @@ https://github.com/HOL-Theorem-Prover/HOL/blob/develop/src/integer/OmegaMLShadow
 
 """
 
+from syntax import numeral
 import collections
 import functools
 import copy
@@ -195,8 +196,8 @@ def factoid_to_term(vars, f):
 
     """
     assert len(vars) + 1 == len(f)
-    s = [term.Int(c) * v for c, v in zip(f[:-1], vars) if c != 0] + [term.Int(f[-1])]
-    return term.less_eq(term.IntType)(term.Int(0), sum(s[1:], s[0]))
+    s = [numeral.Int(c) * v for c, v in zip(f[:-1], vars) if c != 0] + [numeral.Int(f[-1])]
+    return numeral.less_eq(numeral.IntType)(numeral.Int(0), sum(s[1:], s[0]))
 
 class Derivation:
     """A derivation is a proof of a factoid."""
@@ -730,7 +731,7 @@ def is_integer_ineq(tm):
     """
     Check tm is whether an integer inequlity term. 
     """
-    return tm.is_compares() and tm.arg.get_type() == term.IntType and tm.arg1.get_type() == term.IntType
+    return tm.is_compares() and tm.arg.get_type() == numeral.IntType and tm.arg1.get_type() == numeral.IntType
 
 class OmegaHOL:
     """
@@ -775,9 +776,9 @@ class OmegaHOL:
             c is a number, return a pt: c ⋈ 0
             """
             if c > 0:
-                return proofterm.ProofTerm('int_const_ineq', term.greater(term.IntType)(term.Int(c), term.Int(0)))
+                return proofterm.ProofTerm('int_const_ineq', numeral.greater(numeral.IntType)(numeral.Int(c), numeral.Int(0)))
             else:
-                return proofterm.ProofTerm('int_const_ineq', term.less(term.IntType)(term.Int(c), term.Int(0)))
+                return proofterm.ProofTerm('int_const_ineq', numeral.less(numeral.IntType)(numeral.Int(c), numeral.Int(0)))
         
         def ineq_mul_const(c, pt):
             assert c != 0
@@ -791,7 +792,7 @@ class OmegaHOL:
         pt_final = logic.apply_theorem('int_pos_plus', pt1_mul_c1, pt2_mul_c2).on_prop(conv.arg_conv(integer.omega_simp_full_conv()))
 
         if pt_final.prop.arg.is_number(): # ⊢ 0 <= -3
-            pt_less_zero = proofterm.ProofTerm('int_const_ineq', term.less(term.IntType)(pt_final.prop.arg, term.Int(0)))
+            pt_less_zero = proofterm.ProofTerm('int_const_ineq', numeral.less(numeral.IntType)(pt_final.prop.arg, numeral.Int(0)))
             return logic.apply_theorem('int_zero_less_eq_neg', pt_less_zero, pt_final)
         else:
             return pt_final
@@ -800,7 +801,7 @@ class OmegaHOL:
         fact = term_to_factoid(vars, pt.prop)
         g = functools.reduce(gcd, fact[:-1])
         assert g > 1
-        pt1 = proofterm.ProofTerm('int_const_ineq', term.Int(g) > term.Int(0))
+        pt1 = proofterm.ProofTerm('int_const_ineq', numeral.Int(g) > numeral.Int(0))
         pt2 = pt
         elim_gcd_fact = [floor(i / g) for i in fact]
         if int(fact[-1] / g) != fact[-1] / g:    
@@ -813,16 +814,16 @@ class OmegaHOL:
             pt3 = integer.int_norm_conv().get_proof_term(g * elim_gcd_no_constant).transitive(
                         integer.int_norm_conv().get_proof_term(original_no_constant).symmetric())
             n = floor(-fact[-1] / g)
-            pt4 = proofterm.ProofTerm('int_const_ineq', term.Int(g) * term.Int(n) + fact[-1] < 0)
-            pt5 = proofterm.ProofTerm('int_const_ineq', term.Int(g) * (term.Int(n) + term.Int(1)) + fact[-1] > 0)
-            pt6 = integer.int_eval_conv().get_proof_term(-(term.Int(n) + term.Int(1)))
+            pt4 = proofterm.ProofTerm('int_const_ineq', numeral.Int(g) * numeral.Int(n) + fact[-1] < 0)
+            pt5 = proofterm.ProofTerm('int_const_ineq', numeral.Int(g) * (numeral.Int(n) + numeral.Int(1)) + fact[-1] > 0)
+            pt6 = integer.int_eval_conv().get_proof_term(-(numeral.Int(n) + numeral.Int(1)))
             return logic.apply_theorem('int_gcd', pt1, pt2, pt3, pt4, pt5).on_prop(
                 conv.top_sweep_conv(conv.rewr_conv(pt6)),
                 conv.arg_conv(integer.omega_simp_full_conv()))
         else:
             elim_gcd_term = factoid_to_term(vars, elim_gcd_fact)
             pt3 = integer.omega_simp_full_conv().get_proof_term(pt.prop.arg).transitive(\
-                    integer.omega_simp_full_conv().get_proof_term(term.Int(g) * elim_gcd_term.arg).symmetric())
+                    integer.omega_simp_full_conv().get_proof_term(numeral.Int(g) * elim_gcd_term.arg).symmetric())
             return logic.apply_theorem('int_gcd_1', pt1, pt2, pt3)
 
 
@@ -841,11 +842,11 @@ class OmegaHOL:
             upper = norm_pt(upper)
         pos, neg = lower.prop.arg.arg1, upper.prop.arg.arg1
         pt_eq = integer.omega_simp_full_conv().get_proof_term(neg).\
-            transitive(integer.omega_simp_full_conv().get_proof_term(term.Int(-1) * pos).symmetric())
+            transitive(integer.omega_simp_full_conv().get_proof_term(numeral.Int(-1) * pos).symmetric())
         pt1 = lower
         pt2 = upper.on_prop(conv.top_sweep_conv(conv.rewr_conv(pt_eq)))
-        lower_bound, upper_bound = -term.Int(integer.int_eval(lower.prop.arg.arg)), term.Int(integer.int_eval(upper.prop.arg.arg))
-        pt3 = proofterm.ProofTerm('int_const_ineq', term.greater(term.IntType)(lower_bound, upper_bound))
+        lower_bound, upper_bound = -numeral.Int(integer.int_eval(lower.prop.arg.arg)), numeral.Int(integer.int_eval(upper.prop.arg.arg))
+        pt3 = proofterm.ProofTerm('int_const_ineq', numeral.greater(numeral.IntType)(lower_bound, upper_bound))
         return logic.apply_theorem('int_comp_contr', pt1, pt2, pt3)
 
     def handle_unsat_result(self, res):

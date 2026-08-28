@@ -4,8 +4,8 @@ from typing import List, Tuple
 
 from kernel.type import TVar, TFun, TyInst, BoolType
 from kernel import term
-from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, \
-    Not, And, Or, Eq, true, false
+from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, Eq
+from syntax.logicops import Not, And, Or, true, false
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import theory
 from kernel.theory import register_macro

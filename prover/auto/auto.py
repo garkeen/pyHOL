@@ -2,7 +2,7 @@
 
 import queue
 
-from kernel.term import Not
+from syntax.logicops import Not
 from kernel.proofterm import ProofTerm
 from kernel import theory
 from framework import logic

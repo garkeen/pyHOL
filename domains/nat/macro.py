@@ -1,8 +1,11 @@
 # domains/nat/macro.py - Nat Macro classes
 
-from kernel.type import TFun, BoolType, NatType
+from kernel.type import TFun, BoolType
+from syntax.numeral import NatType
 from kernel import term
-from kernel.term import Term, Const, Not, Eq, Binary, Nat, Inst
+from kernel.term import Term, Const, Eq, Inst
+from syntax.numeral import Binary, Nat
+from syntax.logicops import Not
 from kernel.thm import Thm
 from kernel import theory
 from kernel.theory import register_macro

@@ -2,7 +2,7 @@ import unittest
 from syntax.parser import parse_term
 from framework import context
 from prover import simplex_strict
-from kernel.term import false
+from syntax.logicops import false
 
 class StrictSimplexTest(unittest.TestCase):
     def testStrict(self):

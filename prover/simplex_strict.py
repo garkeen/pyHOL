@@ -5,8 +5,10 @@ Reference:
 Bruno Dutertre and Leonardo de Moura. A Fast Linear-Arithmetic Solver for DPLL(T) 
 """
 
-from kernel.term import Term, Var, Inst, Int, greater_eq, Real, Eq, less_eq, minus, greater, less, Const, TFun, of_int, And
-from kernel.type import RealType, IntType
+from kernel.term import Term, Var, Inst, Eq, Const, TFun
+from syntax.numeral import Int, greater_eq, Real, less_eq, minus, greater, less, of_int
+from syntax.logicops import And
+from syntax.numeral import RealType, IntType
 from kernel.proofterm import ProofTerm, refl
 from kernel.theory import register_macro, Thm, get_theorem
 from kernel.macro import Macro

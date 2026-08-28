@@ -5,10 +5,12 @@ on intervals.
 
 """
 
+from syntax import numeral
 import sympy
 from fractions import Fraction
 
-from kernel.type import RealType, NatType, TFun, BoolType
+from kernel.type import TFun, BoolType
+from syntax.numeral import RealType, NatType
 from kernel import term
 from kernel.term import Term
 from kernel.thm import Thm
@@ -203,15 +205,15 @@ def sympy_solve(goal, pts):
 
 # Register sympy solving procedures into the generic auto engine.
 # Real inequalities and equalities:
-auto.add_global_autos(term.greater_eq(RealType), sympy_solve)
-auto.add_global_autos(term.greater(RealType), sympy_solve)
-auto.add_global_autos(term.less_eq(RealType), sympy_solve)
-auto.add_global_autos(term.less(RealType), sympy_solve)
+auto.add_global_autos(numeral.greater_eq(RealType), sympy_solve)
+auto.add_global_autos(numeral.greater(RealType), sympy_solve)
+auto.add_global_autos(numeral.less_eq(RealType), sympy_solve)
+auto.add_global_autos(numeral.less(RealType), sympy_solve)
 auto.add_global_autos_neg(term.Const('equals', TFun(RealType, RealType, BoolType)), sympy_solve)
 
 # Natural number inequalities and equalities:
-auto.add_global_autos(term.greater_eq(NatType), sympy_solve)
-auto.add_global_autos(term.greater(NatType), sympy_solve)
-auto.add_global_autos(term.less_eq(NatType), sympy_solve)
-auto.add_global_autos(term.less(NatType), sympy_solve)
+auto.add_global_autos(numeral.greater_eq(NatType), sympy_solve)
+auto.add_global_autos(numeral.greater(NatType), sympy_solve)
+auto.add_global_autos(numeral.less_eq(NatType), sympy_solve)
+auto.add_global_autos(numeral.less(NatType), sympy_solve)
 auto.add_global_autos_neg(term.Const('equals', TFun(NatType, NatType, BoolType)), sympy_solve)

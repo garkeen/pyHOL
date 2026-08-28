@@ -7,7 +7,8 @@ imp_compile.py converts them into HOL terms; convert_hol (the old
 Python-level VCG path) has been removed.
 """
 
-from kernel.type import TFun, IntType
+from kernel.type import TFun
+from syntax.numeral import IntType
 from util import typecheck
 
 

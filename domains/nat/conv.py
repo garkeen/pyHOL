@@ -1,9 +1,13 @@
 # logic/conv/nat.py - Nat Conv classes
 # Extracted from data/nat.py
 
-from kernel.type import TFun, BoolType, NatType
+from syntax import numeral
+from kernel.type import TFun, BoolType
+from syntax.numeral import NatType
 from kernel import term
-from kernel.term import Term, Const, Not, Eq, Binary, Nat, Inst
+from kernel.term import Term, Const, Eq, Inst
+from syntax.numeral import Binary, Nat
+from syntax.logicops import Not
 from kernel.thm import Thm
 from kernel import theory
 from kernel import term_ord
@@ -13,17 +17,17 @@ from kernel.proofterm import ProofTerm, refl
 
 
 # Basic definitions
-zero = term.nat_zero
-one = term.nat_one
-plus = term.plus(NatType)
-minus = term.minus(NatType)
-times = term.times(NatType)
+zero = numeral.nat_zero
+one = numeral.nat_one
+plus = numeral.plus(NatType)
+minus = numeral.minus(NatType)
+times = numeral.times(NatType)
 Suc = Const("Suc", TFun(NatType, NatType))
 equals = term.equals(NatType)
-less_eq = term.less_eq(NatType)
-less = term.less(NatType)
-greater_eq = term.greater_eq(NatType)
-greater = term.greater(NatType)
+less_eq = numeral.less_eq(NatType)
+less = numeral.less(NatType)
+greater_eq = numeral.greater_eq(NatType)
+greater = numeral.greater(NatType)
 even = Const("even", TFun(NatType, BoolType))
 odd = Const("odd", TFun(NatType, BoolType))
 

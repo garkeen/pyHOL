@@ -2,7 +2,8 @@
 
 import unittest
 
-from kernel.type import TVar, Type, NatType, TyInst
+from kernel.type import TVar, Type, TyInst
+from syntax.numeral import NatType
 from kernel.term import Var, Const, Abs, Term, Inst
 from framework import basic
 from framework import matcher

@@ -2,8 +2,12 @@
 
 import unittest
 
-from kernel.type import TVar, TFun, BoolType, NatType, TyInst
-from kernel.term import Var, Term, Not, And, Or, Eq, Implies, Forall, Exists, Lambda, true, Nat, Inst
+from kernel.type import TVar, TFun, BoolType, TyInst
+from syntax.numeral import NatType
+from kernel.term import Var, Term, Implies, Forall, Lambda, Inst
+from syntax.numeral import Eq  # Eq with Python-number sugar
+from syntax.numeral import Nat
+from syntax.logicops import Not, And, Or, Exists, true
 from kernel.thm import Thm
 from kernel.proof import Proof
 from kernel.theory import TheoryException

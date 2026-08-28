@@ -1,7 +1,7 @@
 import unittest
 import json
 
-from kernel.term import Not
+from syntax.logicops import Not
 from framework import logic
 from framework import basic
 from syntax import parser

@@ -1,7 +1,9 @@
 # logic/macros/expr.py - Expression evaluation macros
 
-from kernel.type import TConst, TFun, BoolType, NatType
-from kernel.term import Term, Const, Nat
+from kernel.type import TConst, TFun, BoolType
+from syntax.numeral import NatType
+from kernel.term import Term, Const
+from syntax.numeral import Nat
 from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro

@@ -12,9 +12,11 @@ else:
 # Whether to check using z3.
 check_z3 = True
 
-from kernel.type import TFun, BoolType, NatType, IntType, RealType
+from kernel.type import TFun, BoolType
+from syntax.numeral import NatType, IntType, RealType
 from kernel import term
-from kernel.term import Term, Var, Comb, Abs, Inst, BoolType, Implies, true, false
+from kernel.term import Term, Var, Comb, Abs, Inst, BoolType, Implies
+from syntax.logicops import true, false
 from kernel.thm import Thm
 from kernel.proofterm import ProofTerm
 from kernel import theory

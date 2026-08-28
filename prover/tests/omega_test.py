@@ -1,6 +1,8 @@
+from syntax import numeral
+from syntax import logicops
 import unittest
 from kernel import term
-from kernel.type import IntType
+from syntax.numeral import IntType
 from framework import context
 # from prover.omega import Factoid, negate_key, combine_real_factoid, combine_dark_factoid, factoid_gcd,\
 #     dest_plus, dest_times, term_to_factoid, database
@@ -132,9 +134,9 @@ class OmegaTest(unittest.TestCase):
         vars = [x, y, z]
 
         test_data = [
-            (term.less_eq(term.IntType)(term.Int(0), 3 * x + 2 * y + (-2)), (3,2,0,-2)),
-            (term.less_eq(term.IntType)(term.Int(0),  1 * y), (0,1,0,0)),
-            (term.less_eq(term.IntType)(term.Int(0), term.Number(IntType, 6)), (0,0,0,6))
+            (numeral.less_eq(numeral.IntType)(numeral.Int(0), 3 * x + 2 * y + (-2)), (3,2,0,-2)),
+            (numeral.less_eq(numeral.IntType)(numeral.Int(0),  1 * y), (0,1,0,0)),
+            (numeral.less_eq(numeral.IntType)(numeral.Int(0), numeral.Number(IntType, 6)), (0,0,0,6))
         ]
 
         for r, res in test_data:
@@ -204,7 +206,7 @@ class OmegaTest(unittest.TestCase):
         ]
 
         context.set_context('int')
-        vars = term.IntVars('x0 x1 x2 x3 x4 x5 x6 x7 x8 x9')
+        vars = numeral.IntVars('x0 x1 x2 x3 x4 x5 x6 x7 x8 x9')
         hol = OmegaHOL([])
         for first, second, m1, m2, res in test_data:
             hol = OmegaHOL([])
@@ -226,7 +228,7 @@ class OmegaTest(unittest.TestCase):
         ]
 
         context.set_context('int')
-        vars = term.IntVars('x0 x1 x2')
+        vars = numeral.IntVars('x0 x1 x2')
         hol = OmegaHOL([])
         for r, res in test_data:
             len_fact = len(r)
@@ -249,7 +251,7 @@ class OmegaTest(unittest.TestCase):
     #         (1, 0, 0, 0, -3, 0, 0, 0, 0, 0, 1), (-1, 0, 1, 0, 0, -1, 1, 1, 0, 0, -1))),
     #     ]
 
-    #     vars = term.IntVars('x0 x1 x2 x3 x4 x5 x6 x7 x8 x9')
+    #     vars = numeral.IntVars('x0 x1 x2 x3 x4 x5 x6 x7 x8 x9')
 
     #     for facts in test_data:
     #         len_fact = len(facts[0])
@@ -257,4 +259,4 @@ class OmegaTest(unittest.TestCase):
     #         hol = OmegaHOL(hol_facts)
     #         _, res = solve_matrix(facts)
     #         proof = hol.handle_unsat_result(res.deriv)
-            # self.assertEqual(proof.prop, term.false)
+            # self.assertEqual(proof.prop, logicops.false)

@@ -1,7 +1,8 @@
 # domains/logic/conv.py - Propositional logic conversions
 # Domain-dependent: hardcodes logic.pyhol theorem names
 
-from kernel.term import Term, BoolType, Not, Var, true, false, And
+from kernel.term import Term, BoolType, Var
+from syntax.logicops import Not, true, false, And
 from framework.conv import Conv, rewr_conv, arg1_conv, arg_conv, binop_conv, try_conv, top_conv, bottom_conv, top_sweep_conv
 from kernel.proofterm import refl, ProofTerm
 from framework.logic import apply_theorem

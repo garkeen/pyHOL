@@ -2,7 +2,8 @@
 
 import unittest
 
-from kernel.type import TVar, TFun, BoolType, NatType
+from kernel.type import TVar, TFun, BoolType
+from syntax.numeral import NatType
 from kernel.term import Term, Var, Const, Comb, Abs, Bound, Implies, Lambda, Eq
 from framework import basic
 from framework import logic

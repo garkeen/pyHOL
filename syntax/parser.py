@@ -7,8 +7,11 @@ from lark import Lark, Transformer, v_args, exceptions
 from util.lark_error import LarkParseError, translate_lark_error
 import syntax
 from kernel import type as hol_type
-from kernel.type import Type, STVar, TVar, TConst, TFun, BoolType, NatType, TyInst
-from kernel.term import SVar, Var, Const, Comb, Abs, Bound, Term, Not, And, Or, Implies, Binary, Inst
+from kernel.type import Type, STVar, TVar, TConst, TFun, BoolType, TyInst
+from syntax.numeral import NatType
+from kernel.term import SVar, Var, Const, Comb, Abs, Bound, Term, Implies, Inst
+from syntax.numeral import Binary
+from syntax.logicops import Not, And, Or
 from kernel import macro
 from kernel import term
 from kernel.thm import Thm

@@ -8,8 +8,11 @@
 # from z3 import Const as zConst, Int as zInt
 # import z3
 # from prover import z3wrapper, proofrec
-# from kernel.type import BoolType, NatType, TFun, TVar, STVar, IntType
-# from kernel.term import Var, And, Implies, Inst, NatVars, Eq, equals, SVar, Const, TFun, Nat, Int,\
+# from kernel.type import BoolType, TFun, TVar, STVar
+from syntax.numeral import NatType, IntType
+# from kernel.term import Var, Implies, Inst, Eq, equals, SVar, Const, TFun, \
+from syntax.numeral import Nat, Int
+from syntax.logicops import And
 #                             Real, true, false
 # from kernel.report import ProofReport
 # from kernel import theory
