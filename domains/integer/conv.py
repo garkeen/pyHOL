@@ -92,6 +92,20 @@ def int_eval(t):
         return -(int_eval(t.arg))
     elif t.is_times():
         return int_eval(t.arg1) * int_eval(t.arg)
+    elif t.is_comb('power', 2):
+        base, exp = int_eval(t.arg1), int_eval(t.arg)
+        if exp < 0 or exp > 4096:
+            raise ConvException('int_eval: exponent out of range')
+        return base ** exp
+    elif t.is_comb('nat_divide', 2):
+        m, n = int_eval(t.arg1), int_eval(t.arg)
+        # holpy semantics: n DIV 0 = 0; floor division agrees with the
+        # SMT-LIB div on the nonnegative operands this term family has.
+        return 0 if n == 0 else m // n
+    elif t.is_comb('nat_modulus', 2):
+        m, n = int_eval(t.arg1), int_eval(t.arg)
+        # holpy semantics: n MOD 0 = n
+        return m if n == 0 else m % n
     else:
         raise ConvException('int_eval: %s' % str(t))
 

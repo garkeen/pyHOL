@@ -700,15 +700,25 @@ class Simplex:
                     return v, val
         return None
 
-def branch_and_bound(tableau, pts1, pts2):
+def branch_and_bound(tableau, pts1, pts2, max_nodes=2000):
     """
     If current solution is not a good solution(some variables' value are not integer),
     add more constraints and perform simplex again, until find a good solution.
     pts1 is the list of int = of_int, pts2 is the list of of_int v = x_i
+
+    Contract: when the search is exhausted every branch was infeasible,
+    so the ROOT tree is returned and the caller derives the unsat proof
+    with root.branch_and_bound_pt() (leaves re-solve their own simplex).
+    An all-integer point means the refutation target is satisfiable, and
+    the node cap guards against unbounded regions; both raise RuntimeError.
     """
     T = IntSimplexTree(tableau, pts1, pts2)
     tree = deque([T])
+    expanded = 0
     while len(tree) != 0:
+        expanded += 1
+        if expanded > max_nodes:
+            raise RuntimeError('branch_and_bound: node cap exceeded')
         try:
             node = tree.popleft()
             node.simplex.handle_assertion()
@@ -726,13 +736,13 @@ def branch_and_bound(tableau, pts1, pts2):
                 tree.appendleft(b1)
                 tree.appendleft(b2)
             else:
-                return node.simplex.mapping
-                
-                
-        except:
+                raise RuntimeError('branch_and_bound: integer point found')
+
+        except RuntimeError:
+            raise
+        except Exception:
             continue
-    
-    # print("No integer solution!")
+
     return T
 
 
@@ -1336,7 +1346,9 @@ class IntegerSimplexMacro(Macro):
         T = branch_and_bound(s, pt_of_int, pt_eqs)
         result = T.branch_and_bound_pt()
         if not isinstance(result, ProofTerm):
-            return result
+            # a macro must always return a ProofTerm; failure to derive
+            # one is reported to the caller as an exception.
+            raise RuntimeError('integer_simplex: no unsat proof found')
         # P_1, P_2, ... |- false
         pt_0 = result
         # |- P_1 --> P_2 --> ... --> false 

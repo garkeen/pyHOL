@@ -276,7 +276,13 @@ def translate(term, bounds=deque(), subterms=[]):
             return functools.reduce(lambda x, y: x - y, args)
         elif z3.is_mul(term):
             return functools.reduce(lambda x, y: x * y, args)
-        elif z3.is_div(term) or z3.is_idiv(term):
+        elif z3.is_idiv(term):
+            # integer (nat) division: nat_divide at int types (nat is
+            # erased to int throughout the roundtrip, as with all other
+            # operators).  This branch must come before the real-division
+            # test below, whose z3.is_div also accepts idiv nodes.
+            return Const('nat_divide', TFun(IntType, IntType, IntType))(*args)
+        elif z3.is_div(term):
             return divides(sort)(*args)
         elif z3.is_eq(term):
             return Eq(args[0], args[1])
@@ -307,11 +313,6 @@ def translate(term, bounds=deque(), subterms=[]):
             f, a, b = args
             T_dom, T_rng = f.get_type().domain_type(), f.get_type().range_type()
             return Const('fun_upd', TFun(TFun(T_dom, T_rng), T_dom, T_rng, TFun(T_dom, T_rng)))(f, a, b)
-        elif kind == Z3_OP_IDIV:
-            # nat DIV (nat_divide); operand types are int in the
-            # reconstructed terms (nat is erased to int throughout, as
-            # with all other operators).
-            return Const('nat_divide', TFun(IntType, IntType, IntType))(*args)
         elif kind == Z3_OP_MOD:
             return Const('nat_modulus', TFun(IntType, IntType, IntType))(*args)
         elif kind == Z3_OP_POWER:
@@ -961,43 +962,160 @@ def _prove_atom(atom):
     return None if pt.rule == 'sorry' else pt
 
 def _refute_atom(atom):
-    """Prove ⊢ ¬atom for an arithmetic comparison atom, by refuting atom
-    with the omega (int) or simplex (real) backends.  None on failure."""
+    """Prove ⊢ ¬atom for an arithmetic comparison/equality atom, by
+    refuting atom with the omega (int) or simplex (real) backends.
+    None on failure."""
     try:
-        if not atom.is_compares():
+        if not (atom.is_compares() or atom.is_equals()):
             return None
         T = atom.arg1.get_type()
         if T == IntType:
             try:
                 return int_th_lemma_1_omega(Not(atom))
             except Exception:
-                # omega mishandles some constant-cancelling inequalities
-                # (e.g. 1 + x <= x); the simplex backend covers them.
-                return int_th_lemma_1_simplex(Not(atom))
+                pass
+            if atom.is_equals():
+                # omega cannot parse the negation of an equality; a
+                # ground equation is decided by evaluation instead:
+                # ⊢ atom ⟷ false (int_neq_false_conv) lifts to ⊢ ¬atom.
+                try:
+                    pt1 = refl(atom).on_rhs(integer.int_norm_eq(),
+                                            integer.int_neq_false_conv())
+                    pt_c = refl(Not(atom).fun).combination(pt1)
+                    pt_t = pt_c.on_prop(top_conv(rewr_conv('not_false')))
+                    return pt_t.symmetric().equal_elim(apply_theorem('trueI'))
+                except Exception:
+                    return None
+            # omega mishandles some constant-cancelling inequalities
+            # (e.g. 1 + x <= x); the simplex backend covers them.
+            return int_th_lemma_1_simplex(Not(atom))
         elif T == RealType:
             return real_th_lemma([Not(atom)])
     except Exception:
         return None
     return None
 
+def _prove_comp(comp):
+    """Prove ⊢ comp for a (linear) comparison atom by refuting its
+    negation with omega / simplex and removing the double negation.
+    Nonlinear atoms are correctly refuted by nobody, so None is
+    returned and the caller falls through to the schematic stage."""
+    if not comp.is_compares():
+        return None
+    try:
+        T = comp.arg1.get_type()
+        if T == IntType:
+            try:
+                pt = int_th_lemma_1_omega(Not(comp))
+            except Exception:
+                pt = int_th_lemma_1_simplex(Not(comp))
+        elif T == RealType:
+            pt = real_th_lemma([Not(comp)])
+        else:
+            return None
+        if pt is None or pt.rule == 'sorry' or len(pt.gaps) != 0:
+            return None
+        return pt.on_prop(rewr_conv('double_neg'))
+    except Exception:
+        return None
+
+def _norm_bool_side(side):
+    """Normalize a negated boolean literal / negated comparison to a form
+    the atom nets understand.  Returns (proof of ⊢ side = atom, atom);
+    (None, side) when no normalization applies."""
+    if not side.is_not():
+        return None, side
+    if side.arg == true:
+        return refl(side).on_rhs(rewr_conv('not_true')), false
+    if side.arg == false:
+        return refl(side).on_rhs(rewr_conv('not_false')), true
+    if side.arg.is_compares():
+        try:
+            T = side.arg.arg1.get_type()
+            if T == IntType:
+                pt = refl(side).on_rhs(integer.int_norm_neg_compares())
+            elif T == RealType:
+                pt = refl(side).on_rhs(norm_neg_real_ineq_conv())
+            else:
+                return None, side
+            return pt, pt.rhs
+        except Exception:
+            return None, side
+    return None, side
+
 def _atom_bool_net(tm):
     """Rewrite goals of the form atom ⟷ true / atom ⟷ false (in either
-    order): prove or refute the atom with the existing machinery, then
-    connect with eq_true / eq_false.  Covers the arith_rewriter family
-    that reduces comparisons and equations to true/false; the pure SAT
-    net cannot close these because it treats arithmetic atoms opaquely."""
-    for atom, target, flip in ((tm.lhs, tm.rhs, False), (tm.rhs, tm.lhs, True)):
-        if target == true:
-            pt_atom = _prove_atom(atom)
-            if pt_atom is not None:
-                pt_iff = iff_true(pt_atom, None)
-                return pt_iff.symmetric() if flip else pt_iff
-        elif target == false:
-            pt_not = _refute_atom(atom)
-            if pt_not is not None:
-                pt_iff = iff_false(pt_not, None)
-                return pt_iff.symmetric() if flip else pt_iff
-    return None
+    order, also under a negation wrapper on either side): prove or
+    refute the atom with the existing machinery, then connect with
+    eq_true / eq_false.  Covers the arith_rewriter family that reduces
+    comparisons and equations to true/false; the pure SAT net cannot
+    close these because it treats arithmetic atoms opaquely."""
+    if not tm.is_equals():
+        return None
+    if tm.lhs.is_not() and tm.rhs.is_not():
+        # Z3 rewrites atoms inside a negation context, emitting steps
+        # like ¬atom ⟷ ¬true: close the inner equality and lift it
+        # through the Not congruence (Not = Not combined with the inner
+        # proof gives ⊢ ¬P ⟷ ¬Q).
+        try:
+            inner = Eq(tm.lhs.arg, tm.rhs.arg)
+            pt_inner = rewrite_decision_net(inner)
+            if pt_inner is None or pt_inner.rule == 'sorry' or len(pt_inner.gaps) != 0:
+                pt_inner = schematic_rules_rewr(
+                    _smt_theorem_names('r') + SCHEMATIC_EXTRA,
+                    tm.lhs.arg, tm.rhs.arg)
+                if pt_inner.rule == 'sorry' or len(pt_inner.gaps) != 0:
+                    pt_inner = None
+        except Exception:
+            pt_inner = None
+        if pt_inner is not None:
+            return refl(tm.lhs.fun).combination(pt_inner)
+    lhs_pt, lhs_a = _norm_bool_side(tm.lhs)
+    rhs_pt, rhs_a = _norm_bool_side(tm.rhs)
+
+    def _core(a1, a2):
+        if a1.is_not() and (a1.arg.is_equals() or a1.arg.is_compares()):
+            # Negated atom: ⟷ true means the atom is refutable,
+            # ⟷ false means the atom is provable.
+            inner = a1.arg
+            if a2 == true:
+                pt = _refute_atom(inner)
+                return iff_true(pt, None) if pt is not None else None
+            if a2 == false:
+                pt = _prove_atom(inner) if inner.is_equals() else _prove_comp(inner)
+                if pt is not None:
+                    pt_c = refl(a1.fun).combination(iff_true(pt, None))
+                    pt_nt = refl(false).on_rhs(rewr_conv('not_true', sym=True))
+                    return pt_c.transitive(pt_nt.symmetric())
+                return None
+        if a2 == true:
+            if a1.is_equals():
+                pt = _prove_atom(a1)
+            elif a1.is_compares():
+                pt = _prove_comp(a1)
+            else:
+                pt = None
+            return iff_true(pt, None) if pt is not None else None
+        if a2 == false:
+            pt = _refute_atom(a1)
+            return iff_false(pt, None) if pt is not None else None
+        return None
+
+    core = _core(lhs_a, rhs_a)
+    if core is None:
+        core = _core(rhs_a, lhs_a)
+        if core is not None:
+            core = core.symmetric()
+    if core is None:
+        return None
+    if lhs_pt is None and rhs_pt is None:
+        return core
+    pt = core
+    if lhs_pt is not None:
+        pt = lhs_pt.transitive(pt)
+    if rhs_pt is not None:
+        pt = pt.transitive(rhs_pt.symmetric())
+    return pt
 
 def rewrite_decision_net(tm):
     """Decision-procedure safety net for rewrite goals tm of the form
@@ -1046,6 +1164,61 @@ def _guarded(fn, tm, *args):
     except Exception:
         return None
 
+def _ground_eval(tm):
+    """Close a rewrite equation whose both sides are ground arithmetic
+    terms by numeral evaluation (the trusted nat_eval / int_eval macros,
+    extended to power / DIV / MOD).  Returns None unless both sides
+    evaluate to the same numeral."""
+    from domains.nat.conv import nat_eval_conv
+    T = tm.lhs.get_type()
+    if T == IntType:
+        cv = integer.int_eval_conv()
+    elif T == NatType:
+        cv = nat_eval_conv()
+    else:
+        return None
+    try:
+        pt1 = cv.get_proof_term(tm.lhs)
+        pt2 = cv.get_proof_term(tm.rhs)
+    except Exception:
+        return None
+    if pt1.rhs == pt2.rhs:
+        return pt1.transitive(pt2.symmetric())
+    return None
+
+def schematic_rules_rewr_cond(thms, lhs, rhs):
+    """Like schematic_rules_rewr, but also uses conditional theorems
+    (implications whose conclusion is the equation lhs = rhs): each
+    hypothesis is discharged by the decision nets, so the result is
+    gap-free or the theorem is skipped.  Returns a ProofTerm."""
+    for thm in thms:
+        try:
+            pt = ProofTerm.theorem(thm)
+            if not pt.prop.is_implies():
+                continue
+            preds, concl = pt.prop.strip_implies()
+            if not concl.is_equals():
+                continue
+            inst1 = matcher.first_order_match(concl.lhs, lhs)
+            inst = matcher.first_order_match(concl.rhs, rhs, inst=inst1)
+            pt = pt.substitution(inst)
+            preds, concl = pt.prop.strip_implies()
+            discharged = []
+            for p in preds:
+                pt_h = rewrite_decision_net(Eq(p, true))
+                if pt_h is None or pt_h.rule == 'sorry' or len(pt_h.gaps) != 0:
+                    discharged = None
+                    break
+                discharged.append(pt_h.symmetric().equal_elim(apply_theorem('trueI')))
+            if discharged is None:
+                continue
+            for pt_h in discharged:
+                pt = pt.implies_elim(pt_h)
+            return pt
+        except Exception:
+            continue
+    return ProofTerm.sorry(Thm(Eq(lhs, rhs)))
+
 def _rewrite(tm):
     th_name = _smt_theorem_names('r')
     if tm.lhs == tm.rhs:
@@ -1085,8 +1258,16 @@ def _rewrite(tm):
         if pt_net2 is not None and pt_net2.rule != 'sorry':
             return pt_asst_lhs.transitive(pt_net2).transitive(pt_asst_rhs.symmetric())
     if heuristic_name == 'bool':
-        return schematic_rules_rewr(th_name[:60] + SCHEMATIC_EXTRA, tm.lhs, tm.rhs)
-    return schematic_rules_rewr(th_name + SCHEMATIC_EXTRA, tm.lhs, tm.rhs)
+        thms = th_name[:60] + SCHEMATIC_EXTRA
+    else:
+        thms = th_name + SCHEMATIC_EXTRA
+    pt_eval = _guarded(_ground_eval, tm)
+    if pt_eval is not None:
+        return pt_eval
+    pt = schematic_rules_rewr(thms, tm.lhs, tm.rhs)
+    if pt.rule != 'sorry':
+        return pt
+    return schematic_rules_rewr_cond(thms, tm.lhs, tm.rhs)
 
 # def rewrite(t, z3terms, assertions=[]):
 def rewrite(t):

@@ -710,3 +710,23 @@ header "Schematic rules for Z3 rewrite: power (int-exponent instance)"
 theorem r148
   fixes x :: int
   prop x ^ (0::int) = 1
+
+header "Schematic rules for Z3 rewrite: mul_ge_0 case split (Z3 arith_rewriter)"
+
+theorem r149
+  fixes a :: int, b :: int
+  prop a * b >= 0 <--> (a >= 0 <--> b >= 0) | a = 0 | b = 0
+
+theorem r150
+  fixes a :: real, b :: real
+  prop a * b >= 0 <--> (a >= 0 <--> b >= 0) | a = 0 | b = 0
+
+header "Schematic rules for Z3 rewrite: square nonnegativity"
+
+theorem r151
+  fixes x :: int
+  prop 0 <= x * x <--> true
+
+theorem r152
+  fixes x :: real
+  prop 0 <= x * x <--> true

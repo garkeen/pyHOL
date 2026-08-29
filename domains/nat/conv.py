@@ -140,6 +140,17 @@ def nat_eval(t):
         return 0 if m <= n else m - n
     elif t.is_times():
         return nat_eval(t.arg1) * nat_eval(t.arg)
+    elif t.is_comb('power', 2):
+        base, exp = nat_eval(t.arg1), nat_eval(t.arg)
+        if exp > 4096:
+            raise ConvException('nat_eval: exponent out of range')
+        return base ** exp
+    elif t.is_comb('nat_divide', 2):
+        m, n = nat_eval(t.arg1), nat_eval(t.arg)
+        return 0 if n == 0 else m // n
+    elif t.is_comb('nat_modulus', 2):
+        m, n = nat_eval(t.arg1), nat_eval(t.arg)
+        return m if n == 0 else m % n
     else:
         raise ConvException('nat_eval: %s' % str(t))
 

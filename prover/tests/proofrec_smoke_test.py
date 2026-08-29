@@ -25,6 +25,7 @@ class ProofrecSmokeTest(unittest.TestCase):
     def _run(self, vars_, goal):
         from framework import context
         from syntax.parser import parse_term
+        from kernel import theory
         from prover import z3wrapper, proofrec
         context.set_context('smt', vars=vars_)
         t = parse_term(goal)
@@ -32,6 +33,9 @@ class ProofrecSmokeTest(unittest.TestCase):
         r = proofrec.proofrec(proof, assertions=assertions)
         self.assertNotEqual(r.rule, 'sorry', str(r.gaps))
         self.assertEqual(len(r.gaps), 0, str(r.gaps))
+        # kernel-level acceptance: the exported low-level proof must
+        # replay without gaps (throws CheckProofException otherwise)
+        theory.check_proof(r.export())
 
     # propositional (SAT net / rewrite_bool)
     def test_prop(self):

@@ -22,6 +22,16 @@ from kernel.thm import Thm
 from kernel.proofterm import ProofTerm
 from kernel import theory
 from framework import logic
+
+def _mk_int_power(base, exp):
+    """Integer-sorted power node.  z3py's ** builds a Real-sorted
+    heterogeneous node (operands stay Int) whose Z3 semantics is the
+    REAL power, which drags every integer-power proof through ToReal
+    congruences; Z3_mk_power keeps the Int sort so the reconstruction
+    sees plain integer-power rewrite steps."""
+    ctx = base.ctx
+    ast = z3.Z3_mk_power(ctx.ref(), base.as_ast(), exp.as_ast())
+    return z3.ArithRef(ast, ctx)
 from framework import conv
 from prover import fologic
 from util import name
@@ -267,9 +277,12 @@ def convert(t, var_names, assms, to_real, ctx):
             base, exp = rec(t.arg1), rec(t.arg)
             if t.arg1.get_type() == RealType:
                 return base ** z3.ToReal(exp)
-            return base ** exp
+            return _mk_int_power(base, exp)
         elif t.is_real_power():
             return rec(t.arg1) ** rec(t.arg)
+        elif t.is_comb('power', 2) and t.arg.get_type() == IntType:
+            # int.pyhol's power with an int exponent (int_power_1 &c).
+            return _mk_int_power(rec(t.arg1), rec(t.arg))
         elif t.is_comb('nat_divide', 2):
             # nat DIV: z3's integer division agrees with the nat
             # semantics on nonnegative operands (assms enforce x >= 0).
