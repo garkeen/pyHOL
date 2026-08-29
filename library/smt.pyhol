@@ -740,3 +740,13 @@ theorem r153
 theorem r154
   fixes x :: real, y :: real
   prop x >= y <--> y <= x
+
+header "Schematic rules for Z3 rewrite: boolean literal folding"
+
+theorem r155
+  fixes A :: bool
+  prop (A <--> true) <--> A
+
+theorem r156
+  fixes A :: bool
+  prop (A <--> false) <--> ~A

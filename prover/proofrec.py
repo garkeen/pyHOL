@@ -2309,16 +2309,38 @@ def handle_assertion(ast):
                 )
                 atoms[pt_true.lhs] = pt_true
 
+class eq_num_swap_conv(Conv):
+    """z3 canonically moves numerals to the LEFT of an equation
+    (0 = x * y) while library statements state them numeral-last, and
+    may flip iff orientation (true ⟷ A).  Canonicalize to the z3
+    orientation (via the symmetry schematic r001) so that refutation
+    hypotheses match sequent pieces."""
+    def get_proof_term(self, t):
+        numeric = t.is_equals() and t.arg.is_number() and not t.arg1.is_number()
+        boolean = t.is_equals() and (t.arg == true or t.arg == false) \
+            and not (t.arg1 == true or t.arg1 == false)
+        if numeric or boolean:
+            th = ProofTerm.theorem('r001')
+            inst = matcher.first_order_match(th.prop.lhs, t)
+            return th.substitution(inst)
+        raise ConvException('eq_num_swap_conv')
+
 def _canon_conv():
     """Canonical form shared by the sequent pieces and the refutation
-    hypotheses: comparison normalization, >=/<= unification (r153/r154)
-    and propositional normal form.  Two propositionally equivalent
-    comparison structures get the same canonical term."""
-    return (bottom_conv(try_conv(integer.int_norm_neg_compares())),
-            bottom_conv(try_conv(norm_neg_real_ineq_conv())),
-            bottom_conv(try_conv(rewr_conv('r153'))),
-            bottom_conv(try_conv(rewr_conv('r154'))),
-            proplogic.norm_full())
+    hypotheses.  Stage order matters: boolean literal folding (r155/r156)
+    exposes new comparisons, so comparison normalization must come after
+    it; norm_full runs last.  The whole pipeline is applied twice to
+    reach the fixpoint (a child rewrite can re-expose an earlier
+    stage's redex)."""
+    rounds = (bottom_conv(try_conv(rewr_conv('r155'))),
+              bottom_conv(try_conv(rewr_conv('r156'))),
+              bottom_conv(try_conv(eq_num_swap_conv())),
+              bottom_conv(try_conv(rewr_conv('r153'))),
+              bottom_conv(try_conv(rewr_conv('r154'))),
+              bottom_conv(try_conv(integer.int_norm_neg_compares())),
+              bottom_conv(try_conv(norm_neg_real_ineq_conv())),
+              proplogic.norm_full())
+    return rounds + rounds
 
 def close_sequent(pt_false, As, C):
     """Turn the raw z3-refutation reconstruction ⊢ false -- whose
@@ -2356,17 +2378,25 @@ def close_sequent(pt_false, As, C):
     if not all(i is not None for i in order) or len(used) != len(pieces):
         return pt_false
     try:
-        # innermost: refutation of ¬C' becomes C' by imp_false_iff +
-        # double_neg, then discharge the assumptions outward
+        # Build the closure in the RAW (z3-normalized) forms: flip the
+        # refuted conclusion, then discharge the assumptions outward.
         pt = pt_false.implies_intr(order[-1])
         pt = pt.on_prop(rewr_conv('imp_false_iff'), rewr_conv('double_neg'))
         for h in reversed(order[:-1]):
             pt = pt.implies_intr(h)
-        # rewrite the canonical pieces back to the original statements
-        rules = [top_conv(replace_conv(canon_pt(p).symmetric()))
-                 for p in pieces[:-1]] + \
-                [top_conv(replace_conv(canon_pt(C).symmetric()))]
-        return pt.on_prop(*rules)
+        # Bridge the raw statement to the original one through their
+        # (equal) canonical forms.  A direct replace_conv rewrite is not
+        # an option: canon -> original rules can be expanding.
+        P = pt.prop
+        st = C
+        for a in reversed(As):
+            st = Implies(a, st)
+        pt_P = refl(P).on_rhs(*convs)
+        pt_S = refl(st).on_rhs(*convs)
+        if pt_P.rhs != pt_S.rhs:
+            return pt_false
+        iff = pt_P.transitive(pt_S.symmetric())          # ⊢ P ⟷ st
+        return iff.equal_elim(pt)                        # ⊢ st
     except Exception:
         return pt_false
 
