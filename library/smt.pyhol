@@ -694,3 +694,13 @@ theorem r144
 theorem r145
   fixes x :: 'a, y :: 'a
   prop ~(x = y) <--> ~(y = x)
+
+header "Schematic rules for Z3 rewrite: zero product"
+
+theorem r146
+  fixes x :: int, y :: int
+  prop x * y = 0 <--> x = 0 | y = 0
+
+theorem r147
+  fixes x :: real, y :: real
+  prop x * y = 0 <--> x = 0 | y = 0

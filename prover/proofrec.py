@@ -922,6 +922,60 @@ def _arith_norm_net(lhs, rhs):
         return pt_l.transitive(pt_r.symmetric())
     return None
 
+def _prove_atom(atom):
+    """Prove ⊢ atom for an arithmetic equality atom, using the decision
+    net and schematic rules on the atom itself.  Return None on failure."""
+    if not atom.is_equals():
+        return None
+    try:
+        pt = rewrite_decision_net(atom)
+        if pt is not None and pt.rule != 'sorry':
+            return pt
+    except Exception:
+        pass
+    pt = schematic_rules_rewr(_smt_theorem_names('r') + SCHEMATIC_EXTRA,
+                              atom.lhs, atom.rhs)
+    return None if pt.rule == 'sorry' else pt
+
+def _refute_atom(atom):
+    """Prove ⊢ ¬atom for an arithmetic comparison atom, by refuting atom
+    with the omega (int) or simplex (real) backends.  None on failure."""
+    try:
+        if not atom.is_compares():
+            return None
+        T = atom.arg1.get_type()
+        if T == IntType:
+            try:
+                return int_th_lemma_1_omega(Not(atom))
+            except Exception:
+                # omega mishandles some constant-cancelling inequalities
+                # (e.g. 1 + x <= x); the simplex backend covers them.
+                return int_th_lemma_1_simplex(Not(atom))
+        elif T == RealType:
+            return real_th_lemma([Not(atom)])
+    except Exception:
+        return None
+    return None
+
+def _atom_bool_net(tm):
+    """Rewrite goals of the form atom ⟷ true / atom ⟷ false (in either
+    order): prove or refute the atom with the existing machinery, then
+    connect with eq_true / eq_false.  Covers the arith_rewriter family
+    that reduces comparisons and equations to true/false; the pure SAT
+    net cannot close these because it treats arithmetic atoms opaquely."""
+    for atom, target, flip in ((tm.lhs, tm.rhs, False), (tm.rhs, tm.lhs, True)):
+        if target == true:
+            pt_atom = _prove_atom(atom)
+            if pt_atom is not None:
+                pt_iff = iff_true(pt_atom, None)
+                return pt_iff.symmetric() if flip else pt_iff
+        elif target == false:
+            pt_not = _refute_atom(atom)
+            if pt_not is not None:
+                pt_iff = iff_false(pt_not, None)
+                return pt_iff.symmetric() if flip else pt_iff
+    return None
+
 def rewrite_decision_net(tm):
     """Decision-procedure safety net for rewrite goals tm of the form
     lhs = rhs.  Covers the decidable fragment of the rewriter's rules
@@ -938,6 +992,9 @@ def rewrite_decision_net(tm):
         pt = _arith_norm_net(lhs, rhs)
         if pt is not None and pt.rule != 'sorry':
             return pt
+        pt_atom = _atom_bool_net(tm)
+        if pt_atom is not None and pt_atom.rule != 'sorry':
+            return pt_atom
         # Mixed: boolean structure over arithmetic atoms.  Normalize the
         # arithmetic atoms, then hand the propositional structure to SAT.
         pt_norm = refl(tm).on_rhs(
@@ -1716,25 +1773,26 @@ def th_lemma(args):
             return res
     # tms = [p.prop if isinstance(p, ProofTerm) else p for p in args]
     # Ts = set(sum([list(analyze_type(tm)) for tm in tms], []))
-    # analyze type
-    t1 = args[0]
-    if not isinstance(t1, ProofTerm):
-        t2 = t1.arg1
-        if t2.is_not():
-            T = t2.arg.arg.get_type()
-        else:
-            T = t2.arg.get_type()
-    else:
-        if t1.prop.is_not():
-            T = t1.prop.arg.arg.get_type()
-        else:
-            T = t1.prop.arg.get_type()
     # try:
     # Nonlinear or otherwise unreplayable th-lemma steps (e.g. over
     # s 0 * B with a free B) can be satisfiable for the simplex/omega
     # backends, which then fail; fall back to a gap instead of crashing.
+    # The type sniffing also lives inside the try: non-arithmetic theory
+    # lemmas (e.g. over fun_upd) do not have the assumed shape.
     concl = args[-1].prop if isinstance(args[-1], ProofTerm) else args[-1]
     try:
+        t1 = args[0]
+        if not isinstance(t1, ProofTerm):
+            t2 = t1.arg1
+            if t2.is_not():
+                T = t2.arg.arg.get_type()
+            else:
+                T = t2.arg.get_type()
+        else:
+            if t1.prop.is_not():
+                T = t1.prop.arg.arg.get_type()
+            else:
+                T = t1.prop.arg.get_type()
         if RealType == T:
             return real_th_lemma(args)
         elif IntType == T:

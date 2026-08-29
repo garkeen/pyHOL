@@ -690,3 +690,29 @@ r143 `x / 1 = x`(real)、r144 `x / -1 = -x`(real)、r145 `~(x = y) ⟷ ~(y = x)`
 - real 侧无可产证明的多项式归一化(real_norm 宏无证明项),real 线性等式依赖 schematic + 既有启发链。
 - `branch_and_bound`(simplex.py:703)的裸 `except: continue` 会吞掉 unsat 证明路径,且可满足时返回 dict 的接口设计未修。
 - Z3 的 ¬∀ 形 sk(`¬(∀x. P x) = ¬(P c)`)已实现但现有测试目标未触发该分支(Z3 4.16 预处理常先走 quant-inst),仅经合成结论单测验证。
+
+### 10.6 补充(第二轮:覆盖实测与 atom-bool 网)
+
+对 21 个跨类别目标(命题/线性 int/线性 real/数组/量词/非线性)的实测驱动出第三轮修复:
+
+- **`_atom_bool_net`**(新):Z3 的 arith_rewriter 大量把比较/等式化简成 `atom ⟷ true/false`。
+  这类元改写的正确证法是先证明或反驳原子本身,再用 eq_true/eq_false 连接。
+  `_prove_atom`(原子等式:决策网 + schematic)、`_refute_atom`(原子比较:int 走 omega、
+  失败回退 simplex;real 走 simplex)已接入 rewrite_decision_net。
+  效果:`a + b = b + a ⟷ true`、`a + 1 > a` 等由 gap 变为完整证明。
+- **th_lemma 类型嗅探移入 try**:数组理论的 th-lemma 不符合算术形状假设,原直接
+  AttributeError 崩溃,现回退 gap。
+- **smt.pyhol 新增 r146/r147**:零积律 `x * y = 0 ⟷ x = 0 | y = 0`(int/real,空证明),
+  `x * y = 0 --> x = 0 | y = 0` 目标从 gap 变完整证明。
+
+**实测覆盖现状(21 目标电池)**:命题 3/3、线性 int 6/7、线性 real 5/5、数组 2/3(余 1 为
+th-lemma gap)、量词 2/2、非线性 2/3(零积全绿;x*x≥0 的 Z3 改写目标形状怪异留 gap)。
+
+**已知遗留 gap 及根因**:
+- `x + 1 > x`(即 `1 + x ≤ x ⟷ false`):omega.py 对变量相消后仅剩常数的不等式崩溃
+  (Jar.__getitem__ pos=None,存量);simplex 路径的 int_simplex_form 不合并 `x` 与
+  `1*x` 单项式,导致可满足误判(存量)。两者都属算术后端归一化,修复后该族目标可闭。
+- `x * x >= 0`:Z3 把它改写成 `(x ≥ 0 ⟷ x ≥ 0) ∨ x = 0 ∨ x = 0` 的怪异形状,需先有
+  ⊢ x² ≥ 0 事实定理再匹配,暂留 gap。
+- 数组 th-lemma 步(如 `x = a ⟶ (f)(a := b) x = b` 内部的 select-store 推理):
+  需要数组理论 lemma 机制(类似 Isabelle 的 th_lemma 数组扩展),暂留 gap。
