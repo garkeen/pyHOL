@@ -1,5 +1,5 @@
 theory smt
-imports logic_base, int, real, sat
+imports logic_base, int, real, sat, function
 description "Used for z3 rule rewrite, th-lemma and def-axiom."
 
 theorem r001
@@ -650,3 +650,47 @@ theorem t100
   fixes x :: int, y :: int
   prop ~(x = y) | y >= x
 
+
+header "Schematic rules for Z3 rewrite: idempotence and annihilation"
+
+theorem r136
+  fixes p :: bool
+  prop p & p <--> p
+
+theorem r137
+  fixes p :: bool
+  prop p | p <--> p
+
+theorem r138
+  fixes p :: bool, q :: bool
+  prop p & q & ~q <--> false
+
+theorem r139
+  fixes p :: bool, q :: bool
+  prop (p | q) & ~p <--> q
+
+header "Schematic rules for Z3 rewrite: arithmetic (real and int)"
+
+theorem r140
+  fixes x :: real
+  prop x + x = 2 * x
+
+theorem r141
+  fixes x :: real
+  prop -x = -1 * x
+
+theorem r142
+  fixes x :: int
+  prop -x = -1 * x
+
+theorem r143
+  fixes x :: real
+  prop x / 1 = x
+
+theorem r144
+  fixes x :: real
+  prop x / -1 = -x
+
+theorem r145
+  fixes x :: 'a, y :: 'a
+  prop ~(x = y) <--> ~(y = x)

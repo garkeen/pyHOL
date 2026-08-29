@@ -222,7 +222,12 @@ class real_eval_conv(Conv):
     def get_proof_term(self, t):
         if t.get_type() != RealType:
             return refl(t)
-        simp_t = Real(real_eval(t))
+        try:
+            simp_t = Real(real_eval(t))
+        except (ConvException, ValueError, NotImplementedError):
+            # Terms containing variables cannot be evaluated as constants;
+            # skip them (refl is always a sound fallback).
+            return refl(t)
         if simp_t == t:
             return refl(t)
         return ProofTerm('real_eval', Eq(t, simp_t))

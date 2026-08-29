@@ -2,6 +2,7 @@
 
 import importlib
 import importlib.util
+from fractions import Fraction
 
 if importlib.util.find_spec("z3"):
     import z3
@@ -212,7 +213,16 @@ def convert(t, var_names, assms, to_real, ctx):
             z3_v = convert_const(nm, t.arg.var_T, ctx)
             return z3.Exists(z3_v, rec(t.arg.subst_bound(v)))
         elif t.is_number():
-            return t.dest_number()
+            # Return a Z3 numeral (in the current context), not a Python
+            # number: otherwise `rec(a) == rec(b)` yields a Python bool
+            # instead of a BoolRef and crashes downstream z3 calls.
+            n = t.dest_number()
+            if t.get_type() == RealType:
+                if isinstance(n, Fraction):
+                    return z3.RealVal('%d/%d' % (n.numerator, n.denominator), ctx)
+                return z3.RealVal(n, ctx)
+            else:
+                return z3.IntVal(n, ctx)
         elif t.is_implies():
             return z3.Implies(rec(t.arg1), rec(t.arg))
         elif t.is_equals():

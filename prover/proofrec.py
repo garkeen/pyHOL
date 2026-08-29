@@ -56,6 +56,32 @@ method = ('mp', 'mp~', 'asserted', 'trans', 'trans*', 'monotonicity', 'rewrite',
             'def-axiom', 'iff~', 'nnf-pos', 'nnf-neg', 'sk', 'proof-bind', 'quant-inst', 'quant-intro',
             'lemma', 'hypothesis', 'symm', 'refl', 'apply-def', 'intro-def', 'th-lemma', 'elim-unused')
 
+# Rewriting theorems from the general library (int/real/function/logic
+# theories, all within the 'smt' theory's import closure) consulted by
+# schematic_rules_rewr in addition to the r-theorems of smt.pyhol.  These
+# cover many of Z3's non-decidable rewrite rules (multiplication by 0/1,
+# commutativity/associativity, fun_upd i.e. z3 select/store, ite rules).
+# A name that fails to match only costs one try, so the list is additive.
+SCHEMATIC_EXTRA = [
+    # int (library/int.pyhol)
+    'int_add_0_left', 'int_add_0_right', 'int_mul_0_l', 'int_mul_0_r',
+    'int_mul_1_l', 'int_mul_1_r', 'int_add_comm', 'int_add_assoc',
+    'int_mult_comm', 'int_mult_assoc', 'int_leq', 'int_geq',
+    'int_eq_move_left', 'int_geq_shift',
+    # real (library/real.pyhol)
+    'real_add_lid', 'real_add_rid', 'real_mul_lzero', 'real_mul_rzero',
+    'real_mul_lid', 'real_mul_rid', 'real_add_comm', 'real_add_assoc',
+    'real_mult_comm', 'real_mult_assoc', 'real_neg_neg',
+    'real_inverse_divide', 'real_ge_le_same_num',
+    # function / array (library/function.pyhol; z3 select/store = fun_upd)
+    'fun_upd_same', 'fun_upd_other', 'fun_upd_triv', 'fun_upd_upd', 'fun_upd_twist',
+    # logic (library/logic.pyhol)
+    'conj_assoc', 'disj_assoc_eq', 'conj_comm', 'disj_comm',
+    'double_neg', 'de_morgan_thm1', 'de_morgan_thm2', 'neg_iff_both_sides',
+    'eq_true', 'eq_false', 'not_true', 'not_false', 'if_true', 'if_false',
+    'cond_id', 'cond_swap', 'ite_to_disj', 'not_all', 'not_exists',
+]
+
 
 class Z3Term:
     def __init__(self, t):
@@ -126,6 +152,9 @@ def translate_type(sort):
         return RealType
     elif T == Z3_UNINTERPRETED_SORT:
         return TVar(sort.name())
+    elif T == Z3_ARRAY_SORT:
+        # z3 arrays encode HOL function types (see z3wrapper.array_sort).
+        return TFun(translate_type(sort.domain()), translate_type(sort.range()))
     else:
         raise NotImplementedError
 
@@ -264,6 +293,14 @@ def translate(term, bounds=deque(), subterms=[]):
         elif z3.is_distinct(term):
             ineq = [Not(Eq(args[i], args[j])) for i in range(len(args)) for j in range(i+1, len(args))]
             return And(*ineq)
+        elif kind == Z3_OP_SELECT:
+            # z3 encodes function application f a as Select(f, a).
+            return args[0](args[1])
+        elif kind == Z3_OP_STORE:
+            # z3 encodes function update (f)(a := b) as Store(f, a, b).
+            f, a, b = args
+            T_dom, T_rng = f.get_type().domain_type(), f.get_type().range_type()
+            return Const('fun_upd', TFun(TFun(T_dom, T_rng), T_dom, T_rng, TFun(T_dom, T_rng)))(f, a, b)
         elif kind == Z3_OP_ITE:
             cond, stat1, stat2 = translate(term.arg(0)), translate(term.arg(1)), translate(term.arg(2))
             T = stat1.get_type() # stat1 and stat2 must have same type
@@ -514,12 +551,14 @@ def distinct_monotonicity(pts, concl, z3terms):
 def schematic_rules_rewr(thms, lhs, rhs):
     """Rewrite by instantiating schematic theorems."""
     for thm in thms:
-        pt = ProofTerm.theorem(thm)
         try:
+            pt = ProofTerm.theorem(thm)
             inst1 = matcher.first_order_match(pt.prop.lhs, lhs)
             inst2 = matcher.first_order_match(pt.prop.rhs, rhs, inst=inst1)
             return pt.substitution(inst2)
-        except matcher.MatchException:
+        except Exception:
+            # MatchException is the expected failure; TheoryException
+            # (theorem not in the current theory) must not abort the sweep.
             continue
     return ProofTerm.sorry(Thm(Eq(lhs, rhs)))
 
@@ -833,53 +872,141 @@ def rewrite_real_second_level(tm):
             return pt
     return ProofTerm.sorry(Thm(tm))
 
+# Cache of theorem names in library/smt.pyhol, keyed by prefix ('r' for
+# rewrite schematic rules, 'd' for def-axiom schematic rules).  A Z3 proof
+# can contain thousands of rewrite steps; re-parsing the file on each call
+# is prohibitively slow.
+_SMT_THM_NAMES = dict()
+
+def _smt_theorem_names(prefix):
+    """Names of theorems in library/smt.pyhol whose name starts with prefix,
+    sorted.  The file is parsed lazily once and cached."""
+    if prefix not in _SMT_THM_NAMES:
+        from syntax import pyhol
+        with open('library/smt.pyhol', 'r', encoding='utf-8') as f:
+            f_data = pyhol.parse_pyhol(f.read())
+        _SMT_THM_NAMES[prefix] = sorted(c['name'] for c in f_data['content']
+                                        if c['name'].startswith(prefix))
+    return _SMT_THM_NAMES[prefix]
+
+def _sat_net(lhs, rhs):
+    """Propositional decision net: prove ⊢ lhs = rhs by refuting ¬(lhs = rhs)
+    with Tseitin + SAT + resolution (solve_cnf).  Non-logical subterms are
+    treated as atoms, so this is complete for the full propositional
+    fragment (all of bool_rewriter's rules).  Return None on failure."""
+    try:
+        return solve_cnf(Eq(lhs, rhs))
+    except Exception:
+        return None
+
+def _arith_norm_net(lhs, rhs):
+    """Linear arithmetic net for int/real equalities: normalize both sides
+    with the same canonicalizing conversion; equal normal forms close the
+    goal.  Complete for linear integer arithmetic (poly_rewriter and the
+    linear part of arith_rewriter).  Return None on failure."""
+    T = lhs.get_type()
+    if T == IntType:
+        cv = bottom_conv(integer.omega_simp_full_conv())
+    elif T == RealType:
+        # No proof-producing polynomial normalizer for real (real_norm
+        # macro has no proof term); constant folding is the safe subset.
+        cv = bottom_conv(real_eval_conv())
+    else:
+        return None
+    try:
+        pt_l = refl(lhs).on_rhs(cv)
+        pt_r = refl(rhs).on_rhs(cv)
+    except Exception:
+        return None
+    if pt_l.rhs == pt_r.rhs:
+        return pt_l.transitive(pt_r.symmetric())
+    return None
+
+def rewrite_decision_net(tm):
+    """Decision-procedure safety net for rewrite goals tm of the form
+    lhs = rhs.  Covers the decidable fragment of the rewriter's rules
+    (~177 of 278): propositional structure by SAT, linear arithmetic by
+    normalization.  Return a ProofTerm of ⊢ tm, or None if the net cannot
+    close the goal (the caller then falls back to the existing routes)."""
+    if not tm.is_equals():
+        return None
+    lhs, rhs = tm.lhs, tm.rhs
+    Ts = analyze_type(tm)
+    try:
+        if IntType not in Ts and RealType not in Ts:
+            return _sat_net(lhs, rhs)
+        pt = _arith_norm_net(lhs, rhs)
+        if pt is not None and pt.rule != 'sorry':
+            return pt
+        # Mixed: boolean structure over arithmetic atoms.  Normalize the
+        # arithmetic atoms, then hand the propositional structure to SAT.
+        pt_norm = refl(tm).on_rhs(
+            bottom_conv(try_conv(integer.int_norm_neg_compares())),
+            bottom_conv(try_conv(integer.omega_form_conv())),
+            bottom_conv(try_conv(norm_neg_real_ineq_conv())),
+            bottom_conv(try_conv(real_norm_comparison())),
+            proplogic.norm_full(),
+        )
+        if pt_norm.rhs == true:
+            # Normalization alone collapsed the goal to true.
+            return pt_norm.symmetric().equal_elim(apply_theorem('trueI'))
+        if pt_norm.rhs.is_equals() and pt_norm.rhs != tm:
+            pt2 = _sat_net(pt_norm.rhs.lhs, pt_norm.rhs.rhs)
+            if pt2 is not None and pt2.rule != 'sorry':
+                return pt_norm.symmetric().equal_elim(pt2)
+        return None
+    except Exception:
+        return None
+
+def _guarded(fn, tm, *args):
+    """Run a rewrite heuristic; a crashing heuristic must not abort the
+    remaining stages (net / assertion / schematic), so return None."""
+    try:
+        return fn(tm, *args)
+    except Exception:
+        return None
+
 def _rewrite(tm):
-    from syntax import pyhol
-    with open('library/smt.pyhol', 'r', encoding='utf-8') as f:
-        f_data = pyhol.parse_pyhol(f.read())
-    th_name = sorted([f_data['content'][i]['name'] for i in range(len(f_data['content'])) if f_data['content'][i]['name'][0]=='r'])
+    th_name = _smt_theorem_names('r')
     if tm.lhs == tm.rhs:
         return refl(tm.lhs)
     Ts = analyze_type(tm)
+    heuristic, heuristic_name = None, None
     if IntType in Ts:
-        pt1 = rewrite_int(tm, True) if BoolType in Ts else rewrite_int(tm, False)
-        if pt1.rule != 'sorry':
-            return pt1
-        pt_asst_lhs = rewrite_by_assertion(tm.lhs)
-        pt_asst_rhs = rewrite_by_assertion(tm.rhs)
-        tm_asst = Eq(pt_asst_lhs.rhs, pt_asst_rhs.rhs)
-        pt2 = rewrite_int(tm_asst)
-        if pt2.rule != 'sorry':
-            return pt_asst_lhs.transitive(pt2).transitive(pt_asst_rhs.symmetric())
-        else:
-            return schematic_rules_rewr(th_name, tm.lhs, tm.rhs)
+        heuristic = rewrite_int
+        heuristic_name = 'int'
     elif RealType in list(Ts):
-        pt1 = rewrite_real(tm, has_bool=True) if BoolType in Ts else rewrite_real(tm, False)
-        if pt1.rule != 'sorry':
-            return pt1
-        pt_asst_lhs = rewrite_by_assertion(tm.lhs)
-        pt_asst_rhs = rewrite_by_assertion(tm.rhs)
-        tm_asst = Eq(pt_asst_lhs.rhs, pt_asst_rhs.rhs)
-        pt2 = rewrite_real(tm_asst)
-        if pt2.rule != 'sorry':
-            return pt_asst_lhs.transitive(pt2).transitive(pt_asst_rhs.symmetric())
-        else:
-            return ProofTerm.sorry(Thm(tm))
+        heuristic = rewrite_real
+        heuristic_name = 'real'
     elif IntType not in Ts and RealType not in Ts: # only have bool type variables
-        pt1 = rewrite_bool(tm)
-        if pt1.rule != 'sorry':
-            return pt1
-        pt_asst_lhs = rewrite_by_assertion(tm.lhs)
-        pt_asst_rhs = rewrite_by_assertion(tm.rhs)
-        tm_asst = Eq(pt_asst_lhs.rhs, pt_asst_rhs.rhs)
-        pt2 = rewrite_bool(tm_asst)
-        if pt2.rule != 'sorry':
-            return pt_asst_lhs.transitive(pt2).transitive(pt_asst_rhs.symmetric())
-        else:
-            return schematic_rules_rewr(th_name[:60], tm.lhs, tm.rhs)
-
+        heuristic = rewrite_bool
+        heuristic_name = 'bool'
     else:
         return ProofTerm.sorry(Thm(tm))
+
+    args1 = (tm, True) if (BoolType in Ts and heuristic_name != 'bool') else (tm,)
+    pt1 = _guarded(heuristic, *args1)
+    if pt1 is not None and pt1.rule != 'sorry':
+        return pt1
+    pt_net = rewrite_decision_net(tm)
+    if pt_net is not None and pt_net.rule != 'sorry':
+        return pt_net
+    try:
+        pt_asst_lhs = rewrite_by_assertion(tm.lhs)
+        pt_asst_rhs = rewrite_by_assertion(tm.rhs)
+        tm_asst = Eq(pt_asst_lhs.rhs, pt_asst_rhs.rhs)
+    except Exception:
+        tm_asst = None
+    if tm_asst is not None:
+        pt2 = _guarded(heuristic, tm_asst)
+        if pt2 is not None and pt2.rule != 'sorry':
+            return pt_asst_lhs.transitive(pt2).transitive(pt_asst_rhs.symmetric())
+        pt_net2 = rewrite_decision_net(tm_asst)
+        if pt_net2 is not None and pt_net2.rule != 'sorry':
+            return pt_asst_lhs.transitive(pt_net2).transitive(pt_asst_rhs.symmetric())
+    if heuristic_name == 'bool':
+        return schematic_rules_rewr(th_name[:60] + SCHEMATIC_EXTRA, tm.lhs, tm.rhs)
+    return schematic_rules_rewr(th_name + SCHEMATIC_EXTRA, tm.lhs, tm.rhs)
 
 # def rewrite(t, z3terms, assertions=[]):
 def rewrite(t):
@@ -1052,10 +1179,7 @@ def beta_norm_lambda_eq(pt):
 
 def schematic_rules_def_axiom(axiom):
     """Rewrite by instantiating def_axiom schematic theorems."""
-    from syntax import pyhol
-    with open('library/smt.pyhol', 'r', encoding='utf-8') as f:
-        f_data = pyhol.parse_pyhol(f.read())
-    thms = [f_data['content'][i]['name'] for i in range(len(f_data['content'])) if f_data['content'][i]['name'][0]=='d']
+    thms = _smt_theorem_names('d')
     for thm in thms:
         pt = ProofTerm.theorem(thm)
         try:
@@ -1261,11 +1385,60 @@ def lemma(arg1, arg2, subterm):
     return pt1.on_prop(cv1, cv2, cv3)
 
 
-def sk(arg1):
-    """
-    Skolemization rule, currently have no idea on how to reconstruct it.
-    """
-    return ProofTerm.sorry(Thm(Eq(arg1.lhs, arg1.rhs)))
+def _sk_exists_eq(P_body):
+    """Prove ⊢ exists P_body = P_body (Some P_body), i.e.
+    ⊢ (∃x. Q x) = (λx. Q x) (SOME x. Q x), from exists_thm
+    (⊢ exists = λP. P (Some P), library/logic_base.pyhol)."""
+    inst = Inst()
+    inst.tyinst['a'] = P_body.get_type().domain_type()
+    pt1 = ProofTerm.theorem('exists_thm').substitution(inst)
+    pt_comb = pt1.combination(ProofTerm.reflexive(P_body))
+    pt_beta = ProofTerm.beta_conv(pt_comb.rhs)
+    return pt_comb.transitive(pt_beta)
+
+def sk(concl):
+    """Skolemization rule: no antecedents; the conclusion is
+    (∃x. P x) = P c  or  ¬(∀x. P x) = ¬(P c), where c is the Skolem term.
+    Following Isabelle (z3_replay.ML sk_rules), c is treated as
+    SOME x. ... : we assume c = Some (λx. ...), prove the conclusion with
+    exists_thm, and register the assumption in `redundant` so that it is
+    discharged at the very end by delete_redundant."""
+    orig_concl = concl
+    try:
+        is_neg = False
+        if concl.lhs.is_not() and concl.lhs.arg.is_forall() and concl.rhs.is_not():
+            is_neg = True
+            pt_not_all = refl(concl.lhs).on_rhs(rewr_conv('not_all'))
+            # After not_all: lhs becomes ∃x. ¬(P x), an exists-shape formula.
+            lhs = pt_not_all.rhs
+            rhs = concl.rhs
+        else:
+            lhs, rhs = concl.lhs, concl.rhs
+        if not lhs.is_exists() or not rhs.is_comb() or (is_neg and not rhs.arg.is_comb()):
+            return ProofTerm.sorry(Thm(orig_concl))
+        P_body = lhs.arg            # λx. P x  (λx. ¬(P x) in the ¬∀ case)
+        # the application P c: rhs itself, or rhs.arg under the negation
+        pt_app_target = rhs.arg if is_neg else rhs
+        c = pt_app_target.arg       # Skolem term
+        # ⊢ (∃x. P x) = (λx. P x) (Some P_body) = P (Some P_body)
+        pt_main = _sk_exists_eq(P_body)
+        pt_right = ProofTerm.beta_conv(pt_main.rhs)
+        # assumption c = Some P_body; congruence rewrites P (Some P_body)
+        # into P c (under the negation in the ¬∀ case).
+        some = Const('Some', TFun(P_body.get_type(), c.get_type()))
+        pt_assume = ProofTerm.assume(Eq(c, some(P_body)))
+        pt_app = ProofTerm.reflexive(pt_app_target.head).combination(pt_assume)
+        if is_neg:
+            pt_cong = ProofTerm.reflexive(neg).combination(pt_app)
+        else:
+            pt_cong = pt_app
+        pt_chain = pt_main.transitive(pt_right).transitive(pt_cong.symmetric())
+        if is_neg:
+            pt_chain = pt_not_all.transitive(pt_chain)
+        redundant.append(pt_assume.prop)
+        return pt_chain
+    except Exception:
+        return ProofTerm.sorry(Thm(orig_concl))
 
 
 def real_th_lemma(args):
@@ -1557,12 +1730,19 @@ def th_lemma(args):
         else:
             T = t1.prop.arg.get_type()
     # try:
-    if RealType == T:
-        return real_th_lemma(args)
-    elif IntType == T:
-        return int_th_lemma(args)
-    else:
-        raise NotImplementedError
+    # Nonlinear or otherwise unreplayable th-lemma steps (e.g. over
+    # s 0 * B with a free B) can be satisfiable for the simplex/omega
+    # backends, which then fail; fall back to a gap instead of crashing.
+    concl = args[-1].prop if isinstance(args[-1], ProofTerm) else args[-1]
+    try:
+        if RealType == T:
+            return real_th_lemma(args)
+        elif IntType == T:
+            return int_th_lemma(args)
+        else:
+            raise NotImplementedError
+    except Exception:
+        return ProofTerm.sorry(Thm(concl))
 
 def hypothesis(prop):
     """
@@ -1593,13 +1773,38 @@ def nnf_pos(pts, concl, z3terms):
     a) creating a quantifier: q = q_new ⊢ forall (x T) q = forall (x T) q_new
     b) elimating implies: p -> q ⊢ ¬p ∨ q
     iff: p <--> q ⊢ (¬p ∨ q) ∧ (p ∨ ¬q)
-    
+
     We need to check the concl is whether a quantifier formula.
     """
-    is_quant = concl.lhs.is_forall() or concl.lhs.is_exists()
     if concl.lhs.is_forall():
         pt_forall = ProofTerm.reflexive(forall(concl.lhs.arg.var_T))
         return ProofTerm.combination(pt_forall, pts[0])
+    elif concl.lhs.is_exists():
+        pt_exists = ProofTerm.reflexive(exists(concl.lhs.arg.var_T))
+        return ProofTerm.combination(pt_exists, pts[0])
+    # Remaining cases (imp/iff elimination) are purely propositional.
+    pt = rewrite_decision_net(concl)
+    if pt is not None and pt.rule != 'sorry':
+        return pt
+    return ProofTerm.sorry(Thm(concl))
+
+def nnf_neg(pts, concl, z3terms):
+    """nnf-neg: NNF transformation with flipped polarity.  The conclusion
+    is propositional in most cases (handled by the decision net); the
+    quantifier duality cases go through not_all / not_exists, which the
+    net cannot prove (it treats quantifiers as atoms)."""
+    if concl.is_equals():
+        pt = rewrite_decision_net(concl)
+        if pt is not None and pt.rule != 'sorry':
+            return pt
+        try:
+            return compare_lhs_rhs(concl, [
+                top_conv(try_conv(rewr_conv('not_all'))),
+                top_conv(try_conv(rewr_conv('not_exists'))),
+            ])
+        except Exception:
+            pass
+    return ProofTerm.sorry(Thm(concl))
 
 def elim_unused(eq):
     """
@@ -1649,8 +1854,8 @@ def convert_method(term, *args, subterms=None, assertions=[]):
         return unit_resolution(args[0], args[1:-1], args[-1], subterms)
     elif name == 'nnf-pos':
         return nnf_pos(args[:-1], args[-1], subterms)
-    elif name in ('nnf-pos', 'nnf-neg'):
-        raise NotImplementedError
+    elif name == 'nnf-neg':
+        return nnf_neg(args[:-1], args[-1], subterms)
     elif name == 'proof-bind':
         return args[0]
     elif name == 'quant-inst':
@@ -1724,21 +1929,31 @@ def is_prop_fm(f):
 
 atoms = dict()
 
+def _occurs(t, u):
+    """Whether term t occurs as a subterm of u."""
+    if t == u:
+        return True
+    if u.is_comb():
+        return _occurs(t, u.fun) or _occurs(t, u.arg)
+    if u.is_abs():
+        return _occurs(t, u.body)
+    return False
+
 def handle_assertion(ast):
     """
     Two cases:
     1) If the assertion is a conjunction, find all boolean variables or negative boolean variables
     in assertion, convert them to proofterm like "⊢ x ⟷ true" or "⊢ x ⟷ false"
     Note, the assertion conjunction may not have already been flatten, we need to preprocess it.
-    
-    This is a iterative process, every time we get an atom is true or false, we can also use it to get 
+
+    This is a iterative process, every time we get an atom is true or false, we can also use it to get
     more information by rewriting the assertion, until no more new information we can get.
     2) If there are more than one assertion Γ_1, ..., Γ_n, we need to first get the set of proof terms:
                                 Γ_1, ..., Γ_n ⊢ Γ_1 ∧ ... ∧ Γ_n
     then do the same things as above
-    """    
+    """
     global atoms
-    
+
     def traverse(pt):
         """Note that we assume pt is right-associative"""
         while pt.prop.is_conj():
@@ -1759,7 +1974,13 @@ def handle_assertion(ast):
         pt_ast = functools.reduce(lambda x, y: apply_theorem('conjI', x, ProofTerm.assume(y)),\
                                 hol_asts[1:], ProofTerm.assume(hol_asts[0])).on_prop(proplogic.norm_full())
     flag = True
-    while True:
+    # Termination guard: the fixpoint loop can diverge when an atom
+    # replacement keeps generating new successor nestings (e.g.
+    # 0 = s 1 replaced, then s 1 = s (s 1), then s (s 1) = s (s (s 1)), ...).
+    # Working goals converge in 1-2 rounds; 20 is a generous bound.
+    rounds = 0
+    while rounds < 20:
+        rounds += 1
         if not pt_ast.prop.is_conj():
             break
         new_conv = []
@@ -1782,7 +2003,11 @@ def handle_assertion(ast):
                 elif rhs in (true, false):
                     atoms[lhs] = value
                     new_conv.append(atoms[lhs])
-                elif not (lhs.head.is_const("IF") or rhs.head.is_const("IF")):
+                elif not (lhs.head.is_const("IF") or rhs.head.is_const("IF")) \
+                        and not _occurs(lhs, rhs):
+                    # Replacing lhs by rhs must not be self-nesting (e.g.
+                    # s 1 = s (s 1)): such a replacement diverges inside
+                    # top_conv, rewriting its own output forever.
                     atoms[lhs] = value
                     new_conv.append(atoms[lhs])
 
@@ -1828,6 +2053,7 @@ def proofrec(proof, bounds=deque(), trace=False, debug=False, assertions=None):
     disj_expr.clear()
     assert_atom.clear()
     atoms.clear()
+    redundant.clear()
     gaps = set()
     time1 = time.perf_counter()
     if assertions:
@@ -1856,12 +2082,12 @@ def proofrec(proof, bounds=deque(), trace=False, debug=False, assertions=None):
             #         print('r['+str(i)+']', r[i], t2 - t1, file=f)
             #     if trace:
             #         print('r['+str(i)+']', term[i].decl().name(), t2 - t1, file=f)
-    # conclusion = delete_redundant(r[0], redundant)
-    # redundant.clear()
+    conclusion = delete_redundant(r[0], redundant)
+    redundant.clear()
     time2 = time.perf_counter()
     # print("total time: ", time2 - time1)
     # rpt = ProofReport()
     # theory.check_proof(r[0].export(), rpt)
     # print(rpt)
     # print(r[0].export())
-    return r[0]
+    return conclusion

@@ -641,6 +641,10 @@ class omega_norm_add_num(Conv):
         pt = refl(t)
         if t.is_number() and t.is_int():
             return pt.on_rhs(int_eval_conv())
+        elif not (t.is_comb() and t.fun.is_comb()):
+            # Atoms (variables, numerals, unary applications) have no arg1;
+            # leave them unchanged instead of raising AttributeError.
+            return pt
         elif t.arg1.is_plus():
             pt1 = pt.on_rhs(arg1_conv(self))
             cp = omega_compare_monomial(pt1.rhs.arg1.arg, pt1.rhs.arg)
@@ -750,8 +754,10 @@ class int_eq_comparison_macro(Macro):
 class int_norm_eq(Conv):
     """Prove two linear equations are equal."""
     def get_proof_term(self, t):
-        if not t.is_int():
-            raise ConvException("%s should be an integer term")
+        # t is an equation between int terms; the equation itself is
+        # bool-typed, so check the sides, not t.
+        if not (t.is_equals() and t.arg1.is_int() and t.arg.is_int()):
+            raise ConvException("%s should be an integer equation" % str(t))
         if not t.is_equals():
             raise ConvException("%s must be an equality." % str(t))
         pt = refl(t)
