@@ -260,6 +260,36 @@ def convert(t, var_names, assms, to_real, ctx):
             return rec(t.arg1) > rec(t.arg)
         elif t.is_divides():
             return rec(t.arg1) / rec(t.arg)
+        elif t.is_nat_power():
+            # power :: T => nat => T; z3 power on the Int sort for
+            # nat/int bases, and on the Real sort (with a ToReal
+            # exponent) for real bases.
+            base, exp = rec(t.arg1), rec(t.arg)
+            if t.arg1.get_type() == RealType:
+                return base ** z3.ToReal(exp)
+            return base ** exp
+        elif t.is_real_power():
+            return rec(t.arg1) ** rec(t.arg)
+        elif t.is_comb('nat_divide', 2):
+            # nat DIV: z3's integer division agrees with the nat
+            # semantics on nonnegative operands (assms enforce x >= 0).
+            # Division by zero is unspecified in SMT-LIB; pin each
+            # instance to the holpy semantics (y DIV 0 = 0) with a
+            # ground implication, which is true in the holpy model and
+            # ignored by proofrec's assertion preprocessing.
+            a, b = rec(t.arg1), rec(t.arg)
+            zero = z3.IntVal(0, ctx)
+            assms['_divax%d' % len(assms)] = z3.Implies(b == zero, a / zero == zero)
+            return a / b
+        elif t.is_comb('nat_modulus', 2):
+            a, b = rec(t.arg1), rec(t.arg)
+            zero = z3.IntVal(0, ctx)
+            assms['_modax%d' % len(assms)] = z3.Implies(b == zero, a % zero == a)
+            return a % b
+        elif t.is_comb('of_int', 1):
+            if t.get_type() == RealType:
+                return z3.ToReal(rec(t.arg))
+            raise Z3Exception("convert: unsupported of_int " + repr(t))
         elif t.is_comb('of_nat', 1):
             if t.get_type() == RealType:
                 if t.arg.is_var():
@@ -421,7 +451,7 @@ def solve_core(s, t, debug=False):
     for nm, A in assms.items():
         print_debug('A', A)
         s.add(A)
-    
+
     return s
 
 Z3_TIMEOUT = 5000  # milliseconds

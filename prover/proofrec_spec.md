@@ -716,3 +716,32 @@ th-lemma gap)、量词 2/2、非线性 2/3(零积全绿;x*x≥0 的 Z3 改写目
   ⊢ x² ≥ 0 事实定理再匹配,暂留 gap。
 - 数组 th-lemma 步(如 `x = a ⟶ (f)(a := b) x = b` 内部的 select-store 推理):
   需要数组理论 lemma 机制(类似 Isabelle 的 th_lemma 数组扩展),暂留 gap。
+
+### 10.7 补充(第三轮:加强 z3wrapper 的算子翻译,解除"原作者限制")
+
+应用户要求不再受原作者实现范围约束,z3wrapper/translate 新增四类算子分支,把
+此前"根本进不了 Z3"的目标接入管线:
+
+- **of_int**(send: `of_int x ↦ ToReal(x)`;return: `Z3_OP_TO_REAL ↦ of_int`)。
+  real.pyhol 有完整 of_int 定理族(real_of_int_leq/lt/gt/geq/add/mul),已进 SCHEMATIC_EXTRA。
+- **nat DIV/MOD**(send: `nat_divide ↦ z3 /`、`nat_modulus ↦ z3 %`;return: `IDIV/MOD ↦` 同名常量)。
+  SMT-LIB 的除零语义是"未指定",与 holpy `n DIV 0 = 0`/`n MOD 0 = n` 不一致——按出现实例
+  加 ground 蕴含公理(该公理在 holpy 模型中为真,反驳方向 sound;implication 形状会被
+  handle_assertion 自动忽略)。`n DIV 0 = 0`、`n MOD 0 = n` 端到端全绿。
+- **power**(send: nat/real 幂 → z3 `**`,real 底数指数用 ToReal 提升排序;return:
+  `Z3_OP_POWER ↦` int 指幂实例(int.pyhol 的 int_power_1 支撑)/实指幂 real_power)。
+  `(2::real) ^ 2 = 4` 端到端全绿;int 侧改写覆盖仍薄(留 gap)。
+- **true-axiom** 规则 dispatch(Z3 4.16 会输出的真公理步)。
+
+配套:monotonicity 处理器加 try/except 兜底(新算子的参数收集盲区不再炸全局);
+SCHEMATIC_EXTRA 增补 int_mul_add_distr_r/l、real_add_ldistrib、div_zero、mod_zero、
+real_of_int_* 六条、int_power_1;smt.pyhol 新增 r148(`x ^ (0::int) = 1`,空证明)。
+
+**sat.pyhol 完备性结论**:5 条定理(encode_conj/disj/imp/eq/not)恰好对应 holpy
+is_logical 识别的 5 个连接词,是 Tseitin 编码的全部所需;SAT 引擎是纯 Python DPLL
+(prover/sat.py,不在 pyhol 里);消解重建用 logic 理论的 conjI/conjD1/conjD2/negI/
+double_neg(已核实全部在 smt 闭包内解析)。就其职责而言是完备的,无需扩充。
+
+**本轮实测**(均带超时,无崩溃):DIV 0/MOD 0、real 幂常数、of_int 常数全绿;
+符号 div/mod/幂改写留 gap(需 numeral 求值 conv,后续工作);冒烟 10/10;全量
+pytest 失败清单与基线一致。

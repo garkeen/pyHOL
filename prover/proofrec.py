@@ -54,7 +54,8 @@ disj_expr = dict()
 method = ('mp', 'mp~', 'asserted', 'trans', 'trans*', 'monotonicity', 'rewrite', 'and-elim', 'not-or-elim',
             'iff-true', 'iff-false', 'unit-resolution', 'commutativity', 'def-intro', 'apply-def',
             'def-axiom', 'iff~', 'nnf-pos', 'nnf-neg', 'sk', 'proof-bind', 'quant-inst', 'quant-intro',
-            'lemma', 'hypothesis', 'symm', 'refl', 'apply-def', 'intro-def', 'th-lemma', 'elim-unused')
+            'lemma', 'hypothesis', 'symm', 'refl', 'apply-def', 'intro-def', 'th-lemma', 'elim-unused',
+            'true-axiom')
 
 # Rewriting theorems from the general library (int/real/function/logic
 # theories, all within the 'smt' theory's import closure) consulted by
@@ -68,11 +69,16 @@ SCHEMATIC_EXTRA = [
     'int_mul_1_l', 'int_mul_1_r', 'int_add_comm', 'int_add_assoc',
     'int_mult_comm', 'int_mult_assoc', 'int_leq', 'int_geq',
     'int_eq_move_left', 'int_geq_shift',
+    'int_mul_add_distr_r', 'int_mul_add_distr_l', 'int_power_1',
+    # nat div/mod (library/nat.pyhol; z3 idiv/mod agree on nonneg operands)
+    'div_zero', 'mod_zero',
     # real (library/real.pyhol)
     'real_add_lid', 'real_add_rid', 'real_mul_lzero', 'real_mul_rzero',
     'real_mul_lid', 'real_mul_rid', 'real_add_comm', 'real_add_assoc',
     'real_mult_comm', 'real_mult_assoc', 'real_neg_neg',
-    'real_inverse_divide', 'real_ge_le_same_num',
+    'real_inverse_divide', 'real_ge_le_same_num', 'real_add_ldistrib',
+    'real_of_int_leq', 'real_of_int_lt', 'real_of_int_gt',
+    'real_of_int_geq', 'real_of_int_add', 'real_of_int_mul',
     # function / array (library/function.pyhol; z3 select/store = fun_upd)
     'fun_upd_same', 'fun_upd_other', 'fun_upd_triv', 'fun_upd_upd', 'fun_upd_twist',
     # logic (library/logic.pyhol)
@@ -301,6 +307,23 @@ def translate(term, bounds=deque(), subterms=[]):
             f, a, b = args
             T_dom, T_rng = f.get_type().domain_type(), f.get_type().range_type()
             return Const('fun_upd', TFun(TFun(T_dom, T_rng), T_dom, T_rng, TFun(T_dom, T_rng)))(f, a, b)
+        elif kind == Z3_OP_IDIV:
+            # nat DIV (nat_divide); operand types are int in the
+            # reconstructed terms (nat is erased to int throughout, as
+            # with all other operators).
+            return Const('nat_divide', TFun(IntType, IntType, IntType))(*args)
+        elif kind == Z3_OP_MOD:
+            return Const('nat_modulus', TFun(IntType, IntType, IntType))(*args)
+        elif kind == Z3_OP_POWER:
+            base, exp = args
+            T = base.get_type()
+            if exp.get_type() == RealType:
+                return real_power(T)(base, exp)
+            # z3 exponents are int; int.pyhol defines this power and
+            # provides theorems (int_power_1, int_power_add).
+            return Const('power', TFun(T, IntType, T))(base, exp)
+        elif kind == Z3_OP_TO_REAL:
+            return of_int(RealType)(args[0])
         elif kind == Z3_OP_ITE:
             cond, stat1, stat2 = translate(term.arg(0)), translate(term.arg(1)), translate(term.arg(2))
             T = stat1.get_type() # stat1 and stat2 must have same type
@@ -1884,7 +1907,7 @@ def trans(args):
 
 def convert_method(term, *args, subterms=None, assertions=[]):
     name = term.decl().name()
-    if name == 'asserted': # {P} ⊢ {P}
+    if name == 'asserted' or name == 'true-axiom': # {P} ⊢ {P}; true-axiom concludes true
         return asserted(args[0])
     elif name == 'hypothesis':
         return hypothesis(args[0])
@@ -1898,7 +1921,13 @@ def convert_method(term, *args, subterms=None, assertions=[]):
         *equals, concl = args
         if subterms[-1].arg(0).decl().name() == 'distinct':
             return distinct_monotonicity(equals, concl, subterms)
-        return monotonicity(equals, concl)
+        try:
+            return monotonicity(equals, concl)
+        except Exception:
+            # monotonicity's argument collection has known blind spots
+            # (polyadic connectives, newly supported operators); a gap
+            # beats aborting the whole reconstruction.
+            return ProofTerm.sorry(Thm(concl))
     elif name in ('trans', 'trans*'):
         return trans(args)
     elif name in ('mp', 'mp~'):

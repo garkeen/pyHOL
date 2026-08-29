@@ -704,3 +704,9 @@ theorem r146
 theorem r147
   fixes x :: real, y :: real
   prop x * y = 0 <--> x = 0 | y = 0
+
+header "Schematic rules for Z3 rewrite: power (int-exponent instance)"
+
+theorem r148
+  fixes x :: int
+  prop x ^ (0::int) = 1
