@@ -469,6 +469,20 @@ def solve_core(s, t, debug=False):
 
 Z3_TIMEOUT = 5000  # milliseconds
 
+def solve_and_reconstruct(t, debug=False):
+    """Prove the holpy statement t with z3 and reconstruct a kernel
+    proof of t ITSELF (the raw reconstruction only yields ⊢ false under
+    the stripped sequent's hypotheses).  Returns the ProofTerm of the
+    statement ⊢ A1 ⟹ … ⟹ An ⟹ C where A1..An, C come from stripping
+    t's foralls/implications exactly as solve_core does."""
+    import prover.proofrec as proofrec
+    proof, assertions = solve_and_proof(t, debug)
+    pt_false = proofrec.proofrec(proof, assertions=assertions)
+    t_norm = norm_term(t)
+    names = logic.get_forall_names(t_norm, svar=False)
+    _, As, C = logic.strip_all_implies(t_norm, names, svar=False)
+    return proofrec.close_sequent(pt_false, As, C)
+
 def solve(t, debug=False):
     """Solve the given goal using Z3. Returns True if unsatisfiable (goal proved)."""
     s = z3.Solver()

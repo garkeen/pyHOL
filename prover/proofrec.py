@@ -2309,6 +2309,67 @@ def handle_assertion(ast):
                 )
                 atoms[pt_true.lhs] = pt_true
 
+def _canon_conv():
+    """Canonical form shared by the sequent pieces and the refutation
+    hypotheses: comparison normalization, >=/<= unification (r153/r154)
+    and propositional normal form.  Two propositionally equivalent
+    comparison structures get the same canonical term."""
+    return (bottom_conv(try_conv(integer.int_norm_neg_compares())),
+            bottom_conv(try_conv(norm_neg_real_ineq_conv())),
+            bottom_conv(try_conv(rewr_conv('r153'))),
+            bottom_conv(try_conv(rewr_conv('r154'))),
+            proplogic.norm_full())
+
+def close_sequent(pt_false, As, C):
+    """Turn the raw z3-refutation reconstruction ⊢ false -- whose
+    hypotheses are the canonically normalized assertions A1..An and ¬C
+    -- into a kernel proof of ⊢ A1 ⟹ … ⟹ An ⟹ C.  Returns pt_false
+    unchanged when the hypotheses cannot be matched to the sequent."""
+    if pt_false.prop != false or not pt_false.hyps:
+        return pt_false
+    convs = _canon_conv()
+
+    def canon_pt(p):
+        return refl(p).on_rhs(*convs)
+
+    def canon(p):
+        try:
+            return canon_pt(p).rhs
+        except Exception:
+            return None
+
+    pieces = list(As) + [Not(C)]
+    hyps = list(pt_false.hyps)
+    pc = [canon(p) for p in pieces]
+    hc = [canon(h) for h in hyps]
+    if any(c is None for c in pc + hc):
+        return pt_false
+    # bipartite match: each hypothesis to a unique sequent piece
+    order = [None] * len(pieces)
+    used = set()
+    for j, c in enumerate(hc):
+        for i, cp in enumerate(pc):
+            if i not in used and cp == c:
+                order[i] = hyps[j]
+                used.add(i)
+                break
+    if not all(i is not None for i in order) or len(used) != len(pieces):
+        return pt_false
+    try:
+        # innermost: refutation of ¬C' becomes C' by imp_false_iff +
+        # double_neg, then discharge the assumptions outward
+        pt = pt_false.implies_intr(order[-1])
+        pt = pt.on_prop(rewr_conv('imp_false_iff'), rewr_conv('double_neg'))
+        for h in reversed(order[:-1]):
+            pt = pt.implies_intr(h)
+        # rewrite the canonical pieces back to the original statements
+        rules = [top_conv(replace_conv(canon_pt(p).symmetric()))
+                 for p in pieces[:-1]] + \
+                [top_conv(replace_conv(canon_pt(C).symmetric()))]
+        return pt.on_prop(*rules)
+    except Exception:
+        return pt_false
+
 def proofrec(proof, bounds=deque(), trace=False, debug=False, assertions=None):
     """
     If trace is true, print reconstruction trace.

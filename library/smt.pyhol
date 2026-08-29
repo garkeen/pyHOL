@@ -730,3 +730,13 @@ theorem r151
 theorem r152
   fixes x :: real
   prop 0 <= x * x <--> true
+
+header "Schematic rules for Z3 rewrite: comparison orientation"
+
+theorem r153
+  fixes x :: int, y :: int
+  prop x >= y <--> y <= x
+
+theorem r154
+  fixes x :: real, y :: real
+  prop x >= y <--> y <= x
