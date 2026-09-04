@@ -887,3 +887,105 @@ class OmegaHOL:
             for p in premises:
                 pt_norm = pt_norm.implies_elim(proofterm.ProofTerm.assume(p))
             return pt_norm
+
+
+_FLIP_THEOREMS = {
+    'less': 'int_not_less',
+    'less_eq': 'int_not_less_eq',
+    'greater': 'int_not_greater',
+    'greater_eq': 'int_not_greater_eq',
+}
+
+
+def _flip_negated(pt):
+    """Turn ~(a R b) into the positive comparison. Passes through
+    positive comparisons unchanged. Raises TacticException otherwise."""
+    from framework.conv import rewr_conv
+    p = pt.prop
+    if is_integer_ineq(p):
+        return pt
+    if p.is_not() and is_integer_ineq(p.arg):
+        ineq = p.arg
+        if ineq.is_less():
+            flip = _FLIP_THEOREMS['less']
+        elif ineq.is_less_eq():
+            flip = _FLIP_THEOREMS['less_eq']
+        elif ineq.is_greater():
+            flip = _FLIP_THEOREMS['greater']
+        else:
+            flip = _FLIP_THEOREMS['greater_eq']
+        return pt.on_prop(rewr_conv(flip))
+    raise proofterm.TacticException('omega: not an integer comparison: %s' % p)
+
+
+def omega_solve(goal, pts):
+    """Solve an integer-comparison goal by refutation with OmegaHOL.
+
+    Hypotheses and the (negated) goal must be integer comparisons or
+    their negations. Raises TacticException when out of scope or when
+    omega reports satisfiable.
+    """
+    from syntax.logicops import Not
+
+    if pts is None:
+        pts = []
+
+    try:
+        pos_pts = [_flip_negated(pt) for pt in pts]
+        if goal.is_not() and is_integer_ineq(goal.arg):
+            neg_goal, neg_orig = goal.arg, goal
+        elif is_integer_ineq(goal):
+            neg_goal, neg_orig = _flip_negated(
+                proofterm.ProofTerm.assume(Not(goal))).prop, Not(goal)
+        else:
+            raise proofterm.TacticException('omega: goal out of scope')
+    except proofterm.TacticException:
+        raise
+    except Exception as e:
+        raise proofterm.TacticException('omega: preprocessing failed: %s' % e)
+
+    try:
+        hol = OmegaHOL([pt.prop for pt in pos_pts] + [neg_goal])
+        pt_false = hol.solve()
+    except Exception as e:
+        raise proofterm.TacticException('omega: %s' % e)
+    if not isinstance(pt_false, proofterm.ProofTerm):
+        raise proofterm.TacticException('omega: satisfiable')
+
+    norm_pts = [hol.norm_pts[pt.prop] for pt in pos_pts]
+    norm_neg = hol.norm_pts[neg_goal]
+    # Full bridge from the original negated goal to its normal form:
+    # when goal is itself a negation, neg_goal is already positive and
+    # norm_neg starts from it; otherwise flip neg_orig to neg_goal first.
+    if goal.is_not() and is_integer_ineq(goal.arg):
+        neg_bridge = norm_neg
+    else:
+        flip_bridge = _flip_negated(proofterm.ProofTerm.assume(neg_orig))
+        neg_bridge = norm_neg.implies_intr(neg_goal).implies_elim(flip_bridge)
+
+    chain = pt_false
+    for npt in [norm_neg] + list(reversed(norm_pts)):
+        chain = chain.implies_intr(npt.prop)
+    for npt in norm_pts:
+        chain = chain.implies_elim(npt)
+    chain = chain.implies_elim(neg_bridge)
+    if goal.is_not() and is_integer_ineq(goal.arg):
+        return logic.apply_theorem(
+            'negI', chain.implies_intr(goal.arg), concl=goal)
+    branch_neg = logic.apply_theorem(
+        'falseE', chain, concl=goal).implies_intr(neg_orig)
+    branch_pos = proofterm.ProofTerm.assume(goal).implies_intr(goal)
+    return logic.apply_theorem(
+        'classical_cases', branch_pos, branch_neg, concl=goal)
+
+
+# Register the omega decision procedure for integer comparisons.
+from framework import auto as _auto_omega
+_auto_omega.add_global_autos(numeral.less_eq(numeral.IntType), omega_solve)
+_auto_omega.add_global_autos(numeral.less(numeral.IntType), omega_solve)
+_auto_omega.add_global_autos(numeral.greater_eq(numeral.IntType), omega_solve)
+_auto_omega.add_global_autos(numeral.greater(numeral.IntType), omega_solve)
+_auto_omega.add_global_autos_neg(numeral.less_eq(numeral.IntType), omega_solve)
+_auto_omega.add_global_autos_neg(numeral.less(numeral.IntType), omega_solve)
+_auto_omega.add_global_autos_neg(numeral.greater_eq(numeral.IntType), omega_solve)
+_auto_omega.add_global_autos_neg(numeral.greater(numeral.IntType), omega_solve)

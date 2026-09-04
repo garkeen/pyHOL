@@ -770,6 +770,26 @@ class LineModelTest(unittest.TestCase):
         self.assertEqual(self._rules(sps), ['sorry', 'simp'])
         self.assertEqual(sps.num_gaps, 1)
 
+    def testAutoClosesIff(self):
+        """auto closes A <--> B from the two implications in one line."""
+        context.set_context('logic')
+        sps = self._sps('(A --> B) --> (B --> A) --> (A <--> B)',
+                        {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0}])
+        inner = sps.get_open_goals()[0][0]
+        self.assertTrue(sps.apply_method_dict(
+            {'method_name': 'auto', 'goal': inner, 'facts': [1, 2]}))
+        self.assertEqual(sps.num_gaps, 0)
+        self.assertIn('auto', self._rules(sps))
+
+    def testAutoHonestFailure(self):
+        """auto on a bare variable goal fails without closing anything."""
+        context.set_context('logic')
+        sps = self._sps('C', {'C': 'bool'}, [])
+        self.assertFalse(sps.apply_method_dict(
+            {'method_name': 'auto', 'goal': 0}))
+        self.assertEqual(sps.num_gaps, 1)
+
     def testUnfoldSingleLine(self):
         context.set_context('logic')
         sps = self._sps('(A & B) = (B & A)', {'A': 'bool', 'B': 'bool'},

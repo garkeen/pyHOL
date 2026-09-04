@@ -102,10 +102,13 @@ def inject_program_metadata(filename):
             'description': data['description']
         }
 
+def _status_cache_dir():
+    """Directory holding proof-status .json caches (top-level .cache/)."""
+    return os.path.join(dirname, '.cache')
+
 def status_cache_file(filename):
-    """Return .json cache path, next to the .pyhol source."""
-    pyhol = user_file(filename)
-    return pyhol[:-6] + '.json'
+    """Return .json cache path under top-level .cache/."""
+    return os.path.join(_status_cache_dir(), filename + '.json')
 
 def load_status(filename):
     """Load proof status from .json cache into thy.thm_status."""
@@ -120,6 +123,7 @@ def load_status(filename):
 def save_status(filename, status_dict):
     """Save proof status to .json cache."""
     path = status_cache_file(filename)
+    os.makedirs(_status_cache_dir(), exist_ok=True)
     source_mtime = os.path.getmtime(user_file(filename))
     with open(path, 'w', encoding='utf-8') as f:
         json.dump({'meta': {'theory': filename, 'source_mtime': source_mtime},
@@ -239,7 +243,17 @@ def load_theory_cache(filename):
 
     # Load all required macros and methods for this file.
     # Core macros (and the z3 oracle macro) are always loaded.
+    # The sympy solver registers real/nat comparison procedures
+    # into the generic auto engine on import.
     from framework.macros import core, z3  # noqa: F401
+    try:
+        from prover import sympywrapper  # noqa: F401
+    except ImportError:
+        pass
+    try:
+        from prover import omega  # noqa: F401
+    except ImportError:
+        pass
 
     # Load domain packages declared in the .pyhol header.
     # Domain packages live in domains/<name>/ and register their

@@ -122,3 +122,14 @@ python -m pytest prover/tests -q
 ```
 
 z3 4.16 实测环境：Python 3.12，Windows。
+
+## 5. 参考文献
+
+- Sascha Böhme and Tjark Weber, "Fast LCF-Style Proof Reconstruction for Z3"
+  （Isabelle/HOL + HOL4 方向的 LCF 风格 Z3 证明重建经典论文）。
+  holpy 的重建沿用其总体架构：Z3 证明 DAG 逐节点翻译为核内定理、
+  命题/一阶步骤用原语与示意图定理组合建模、理论步骤（rewrite/th-lemma）
+  用示意图定理 + 化简器 + 算术判定过程承接。
+  论文原文曾以 `Z3recpaper.md` 存档于仓库根目录，因本文档已是实现现状的
+  权威描述、代码头注释（`prover/proofrec.py`）亦保留引用，存档正文不再保留，
+  需要时按标题自行检索论文。

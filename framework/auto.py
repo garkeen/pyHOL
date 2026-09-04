@@ -63,11 +63,13 @@ def add_global_autos_norm(head, f):
 
 solve_record = dict()
 
-def solve(goal, pts=None):
+def solve(goal, pts=None, depth=0):
     """The main automation function.
-    
+
     If the function succeeds, it should return a proof term whose
     proposition is the goal.
+
+    depth guards recursive backchaining in solve_hints.
 
     """
     if debug_auto:
@@ -89,52 +91,52 @@ def solve(goal, pts=None):
         if pt.prop.is_conj():
             pt1 = apply_theorem('conjD1', pt)
             pt2 = apply_theorem('conjD2', pt)
-            return solve(goal, [pt1, pt2] + pts[:i] + pts[i+1:])
-    
+            return solve(goal, [pt1, pt2] + pts[:i] + pts[i+1:], depth=depth)
+
         if pt.prop.is_disj():
             a1, a2 = pt.prop.args
             assume_pt1 = ProofTerm.assume(a1)
             assume_pt2 = ProofTerm.assume(a2)
-            pt1 = solve(goal, [assume_pt1] + pts[:i] + pts[i+1:])
+            pt1 = solve(goal, [assume_pt1] + pts[:i] + pts[i+1:], depth=depth)
             pt1 = pt1.implies_intr(a1)
-            pt2 = solve(goal, [assume_pt2] + pts[:i] + pts[i+1:])
+            pt2 = solve(goal, [assume_pt2] + pts[:i] + pts[i+1:], depth=depth)
             pt2 = pt2.implies_intr(a2)
             return apply_theorem('disjE', pt, pt1, pt2)
 
     # Handle various logical connectives.
     if goal.is_conj():
         a1, a2 = goal.args
-        pt1 = solve(a1, pts)
-        pt2 = solve(a2, pts)
+        pt1 = solve(a1, pts, depth=depth)
+        pt2 = solve(a2, pts, depth=depth)
         return apply_theorem('conjI', pt1, pt2)
-    
+
     if goal.is_disj():
         a1, a2 = goal.args
         try:
-            pt1 = solve(a1, pts)
+            pt1 = solve(a1, pts, depth=depth)
             return apply_theorem('disjI1', pt1, concl=goal)
         except TacticException:
-            pt2 = solve(a2, pts)
+            pt2 = solve(a2, pts, depth=depth)
             return apply_theorem('disjI2', pt2, concl=goal)
-    
+
     if goal.is_implies():
         a1, a2 = goal.args
         assume_pt = ProofTerm.assume(a1)
-        return solve(a2, [assume_pt] + pts).implies_intr(a1)
-    
+        return solve(a2, [assume_pt] + pts, depth=depth).implies_intr(a1)
+
     if goal.is_forall():
         var_names = [v.name for v in term.get_vars([goal] + [pt.prop for pt in pts])]
         nm = name.get_variant_name(goal.arg.var_name, var_names)
         v = Var(nm, goal.arg.var_T)
         t = goal.arg.subst_bound(v)
-        return solve(t, pts).forall_intr(v)
+        return solve(t, pts, depth=depth).forall_intr(v)
 
     # Normalize goal
     eq_pt = norm(goal, pts)
     goal = eq_pt.rhs
 
     if goal.is_conj():
-        pt = solve(goal, pts)
+        pt = solve(goal, pts, depth=depth)
         return eq_pt.symmetric().equal_elim(pt)
 
     res_pt = None
@@ -164,7 +166,54 @@ def solve(goal, pts=None):
             solve_record[goal] = res_pt
         return eq_pt.symmetric().equal_elim(res_pt)
     else:
+        return solve_hints(eq_pt.rhs, pts, depth=depth)
+
+
+def solve_hints(goal, pts, depth=0, max_depth=6):
+    """Backchain over hint_backward theorems and assumption implications.
+
+    Tries each hint_backward candidate whose conclusion matches goal,
+    recursively solving its premises. Falls back to modus ponens on
+    assumption implications. Raises TacticException on failure.
+    """
+    if depth > max_depth:
         raise TacticException('Cannot solve %s' % goal)
+
+    from framework import search
+
+    for th_name in search.candidates_for(goal, category='hint_backward'):
+        if not theory.thy.has_theorem(th_name):
+            continue
+        th = theory.get_theorem(th_name)
+        try:
+            inst = matcher.first_order_match(th.concl, goal)
+        except matcher.MatchException:
+            continue
+        As, _ = th.prop.subst_norm(inst).strip_implies()
+        try:
+            sub_pts = [solve(A, pts, depth=depth + 1) for A in As]
+        except TacticException:
+            continue
+        try:
+            return apply_theorem(th_name, *sub_pts, concl=goal)
+        except (TacticException, matcher.MatchException, AssertionError):
+            continue
+
+    for pt in pts:
+        if not pt.prop.is_implies():
+            continue
+        A0, B0 = pt.prop.arg1, pt.prop.arg
+        try:
+            inst = matcher.first_order_match(B0, goal)
+        except matcher.MatchException:
+            continue
+        try:
+            sub = solve(A0.subst_norm(inst), pts, depth=depth + 1)
+        except TacticException:
+            continue
+        return pt.substitution(inst).implies_elim(sub)
+
+    raise TacticException('Cannot solve %s' % goal)
 
 
 def solve_rules(th_names):
@@ -172,7 +221,7 @@ def solve_rules(th_names):
     in th_names.
 
     """ 
-    def solve_fun(goal, pts):
+    def solve_fun(goal, pts, depth=0):
         for th_name in th_names:
             if theory.thy.has_theorem(th_name):
                 th = theory.get_theorem(th_name)
@@ -185,7 +234,7 @@ def solve_rules(th_names):
 
             As, _ = th.prop.subst_norm(inst).strip_implies()
             try:
-                pts = [solve(A, pts) for A in As]
+                pts = [solve(A, pts, depth=depth + 1) for A in As]
             except TacticException:
                 continue
 
@@ -293,25 +342,54 @@ def norm_rules(th_names):
 
 @register_macro('auto')
 class auto_macro(Macro):
-    """Macro applying auto.solve."""
+    """Macro applying auto.solve, interleaved with simplification.
+
+    Fixpoint loop (bounded): try solve on the current goal; on
+    failure simplify one round with simp_sweep and retry. The
+    simplification chain is composed back to the original goal,
+    so the whole macro stays a single level-1 line.
+    """
     def __init__(self):
         self.level = 1
         self.sig = Term
         self.limit = None
 
-    def get_proof_term(self, args, pts):
-        if args.is_equals():
-            # Equality: use normalization
-            eq1 = norm(args.lhs, pts)
-            eq2 = norm(args.rhs, pts)
-            if eq1.rhs != eq2.rhs:
-                print("lhs: %s" % eq1.rhs)
-                print("rhs: %s" % eq2.rhs)
-                raise TacticException
-            return eq1.transitive(eq2.symmetric())
-        else:
-            # Otherwise, use solve function
-            return solve(args, pts)
+    def get_proof_term(self, args, pts, max_rounds=10):
+        from framework.tactic import simp_sweep
+        cur = args
+        chain = None
+        for _ in range(max_rounds):
+            if cur.is_equals():
+                eq1 = norm(cur.lhs, pts)
+                eq2 = norm(cur.rhs, pts)
+                if eq1.rhs == eq2.rhs:
+                    close = eq1.transitive(eq2.symmetric())
+                    return close if chain is None else chain.transitive(close)
+            try:
+                close = solve(cur, pts)
+            except TacticException:
+                close = None
+            if close is not None:
+                if chain is None:
+                    return close
+                return chain.symmetric().equal_elim(close)
+            cv_acc, new_cur = simp_sweep(cur)
+            if cv_acc is None or new_cur == cur:
+                break
+            step = refl(cur).transitive(cv_acc.get_proof_term(cur))
+            chain = step if chain is None else chain.transitive(step)
+            cur = new_cur
+        # Final attempt for an honest error message.
+        if cur.is_equals():
+            eq1 = norm(cur.lhs, pts)
+            eq2 = norm(cur.rhs, pts)
+            if eq1.rhs == eq2.rhs:
+                close = eq1.transitive(eq2.symmetric())
+                return close if chain is None else chain.transitive(close)
+        close = solve(cur, pts)
+        if chain is None:
+            return close
+        return chain.symmetric().equal_elim(close)
 
 
 def auto_solve(t, pts=None):

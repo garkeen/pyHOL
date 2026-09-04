@@ -1632,6 +1632,34 @@ class simp(Method):
         state.apply_tactic(id, tactic.simp(), prevs=prevs)
 
 
+@register_method('auto')
+class auto_method(Method):
+    """Close the goal with the generic automation engine.
+
+    Single visible auto macro line: simp-style normalization plus
+    hint backchaining (auto.solve). Fails honestly when the goal
+    cannot be closed.
+    """
+    def __init__(self):
+        self.sig = []
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        try:
+            cur_item = state.get_proof_item(id)
+            if cur_item.th.prop.is_var():
+                return []
+            return [{}]
+        except Exception:
+            return []
+
+    def display_step(self, state, data):
+        return pprint.N("auto")
+
+    def apply(self, state, id, data, prevs):
+        state.apply_macro(id, 'auto', prevs=prevs)
+
+
 def register_macro_method(name: str, *, limit=None):
     """Register a method auto-generated from a macro.
 
