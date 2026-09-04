@@ -1,21 +1,6 @@
 # holpy 手册
 
-holpy 是一个用 Python 实现的高阶逻辑（HOL）定理证明器，基于 Bohua Zhan 的原作，经多次重构。
-
-## 架构总览
-
-```
-kernel/          逻辑内核（Type/Term/Thm/15原语/ProofTerm/Theory）
-  │   15 条原语是唯一凭空构造定理的入口
-  ▼
-framework/       逻辑层（Conv/Tactic/Macro/Matcher/Context/Auto/Search）
-  │   组合原语与宏，提供自动化基础设施
-  ▼
-server/ + app/   应用层（Method/ProofState/Flask API）
-                  面向用户的 API 与 web IDE
-```
-
-信任的核心思想：只通过一组有限的、正确实现了 HOL 原始推理规则的函数来构造定理，就能信任证明。证明的踪迹可存下来独立校验。
+> 项目主页见顶层 [`../README.md`](../README.md)。本页只是手册 7 章的阅读索引。
 
 ## 阅读路线
 

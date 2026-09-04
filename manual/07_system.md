@@ -84,15 +84,23 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 ### 4.1 auto（framework/auto.py）
 
-`solve(goal, pts)`：自动证明 goal。策略：
+`solve(goal, pts, depth=0)`：自动证明 goal。策略：
 1. 若 goal 匹配某条件，直接返回。
 2. 若某条件是合取/析取，分解后递归。
-3. 按 goal 的 head 查 `global_autos`/`global_autos_neg` 注册表。
+3. 连接词分解（合取/析取/蕴涵/全称，硬编码）。
 4. 先 `norm` 归一化 goal 再尝试。
+5. 按 goal 的 head 查 `global_autos`/`global_autos_neg` 注册表。
+6. `solve_hints`：`hint_backward` 模式网回链（结论精确匹配、前提递归），
+   再试假设中蕴涵的 MP。深度上限 6，失败抛 `TacticException`（诚实失败）。
 
 `norm(t, pts)`：自动归一化。按 head 查 `global_autos_norm` 注册表，应用注册的 conv/函数。
 
-`auto_macro`（level 1）：把 `solve`/`norm` 包成宏。
+`auto_macro`（level 1，可展开）：`norm` 规范形比较 + `solve` 交错到不动点
+（上限 10 轮，`simp_sweep` 推进，`chain.symmetric().equal_elim` 接回原目标）。
+成功零 gap，失败抛错；记录仍为单行。
+
+求解器注册（`basic.load_theory_cache` 随理论默认加载，`auto_test.py` 断住数量）：
+sympy（实数/自然数比较，oracle level 0）8 + 2，omega（整数比较，反证关门）4 + 4。
 
 ### 4.2 Z3（prover/z3wrapper.py）
 
@@ -118,8 +126,12 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 ### 4.4 方法层自动化
 
-- `simp`：全体 `hint_rewrite` 无前提定理定点迭代重写 + β 归一，must-change（无效果报错）。
-- `norm`：按目标类型经 `norm_registry` 分发到 `nat_norm`/`real_norm`/`int_norm` 等领域宏方法（受检宏调用，无 MacroTactic 逃生门）。
+- `simp`：只化简，不关门。全体 `hint_rewrite` 无前提定理定点迭代重写 + β 归一，
+  must-change（无效果报错）。不看 facts，不调判定过程。
+- `auto`：关门。`auto_macro` 经受检通道单行记录，成功零 gap，失败抛错。
+  化简是它的内置子程序（`simp_sweep`），不是调用 `simp` method。
+- `norm`：只证等式。按目标类型经 `norm_registry` 分发到 `nat_norm`/`real_norm`/`int_norm`
+  等领域宏方法（受检宏调用，无 MacroTactic 逃生门）。
 
 ## 5. 语法层（syntax/）
 
