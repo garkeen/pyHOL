@@ -373,7 +373,7 @@ class auto_macro(Macro):
                 if chain is None:
                     return close
                 return chain.symmetric().equal_elim(close)
-            cv_acc, new_cur = simp_sweep(cur)
+            cv_acc, new_cur = simp_sweep(cur, pts=pts)
             if cv_acc is None or new_cur == cur:
                 break
             step = refl(cur).transitive(cv_acc.get_proof_term(cur))

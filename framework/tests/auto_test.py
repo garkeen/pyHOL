@@ -79,6 +79,32 @@ class AutoTest(unittest.TestCase):
                    vars={'A': 'bool', 'B': 'bool', 'C': 'bool'},
                    args="C", failed=TacticException)
 
+    def testConditionalRewrite(self):
+        # Conditional rewrite if_P discharges P from assumptions, then
+        # the goal closes by reflexivity.
+        test_macro(self, 'nat', 'auto',
+                   vars={'P': 'bool', 'x': 'nat', 'y': 'nat'},
+                   assms=["P"], args="(if P then x else y) = x",
+                   res="(if P then x else y) = x")
+        # Without the assumption the premise cannot be discharged.
+        test_macro(self, 'nat', 'auto',
+                   vars={'P': 'bool', 'x': 'nat', 'y': 'nat'},
+                   args="(if P then x else y) = x", failed=TacticException)
+
+    def testIntNorm(self):
+        # int_norm closes polynomial equalities by normalization.
+        test_macro(self, 'int', 'int_norm',
+                   vars={'x': 'int', 'y': 'int'},
+                   args="x + 0 = x", res="x + 0 = x")
+        test_macro(self, 'int', 'int_norm',
+                   vars={'x': 'int', 'y': 'int'},
+                   args="x + y = y + x", res="x + y = y + x")
+        # Non-theorem fails honestly.
+        from kernel.proofterm import TacticException as TE
+        test_macro(self, 'int', 'int_norm',
+                   vars={'x': 'int'},
+                   args="x + 1 = x + 2", failed=AssertionError)
+
 
 if __name__ == "__main__":
     unittest.main()

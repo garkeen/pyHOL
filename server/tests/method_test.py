@@ -790,6 +790,14 @@ class LineModelTest(unittest.TestCase):
             {'method_name': 'auto', 'goal': 0}))
         self.assertEqual(sps.num_gaps, 1)
 
+    def testNormInt(self):
+        """norm closes an int polynomial equality via int_norm."""
+        context.set_context('int')
+        sps = self._sps('x + 0 = x', {'x': 'int'},
+                        [{'method_name': 'norm', 'goal': 0}])
+        self.assertEqual(sps.num_gaps, 0)
+        self.assertIn('int_norm', self._rules(sps))
+
     def testUnfoldSingleLine(self):
         context.set_context('logic')
         sps = self._sps('(A & B) = (B & A)', {'A': 'bool', 'B': 'bool'},

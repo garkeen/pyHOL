@@ -219,7 +219,7 @@ class var_induct(Tactic):
         pts = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in As]
         return ProofTerm("apply_induct", (th_name, var, goal.prop), pts)
 
-def simp_sweep(C, *, max_rounds=100):
+def simp_sweep(C, *, max_rounds=100, pts=None):
     """Iterated rewrite sweep: apply all unconditional hint_rewrite
     theorems of the current theory to C, round by round, until a fixed
     point (bounded). Returns (cv_acc, current) where cv_acc converts C
@@ -228,8 +228,13 @@ def simp_sweep(C, *, max_rounds=100):
     Shared between the simp tactic (pre-check) and the simp macro
     (kernel expansion).
 
+    With pts given, conditional hint_rewrite theorems are also tried:
+    each premise is discharged by auto.solve against pts. Without pts
+    only unconditional rewrites participate (simp method behavior).
     """
-    th_names = []
+    from framework import auto
+    uncond_names = []
+    cond_thms = []
     attrs = theory.thy.get_data('attributes')
     for nm, a in attrs.items():
         if 'hint_rewrite' not in a:
@@ -238,20 +243,41 @@ def simp_sweep(C, *, max_rounds=100):
             th = theory.thy.get_theorem(nm)
         except theory.TheoryException:
             continue
-        if len(th.assums) == 0:
-            th_names.append(nm)
+        As, concl = th.prop.strip_implies()
+        if not concl.is_equals():
+            continue
+        if len(As) == 0:
+            uncond_names.append(nm)
+        elif pts is not None:
+            cond_thms.append((nm, As))
 
-    cv_acc = None
-    current = C
-    for _ in range(max_rounds):
+    def round_step(current):
         round_cv = None
-        for nm in th_names:
+        for nm in uncond_names:
             try:
                 top_conv(rewr_conv(nm)).get_proof_term(current)
             except Exception:
                 continue
             cv_i = top_conv(rewr_conv(nm))
             round_cv = cv_i if round_cv is None else then_conv(round_cv, cv_i)
+        if pts is not None:
+            for nm, As in cond_thms:
+                try:
+                    cond_pts = [auto.solve(A, pts) for A in As]
+                except Exception:
+                    continue
+                try:
+                    top_conv(rewr_conv(nm, conds=cond_pts)).get_proof_term(current)
+                except Exception:
+                    continue
+                cv_i = top_conv(rewr_conv(nm, conds=cond_pts))
+                round_cv = cv_i if round_cv is None else then_conv(round_cv, cv_i)
+        return round_cv
+
+    cv_acc = None
+    current = C
+    for _ in range(max_rounds):
+        round_cv = round_step(current)
         if round_cv is None:
             break
         round_cv = then_conv(round_cv, beta_norm_conv())
