@@ -60,11 +60,6 @@ class nat_norm_macro(Macro):
         self.sig = Term
         self.limit = 'nat_nat_power_def_1'
 
-    def eval(self, goal, pts):
-        # Simply produce the goal.
-        assert len(pts) == 0, "nat_norm_macro"
-        return Thm(goal)
-
     def can_eval(self, goal):
         assert isinstance(goal, Term), "nat_norm_macro"
         if not (goal.is_equals() and goal.lhs.get_type() == NatType):
@@ -143,12 +138,6 @@ class nat_const_ineq_macro(Macro):
         m, n = goal.arg.args
         return m.is_number() and n.is_number() and m.dest_number() != n.dest_number()
 
-    def eval(self, goal, pts):
-        assert len(pts) == 0 and self.can_eval(goal), "nat_const_ineq_macro"
-
-        # Simply produce the goal.
-        return Thm(goal)
-
     def get_proof_term(self, goal, pts):
         assert len(pts) == 0 and self.can_eval(goal), "nat_const_ineq_macro"
 
@@ -175,12 +164,6 @@ class nat_const_less_eq_macro(Macro):
 
         m, n = goal.args
         return m.is_number() and n.is_number() and m.dest_number() <= n.dest_number()
-
-    def eval(self, goal, pts):
-        assert len(pts) == 0 and self.can_eval(goal), "nat_const_less_eq_macro"
-
-        # Simply produce the goal.
-        return Thm(goal)
 
     def get_proof_term(self, goal, pts):
         assert len(pts) == 0 and self.can_eval(goal), "nat_const_less_eq_macro"

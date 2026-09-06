@@ -7,7 +7,7 @@ from kernel.type import TVar, TFun, TyInst, BoolType
 from kernel import term
 from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, Eq
 from syntax.logicops import Not, And, Or, true, false  # noqa: F401  (re-export; installs Term methods)
-from kernel.thm import Thm, InvalidDerivationException
+from kernel.thm import InvalidDerivationException
 from kernel import theory
 from kernel.theory import register_macro
 from kernel.macro import Macro
@@ -99,11 +99,6 @@ class beta_norm_macro(Macro):
         self.sig = None
         self.limit = None
 
-    def eval(self, args, ths):
-        assert args is None, "beta_norm_macro"
-        eq_th = beta_norm_conv().eval(ths[0].prop)
-        return Thm(eq_th.prop.arg, ths[0].hyps)
-
     def get_proof_term(self, args, pts):
         assert args is None, "beta_norm_macro"
         return pts[0].on_prop(beta_norm_conv())
@@ -146,46 +141,6 @@ class apply_theorem_macro(Macro):
         self.with_inst = with_inst
         self.sig = Tuple[str, Inst] if with_inst else str
         self.limit = None
-
-    def eval(self, args, prevs):
-        if self.with_inst:
-            name, inst = args
-        else:
-            name = args
-            inst = Inst()
-        th = theory.get_theorem(name)
-        As, C = th.prop.strip_implies()
-
-        assert len(prevs) <= len(As), "apply_theorem: too many prevs."
-
-        # First attempt to match type variables
-        svars = th.prop.get_svars()
-        for v in svars:
-            if v.name in inst:
-                v.T.match_incr(inst[v.name].get_type(), inst.tyinst)
-
-        pats = As[:len(prevs)]
-        ts = [prev_th.prop for prev_th in prevs]
-        inst = matcher.first_order_match_list(pats, ts, inst)
-
-        # Check that all type variables are instantiated
-        for stvar in th.prop.get_stvars():
-            assert stvar.name in inst.tyinst, "apply_theorem: unmatched type variable %s" % stvar
-
-        # If theorem is a first-order pattern, there is no need for beta_norm.
-        if matcher.is_fo_pattern(th.prop):
-            As, C = th.prop.subst(inst).strip_implies()
-        else:
-            As, C = th.prop.subst_norm(inst).strip_implies()
-        new_prop = Implies(*(As[len(prevs):] + [C]))
-
-        th = Thm(new_prop, th.hyps, *(prev.hyps for prev in prevs))
-
-        # Obtain list of remaining schematic variables
-        remain_svars = [t.subst_type(inst.tyinst) for t in svars if t.name not in inst]
-        for v in reversed(remain_svars):
-            th = Thm.forall_intr(v, th)
-        return th
 
     def get_proof_term(self, args, pts):
         if self.with_inst:
@@ -409,14 +364,6 @@ class rewrite_goal_macro(Macro):
         self.sig = Tuple[str, Term]
         self.limit = None
 
-    def eval(self, args, ths):
-        assert isinstance(args, tuple) and len(args) == 2 and \
-               isinstance(args[0], str) and isinstance(args[1], Term), "rewrite_goal: signature"
-
-        # Simply produce the goal
-        _, goal = args
-        return Thm(goal, *(th.hyps for th in ths))
-
     def get_proof_term(self, args, pts):
         assert isinstance(args, tuple) and len(args) == 2 and \
                isinstance(args[0], str) and isinstance(args[1], Term), "rewrite_goal: signature"
@@ -604,10 +551,6 @@ class auto_close_macro(Macro):
         self.level = 0
         self.sig = None
         self.limit = None
-
-    def eval(self, args, ths):
-        assert args is None and len(ths) == 1, "auto_close_macro"
-        return ths[0]
 
     def get_proof_term(self, args, pts):
         assert args is None and len(pts) == 1, "auto_close_macro"

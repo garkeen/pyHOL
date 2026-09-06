@@ -6,7 +6,7 @@ from kernel.type import TVar, TFun, TyInst, BoolType
 from kernel import term
 from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, Eq
 from syntax.logicops import Not, And, Or, true, false
-from kernel.thm import Thm, InvalidDerivationException
+from kernel.thm import InvalidDerivationException
 from kernel import theory
 from kernel.theory import register_macro
 from kernel.macro import Macro
@@ -27,14 +27,6 @@ class imp_conj_macro(Macro):
         self.level = 1
         self.sig = Term
         self.limit = None
-
-    def eval(self, goal, ths):
-        # goal: A --> B
-        A, B = goal.arg1, goal.arg
-        conjA = set(strip_conj(A)) - {true}
-        conjB = set(strip_conj(B)) - {true}
-        assert conjB <= conjA, "imp_conj: subset relation does not hold"
-        return Thm(goal)
 
     def get_proof_term(self, goal, pts):
         dct = dict()
@@ -79,14 +71,6 @@ class imp_disj_macro(Macro):
         self.level = 1
         self.sig = Term
         self.limit = None
-
-    def eval(self, goal, pts):
-        # goal: A --> B
-        A, B = goal.arg1, goal.arg
-        disjA = set(strip_disj(A))
-        disjB = set(strip_disj(B))
-        assert disjA <= disjB, "imp_disj: subset relation does not hold"
-        return Thm(goal)
 
     def get_proof_term(self, goal, pts):
         """Goal is of the form A_1 | ... | A_m --> B_1 | ...| B_n, where

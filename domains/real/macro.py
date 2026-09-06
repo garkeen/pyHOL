@@ -23,7 +23,7 @@ from domains.real.conv import (
     real_norm_comparison,
     norm_real_ineq_conv,
     replace_conv,
-    greater_eq, less_eq, greater, less,
+    greater_eq, less_eq,
 )
 
 
@@ -65,9 +65,6 @@ class real_norm_macro(Macro):
 
         t1, t2 = goal.args
         return convert_to_poly(t1) == convert_to_poly(t2)
-
-    def get_proof_term(self, goal, pts):
-        raise NotImplementedError
 
 
 @register_macro('real_const_eq')
@@ -192,6 +189,234 @@ class RealCompEq(Macro):
 
         return pt_refl1.transitive(pt_refl2.symmetric())
 
+# --- non_strict_simplex proof logic (module functions; the macro class
+# below is a thin adapter: name/level/sig + delegation) ---
+
+def _min_positive_proof(pts):
+    """Given |- x_i > 0 for i = 1..n, return (|- min(...) >= δ_1,
+    |- δ_1 > 0, δ_1 = min(...) / 2 assumption)."""
+    if not pts:
+        return None, None, None
+
+    # ⊢ min(min(...(min(x_1, x_2), x_3)...), x_n-1), x_n) > 0
+    min_pos_pt = functools.reduce(lambda pt1, pt2: logic.apply_theorem("min_greater_0", pt1, pt2),
+                    pts[1:], pts[0])
+
+     # ⊢ 0 < 2
+    two_pos_pt = ProofTerm("real_compare", Real(0) < Real(2))
+
+    # ⊢ min(...) / 2 > 0
+    min_divides_two_pos = logic.apply_theorem("real_lt_div",
+            min_pos_pt.on_prop(rewr_conv("real_ge_to_le")), two_pos_pt).on_prop(rewr_conv("real_ge_to_le", sym=True))
+
+    # ⊢ 2 ≥ 1
+    two_larger_one = ProofTerm("real_compare", Real(2) >= Real(1))
+
+    # ⊢ min(...) ≥ min(...) / 2
+    larger_half_pt = logic.apply_theorem("real_divides_larger_1", two_larger_one, min_pos_pt)
+
+    # ⊢ min(...) / 2 = δ_1
+    delta_1 = Var("δ_1", RealType)
+    pt_delta1_eq = ProofTerm.assume(Eq(larger_half_pt.prop.arg, delta_1))
+
+    # ⊢ min(...) ≥ δ_1
+    larger_half_pt_delta = larger_half_pt.on_prop(top_conv(replace_conv(pt_delta1_eq)))
+
+    # ⊢ δ_1 > 0
+    delta_1_pos = min_divides_two_pos.on_prop(arg1_conv(replace_conv(pt_delta1_eq)))
+
+    return larger_half_pt_delta, delta_1_pos, pt_delta1_eq
+
+def _geq_bounds_proof(pt_lower_bound, pts, delta):
+    """Given |- min(...) >= δ, derive |- x_i >= δ for i = 1..n."""
+    geq_pt = []
+    pt_a = pt_lower_bound
+    d = set()
+
+    for i in range(len(pts)):
+        if i != len(pts) - 1:
+            pt = logic.apply_theorem("both_geq_min", pt_a)
+            pt_1, pt_2 = logic.apply_theorem("conjD1", pt), logic.apply_theorem("conjD2", pt)
+        else:
+            pt_2 = pt_a
+
+        ineq = pt_2.prop
+
+        if ineq.arg1.is_minus() and ineq.arg1.arg.is_number():
+            # move all constant term from left to right in pt_2's prop
+            num = ineq.arg1.arg
+            expr = greater_eq(ineq.arg1.arg1, num+delta)
+
+        else:
+            expr = greater_eq(ineq.arg1, Real(0)+delta)
+
+        pt_eq_comp = ProofTerm("real_eq_comparison", Eq(ineq, expr))
+        geq_pt.insert(0, pt_2.on_prop(replace_conv(pt_eq_comp)))
+
+        if i != len(pts) - 1:
+            pt_a = pt_1
+
+    return geq_pt
+
+def _max_negative_proof(pts):
+    """Given |- x_i < 0 for i = 1..n, return (|- max(...) <= -δ,
+    |- δ > 0, δ assumption)."""
+    if not pts:
+        return None, None, None
+    # ⊢ max(max(...(max(x_1, x_2), x_3)...), x_n-1), x_n) < 0
+    max_pos_pt = functools.reduce(lambda pt1, pt2: logic.apply_theorem("max_less_0", pt1, pt2),
+                    pts[1:], pts[0])
+
+    # ⊢ 0 < 2
+    two_pos_pt = ProofTerm("real_compare", Real(2) > Real(0))
+
+    # ⊢ max(...) / 2 < 0
+    max_divides_two_pos = logic.apply_theorem("real_neg_div_pos",
+            max_pos_pt, two_pos_pt)
+
+    # ⊢ 2 ≥ 1
+    two_larger_one = ProofTerm("real_compare", Real(2) >= Real(1))
+
+    # ⊢ max(...) ≤ max(...) / 2
+    less_half_pt = logic.apply_theorem("real_neg_divides_larger_1", two_larger_one, max_pos_pt)
+
+    # ⊢ max(...) / 2 = -δ
+    delta_2 = Var("δ_2", RealType)
+    pt_delta_eq = ProofTerm.assume(Eq(less_half_pt.prop.arg, -delta_2))
+
+    # ⊢ δ > 0
+    delta_pos_pt = max_divides_two_pos.on_prop(rewr_conv("real_le_gt"), top_conv(replace_conv(pt_delta_eq)),
+                                               auto.norm_conv())
+
+    # max(...) ≤ -δ
+    less_half_pt_delta = less_half_pt.on_prop(arg_conv(replace_conv(pt_delta_eq)))
+
+    return less_half_pt_delta, delta_pos_pt, pt_delta_eq
+
+def _leq_bounds_proof(pt_upper_bound, pts, delta):
+    """Given |- max(...) <= -δ, derive |- x_i <= -δ for i = 1..n."""
+    leq_pt = []
+    pt_b = pt_upper_bound
+
+    for i in range(len(pts)):
+        if i != len(pts) - 1:
+            pt = logic.apply_theorem("both_leq_max", pt_b)
+            pt_1, pt_2 = logic.apply_theorem("conjD1", pt), logic.apply_theorem("conjD2", pt)
+        else:
+            pt_2 = pt_b
+
+        ineq = pt_2.prop
+
+        if ineq.arg1.is_minus() and ineq.arg1.arg.is_number():
+            num = ineq.arg1.arg
+            expr = less_eq(ineq.arg1.arg1, num-delta)
+
+        else:
+            expr = less_eq(ineq.arg1, Real(0)-delta)
+
+        pt_eq_comp = ProofTerm("real_eq_comparison", Eq(ineq, expr))
+        leq_pt.insert(0, pt_2.on_prop(replace_conv(pt_eq_comp)))
+        if i != len(pts) - 1:
+            pt_b = pt_1
+
+    return leq_pt
+
+def relax_strict_simplex_proof(args, prevs=None):
+    """
+    Let x_i denotes greater comparison, x__i denotes less comparison,
+    for the greater comparison, find the smallest number x_min = min(x_1, ..., x_n), since x_min is positive,
+    x_min/2 > 0 ==> x_min >= x_min / 2 ==> x_1, ..., x_n >= x_min / 2 ==> ∃δ. δ > 0 ∧ x_1 >= δ ∧ ... ∧ x_n >= δ.
+    for the less comparison, find the largest number x_max = max(x__1, ..., x__n), since x_max is negative, x_max <
+    x_max/2 ==> x__1, ..., x__n <= x_max/2;
+    let δ = min(x_min/2, -x_max/2), then all x_i >= δ as well as all x__i <= -δ.
+    """
+
+    def need_convert(tm):
+        return False if real_eval(tm.arg) != 0 else True
+
+    original_ineq_pts = [ProofTerm.assume(ineq) for ineq in args]
+
+    # record the ineq which rhs is not 0
+    need_convert_pt = {arg for arg in args if need_convert(arg)}
+
+    # record the args order
+    order_args = {args[i].arg1: i for i in range(len(args))}
+
+    # convert all ineqs to x_i > 0 or x_i < 0
+    normal_ineq_pts = [pt.on_prop(norm_real_ineq_conv()) if pt.prop.arg != Real(0) else pt for pt in original_ineq_pts]
+
+    # dividing less comparison and greater comparison
+    greater_ineq_pts = [pt for pt in normal_ineq_pts if pt.prop.is_greater()]
+    less_ineq_pts = [pt for pt in normal_ineq_pts if pt.prop.is_less()]
+
+    # stage 1: get the max(min) pos bound
+    # ⊢ min(...) ≥ δ_1, δ_1 > 0
+    # ⊢ max(...) ≤ δ_2, δ_2 < 0
+    pt_lower_bound, lower_bound_pos_pt, pt_assert_delta1 = _min_positive_proof(greater_ineq_pts)
+    pt_upper_bound, upper_bound_neg_pt, pt_assert_delta2 = _max_negative_proof(less_ineq_pts)
+
+    delta_1 = Var("δ_1", RealType)
+    delta_2 = Var("δ_2", RealType)
+
+    # generate the relaxed inequations
+    if pt_lower_bound is None: # all comparisons are ≤
+        pts = _leq_bounds_proof(pt_upper_bound, less_ineq_pts, delta_2)
+        bound_pt = upper_bound_neg_pt
+        delta = delta_2
+        pt_asserts = [pt_assert_delta2]
+    elif pt_upper_bound is None: # all comparisons are ≥
+        pts = _geq_bounds_proof(pt_lower_bound, greater_ineq_pts, delta_1)
+        bound_pt = lower_bound_pos_pt
+        delta = delta_1
+        pt_asserts = [pt_assert_delta1]
+    else: # have both ≥ and ≤
+        # ⊢ δ_1 ≥ min(δ_1, δ_2)
+        pt_min_lower_bound = logic.apply_theorem("real_greater_min", inst=matcher.Inst(x=delta_1, y=delta_2))
+        # ⊢ -δ_2 ≤ max(-δ_2, -δ_1)
+        pt_max_upper_bound = logic.apply_theorem("real_less_max", inst=matcher.Inst(x=-delta_2, y=-delta_1))
+        # ⊢ max(-δ_2, -δ_1) = -min(δ_1, δ_2)
+        pt_max_min = logic.apply_theorem("max_min", inst=matcher.Inst(x=delta_1, y=delta_2))
+        # ⊢ min(...) ≥ min(δ_1, δ_2)
+        pt_new_lower_bound = logic.apply_theorem("real_geq_trans", pt_lower_bound, pt_min_lower_bound)
+        # ⊢ -δ_2 ≤ -min(δ_1, δ_2)
+        pt_max_upper_bound_1 = pt_max_upper_bound.on_prop(arg_conv(replace_conv(pt_max_min)))
+        # ⊢ max(...) ≤ -min(δ_1, δ_2)
+        pt_new_upper_bound = logic.apply_theorem("real_le_trans", pt_upper_bound, pt_max_upper_bound_1)
+        # ⊢ min(δ_1, δ_2) > 0
+        pt_new_lower_bound_pos = logic.apply_theorem("min_pos", lower_bound_pos_pt, upper_bound_neg_pt)
+        # ⊢ min(δ_1, δ_2) = δ
+        delta = Var("δ", RealType)
+        pt_delta_eq = ProofTerm.assume(Eq(pt_min_lower_bound.prop.arg, delta))
+        pt_asserts = [pt_delta_eq, pt_assert_delta1, pt_assert_delta2]
+        # ⊢ min(...) ≥ δ
+        pt_new_lower_bound_delta = pt_new_lower_bound.on_prop(arg_conv(replace_conv(pt_delta_eq)))
+        # ⊢ max(...) ≤ -δ
+        pt_new_upper_bound_delta = pt_new_upper_bound.on_prop(top_conv(replace_conv(pt_delta_eq)))
+        # use new bound
+        pts_leq = _leq_bounds_proof(pt_new_upper_bound_delta, less_ineq_pts, delta)
+        pts_geq = _geq_bounds_proof(pt_new_lower_bound_delta, greater_ineq_pts, delta)
+        pts = pts_leq + pts_geq
+        bound_pt = pt_new_lower_bound_pos.on_prop(arg1_conv(replace_conv(pt_delta_eq)))
+
+    # sort_pts = sorted(pts, key=lambda pt: order_args[pt.prop.arg1])
+
+    pt_conj = functools.reduce(lambda x, y: logic.apply_theorem("conjI", y, x), reversed([bound_pt] + pts))
+
+    # get ⊢∃δ. δ > 0 ∧ x_1 >= δ ∧ ... ∧ x_n >= δ
+    th = ProofTerm.theorem("exI")
+    inst = matcher.first_order_match(th.prop.arg, Exists(delta, pt_conj.prop))
+    pt_conj_exists = logic.apply_theorem("exI", pt_conj, inst=inst)
+    pt_final = pt_conj_exists
+    for pt_subst in pt_asserts:
+        lhs, rhs = pt_subst.prop.args
+        if not rhs.is_uminus():
+            pt_final = pt_final.implies_intr(pt_subst.prop).forall_intr(rhs).\
+                        forall_elim(lhs).implies_elim(ProofTerm.reflexive(lhs))
+        else:
+            pt_final = pt_final.implies_intr(pt_subst.prop).forall_intr(rhs.arg).\
+                forall_elim(-lhs).on_prop(top_conv(rewr_conv("real_neg_neg"))).implies_elim(ProofTerm.reflexive(lhs))
+    return pt_final
+
 
 @register_macro('non_strict_simplex')
 class relax_strict_simplex_macro(Macro):
@@ -209,223 +434,5 @@ class relax_strict_simplex_macro(Macro):
         self.sig = typing.List[Term]
         self.limit = None
 
-    def handle_geq_stage1(self, pts):
-        if not pts:
-            return None, None, None
-
-        # ⊢ min(min(...(min(x_1, x_2), x_3)...), x_n-1), x_n) > 0
-        min_pos_pt = functools.reduce(lambda pt1, pt2: logic.apply_theorem("min_greater_0", pt1, pt2),
-                        pts[1:], pts[0])
-
-         # ⊢ 0 < 2
-        two_pos_pt = ProofTerm("real_compare", Real(0) < Real(2))
-
-        # ⊢ min(...) / 2 > 0
-        min_divides_two_pos = logic.apply_theorem("real_lt_div",
-                min_pos_pt.on_prop(rewr_conv("real_ge_to_le")), two_pos_pt).on_prop(rewr_conv("real_ge_to_le", sym=True))
-
-        # ⊢ 2 ≥ 1
-        two_larger_one = ProofTerm("real_compare", Real(2) >= Real(1))
-
-        # ⊢ min(...) ≥ min(...) / 2
-        larger_half_pt = logic.apply_theorem("real_divides_larger_1", two_larger_one, min_pos_pt)
-
-        # ⊢ min(...) / 2 = δ_1
-        delta_1 = Var("δ_1", RealType)
-        pt_delta1_eq = ProofTerm.assume(Eq(larger_half_pt.prop.arg, delta_1))
-
-        # ⊢ min(...) ≥ δ_1
-        larger_half_pt_delta = larger_half_pt.on_prop(top_conv(replace_conv(pt_delta1_eq)))
-
-        # ⊢ δ_1 > 0
-        delta_1_pos = min_divides_two_pos.on_prop(arg1_conv(replace_conv(pt_delta1_eq)))
-
-        return larger_half_pt_delta, delta_1_pos, pt_delta1_eq
-
-    def handle_geq_stage2(self, pt_lower_bound, pts, delta):
-        # get ⊢ x_i ≥ δ, i = 1...n
-        geq_pt = []
-        pt_a = pt_lower_bound
-        d = set()
-
-        for i in range(len(pts)):
-            if i != len(pts) - 1:
-                pt = logic.apply_theorem("both_geq_min", pt_a)
-                pt_1, pt_2 = logic.apply_theorem("conjD1", pt), logic.apply_theorem("conjD2", pt)
-            else:
-                pt_2 = pt_a
-
-            ineq = pt_2.prop
-
-            if ineq.arg1.is_minus() and ineq.arg1.arg.is_number():
-                # move all constant term from left to right in pt_2's prop
-                num = ineq.arg1.arg
-                expr = greater_eq(ineq.arg1.arg1, num+delta)
-
-            else:
-                expr = greater_eq(ineq.arg1, Real(0)+delta)
-
-            pt_eq_comp = ProofTerm("real_eq_comparison", Eq(ineq, expr))
-            geq_pt.insert(0, pt_2.on_prop(replace_conv(pt_eq_comp)))
-
-            if i != len(pts) - 1:
-                pt_a = pt_1
-
-        return geq_pt
-
-    def handle_leq_stage1(self, pts):
-        if not pts:
-            return None, None, None
-        # ⊢ max(max(...(max(x_1, x_2), x_3)...), x_n-1), x_n) < 0
-        max_pos_pt = functools.reduce(lambda pt1, pt2: logic.apply_theorem("max_less_0", pt1, pt2),
-                        pts[1:], pts[0])
-
-        # ⊢ 0 < 2
-        two_pos_pt = ProofTerm("real_compare", Real(2) > Real(0))
-
-        # ⊢ max(...) / 2 < 0
-        max_divides_two_pos = logic.apply_theorem("real_neg_div_pos",
-                max_pos_pt, two_pos_pt)
-
-        # ⊢ 2 ≥ 1
-        two_larger_one = ProofTerm("real_compare", Real(2) >= Real(1))
-
-        # ⊢ max(...) ≤ max(...) / 2
-        less_half_pt = logic.apply_theorem("real_neg_divides_larger_1", two_larger_one, max_pos_pt)
-
-        # ⊢ max(...) / 2 = -δ
-        delta_2 = Var("δ_2", RealType)
-        pt_delta_eq = ProofTerm.assume(Eq(less_half_pt.prop.arg, -delta_2))
-
-        # ⊢ δ > 0
-        delta_pos_pt = max_divides_two_pos.on_prop(rewr_conv("real_le_gt"), top_conv(replace_conv(pt_delta_eq)),
-                                                   auto.norm_conv())
-
-        # max(...) ≤ -δ
-        less_half_pt_delta = less_half_pt.on_prop(arg_conv(replace_conv(pt_delta_eq)))
-
-        return less_half_pt_delta, delta_pos_pt, pt_delta_eq
-
-    def handle_leq_stage2(self, pt_upper_bound, pts, delta):
-        # get ⊢ x_i ≤ -δ, for i = 1...n
-        leq_pt = []
-        pt_b = pt_upper_bound
-
-        for i in range(len(pts)):
-            if i != len(pts) - 1:
-                pt = logic.apply_theorem("both_leq_max", pt_b)
-                pt_1, pt_2 = logic.apply_theorem("conjD1", pt), logic.apply_theorem("conjD2", pt)
-            else:
-                pt_2 = pt_b
-
-            ineq = pt_2.prop
-
-            if ineq.arg1.is_minus() and ineq.arg1.arg.is_number():
-                num = ineq.arg1.arg
-                expr = less_eq(ineq.arg1.arg1, num-delta)
-
-            else:
-                expr = less_eq(ineq.arg1, Real(0)-delta)
-
-            pt_eq_comp = ProofTerm("real_eq_comparison", Eq(ineq, expr))
-            leq_pt.insert(0, pt_2.on_prop(replace_conv(pt_eq_comp)))
-            if i != len(pts) - 1:
-                pt_b = pt_1
-
-        return leq_pt
-
     def get_proof_term(self, args, prevs=None):
-        """
-        Let x_i denotes greater comparison, x__i denotes less comparison,
-        for the greater comparison, find the smallest number x_min = min(x_1, ..., x_n), since x_min is positive,
-        x_min/2 > 0 ==> x_min >= x_min / 2 ==> x_1, ..., x_n >= x_min / 2 ==> ∃δ. δ > 0 ∧ x_1 >= δ ∧ ... ∧ x_n >= δ.
-        for the less comparison, find the largest number x_max = max(x__1, ..., x__n), since x_max is negative, x_max <
-        x_max/2 ==> x__1, ..., x__n <= x_max/2;
-        let δ = min(x_min/2, -x_max/2), then all x_i >= δ as well as all x__i <= -δ.
-        """
-
-        def need_convert(tm):
-            return False if real_eval(tm.arg) != 0 else True
-
-        original_ineq_pts = [ProofTerm.assume(ineq) for ineq in args]
-
-        # record the ineq which rhs is not 0
-        need_convert_pt = {arg for arg in args if need_convert(arg)}
-
-        # record the args order
-        order_args = {args[i].arg1: i for i in range(len(args))}
-
-        # convert all ineqs to x_i > 0 or x_i < 0
-        normal_ineq_pts = [pt.on_prop(norm_real_ineq_conv()) if pt.prop.arg != Real(0) else pt for pt in original_ineq_pts]
-
-        # dividing less comparison and greater comparison
-        greater_ineq_pts = [pt for pt in normal_ineq_pts if pt.prop.is_greater()]
-        less_ineq_pts = [pt for pt in normal_ineq_pts if pt.prop.is_less()]
-
-        # stage 1: get the max(min) pos bound
-        # ⊢ min(...) ≥ δ_1, δ_1 > 0
-        # ⊢ max(...) ≤ δ_2, δ_2 < 0
-        pt_lower_bound, lower_bound_pos_pt, pt_assert_delta1 = self.handle_geq_stage1(greater_ineq_pts)
-        pt_upper_bound, upper_bound_neg_pt, pt_assert_delta2 = self.handle_leq_stage1(less_ineq_pts)
-
-        delta_1 = Var("δ_1", RealType)
-        delta_2 = Var("δ_2", RealType)
-
-        # generate the relaxed inequations
-        if pt_lower_bound is None: # all comparisons are ≤
-            pts = self.handle_leq_stage2(pt_upper_bound, less_ineq_pts, delta_2)
-            bound_pt = upper_bound_neg_pt
-            delta = delta_2
-            pt_asserts = [pt_assert_delta2]
-        elif pt_upper_bound is None: # all comparisons are ≥
-            pts = self.handle_geq_stage2(pt_lower_bound, greater_ineq_pts, delta_1)
-            bound_pt = lower_bound_pos_pt
-            delta = delta_1
-            pt_asserts = [pt_assert_delta1]
-        else: # have both ≥ and ≤
-            # ⊢ δ_1 ≥ min(δ_1, δ_2)
-            pt_min_lower_bound = logic.apply_theorem("real_greater_min", inst=matcher.Inst(x=delta_1, y=delta_2))
-            # ⊢ -δ_2 ≤ max(-δ_2, -δ_1)
-            pt_max_upper_bound = logic.apply_theorem("real_less_max", inst=matcher.Inst(x=-delta_2, y=-delta_1))
-            # ⊢ max(-δ_2, -δ_1) = -min(δ_1, δ_2)
-            pt_max_min = logic.apply_theorem("max_min", inst=matcher.Inst(x=delta_1, y=delta_2))
-            # ⊢ min(...) ≥ min(δ_1, δ_2)
-            pt_new_lower_bound = logic.apply_theorem("real_geq_trans", pt_lower_bound, pt_min_lower_bound)
-            # ⊢ -δ_2 ≤ -min(δ_1, δ_2)
-            pt_max_upper_bound_1 = pt_max_upper_bound.on_prop(arg_conv(replace_conv(pt_max_min)))
-            # ⊢ max(...) ≤ -min(δ_1, δ_2)
-            pt_new_upper_bound = logic.apply_theorem("real_le_trans", pt_upper_bound, pt_max_upper_bound_1)
-            # ⊢ min(δ_1, δ_2) > 0
-            pt_new_lower_bound_pos = logic.apply_theorem("min_pos", lower_bound_pos_pt, upper_bound_neg_pt)
-            # ⊢ min(δ_1, δ_2) = δ
-            delta = Var("δ", RealType)
-            pt_delta_eq = ProofTerm.assume(Eq(pt_min_lower_bound.prop.arg, delta))
-            pt_asserts = [pt_delta_eq, pt_assert_delta1, pt_assert_delta2]
-            # ⊢ min(...) ≥ δ
-            pt_new_lower_bound_delta = pt_new_lower_bound.on_prop(arg_conv(replace_conv(pt_delta_eq)))
-            # ⊢ max(...) ≤ -δ
-            pt_new_upper_bound_delta = pt_new_upper_bound.on_prop(top_conv(replace_conv(pt_delta_eq)))
-            # use new bound
-            pts_leq = self.handle_leq_stage2(pt_new_upper_bound_delta, less_ineq_pts, delta)
-            pts_geq = self.handle_geq_stage2(pt_new_lower_bound_delta, greater_ineq_pts, delta)
-            pts = pts_leq + pts_geq
-            bound_pt = pt_new_lower_bound_pos.on_prop(arg1_conv(replace_conv(pt_delta_eq)))
-
-        # sort_pts = sorted(pts, key=lambda pt: order_args[pt.prop.arg1])
-
-        pt_conj = functools.reduce(lambda x, y: logic.apply_theorem("conjI", y, x), reversed([bound_pt] + pts))
-
-        # get ⊢∃δ. δ > 0 ∧ x_1 >= δ ∧ ... ∧ x_n >= δ
-        th = ProofTerm.theorem("exI")
-        inst = matcher.first_order_match(th.prop.arg, Exists(delta, pt_conj.prop))
-        pt_conj_exists = logic.apply_theorem("exI", pt_conj, inst=inst)
-        pt_final = pt_conj_exists
-        for pt_subst in pt_asserts:
-            lhs, rhs = pt_subst.prop.args
-            if not rhs.is_uminus():
-                pt_final = pt_final.implies_intr(pt_subst.prop).forall_intr(rhs).\
-                            forall_elim(lhs).implies_elim(ProofTerm.reflexive(lhs))
-            else:
-                pt_final = pt_final.implies_intr(pt_subst.prop).forall_intr(rhs.arg).\
-                    forall_elim(-lhs).on_prop(top_conv(rewr_conv("real_neg_neg"))).implies_elim(ProofTerm.reflexive(lhs))
-        return pt_final
+        return relax_strict_simplex_proof(args, prevs)

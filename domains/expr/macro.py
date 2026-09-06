@@ -4,7 +4,6 @@ from kernel.type import TConst, TFun, BoolType
 from syntax.numeral import NatType
 from kernel.term import Term, Const
 from syntax.numeral import Nat
-from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
 from framework.logic import apply_theorem
@@ -66,14 +65,6 @@ class prove_avalI_macro(Macro):
                 return helper(a1) * helper(a2)
 
         return helper(t)
-
-    def eval(self, goal, ths):
-        assert isinstance(goal, Term), "prove_avalI_macro"
-        assert len(ths) == 0, "prove_avalI_macro"
-        s, t, n = goal.args
-        res = self.get_avalI(s, t)
-        assert n == Nat(res), "prove_avalI_macro: wrong result"
-        return Thm(goal)
 
     def can_eval(self, goal):
         assert isinstance(goal, Term), "prove_avalI_macro"
