@@ -1,7 +1,7 @@
 # server/methods/z3.py - Z3 Method class
 # Extracted from prover/z3wrapper.py
 
-from server.methods.core import Method, register_method
+from framework.method import Method, register_method
 from prover.z3wrapper import z3_loaded, check_z3, solve
 from kernel.term import Implies
 from syntax import pprint

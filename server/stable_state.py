@@ -18,8 +18,10 @@ from kernel.proofterm import ProofTerm
 from kernel import theory
 from syntax import parser, printer
 from syntax.settings import global_setting
-from server.methods.core import ProofState, apply_method, get_method_sig, get_method_list_params
-from server.methods import core as methods_core
+from server.methods.core import ProofState, apply_method
+from framework.method import get_method_sig, get_method_list_params
+from framework.method import global_methods
+from framework import method as framework_method
 from framework import tactic
 from framework import context
 
@@ -514,8 +516,8 @@ class StableProofState:
                 tr = self._translate_search_result(r, pos2sid)
                 (results if exact else fuzzy).append(tr)
 
-        for method_name in methods_core.global_methods:
-            method = methods_core.global_methods[method_name]
+        for method_name in framework_method.global_methods:
+            method = framework_method.global_methods[method_name]
             if method.limit is not None and not theory.thy.has_theorem(method.limit):
                 continue
             collect(method_name, method, prevs, exact=True)
@@ -611,8 +613,8 @@ class StableProofState:
                 tr = self._translate_search_result(r, pos2sid)
                 (results if exact else fuzzy).append(tr)
 
-        for method_name in methods_core.global_methods:
-            method = methods_core.global_methods[method_name]
+        for method_name in framework_method.global_methods:
+            method = framework_method.global_methods[method_name]
             if method_name not in FORWARD:
                 continue
             if method.limit is not None and not theory.thy.has_theorem(method.limit):

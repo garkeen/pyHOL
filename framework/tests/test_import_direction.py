@@ -14,6 +14,7 @@ import os
 import unittest
 
 FRAMEWORK_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(FRAMEWORK_DIR)
 
 
 def imports_of(path):
@@ -26,6 +27,15 @@ def imports_of(path):
         elif isinstance(node, ast.ImportFrom) and node.module:
             mods.add(node.module)
     return mods
+
+
+def py_files_under(*dirs):
+    for d in dirs:
+        base = os.path.join(ROOT, d)
+        for dirpath, _, filenames in os.walk(base):
+            for fn in filenames:
+                if fn.endswith('.py'):
+                    yield os.path.join(dirpath, fn)
 
 
 class ImportDirectionTest(unittest.TestCase):
@@ -47,6 +57,26 @@ class ImportDirectionTest(unittest.TestCase):
             bad = [m for m in mods if m == 'framework.tactic'
                    or m.startswith('framework.tactic.')]
             self.assertEqual(bad, [], "%s imports tactic layer: %s" % (fname, bad))
+
+    def testTheoriesDoNotImportServer(self):
+        """domains/ and imperative/ must not import server.* (step 4:
+        method registration goes through framework.method; the method
+        layer reads the registry, it is not a dependency of theories)."""
+        # Whitelist shrinks over the migration steps:
+        #  - imperative/tests/imp_compile_test.py calls
+        #    monitor.validate_theory, which moves to core/verify at
+        #    step 8. Remove from the whitelist then.
+        whitelist = {'imperative/tests/imp_compile_test.py'}
+        offenders = []
+        for path in py_files_under('domains', 'imperative'):
+            rel = os.path.relpath(path, ROOT).replace('\\', '/')
+            if rel in whitelist:
+                continue
+            mods = imports_of(path)
+            bad = [m for m in mods if m == 'server' or m.startswith('server.')]
+            if bad:
+                offenders.append("%s: %s" % (rel, bad))
+        self.assertEqual(offenders, [])
 
 
 if __name__ == "__main__":

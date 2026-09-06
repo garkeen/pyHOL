@@ -1,11 +1,12 @@
 # server/methods - Unified method registration interface
 # Provides ProofState, Method base class, and all registered methods
 
-from server.methods.core import (
-    ProofState, Method, global_methods,
+from framework.method import (
+    Method, global_methods,
     register_method, get_method, has_method, get_method_sig,
-    apply_method, output_step, output_hint
 )
+from server.methods.core import apply_method, output_step, output_hint
+from server.methods.core import ProofState
 
 # Import domain packages to register their methods.
 # Domains live in the top-level domains/ package. Importing them triggers

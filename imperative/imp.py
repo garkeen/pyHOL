@@ -18,7 +18,7 @@ from kernel.proofterm import ProofTerm
 from framework.logic import apply_theorem
 from framework.tactic import Tactic
 from syntax import pprint, settings
-from server.methods.core import Method, register_method, register_macro_method
+from framework.method import Method, register_method, register_macro_method
 from prover import z3wrapper
 
 
@@ -250,7 +250,7 @@ class vcg_tactic(Tactic):
 
 
 # Register vcg as a method so imp_compile can reference it
-from server.methods.core import register_method, Method
+from framework.method import register_method, Method
 from syntax import pprint as _pprint
 
 @register_method('vcg')

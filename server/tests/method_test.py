@@ -8,7 +8,7 @@ from kernel.thm import Thm
 from kernel import theory
 from framework import context
 from server import methods as method
-from server.methods.core import global_methods, get_method
+from framework.method import global_methods, get_method
 from server import server
 from syntax import parser
 
