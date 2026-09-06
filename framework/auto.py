@@ -355,7 +355,7 @@ class auto_macro(Macro):
         self.limit = None
 
     def get_proof_term(self, args, pts, max_rounds=10):
-        from framework.tactic import simp_sweep
+        from framework.macro.simp import simp_sweep
         cur = args
         chain = None
         for _ in range(max_rounds):

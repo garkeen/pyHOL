@@ -15,6 +15,7 @@ from framework.conv import Conv, then_conv, all_conv, arg_conv, binop_conv, rewr
     top_conv, top_sweep_conv, beta_conv, beta_norm_conv, has_rewrite
 from kernel.proofterm import ProofTerm, refl
 from framework import matcher
+from framework.macro.simp import simp_sweep
 from util import name
 from util import typecheck
 
@@ -259,7 +260,6 @@ class simp_macro(Macro):
         self.limit = None
 
     def get_proof_term(self, args, pts):
-        from framework.tactic import simp_sweep
         C = args
         cv_acc, current = simp_sweep(C)
         assert cv_acc is not None and current != C, \
