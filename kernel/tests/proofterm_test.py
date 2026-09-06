@@ -7,10 +7,7 @@ from kernel.term import Var, Term, Eq
 from kernel.thm import Thm
 from kernel.proof import Proof
 from kernel import theory
-from framework import basic
 from kernel.proofterm import ProofTerm
-
-basic.load_theory('logic_base')
 
 Ta = TVar("a")
 x = Var("x", Ta)
@@ -19,6 +16,9 @@ z = Var("z", Ta)
 f = Var("f", TFun(Ta,Ta,Ta))
 
 class ProofTermTest(unittest.TestCase):
+    def setUp(self):
+        theory.thy = theory.EmptyTheory()
+
     def testExport(self):
         """Basic case."""
         pt1 = ProofTerm.assume(Eq(x,y))
