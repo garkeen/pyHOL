@@ -48,6 +48,20 @@ sys.setrecursionlimit(10000000)
 
 basic.load_theory('smt')
 
+def mk_int_const_ineq_pt(value):
+    """Proof term for the sign fact of an integer constant, via the
+    int_const_ineq oracle macro (level 0): |- c > 0 or |- c < 0.
+
+    Emission lives at the prover layer; the conv layer receives the
+    fact as a parameter (audit iron law: conv 不得出现宏名).
+
+    """
+    if value > 0:
+        return ProofTerm('int_const_ineq', greater(IntType)(Int(value), Int(0)))
+    else:
+        return ProofTerm('int_const_ineq', less(IntType)(Int(value), Int(0)))
+
+
 conj_expr = dict()
 disj_expr = dict()
 
@@ -711,7 +725,7 @@ def rewrite_int(tm, has_bool=False):
         try:
             return integer_macro.int_eq_comparison_macro().get_proof_term(tm)
         except:
-            return compare_lhs_rhs(tm, [top_conv(integer.int_gcd_compares()), integer.omega_form_conv()])
+            return compare_lhs_rhs(tm, [top_conv(integer.int_gcd_compares(mk_int_const_ineq_pt)), integer.omega_form_conv()])
     elif match_pattern('(a::int) = (b::int) <--> (c::int) = (d::int)', tm):
         return compare_lhs_rhs(tm, [integer.int_norm_eq()])
     elif tm.lhs.get_type() == IntType and tm.rhs.get_type() == IntType:
@@ -745,13 +759,13 @@ def rewrite_int(tm, has_bool=False):
         pt1 = try_tran_pt(pt_lhs_elim_neg, pt_rhs_elim_neg_sym)
         if pt1.rule != 'sorry':
             return pt1
-        return compare_lhs_rhs(tm, [top_conv(integer.int_gcd_compares()), integer.int_norm_neg_compares(), integer.omega_form_conv()])
+        return compare_lhs_rhs(tm, [top_conv(integer.int_gcd_compares(mk_int_const_ineq_pt)), integer.int_norm_neg_compares(), integer.omega_form_conv()])
     elif match_pattern('(a::bool) | (b::int) = c <--> (a::bool) | ~(~((b::int) <= c) | ~((b::int) >=c))', tm):
         pt_lhs = refl(tm.lhs).on_rhs(arg_conv(rewr_conv('int_eq_leq_geq')), arg_conv(proplogic.norm_full()))
         pt_rhs_sym = refl(tm.rhs).on_rhs(arg_conv(proplogic.norm_full())).symmetric()        
         return try_tran_pt(pt_lhs, pt_rhs_sym)
     elif match_pattern('((a :: int) = (b :: int)) <--> false', tm):
-        return refl(tm.lhs).on_rhs(integer.int_norm_eq(), integer.int_neq_false_conv())
+        return refl(tm.lhs).on_rhs(integer.int_norm_eq(), integer.int_neq_false_conv(mk_int_const_ineq_pt))
     elif match_pattern("(a :: int) * 0 = 0", tm):
         return refl(tm.lhs).on_rhs(rewr_conv('int_mul_0_r'))
     
@@ -771,7 +785,7 @@ def rewrite_int_second_level(tm):
         # (proplogic.norm_full(), try_conv(bottom_conv(integer.int_norm_eq())), top_conv(rewr_conv('int_eq_geq_leq_conj'))),
         # (proplogic.norm_full(), try_conv(bottom_conv(integer.int_norm_eq())), bottom_conv(integer.omega_form_conv())),
         # (proplogic.norm_full(),try_conv(top_conv(integer.int_norm_eq())), try_conv(bottom_conv(integer.simp_full())), top_conv(rewr_conv('int_eq_geq_leq_conj')), proplogic.norm_full()),
-        # (proplogic.norm_full(), top_conv(integer.int_gcd_compares()), top_conv(integer.int_norm_neg_compares()), top_conv(integer.omega_form_conv())),
+        # (proplogic.norm_full(), top_conv(integer.int_gcd_compares(mk_int_const_ineq_pt)), top_conv(integer.int_norm_neg_compares()), top_conv(integer.omega_form_conv())),
         (top_conv(rewr_conv('neg_iff_both_sides')), top_conv(rewr_conv('double_neg'))),
         (try_conv(bottom_conv(integer.omega_form_conv())),
         try_conv(bottom_conv(integer.int_norm_neg_compares())), try_conv(bottom_conv(integer.omega_form_conv())),
@@ -799,7 +813,7 @@ def rewrite_int_second_level(tm):
         (try_conv(bottom_conv(integer.int_norm_eq())), top_conv(rewr_conv('int_eq_geq_leq_conj'))),
         (try_conv(bottom_conv(integer.int_norm_eq())), bottom_conv(integer.omega_form_conv())),
         (proplogic.norm_full(),try_conv(top_conv(integer.int_norm_eq())), try_conv(bottom_conv(integer.simp_full())), top_conv(rewr_conv('int_eq_geq_leq_conj')), proplogic.norm_full()),
-        (top_conv(integer.int_gcd_compares()), top_conv(integer.int_norm_neg_compares()), top_conv(integer.omega_form_conv())),
+        (top_conv(integer.int_gcd_compares(mk_int_const_ineq_pt)), top_conv(integer.int_norm_neg_compares()), top_conv(integer.omega_form_conv())),
     ]
 
     pt_norm_full = refl(tm).on_rhs(binop_conv(proplogic.norm_full()))
@@ -839,12 +853,12 @@ def rewrite_real_second_level(tm):
     global atoms
     cvs = [value for _, value in atoms.items()]
     armony = [
-        # (auto.auto_conv(), top_conv(rewr_conv('ite_to_disj')), bottom_conv(norm_neg_real_ineq_conv()), bottom_conv(real_norm_comparison()), proplogic.norm_full()),
+        # (auto.norm_conv(), top_conv(rewr_conv('ite_to_disj')), bottom_conv(norm_neg_real_ineq_conv()), bottom_conv(real_norm_comparison()), proplogic.norm_full()),
         (bottom_conv(rewr_conv("if_true")), bottom_conv(rewr_conv("if_false"))),
         (bottom_conv(norm_neg_real_ineq_conv()),
         bottom_conv(real_norm_comparison()),
         *[top_conv(replace_conv(cv)) for cv in cvs],
-        auto.auto_conv(), 
+        auto.norm_conv(), 
         bottom_conv(rewr_conv('not_true')),
         bottom_conv(rewr_conv('not_false')),
         bottom_conv(real_const_eq_conv()),
@@ -864,7 +878,7 @@ def rewrite_real_second_level(tm):
 
         (bottom_conv(norm_neg_real_ineq_conv()),
         bottom_conv(real_norm_comparison()),
-        auto.auto_conv(), 
+        auto.norm_conv(), 
         bottom_conv(rewr_conv('not_true')),
         bottom_conv(rewr_conv('not_false')),
         bottom_conv(real_const_eq_conv()),
@@ -981,7 +995,7 @@ def _refute_atom(atom):
                 # ⊢ atom ⟷ false (int_neq_false_conv) lifts to ⊢ ¬atom.
                 try:
                     pt1 = refl(atom).on_rhs(integer.int_norm_eq(),
-                                            integer.int_neq_false_conv())
+                                            integer.int_neq_false_conv(mk_int_const_ineq_pt))
                     pt_c = refl(Not(atom).fun).combination(pt1)
                     pt_t = pt_c.on_prop(top_conv(rewr_conv('not_false')))
                     return pt_t.symmetric().equal_elim(apply_theorem('trueI'))
@@ -1464,7 +1478,7 @@ def def_axiom(arg1):
             top_conv(rewr_conv('int_ite01')),
             bottom_conv(rewr_conv('eq_mean_true')),
             bottom_conv(integer.int_norm_eq()),
-            bottom_conv(integer.int_neq_false_conv()),
+            bottom_conv(integer.int_neq_false_conv(mk_int_const_ineq_pt)),
             proplogic.norm_full()
         )
         pt = pt.symmetric()

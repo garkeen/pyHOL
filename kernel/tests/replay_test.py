@@ -13,6 +13,10 @@
 # This test is the "kernel断奶" acceptance test: it must pass without
 # importing anything from framework.
 
+import io
+import json
+import os
+import subprocess
 import sys
 import unittest
 
@@ -40,10 +44,19 @@ def And(a, b):
 
 class NoFrameworkImportTest(unittest.TestCase):
     def testNoFrameworkLoaded(self):
-        """The kernel must not pull in the framework at import time."""
-        imported = [m for m in sys.modules
-                    if m == "framework" or m.startswith("framework.")]
-        self.assertEqual(imported, [])
+        """Importing the kernel in a fresh interpreter must not pull in
+        the framework. Checked in a subprocess so the verdict does not
+        depend on what other tests imported earlier in this process."""
+        code = (
+            "import sys, json; import kernel; "
+            "print(json.dumps(sorted(m for m in sys.modules "
+            "if m == 'framework' or m.startswith('framework.'))))"
+        )
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        res = subprocess.run([sys.executable, '-c', code], capture_output=True,
+                             text=True, cwd=root)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(json.loads(res.stdout), [])
 
 
 class PurePrimitiveReplayTest(unittest.TestCase):

@@ -11,8 +11,8 @@ from kernel.proofterm import ProofTerm
 from kernel.report import ProofReport
 from framework import basic
 from framework import context
-from framework.logic import apply_theorem, is_if
-from framework.conv import Conv, rewr_conv, arg_conv, arg1_conv, binop_conv, top_conv, ConvException, try_conv
+from framework.logic import is_if
+from framework.conv import Conv, rewr_conv, arg_conv, arg1_conv, binop_conv, top_conv, ConvException, try_conv, inst_theorem
 from domains.nat import util_nat as nat
 from kernel.thm import Thm
 from syntax.settings import settings
@@ -556,11 +556,21 @@ class int_norm_neg_compares(Conv):
             raise ConvException
 
 class int_gcd_compares(Conv):
-    """Elimates the greatest common divisor of coefficients in comparison."""
+    """Elimates the greatest common divisor of coefficients in comparison.
+
+    The fact |- g > 0 for the gcd g is an oracle computation. A conv
+    cannot emit macro nodes (audit iron law: conv 不得出现宏名), so the
+    caller supplies it via mk_premise: an int -> ProofTerm function
+    producing |- g > 0.
+
+    """
+    def __init__(self, mk_premise=None):
+        self.mk_premise = mk_premise
+
     def get_proof_term(self, t):
         if not t.is_compares():
             raise ConvException('%s is not a comparison.' % str(t))
-        
+
         pt = refl(t)
         pt_norm_form = pt.on_rhs(norm_eq(), arg1_conv(omega_simp_full_conv()))
         summands = strip_plus(pt_norm_form.rhs.arg1)
@@ -578,7 +588,11 @@ class int_gcd_compares(Conv):
 
         simp_t_times_gcd = Int(g) * simp_t
         pt_simp_t_times_gcd = refl(simp_t_times_gcd).on_rhs(omega_simp_full_conv()).symmetric()
-        pt_c = ProofTerm('int_const_ineq', greater(IntType)(Int(g), Int(0)))
+        assert self.mk_premise is not None, \
+            "int_gcd_compares: caller must supply mk_premise (|- g > 0 fact)"
+        pt_c = self.mk_premise(g)
+        assert pt_c.prop == greater(IntType)(Int(g), Int(0)), \
+            "int_gcd_compares: premise should be g > 0, got %s" % str(pt_c.prop)
         if t.is_less():
             gcd_pt = ProofTerm.theorem('int_simp_less')
         elif t.is_less_eq():
@@ -590,24 +604,34 @@ class int_gcd_compares(Conv):
 
         inst1 = matcher.first_order_match(gcd_pt.prop.arg1, pt_c.prop)
         inst2 = matcher.first_order_match(gcd_pt.prop.arg.rhs.arg1, simp_t, inst=inst1)
-        
+
         pt_simp = gcd_pt.substitution(inst2).implies_elim(pt_c).on_lhs(arg1_conv(omega_simp_full_conv()))
-        return pt_norm_form.transitive(pt_simp).on_rhs(omega_form_conv())   
+        return pt_norm_form.transitive(pt_simp).on_rhs(omega_form_conv())
 
 class int_neq_false_conv(Conv):
     """Given a equality term a = 0 in which a is a constant and a is indeed not zero,
     Return (a = 0) <--> false proof term.
-    """   
+
+    The sign fact (|- c > 0 or |- c < 0) is an oracle computation. A conv
+    cannot emit macro nodes (audit iron law), so the caller supplies it
+    via mk_premise: an int -> ProofTerm function producing the fact for
+    the given constant.
+
+    """
+    def __init__(self, mk_premise=None):
+        self.mk_premise = mk_premise
+
     def get_proof_term(self, tm):
         if not tm.is_equals() or not int_eval(tm.lhs) != 0 or not int_eval(tm.rhs) == 0:
             raise ConvException(str(tm))
-        
+
         lhs_value = int_eval(tm.lhs)
+        assert self.mk_premise is not None, \
+            "int_neq_false_conv: caller must supply mk_premise (|- c > 0 / |- c < 0 fact)"
+        premise_pt = self.mk_premise(lhs_value)
         if lhs_value > 0:
-            premise_pt = ProofTerm("int_const_ineq", greater(IntType)(Int(lhs_value), Int(0)))
             return inst_theorem("int_pos_neq_zero", premise_pt)
         else:
-            premise_pt = ProofTerm("int_const_ineq", less(IntType)(Int(lhs_value), Int(0)))
             return inst_theorem("int_neg_neq_zero", premise_pt)
 
 class int_compare_to_real(Conv):
@@ -679,17 +703,3 @@ class int_simplex_form(Conv):
             return pt1.on_rhs(rewr_conv('int_leq_shift'), arg_conv(int_eval_conv()))
         else:
             raise NotImplementedError       
-
-class int_const_compares(Conv):
-    """
-    Given an int constant comparison, convert it to false or true.
-    """
-    def get_proof_term(self, tm):
-        if not ((tm.is_compares() or tm.is_equals()) and \
-            tm.arg1.is_constant() and tm.arg.is_constant()):
-            return refl(tm)
-        pt = ProofTerm("int_const_ineq", tm)
-        if pt.prop.is_not():
-            return pt.on_prop(rewr_conv("eq_false"))
-        else:
-            return pt.on_prop(rewr_conv("eq_true"))

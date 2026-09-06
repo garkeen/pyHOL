@@ -395,19 +395,23 @@ class auto_macro(Macro):
 def auto_solve(t, pts=None):
     return ProofTerm('auto', args=t, prevs=pts)
 
-class auto_conv(Conv):
-    """Applies auto macro in conversion."""
+class norm_conv(Conv):
+    """Convert a term to its normal form under the registered
+    normalization procedures (dispatches to norm).
+
+    Replaces the deleted auto_conv: returns the derivation built by
+    norm directly instead of wrapping it in an 'auto' macro node, so
+    the exported proof contains the actual rewrite chain. Conditional
+    rewriting premises are passed explicitly via conds.
+
+    """
     def __init__(self, conds=None):
         if conds is None:
             conds = []
         self.conds = conds
 
     def get_proof_term(self, t):
-        eq_t = norm(t, self.conds)
-        if t == eq_t.rhs:
-            return refl(t)
-        else:
-            return ProofTerm('auto', args=eq_t.prop, prevs=self.conds, th=eq_t.th)
+        return norm(t, self.conds)
 
 
 """Managing cache records."""

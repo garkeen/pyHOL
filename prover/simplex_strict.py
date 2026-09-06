@@ -16,6 +16,7 @@ from framework.logic import apply_theorem
 from framework import basic, matcher
 from framework import auto
 from domains.real import conv as real
+from domains.real import macro as real_macro
 from domains.integer import conv as integer
 from framework.conv import Conv, ConvException, rewr_conv, top_conv, arg_conv, arg1_conv, bottom_conv, try_conv
 from collections import namedtuple
@@ -777,11 +778,11 @@ class SimplexPosDelataMacro(Macro):
         norm_ineq = pt_norm_ineq.rhs
         if norm_ineq.arg1.is_plus():
             pt_th = ProofTerm.theorem("real_sub_both_sides_gt")
-            pt_inst_th = pt_norm_ineq.transitive(pt_th.substitution(inst=Inst(x=norm_ineq.arg1, y=norm_ineq.arg, c=norm_ineq.arg1.arg1)).on_rhs(auto.auto_conv()))
+            pt_inst_th = pt_norm_ineq.transitive(pt_th.substitution(inst=Inst(x=norm_ineq.arg1, y=norm_ineq.arg, c=norm_ineq.arg1.arg1)).on_rhs(auto.norm_conv()))
             converted_ineq = pt_inst_th.rhs
         elif norm_ineq.arg1.is_minus():
             pt_th = ProofTerm.theorem("real_simplex_delta2")
-            pt_inst_th = pt_norm_ineq.transitive(pt_th.substitution(inst=Inst(x=norm_ineq.arg1.arg1, y=norm_ineq.arg1.arg, z=norm_ineq.arg)).on_rhs(auto.auto_conv()))
+            pt_inst_th = pt_norm_ineq.transitive(pt_th.substitution(inst=Inst(x=norm_ineq.arg1.arg1, y=norm_ineq.arg1.arg, z=norm_ineq.arg)).on_rhs(auto.norm_conv()))
             converted_ineq = pt_inst_th.rhs
         else:
             pt_inst_th = pt_norm_ineq
@@ -791,7 +792,7 @@ class SimplexPosDelataMacro(Macro):
             coeff, x, y = converted_ineq.arg1.arg1, converted_ineq.arg1.arg, converted_ineq.arg
             pt_pos = ProofTerm("real_const_eq", coeff > Real(0)).on_prop(rewr_conv("eq_true", sym=True))
             pt_th = ProofTerm.theorem("real_simplex_delta3").substitution(inst=Inst(c=coeff, x=x, y=y))
-            pt_inst_th = pt_inst_th.transitive(pt_th.implies_elim(pt_pos)).on_rhs(auto.auto_conv())
+            pt_inst_th = pt_inst_th.transitive(pt_th.implies_elim(pt_pos)).on_rhs(auto.norm_conv())
             b = pt_inst_th.rhs.arg
         else:
             b = converted_ineq.arg
@@ -1323,7 +1324,7 @@ class StrictSimplexMacro(Macro):
             return result
 
         # for strict comparisons S, get the proof term ⊢ ∃t. t > 0 ⟶ S'(t)
-        pt_exists = real.relax_strict_simplex_macro().get_proof_term(strict_tms)
+        pt_exists = real_macro.relax_strict_simplex_macro().get_proof_term(strict_tms)
         # put all implications to hyps
         implications, _ = pt_exists.prop.strip_implies()
         pt_exists = functools.reduce(lambda x, y: x.implies_elim(ProofTerm.assume(y)), implications, pt_exists)
