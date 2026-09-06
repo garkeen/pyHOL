@@ -7,6 +7,7 @@ by Sascha Böhme and Tjark Weber.
 import z3
 from z3.z3consts import *
 from domains.integer import conv as integer
+from domains.integer import macro as integer_macro
 from domains.logic import conv as proplogic
 from domains.real.conv import norm_neg_real_ineq_conv, real_const_eq_conv, real_eval_conv, real_norm_comparison
 from kernel.type import TFun, BoolType, STVar, TVar
@@ -708,7 +709,7 @@ def rewrite_int(tm, has_bool=False):
         2. simplified one side by dividing GCD to match with the other
         """
         try:
-            return integer.int_eq_comparison_macro().get_proof_term(tm)
+            return integer_macro.int_eq_comparison_macro().get_proof_term(tm)
         except:
             return compare_lhs_rhs(tm, [top_conv(integer.int_gcd_compares()), integer.omega_form_conv()])
     elif match_pattern('(a::int) = (b::int) <--> (c::int) = (d::int)', tm):
@@ -731,7 +732,7 @@ def rewrite_int(tm, has_bool=False):
             return ProofTerm.sorry(Thm(tm))
     elif tm.lhs.is_compares() and tm.rhs.is_not() and tm.rhs.arg.is_compares():
         pt_elim_neg_sym = refl(tm.rhs).on_rhs(integer.int_norm_neg_compares(), integer.omega_form_conv()).symmetric()
-        pt_eq = integer.int_eq_comparison_macro().get_proof_term(Eq(tm.lhs, pt_elim_neg_sym.lhs))
+        pt_eq = integer_macro.int_eq_comparison_macro().get_proof_term(Eq(tm.lhs, pt_elim_neg_sym.lhs))
         return try_tran_pt(pt_eq, pt_elim_neg_sym)
     elif tm.lhs.is_not() and tm.lhs.arg.is_compares() and tm.rhs.is_not() and tm.rhs.arg.is_compares():
         """

@@ -5,7 +5,7 @@ from kernel.term import Term, BoolType, Var
 from syntax.logicops import Not, true, false, And
 from framework.conv import Conv, rewr_conv, arg1_conv, arg_conv, binop_conv, try_conv, top_conv, bottom_conv, top_sweep_conv
 from kernel.proofterm import refl, ProofTerm
-from framework.logic import apply_theorem
+from framework.conv import inst_theorem
 from framework import matcher
 from kernel import term_ord
 from collections import deque
@@ -215,7 +215,7 @@ class sort_conj(Conv):
             pt = qu.popleft()
             if pt.prop.is_conj():
                 conj1, conj2 = pt.prop.arg1, pt.prop.arg
-                pt_conj1, pt_conj2 = apply_theorem('conjD1', pt), apply_theorem('conjD2', pt)
+                pt_conj1, pt_conj2 = inst_theorem('conjD1', pt), inst_theorem('conjD2', pt)
                 if conj1 == false:
                     th = ProofTerm.theorem("falseE")
                     inst = matcher.first_order_match(th.prop.arg, t)
@@ -250,7 +250,7 @@ class sort_conj(Conv):
         for key in d_pos:
             if Not(key) in d_neg:
                 pos_pt, neg_pt = d_pos[key], d_neg[Not(key)]
-                pt_conj_pos_neg = apply_theorem("conjI", pos_pt, neg_pt)
+                pt_conj_pos_neg = inst_theorem("conjI", pos_pt, neg_pt)
                 pt_conj_implies_false = pt_conj_pos_neg.on_prop(rewr_conv("conj_pos_neg")).implies_intr(t)
                 th = ProofTerm.theorem("falseE")
                 inst = matcher.first_order_match(th.prop.arg, t)
@@ -264,9 +264,9 @@ class sort_conj(Conv):
             if l == 1:
                 return d[ts[0]]
             elif l == 2:
-                return apply_theorem('conjI', d[ts[0]], d[ts[1]])
+                return inst_theorem('conjI', d[ts[0]], d[ts[1]])
             else:
-                return apply_theorem('conjI', d[ts[0]], right_assoc(ts[1:]))
+                return inst_theorem('conjI', d[ts[0]], right_assoc(ts[1:]))
 
         if true not in d:
             sorted_keys = term_ord.sorted_terms(d.keys())
@@ -274,7 +274,7 @@ class sort_conj(Conv):
             d_keys_without_true = term_ord.sorted_terms([k for k in d if k != true])
             sorted_keys = [true] + d_keys_without_true
         sorted_keys_num = len(sorted_keys)
-        pt_right = functools.reduce(lambda x, y: apply_theorem('conjI', d[sorted_keys[sorted_keys_num - y - 2]], x), \
+        pt_right = functools.reduce(lambda x, y: inst_theorem('conjI', d[sorted_keys[sorted_keys_num - y - 2]], x), \
                         range(sorted_keys_num - 1), d[sorted_keys[-1]])
         # order implies original
         dd = dict()
@@ -282,8 +282,8 @@ class sort_conj(Conv):
         norm_conj_pt = ProofTerm.assume(norm_conj)
         for k in sorted_keys:
             if k != sorted_keys[-1]:
-                dd[k] = apply_theorem('conjD1', norm_conj_pt)
-                norm_conj_pt = apply_theorem('conjD2', norm_conj_pt)
+                dd[k] = inst_theorem('conjD1', norm_conj_pt)
+                norm_conj_pt = inst_theorem('conjD2', norm_conj_pt)
             else:
                 dd[k] = norm_conj_pt
 
@@ -291,7 +291,7 @@ class sort_conj(Conv):
             if not t.is_conj():
                 return dd[t]
             else:
-                return apply_theorem('conjI', traverse(t.arg1), traverse(t.arg))
+                return inst_theorem('conjI', traverse(t.arg1), traverse(t.arg))
 
         pt_left =  traverse(t)
 

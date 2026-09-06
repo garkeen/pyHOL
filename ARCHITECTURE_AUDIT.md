@@ -360,6 +360,7 @@ replay(prf) -> (Thm, holes)
    - **Thm 构造私有化（§7.3）**：白名单之外全库改造——tactic 的 ~40 处 goal 语句构造等 Goal 迁移到位后自然消失；eval 断言式（nat/macro、rewrite_goal.eval）改真推导或具名 oracle；items 的 6 处 axiom 装载收口 mk_axiom。
    - **thm_status/thm_error 迁出 kernel**（§7.4），kernel 七张表回归纯逻辑数据。
 1. **conv 纯净化**：原语链接助手替代 `apply_theorem`；删 `auto_conv`；宏定义从 conv.py 挪到 macro.py。
+   - **进度 2026-09-06**：`framework/conv/inst.py`（`inst_theorem` 原语链接助手）落地；logic/conv.py 全部 9 处、integer/conv.py conv 层 2 处已迁移，纯度测试 `domains/logic/tests/conv_pure_test.py` 先红后绿（导出证明零宏行）；integer 域 8 个宏从 conv.py 搬到 macro.py（proofrec 引用同步），注册回归测试就位。**剩余**：删 `auto_conv`（消费方超出审计点名范围——`prover/proofrec.py`、`simplex_strict.py` 也在用，替换牵动 z3 证明重构与 simplex 流程，独立一轮处理）；real 域 7 个宏搬出 conv.py；integer `int_neq_false_conv` 内的 `int_const_ineq` 宏节点发射（同 auto_conv 一类，需调用方重构）。
 2. **`simp_sweep` 进 `core/macro/simp.py`**，斩断 tactic↔auto 环。
 3. **宏类瘦身为适配器**：证明逻辑抽到 macro 模块普通函数，宏类只剩名字/level/sig/转调。eval 平行双实现（apply_theorem）在此步删除，eval 一律派生自展开结果或显式声明+一致性测试（§7.3）。
 4. **method 注册表下沉**：`domains/*/method.py` 改走 core 注册 API，method 层改为读者。
