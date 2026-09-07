@@ -1009,7 +1009,7 @@ class elim(Method):
             else:
                 state.set_line(id.incr_id(i), item.rule, args=item.args,
                                prevs=item.prevs,
-                               th=Thm(item.th.prop, item.th.hyps, body))
+                               th=Goal(item.th.prop, item.th.hyps, body).th)
                 i += 1
 
         # Rewire the enclosing intros line: the exists fact, fresh

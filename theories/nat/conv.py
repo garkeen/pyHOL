@@ -8,7 +8,6 @@ from kernel import term
 from kernel.term import Term, Const, Eq, Inst
 from syntax.numeral import Binary, Nat
 from syntax.logicops import Not
-from kernel.thm import Thm
 from kernel import theory
 from kernel import term_ord
 from core.conv.core import Conv, ConvException, all_conv, rewr_conv, \
@@ -41,9 +40,6 @@ def is_bit1(t):
 
 class Suc_conv(Conv):
     """Computes Suc of a binary number."""
-    def eval(self, t):
-        return Thm(Eq(t, Binary(t.arg.dest_binary() + 1)))
-
     def get_proof_term(self, t):
         pt = refl(t)
         if t.arg.is_zero():
@@ -57,9 +53,6 @@ class Suc_conv(Conv):
 
 class add_conv(Conv):
     """Computes the sum of two binary numbers."""
-    def eval(self, t):
-        return Thm(Eq(t, Binary(t.arg1.dest_binary() + t.arg.dest_binary())))
-
     def get_proof_term(self, t):
         if not (t.is_plus() and t.arg1.is_binary() and t.arg.is_binary()):
             raise ConvException("add_conv")
@@ -85,9 +78,6 @@ class add_conv(Conv):
 
 class mult_conv(Conv):
     """Computes the product of two binary numbers."""
-    def eval(self, t):
-        return Thm(Eq(t, Binary(t.arg1.dest_binary() * t.arg.dest_binary())))
-
     def get_proof_term(self, t):
         n1, n2 = t.arg1, t.arg  # two summands
         pt = refl(t)
@@ -156,9 +146,6 @@ def nat_eval(t):
 
 class nat_conv(Conv):
     """Simplify all arithmetic operations."""
-    def eval(self, t):
-        return Thm(Eq(t, Nat(nat_eval(t))))
-
     def get_proof_term(self, t):
         pt = refl(t)
         if t.is_number():

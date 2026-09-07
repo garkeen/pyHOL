@@ -14,7 +14,6 @@ from core import context
 from core.logic import is_if
 from core.conv import Conv, rewr_conv, arg_conv, arg1_conv, binop_conv, top_conv, ConvException, try_conv, inst_theorem
 from theories.nat import util_nat as nat
-from kernel.thm import Thm
 from syntax.settings import settings
 from math import gcd
 from core import matcher
@@ -384,10 +383,6 @@ class simp_full(Conv):
                 rewr_conv('int_mul_1_l', sym=True))
 
 class int_norm_conv(Conv):
-    def eval(self, t):
-        norm_t = from_poly(convert_to_poly(t))
-        return Thm(Eq(t, norm_t))
-
     def get_proof_term(self, t):
         return refl(t).on_rhs(
             simp_full(),
