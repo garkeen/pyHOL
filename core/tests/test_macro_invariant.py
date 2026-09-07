@@ -22,7 +22,7 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 MACRO_FILES = [
-    'core/macros/core.py',
+    'core/macros/registry.py',
     'core/macros/z3.py',
     'core/auto.py',
     'kernel/bootstrap.py',

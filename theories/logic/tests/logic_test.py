@@ -130,7 +130,7 @@ class LogicTest(unittest.TestCase):
 
     def testIntro(self):
         basic.load_theory('logic_base')
-        from core.macros.core import intros_macro
+        from core.macros.registry import intros_macro
         macro = intros_macro()
 
         Ta = TVar('a')

@@ -245,7 +245,7 @@ def load_theory_cache(filename):
     # Core macros (and the z3 oracle macro) are always loaded.
     # The sympy solver registers real/nat comparison procedures
     # into the generic auto engine on import.
-    from core.macros import core, z3  # noqa: F401
+    from core.macros import registry, z3  # noqa: F401
     try:
         from solvers import sympywrapper  # noqa: F401
     except ImportError:
