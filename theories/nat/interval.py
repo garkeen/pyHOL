@@ -4,7 +4,8 @@
 from kernel.type import TFun
 from syntax.numeral import NatType
 from kernel.term import Const
-from core.conv import Conv, rewr_conv, refl, arg_conv, arg1_conv
+from kernel.proofterm import refl
+from core.conv import Conv, rewr_conv, arg_conv, arg1_conv
 
 
 def setT(T):

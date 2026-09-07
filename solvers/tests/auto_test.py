@@ -3,7 +3,7 @@
 import unittest
 
 from core import basic
-from solvers.auto import auto
+from solvers import auto
 
 
 class AutoTest(unittest.TestCase):

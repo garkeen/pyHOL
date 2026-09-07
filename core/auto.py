@@ -11,11 +11,11 @@ from kernel.term import Term, Var
 from kernel.macro import Macro
 from kernel import theory
 from kernel.theory import register_macro
-from kernel.proofterm import ProofTerm, TacticException
+from kernel.proofterm import ProofTerm, TacticException, refl
 from core import logic
 from core.logic import apply_theorem
 from core import matcher
-from core.conv import Conv, ConvException, refl, eta_conv, top_conv
+from core.conv import Conv, ConvException, eta_conv, top_conv
 from util import name
 
 
