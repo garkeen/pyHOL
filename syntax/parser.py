@@ -376,7 +376,10 @@ class HOLTransformer(Transformer):
         return Const("nat_interval", TFun(NatType, NatType, TConst("set", NatType)))(m, n)
 
     def thm(self, *args):
-        return Thm(args[-1], tuple(args[:-1]))
+        # Script front door: the user states a goal (assums ..., concl).
+        # The statement is minted through the kernel's sorry constructor
+        # (syntax layer is below core.goal; same mint, kernel channel).
+        return Thm.sorry(args[-1], tuple(args[:-1]))
 
     def term_pair(self, name, T):
         return (str(name), T)
