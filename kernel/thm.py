@@ -374,6 +374,24 @@ class Thm:
             raise InvalidDerivationException("convert_svar")
         return Thm(th.prop.convert_svar())
 
+    @staticmethod
+    def sorry(prop, *hyps):
+        """Assumption rule SORRY (anonymous open hole):
+
+        Mint the statement of an open goal as an anonymous gap.  One
+        of the three hole constructors (audit §7.2/§7.3): sorry,
+        axiom, oracle -- nothing outside these (and the 15 primitives)
+        may mint a fresh Thm."""
+        return Thm(prop, *hyps)
+
+    @staticmethod
+    def axiom(prop):
+        """Assumption rule AXIOM (theory axiom):
+
+        Mint the statement of a theory axiom.  `core/defcheck.mk_axiom`
+        is the loading-time entry that calls this constructor."""
+        return Thm(prop)
+
 
 # Table of primitive derivations
 primitive_deriv = {
@@ -393,3 +411,13 @@ primitive_deriv = {
     "forall_intr" : (Thm.forall_intr, Term),
     "forall_elim" : (Thm.forall_elim, Term)
 }
+
+
+def oracle_thm(name, prop, *hyps):
+    """Assumption rule ORACLE (named open hole):
+
+    Mint the statement of a named oracle judgement (audit §7.2):
+    the ONLY constructor for theorems produced by a level-0 oracle
+    macro eval.  The verification trust set admits or rejects by name,
+    and the hole appears in replay as ("oracle", name, th).."""
+    return Thm(prop, *hyps)

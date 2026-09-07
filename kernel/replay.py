@@ -5,7 +5,8 @@
 #
 #   * the 15 primitive derivation rules,
 #   * theorem / variable lines,
-#   * the assumption rules (sorry lines, axiom-bearing theorem lines),
+#   * the assumption rules (sorry lines, axiom-bearing theorem lines,
+#     named oracle lines),
 #
 # and nothing else. In particular it does NOT know macros: macro lines
 # must be expanded to primitive streams before replay (kernel/bootstrap.py
@@ -17,7 +18,7 @@
 # does not cache subproofs, and returns the assumption list explicitly:
 #
 #   replay(prf) -> (Thm, holes)
-#   holes = [(rule, label, Thm)]  with rule in {'sorry', 'axiom'}
+#   holes = [(rule, label, Thm)]  with rule in {'sorry', 'axiom', 'oracle'}
 #
 # A theorem line's axiom status is read from the theory's thm_status
 # table (maintained by the validation pipeline; 'AXIOM' marks entries
@@ -83,6 +84,15 @@ def _replay(prf: Proof):
             if is_axiom(args):
                 holes.append(("axiom", args, th))
             res_th = th
+            continue
+
+        if rule == "oracle":
+            # Assumption rule: named oracle hole (audit §7.2).
+            if item.th is None:
+                raise ReplayException("oracle must have explicit statement")
+            ths[key] = item.th
+            holes.append(("oracle", args, item.th))
+            res_th = item.th
             continue
 
         if rule == "variable":

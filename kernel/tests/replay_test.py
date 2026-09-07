@@ -110,6 +110,26 @@ class PurePrimitiveReplayTest(unittest.TestCase):
         self.assertEqual(holes[0][0], "axiom")
         self.assertEqual(holes[0][1], "ax1")
 
+    def testHoleConstructors(self):
+        """The three hole constructors mint the same statements as the
+        (now-to-be-private) raw constructor."""
+        from kernel.thm import oracle_thm
+        self.assertEqual(Thm.sorry(A_to_B, A), Thm(A_to_B, A))
+        self.assertEqual(Thm.axiom(A_to_B), Thm(A_to_B))
+        self.assertEqual(oracle_thm("z3", A_to_B, A), Thm(A_to_B, A))
+
+    def testOracleHole(self):
+        """A named oracle line enters the hole list as ('oracle', args, th)."""
+        from kernel.thm import oracle_thm
+        th = oracle_thm("z3", A_to_B)
+        prf = Proof()
+        prf.add_item(0, "oracle", args="z3", th=th)
+
+
+        res_th, holes = replay.replay(prf)
+        self.assertEqual(res_th, th)
+        self.assertEqual(holes, [("oracle", "z3", th)])
+
     def testForall(self):
         """|- !x. x = x via forall_intr."""
         prf = Proof()
