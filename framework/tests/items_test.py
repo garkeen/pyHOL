@@ -4,7 +4,7 @@ import unittest
 
 from kernel import theory
 from framework import basic
-from server import items
+from framework import items
 from syntax import printer
 from syntax.settings import global_setting
 

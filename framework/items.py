@@ -1,23 +1,19 @@
 """Abstraction for parsing and processing of different types of items."""
 
 import traceback
-import itertools
 
-from kernel.type import TVar, TConst, TFun, BoolType
-from kernel import term
-from kernel.term import Term, Var, Const, Implies, Eq, Forall
-from syntax.logicops import And, Not
-from kernel.thm import Thm
+from kernel.type import TVar, TConst, TFun
+from kernel.term import Const
 from kernel import theory
 from kernel import extension
 from framework import context
-from util.name import get_variant_names
+from framework import defcheck
 from syntax import parser
 from syntax import printer
 from syntax import pprint
 from syntax.settings import settings, global_setting
-from server.struct_recursion import check_fun_recursion, StructRecursionError
-from server.struct_recursion import check_datatype_positivity
+from framework.defcheck import check_fun_recursion
+from framework.defcheck import check_datatype_positivity
 
 
 class ItemException(Exception):
@@ -215,7 +211,7 @@ class Axiom(Item):
     def get_extension(self):
         assert self.error is None, "get_extension"
         res = []
-        res.append(extension.Theorem(self.name, Thm(self.prop)))
+        res.append(extension.Theorem(self.name, defcheck.mk_axiom(self.prop)))
         for attr in self.attributes:
             res.append(extension.Attribute(self.name, attr))
         return res
@@ -359,7 +355,7 @@ class Definition(Item):
         assert self.error is None, "get_extension"
         res = []
         res.append(extension.Constant(self.name, self.type, ref_name=self.cname))
-        res.append(extension.Theorem(self.cname + "_def", Thm(self.prop)))
+        res.append(extension.Theorem(self.cname + "_def", defcheck.mk_axiom(self.prop)))
         for attr in self.attributes:
             res.append(extension.Attribute(self.cname + "_def", attr))
         return res
@@ -468,7 +464,7 @@ class Fun(Item):
         res.append(extension.Constant(self.name, self.type, ref_name=self.cname))
         for i, rule in enumerate(self.rules):
             th_name = self.cname + "_def_" + str(i + 1)
-            res.append(extension.Theorem(th_name, Thm(rule['prop'])))
+            res.append(extension.Theorem(th_name, defcheck.mk_axiom(rule['prop'])))
             res.append(extension.Attribute(th_name, "hint_rewrite"))
         return res
 
@@ -557,62 +553,11 @@ class Inductive(Item):
         res.append(extension.Constant(self.name, self.type, ref_name=self.cname))
 
         for rule in self.rules:
-            res.append(extension.Theorem(rule['name'], Thm(rule['prop'])))
+            res.append(extension.Theorem(rule['name'], defcheck.mk_axiom(rule['prop'])))
             res.append(extension.Attribute(rule['name'], 'hint_backward'))
 
-        # Case rule
-        Targs, _ = self.type.strip_type()
-        vars = []
-        for i, Targ in enumerate(Targs):
-            vars.append(Var("_a" + str(i+1), Targ))
-
-        P = Var("P", BoolType)
-        pred = Const(self.name, self.type)
-        assum0 = pred(*vars)
-        assums = []
-        for rule in self.rules:
-            prop = rule['prop']
-            As, C = prop.strip_implies()
-            eq_assums = [Eq(var, arg) for var, arg in zip(vars, C.args)]
-            assum = Implies(*(eq_assums + As), P)
-            for var in reversed(prop.get_vars()):
-                assum = Forall(var, assum)
-            assums.append(assum)
-
-        prop = Implies(*([assum0] + assums + [P]))
-        res.append(extension.Theorem(self.cname + "_cases", Thm(prop)))
-
-        # Rule-induction rule (in the style of HOL Light's new_inductive).
-        # For each introduction rule, the inductive premises are kept as
-        # facts and the induction hypotheses are added.
-        P = Var("P", TFun(*(Targs + [BoolType])))
-        ind_assums = []
-        for rule in self.rules:
-            prop = rule['prop']
-            As, C = prop.strip_implies()
-            rargs = C.args
-            prems = []
-            for A in As:
-                f, aargs = A.strip_comb()
-                if f == Const(self.name, self.type):
-                    prems.append(A)
-                    prems.append(P(*aargs))
-                else:
-                    prems.append(A)
-            ind_assum = Implies(*(prems + [P(*rargs)]))
-            for var in reversed(prop.get_vars()):
-                ind_assum = Forall(var, ind_assum)
-            ind_assums.append(ind_assum)
-        ind_vars = [Var("_a" + str(i + 1), Targ) for i, Targ in enumerate(Targs)]
-        ind_concl = Implies(pred(*ind_vars), P(*ind_vars))
-        for var in reversed(ind_vars):
-            ind_concl = Forall(var, ind_concl)
-        # The conclusion is forall-quantified (as in HOL Light's
-        # new_inductive), so the rule tactic can match the quantified
-        # argument variables against the goal via first-order matching,
-        # instantiating P with the goal's predicate directly.
-        res.append(extension.Theorem(self.cname + "_induct", Thm(Implies(*(ind_assums + [ind_concl])))))
-        res.append(extension.Attribute(self.cname + "_induct", "var_induct"))
+        res.extend(defcheck.inductive_case_induct_axioms(
+            self.name, self.type, self.cname, self.rules))
 
         return res
 
@@ -755,107 +700,14 @@ class Datatype(Item):
 
         # Add to type and term signature.
         res.append(extension.TConst(self.name, len(self.args)))
-        tvars = [TVar(targ) for targ in self.args]
-        T = TConst(self.name, *tvars)
-        # Projection functions are registered only for the memory-program
-        # state datatype.  For other datatypes their field names would
-        # clash with the same-named free variables in inductive rules
-        # (e.g. f in Sem_basic vs the f of Basic).
-        if self.name == 'state':
-            # Field names that occur in exactly one constructor can serve as
-            # projection functions; duplicated field names have no
-            # well-defined projection and are skipped.
-            field_names = [nm for c in self.constrs for nm in c['args']]
-            unique_fields = {nm for nm in field_names if field_names.count(nm) == 1}
-            for constr in self.constrs:
-                if constr['args']:
-                    argT, _ = constr['type'].strip_type()
-                    constr_args = [Var(nm, T2) for nm, T2 in zip(constr['args'], argT)]
-                    A = Const(constr['name'], constr['type'])
-                    for proj_name, arg in zip(constr['args'], constr_args):
-                        if proj_name not in unique_fields:
-                            continue
-                        proj_T = TFun(T, arg.get_type())
-                        res.append(extension.Constant(proj_name, proj_T))
-                        proj = Const(proj_name, proj_T)
-                        res.append(extension.Theorem("%s_%s" % (self.name, proj_name),
-                                                     Thm(Eq(proj(A(*constr_args)), arg))))
-        for constr in self.constrs:
-            res.append(extension.Constant(constr['name'], constr['type'], ref_name=constr['cname']))
-
         # Register the constructors for the structural-recursion check
         # of fun definitions.
         theory.thy.add_datatype_constrs(
             self.name, [Const(c['name'], c['type']) for c in self.constrs])
-
-        # Add non-equality theorems.
-        for constr1, constr2 in itertools.combinations(self.constrs, 2):
-            # For each A x_1 ... x_m and B y_1 ... y_n, get the theorem
-            # ~ A x_1 ... x_m = B y_1 ... y_n.
-            argT1, _ = constr1['type'].strip_type()
-            argT2, _ = constr2['type'].strip_type()
-            lhs_vars = [Var(nm, T) for nm, T in zip(constr1['args'], argT1)]
-            # Give the two sides disjoint variable names.  Otherwise the
-            # same-named variables would be identified by alpha-conversion
-            # (e.g. Cond ?b ?c1 ?c2 = While ?b ?I ?c), weakening the theorem.
-            lhs_names = [v.name for v in lhs_vars]
-            rhs_names = get_variant_names(constr2['args'], lhs_names)
-            rhs_vars = [Var(nm, T) for nm, T in zip(rhs_names, argT2)]
-            A = Const(constr1['name'], constr1['type'])
-            B = Const(constr2['name'], constr2['type'])
-            lhs = A(*lhs_vars)
-            rhs = B(*rhs_vars)
-            neq = Not(Eq(lhs, rhs))
-            th_name = "%s_%s_%s_neq" % (self.name, constr1['name'], constr2['name'])
-            res.append(extension.Theorem(th_name, Thm(neq)))
-
-        # Add injectivity theorems.
         for constr in self.constrs:
-            # For each A x_1 ... x_m with m > 0, get the theorem
-            # A x_1 ... x_m = A x_1' ... x_m' --> x_1 = x_1' & ... & x_m = x_m'
-            if constr['args']:
-                argT, _ = constr['type'].strip_type()
-                lhs_vars = [Var(nm, T) for nm, T in zip(constr['args'], argT)]
-                rhs_vars = [Var(nm + "1", T) for nm, T in zip(constr['args'], argT)]
-                A = Const(constr['name'], constr['type'])
-                assum = Eq(A(*lhs_vars), A(*rhs_vars))
-                concls = [Eq(var1, var2) for var1, var2 in zip(lhs_vars, rhs_vars)]
-                concl = And(*concls)
-                th_name = "%s_%s_inject" % (self.name, constr['name'])
-                res.append(extension.Theorem(th_name, Thm(Implies(assum, concl))))
+            res.append(extension.Constant(constr['name'], constr['type'], ref_name=constr['cname']))
 
-        # Add the inductive theorem.
-        var_P = Var("P", TFun(T, BoolType))
-        ind_assums = []
-        for constr in self.constrs:
-            A = Const(constr['name'], constr['type'])
-            argT, _ = constr['type'].strip_type()
-            args = [Var(nm, T2) for nm, T2 in zip(constr['args'], argT)]
-            C = var_P(A(*args))
-            As = [var_P(Var(nm, T2)) for nm, T2 in zip(constr['args'], argT) if T2 == T]
-            ind_assum = Implies(*(As + [C]))
-            for arg in reversed(args):
-                ind_assum = Forall(arg, ind_assum)
-            ind_assums.append(ind_assum)
-        ind_concl = var_P(Var("x", T))
-        th_name = self.name + "_induct"
-        res.append(extension.Theorem(th_name, Thm(Implies(*(ind_assums + [ind_concl])))))
-        res.append(extension.Attribute(th_name, "var_induct"))
-
-        # Add the cases theorem: one branch per constructor, without
-        # induction hypotheses (used by the datatype_cases tactic).
-        case_assums = []
-        for constr in self.constrs:
-            A = Const(constr['name'], constr['type'])
-            argT, _ = constr['type'].strip_type()
-            args = [Var(nm, T2) for nm, T2 in zip(constr['args'], argT)]
-            case_assum = var_P(A(*args))
-            for arg in reversed(args):
-                case_assum = Forall(arg, case_assum)
-            case_assums.append(case_assum)
-        case_concl = var_P(Var("x", T))
-        th_name = self.name + "_cases"
-        res.append(extension.Theorem(th_name, Thm(Implies(*(case_assums + [case_concl])))))
+        res.extend(defcheck.datatype_axioms(self.name, self.args, self.constrs))
 
         return res
 

@@ -10,7 +10,7 @@ from kernel import theory
 from kernel.theory import Theory, TheoryException
 from kernel.thm import Thm
 from kernel import extension
-from server import items
+from framework import items
 from syntax import pyhol
 
 import sys

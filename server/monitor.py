@@ -16,7 +16,7 @@ from framework import context
 from server import server
 from server import methods as method
 from framework import logic
-from server import items
+from framework import items
 from syntax import parser
 from prover import z3wrapper
 from syntax.settings import settings, global_setting

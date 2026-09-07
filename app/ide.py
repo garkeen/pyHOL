@@ -15,7 +15,7 @@ from kernel.proof import ItemID
 from framework import basic
 from framework import context
 from server import monitor
-from server import items
+from framework import items
 from app.app import app
 from syntax import pyhol
 

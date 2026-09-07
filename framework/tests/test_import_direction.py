@@ -58,6 +58,19 @@ class ImportDirectionTest(unittest.TestCase):
                    or m.startswith('framework.tactic.')]
             self.assertEqual(bad, [], "%s imports tactic layer: %s" % (fname, bad))
 
+    def testFrameworkDoesNotImportServer(self):
+        """framework/ must not import server.* (step 5: items/defcheck
+        live in framework; the framework layer never depends on the
+        method/session layer above it)."""
+        offenders = []
+        for path in py_files_under('framework'):
+            rel = os.path.relpath(path, ROOT).replace('\\', '/')
+            mods = imports_of(path)
+            bad = [m for m in mods if m == 'server' or m.startswith('server.')]
+            if bad:
+                offenders.append("%s: %s" % (rel, bad))
+        self.assertEqual(offenders, [])
+
     def testTheoriesDoNotImportServer(self):
         """domains/ and imperative/ must not import server.* (step 4:
         method registration goes through framework.method; the method
