@@ -9,7 +9,7 @@
 # same behavior as z3-not-installed.
 
 from kernel.term import Term, Implies
-from kernel.thm import Thm
+from kernel.thm import oracle_thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
 from kernel.proofterm import ProofTerm
@@ -53,7 +53,7 @@ class Z3Macro(Macro):
         else:
             print("Warning: Z3 is not installed")
 
-        return Thm(args, *(th.hyps for th in prevs))
+        return oracle_thm(self.name, args, *(th.hyps for th in prevs))
 
     def expand(self, prefix, args, prevs):
         raise NotImplementedError

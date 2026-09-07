@@ -6,7 +6,7 @@ from kernel import term
 from kernel.term import Term, Const, Eq, Inst
 from syntax.numeral import Binary, Nat
 from syntax.logicops import Not
-from kernel.thm import Thm
+from kernel.thm import oracle_thm
 from kernel import theory
 from kernel.theory import register_macro
 from kernel.macro import Macro
@@ -41,7 +41,7 @@ class nat_eval_macro(Macro):
         assert goal.is_equals(), "nat_eval_macro: goal must be an equality"
         assert nat_eval(goal.lhs) == nat_eval(goal.rhs), "nat_eval_macro: two sides are not equal"
 
-        return Thm(goal)
+        return oracle_thm(self.name, goal)
 
 
 # Auto registrations for nat_eval

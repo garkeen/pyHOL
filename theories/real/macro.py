@@ -7,7 +7,7 @@ import functools
 import typing
 
 from kernel.term import Term, Var, Eq
-from kernel.thm import Thm
+from kernel.thm import oracle_thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
 from kernel.proofterm import refl, ProofTerm
@@ -40,7 +40,7 @@ class real_eval_macro(Macro):
         assert goal.is_equals(), "real_eval_macro: goal must be an equality"
         assert real_eval(goal.lhs) == real_eval(goal.rhs), "real_eval_macro: two sides are not equal"
 
-        return Thm(goal)
+        return oracle_thm(self.name, goal)
 
 
 @register_macro('real_norm')
@@ -56,7 +56,7 @@ class real_norm_macro(Macro):
         assert len(pts) == 0, "real_norm_macro"
         assert self.can_eval(goal), "real_norm_macro"
 
-        return Thm(goal)
+        return oracle_thm(self.name, goal)
 
     def can_eval(self, goal):
         assert isinstance(goal, Term), "real_norm_macro"
@@ -80,22 +80,21 @@ class RealEqMacro(Macro):
             raise ConvException
         try:
             if goal.is_equals():
-                if real_eval(goal.lhs) == real_eval(goal.rhs):
-                    return Thm(Eq(goal, true))
-                else:
-                    return Thm(Eq(goal, false))
+                holds = real_eval(goal.lhs) == real_eval(goal.rhs)
             else: # inequations
                 lhs, rhs = real_eval(goal.arg1), real_eval(goal.arg)
                 if goal.is_less():
-                    return Thm(Eq(goal, true)) if lhs < rhs else Thm(Eq(goal, false))
+                    holds = lhs < rhs
                 elif goal.is_less_eq():
-                    return Thm(Eq(goal, true)) if lhs <= rhs else Thm(Eq(goal, false))
+                    holds = lhs <= rhs
                 elif goal.is_greater():
-                    return Thm(Eq(goal, true)) if lhs > rhs else Thm(Eq(goal, false))
+                    holds = lhs > rhs
                 elif goal.is_greater_eq():
-                    return Thm(Eq(goal, true)) if lhs >= rhs else Thm(Eq(goal, false))
+                    holds = lhs >= rhs
                 else:
                     raise NotImplementedError
+
+            return oracle_thm(self.name, Eq(goal, true if holds else false))
         except:
             raise ConvException
 
@@ -122,7 +121,7 @@ class RealCompareMacro(Macro):
         elif goal.is_greater_eq():
             assert lhs >= rhs, "%f !>= %f" % (lhs, rhs)
 
-        return Thm(goal)
+        return oracle_thm(self.name, goal)
 
 
 @register_macro('real_const_ineq')
@@ -143,32 +142,19 @@ class real_const_ineq_macro(Macro):
             and goal.arg1.get_type() == RealType, repr(goal)
         lhs, rhs = real_eval(goal.arg1), real_eval(goal.arg)
         if goal.is_less():
-            if lhs < rhs:
-                return Thm(goal)
-            else:
-                return Thm(Not(goal))
+            holds = lhs < rhs
         elif goal.is_less_eq():
-            if lhs <= rhs:
-                return Thm(goal)
-            else:
-                return Thm(Not(goal))
+            holds = lhs <= rhs
         elif goal.is_greater():
-            if lhs > rhs:
-                return Thm(goal)
-            else:
-                return Thm(Not(goal))
+            holds = lhs > rhs
         elif goal.is_greater_eq():
-            if lhs >= rhs:
-                return Thm(goal)
-            else:
-                return Thm(Not(goal))
+            holds = lhs >= rhs
         elif goal.is_equals():
-            if lhs == rhs:
-                return Thm(goal)
-            else:
-                return Thm(Not(goal))
+            holds = lhs == rhs
         else:
             raise NotImplementedError
+
+        return oracle_thm(self.name, goal if holds else Not(goal))
 
 
 @register_macro("real_eq_comparison")

@@ -13,9 +13,9 @@ from kernel.type import TFun, BoolType
 from syntax.numeral import RealType, NatType
 from kernel import term
 from kernel.term import Term
-from kernel.thm import Thm
+from kernel.thm import oracle_thm
 from kernel.macro import Macro
-from kernel.theory import register_macro
+from kernel.theory import register_macro, get_macro
 from kernel.proofterm import ProofTerm, TacticException
 from theories.real import conv as real
 from util import set as hol_set
@@ -189,16 +189,16 @@ class SymPyMacro(Macro):
 
     def eval(self, goal, prevs):
         assert self.can_eval(goal, prevs), "sympy: not solved."
-        return Thm(goal, *(th.hyps for th in prevs))
+        return oracle_thm(self.name, goal, *(th.hyps for th in prevs))
 
 
 def sympy_solve(goal, pts):
     if pts is None:
         pts = []
 
-    macro = SymPyMacro()
+    macro = get_macro('sympy')
     if macro.can_eval(goal, pts):
-        th = Thm(goal, *(th.hyps for th in pts))
+        th = macro.eval(goal, pts)
         return ProofTerm('sympy', args=goal, prevs=pts, th=th)
     else:
         raise TacticException

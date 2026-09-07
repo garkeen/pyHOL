@@ -5,7 +5,7 @@
 from math import gcd
 
 from kernel.term import Term
-from kernel.thm import Thm
+from kernel.thm import oracle_thm
 from kernel.macro import Macro
 from kernel.theory import register_macro, get_theorem
 from kernel.proofterm import ProofTerm, refl
@@ -69,7 +69,7 @@ class int_eval_macro(Macro):
         assert goal.is_equals(), "int_eval_macro: goal must be an equality"
         assert int_eval(goal.lhs) == int_eval(goal.rhs), "int_eval_macro: two sides are not equal"
 
-        return Thm(goal)
+        return oracle_thm(self.name, goal)
 
 
 def int_eq_proof(goal, prevs):
@@ -194,32 +194,19 @@ class int_const_ineq_macro(Macro):
             and goal.arg1.get_type() == IntType, repr(goal)
         lhs, rhs = int_eval(goal.arg1), int_eval(goal.arg)
         if goal.is_less():
-            if lhs < rhs:
-                return Thm(goal)
-            else:
-                return Thm(Not(goal))
+            holds = lhs < rhs
         elif goal.is_less_eq():
-            if lhs <= rhs:
-                return Thm(goal)
-            else:
-                return Thm(Not(goal))
+            holds = lhs <= rhs
         elif goal.is_greater():
-            if lhs > rhs:
-                return Thm(goal)
-            else:
-                return Thm(Not(goal))
+            holds = lhs > rhs
         elif goal.is_greater_eq():
-            if lhs >= rhs:
-                return Thm(goal)
-            else:
-                return Thm(Not(goal))
+            holds = lhs >= rhs
         elif goal.is_equals():
-            if lhs == rhs:
-                return Thm(goal)
-            else:
-                return Thm(Not(goal))
+            holds = lhs == rhs
         else:
             raise NotImplementedError
+
+        return oracle_thm(self.name, goal if holds else Not(goal))
 
 
 def int_multiple_ineq_equiv_proof(prevs):
