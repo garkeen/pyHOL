@@ -32,4 +32,7 @@ class Z3Method(Method):
 
         if z3_backend.check_z3:
             assert z3_backend.solve(Implies(*(assms + [goal]))), "Z3 method: not solved"
-        state.set_line(id, 'z3', args=goal, prevs=prevs)
+        # Checked channel: the z3 oracle macro enters the proof through
+        # apply_macro (registry-validated level-0 oracle, audit 【D】);
+        # no hand-written macro line here.
+        state.apply_macro(id, 'z3', prevs=prevs)

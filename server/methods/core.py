@@ -358,6 +358,17 @@ class ProofState():
         pt = ProofTerm(macro_name, macro_args, prevs)
         return self._finish_backward(id, pt)
 
+    def assume_line(self, id, prop):
+        """Checked entry point for the primitive assumption rule.
+
+        The only place outside proof construction (Proof.__init__) that
+        writes an assume line: set_line runs check_proof, so the
+        primitive is validated by the kernel exactly as at proof replay
+        (audit 【C】 -- no tactic wrapper needed, assume has no search
+        or matching logic).
+        """
+        return self.set_line(id, 'assume', args=prop, prevs=[])
+
     def apply_forward(self, id, ftac, args=None, prevs=None):
         """Checked entry point for forward steps: the tactic derives a
         new fact, which is recorded as a visible line inserted before
@@ -635,22 +646,11 @@ class rewrite_fact_thm_impl(Method):
             return pprint.N(data['theorem'] + " (r)")
 
     def apply(self, state: ProofState, id, data, prevs):
-        try:
-            prev_pts = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
-            sym_b = 'sym' in data and data['sym'] == 'true'
-            tactic.rewrite_fact_forward(sym=sym_b).get_proof_term(args=data['theorem'], prevs=prev_pts)
-        except InvalidDerivationException as e:
-            raise e
-
-        state.add_line_before(id, 1)
-        if 'sym' in data and data['sym'] == 'true':
-            state.set_line(id, 'rewrite_fact_sym', args=data['theorem'], prevs=prevs)
-        else:
-            state.set_line(id, 'rewrite_fact', args=data['theorem'], prevs=prevs)
-        state.line_meta[str(id)] = {'fact': True}
-
-        id2 = id.incr_id(1)
-        state._find_and_close(id2)
+        sym_b = 'sym' in data and data['sym'] == 'true'
+        # Checked forward entry: the tactic derives the fact; the line
+        # rule comes from the proof term (no hand-written macro names).
+        state.apply_forward(id, tactic.rewrite_fact_forward(sym=sym_b),
+                             args=data['theorem'], prevs=prevs)
 
 class rewrite_fact_prev_impl(Method):
     """Rewrite fact using a previous equality."""
@@ -992,7 +992,7 @@ class elim(Method):
         state.add_line_before(id, len(vars) + 1)
         for i, var in enumerate(vars):
             state.set_line(id.incr_id(i), 'variable', args=(var.name, var.T), prevs=[])
-        state.set_line(id.incr_id(len(vars)), 'assume', args=body, prevs=[])
+        state.assume_line(id.incr_id(len(vars)), body)
 
         # Locate the enclosing intros line; the lines in between
         # (including the gap) get their hyps extended with the body.
