@@ -105,7 +105,7 @@ class StableProofState:
                 context.ctxt.vars[nm] = T
                 sps.state.vars.append(Var(nm, T))
 
-        prop = parser.parse_term(prop_str) if isinstance(prop_str, str) else prop_str
+        prop = context.parse_term(prop_str) if isinstance(prop_str, str) else prop_str
         sps.state.prf = Proof()
         sps.state.prf.add_item(0, 'sorry', th=Thm(prop, ()))
         sps.state.check_proof(compute_only=True)

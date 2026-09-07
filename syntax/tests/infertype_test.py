@@ -1,6 +1,7 @@
 # Author: Bohua Zhan
 
 import unittest
+from functools import partial
 
 from kernel.type import TVar, TFun, BoolType
 from syntax.numeral import NatType
@@ -48,7 +49,7 @@ class InferTypeTest(unittest.TestCase):
         ]
 
         for t, res in test_data:
-            self.assertEqual(type_infer(t), res)
+            self.assertEqual(type_infer(t, ctxt=context.ctxt), res)
 
     def testInferTypeFail(self):
         test_data = [
@@ -57,16 +58,16 @@ class InferTypeTest(unittest.TestCase):
         ]
 
         for t in test_data:
-            self.assertRaisesRegex(TypeInferenceException, "Unable to unify", type_infer, t)
+            self.assertRaisesRegex(TypeInferenceException, "Unable to unify", partial(type_infer, t, ctxt=context.ctxt))
 
     def testInferTypeFail2(self):
         # Free variables with no type constraint are reported as undeclared.
         t = Abs("x", None, Abs("y", None, Const("equals", None)(Var("x", None), Var("y", None))))
-        self.assertRaisesRegex(TypeInferenceException, "not declared", type_infer, t)
+        self.assertRaisesRegex(TypeInferenceException, "not declared", partial(type_infer, t, ctxt=context.ctxt))
 
         # A polymorphic constant with no type annotation cannot be resolved.
         self.assertRaisesRegex(TypeInferenceException, "Cannot determine the type",
-                               type_infer, Const("nil", None))
+                               partial(type_infer, Const("nil", None), ctxt=context.ctxt))
 
     def testInferTypeFail3(self):
         test_data = [
@@ -74,31 +75,31 @@ class InferTypeTest(unittest.TestCase):
         ]
 
         for t in test_data:
-            self.assertRaisesRegex(TypeInferenceException, "Infinite loop", type_infer, t)
+            self.assertRaisesRegex(TypeInferenceException, "Infinite loop", partial(type_infer, t, ctxt=context.ctxt))
 
     def testInferPrintedType(self):
         t = Const("nil", ListType(Ta))
-        infer_printed_type(t)
+        infer_printed_type(t, ctxt=context.ctxt)
         self.assertTrue(hasattr(t, "print_type"))
 
         t = cons(Ta)(Var("a", Ta))
-        infer_printed_type(t)
+        infer_printed_type(t, ctxt=context.ctxt)
         self.assertFalse(hasattr(t.fun, "print_type"))
 
         t = Eq(Const("nil", ListType(Ta)), Const("nil", ListType(Ta)))
-        infer_printed_type(t)
+        infer_printed_type(t, ctxt=context.ctxt)
         self.assertFalse(hasattr(t.fun.fun, "print_type"))
         self.assertTrue(hasattr(t.arg1, "print_type"))
         self.assertFalse(hasattr(t.arg, "print_type"))
 
         t = Eq(mk_append(nil(Ta),nil(Ta)), nil(Ta))
-        infer_printed_type(t)
+        infer_printed_type(t, ctxt=context.ctxt)
         self.assertTrue(hasattr(t.arg1.arg1, "print_type"))
         self.assertFalse(hasattr(t.arg1.arg, "print_type"))
         self.assertFalse(hasattr(t.arg, "print_type"))
 
         t = Lambda(Var("x", Ta), Eq(Var("x", Ta), Var("x", Ta)))
-        infer_printed_type(t)
+        infer_printed_type(t, ctxt=context.ctxt)
 
 
 if __name__ == "__main__":

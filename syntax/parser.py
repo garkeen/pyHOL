@@ -18,9 +18,7 @@ from kernel.thm import Thm
 from kernel.proof import ProofItem
 from kernel import theory
 from kernel import extension
-from framework import context
 from syntax import infertype
-from syntax.tests import parser_test
 
 
 class ParserException(Exception):
@@ -159,8 +157,11 @@ grammar = r"""
 
 @v_args(inline=True)
 class HOLTransformer(Transformer):
-    def __init__(self):
-        pass
+    def __init__(self, ctxt=None):
+        # Pure-data name->type tables (interface inversion, audit §9.5):
+        # the parser does not read framework.context's global singleton;
+        # callers above syntax pass their context explicitly.
+        self.ctxt = ctxt if ctxt is not None else infertype.EMPTY_CTXT
 
     def tvar(self, s):
         return TVar(str(s))
@@ -180,7 +181,7 @@ class HOLTransformer(Transformer):
 
     def vname(self, s):
         s = str(s)
-        if theory.thy.has_term_sig(s) or s in context.ctxt.defs:
+        if theory.thy.has_term_sig(s) or s in self.ctxt.defs:
             # s is the name of a constant in the theory
             return Const(s, None)
         else:
@@ -409,8 +410,14 @@ class HOLTransformer(Transformer):
         return list(args)
 
 
+# One shared transformer: the Lark grammar is compiled once per start
+# symbol (module-level, below); switching context only swaps the
+# transformer's ctxt reference (O(1)), never rebuilds a parser.
+_shared_transformer = HOLTransformer()
+
 def get_parser_for(start):
-    return Lark(grammar, start=start, parser="lalr", transformer=HOLTransformer())
+    return Lark(grammar, start=start, parser="lalr",
+                transformer=_shared_transformer)
 
 type_parser = get_parser_for("type")
 term_parser = get_parser_for("term")
@@ -422,6 +429,11 @@ var_decl_parser = get_parser_for("var_decl")
 ind_constr_parser = get_parser_for("ind_constr")
 term_list_parser = get_parser_for("term_list")
 
+
+def _bind_ctxt(ctxt):
+    """Point the shared transformer at ctxt for the next parse."""
+    _shared_transformer.ctxt = ctxt if ctxt is not None else infertype.EMPTY_CTXT
+
 def parse_type(s: str, *, check_type: bool = True) -> Type:
     """Parse a type."""
     try:
@@ -432,14 +444,21 @@ def parse_type(s: str, *, check_type: bool = True) -> Type:
         theory.thy.check_type(T)
     return T
 
-def parse_term(s: Union[str, List[str]]) -> Term:
-    """Parse a term."""
+def parse_term(s: Union[str, List[str]], *, ctxt=None) -> Term:
+    """Parse a term.
+
+    ctxt is a pure-data object with svars, vars, defs (name->type
+    tables) consulted during parsing and type inference; callers above
+    syntax pass their context explicitly (interface inversion,
+    audit §9.5).
+    """
     # Permit parsing a list of strings by concatenating them.
     if isinstance(s, list):
         s = " ".join(s)
+    _bind_ctxt(ctxt)
     try:
         t = term_parser.parse(s)
-        return infertype.type_infer(t)
+        return infertype.type_infer(t, ctxt=ctxt)
     except exceptions.UnexpectedToken as e:
         raise translate_lark_error(term_parser, s, e)
     except exceptions.UnexpectedCharacters as e:
@@ -451,12 +470,13 @@ def parse_term(s: Union[str, List[str]]) -> Term:
     except term.TermException as e:
         raise ParserError(str(e))
 
-def parse_thm(s: str) -> Thm:
+def parse_thm(s: str, *, ctxt=None) -> Thm:
     """Parse a theorem (sequent)."""
+    _bind_ctxt(ctxt)
     try:
         th = thm_parser.parse(s)
-        th.hyps = tuple(infertype.type_infer(hyp) for hyp in th.hyps)
-        th.prop = infertype.type_infer(th.prop)
+        th.hyps = tuple(infertype.type_infer(hyp, ctxt=ctxt) for hyp in th.hyps)
+        th.prop = infertype.type_infer(th.prop, ctxt=ctxt)
     except exceptions.UnexpectedToken as e:
         raise translate_lark_error(thm_parser, s, e)
     except exceptions.UnexpectedCharacters as e:
@@ -467,11 +487,12 @@ def parse_thm(s: str) -> Thm:
         raise ParserError(e.err)
     return th
 
-def parse_inst(s):
+def parse_inst(s, *, ctxt=None):
     """Parse a term instantiation."""
+    _bind_ctxt(ctxt)
     inst = inst_parser.parse(s)
     for k in inst:
-        inst[k] = infertype.type_infer(inst[k])
+        inst[k] = infertype.type_infer(inst[k], ctxt=ctxt)
     return Inst(inst)
 
 def parse_tyinst(s):
@@ -479,13 +500,14 @@ def parse_tyinst(s):
     tyinst = tyinst_parser.parse(s)
     return TyInst(tyinst)
 
-def parse_named_thm(s):
+def parse_named_thm(s, *, ctxt=None):
     """Parse a named theorem."""
+    _bind_ctxt(ctxt)
     res = named_thm_parser.parse(s)
     if len(res) == 1:
-        return (None, infertype.type_infer(res[0]))
+        return (None, infertype.type_infer(res[0], ctxt=ctxt))
     else:
-        return (str(res[0]), infertype.type_infer(res[1]))
+        return (str(res[0]), infertype.type_infer(res[1], ctxt=ctxt))
 
 def parse_ind_constr(s):
     """Parse a constructor for an inductive type definition."""
@@ -495,17 +517,18 @@ def parse_var_decl(s):
     """Parse a variable declaration."""
     return var_decl_parser.parse(s)
 
-def parse_term_list(s):
+def parse_term_list(s, *, ctxt=None):
     """Parse a list of terms."""
     if s == "":
         return []
 
+    _bind_ctxt(ctxt)
     ts = term_list_parser.parse(s)
     for i in range(len(ts)):
-        ts[i] = infertype.type_infer(ts[i])
+        ts[i] = infertype.type_infer(ts[i], ctxt=ctxt)
     return ts
 
-def parse_args(sig, args):
+def parse_args(sig, args, *, ctxt=None):
     """Parse the argument according to the signature."""
     try:
         if sig == None:
@@ -514,9 +537,9 @@ def parse_args(sig, args):
         elif sig == str:
             return args
         elif sig == Term:
-            return parse_term(args)
+            return parse_term(args, ctxt=ctxt)
         elif sig == Inst:
-            return parse_inst(args)
+            return parse_inst(args, ctxt=ctxt)
         elif sig == TyInst:
             return parse_tyinst(args)
         elif sig == Tuple[str, Type]:
@@ -524,20 +547,20 @@ def parse_args(sig, args):
             return s1, parse_type(s2)
         elif sig == Tuple[str, Term]:
             s1, s2 = args.split(",", 1)
-            return s1, parse_term(s2)
+            return s1, parse_term(s2, ctxt=ctxt)
         elif sig == Tuple[str, Inst]:
             s1, s2 = args.split(",", 1)
-            inst = parse_inst(s2)
+            inst = parse_inst(s2, ctxt=ctxt)
             return s1, inst
         elif sig == List[Term]:
-            return parse_term_list(args)
+            return parse_term_list(args, ctxt=ctxt)
         else:
             raise TypeError
     except exceptions.UnexpectedToken as e:
         raise ParserException("When parsing %s, unexpected token %r at column %s.\n"
                               % (args, e.token, e.column))
 
-def parse_proof_rule(data):
+def parse_proof_rule(data, *, ctxt=None):
     """Parse a proof rule.
 
     data is a dictionary containing id, rule, args, prevs, and th.
@@ -555,12 +578,18 @@ def parse_proof_rule(data):
     if data['th'] == "":
         th = None
     else:
-        th = parse_thm(data['th'])
+        th = parse_thm(data['th'], ctxt=ctxt)
+
 
     sig = theory.thy.get_proof_rule_sig(rule)
-    args = parse_args(sig, data['args'])
+    args = parse_args(sig, data['args'], ctxt=ctxt)
     return ProofItem(id, rule, args=args, prevs=data['prevs'], th=th)
 
 
 hol_type.type_parser = parse_type
-term.term_parser = parse_term
+term.term_parser = parse_term  # rebound to context-aware parsing below
+
+# The kernel's Term(s-from-string) constructor goes through this hook.
+# Binding it to context-aware parsing would make syntax depend on
+# framework, so the rebinding lives in framework/context.py instead
+# (framework already depends on syntax). Do NOT rebind here.

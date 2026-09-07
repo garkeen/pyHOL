@@ -404,7 +404,7 @@ class cut_method(Method):
     def display_step(self, state: ProofState, data):
         id = data['goal_id']
         with context.fresh_context(vars=state.get_vars(id)):
-            goal = parser.parse_term(data.get('cut_goal', data.get('goal')))
+            goal = context.parse_term(data.get('cut_goal', data.get('goal')))
         return pprint.N("have ") + printer.print_term(goal)
 
     def apply(self, state: ProofState, id, data, prevs):
@@ -412,7 +412,7 @@ class cut_method(Method):
         hyps = cur_item.th.hyps
 
         with context.fresh_context(vars=state.get_vars(id)):
-            C = parser.parse_term(data.get('cut_goal', data.get('goal')))
+            C = context.parse_term(data.get('cut_goal', data.get('goal')))
             for v in C.get_vars():
                 if v.name not in context.ctxt.vars:
                     raise AssertionError('Insert goal: extra variable %s' % v.name)
@@ -435,12 +435,12 @@ class cases_method(Method):
     def display_step(self, state: ProofState, data):
         id = data['goal_id']
         with context.fresh_context(vars=state.get_vars(id)):
-            A = parser.parse_term(data['case'])
+            A = context.parse_term(data['case'])
         return pprint.N("case ") + printer.print_term(A)
 
     def apply(self, state: ProofState, id, data, prevs):
         with context.fresh_context(vars=state.get_vars(id)):
-            A = parser.parse_term(data['case'])
+            A = context.parse_term(data['case'])
             for v in A.get_vars():
                 if v.name not in context.ctxt.vars:
                     raise AssertionError('Apply case: extra variable %s' % v.name)
@@ -469,12 +469,12 @@ class type_cases_method(Method):
     def display_step(self, state: ProofState, data):
         id = data['goal_id']
         with context.fresh_context(vars=state.get_vars(id)):
-            A = parser.parse_term(data['case'])
+            A = context.parse_term(data['case'])
         return pprint.N("type cases ") + printer.print_term(A)
 
     def apply(self, state: ProofState, id, data, prevs):
         with context.fresh_context(vars=state.get_vars(id)):
-            A = parser.parse_term(data['case'])
+            A = context.parse_term(data['case'])
             for v in A.get_vars():
                 if v.name not in context.ctxt.vars:
                     raise AssertionError('Apply type_cases: extra variable %s' % v.name)
@@ -512,7 +512,7 @@ class apply_prev(Method):
         with context.fresh_context(vars=state.get_vars(id)):
             for key, val in data.items():
                 if key.startswith("param_"):
-                    inst[key[6:]] = parser.parse_term(val)
+                    inst[key[6:]] = context.parse_term(val)
 
         if inst:
             state.apply_tactic(id, tactic.apply_prev(), args=inst, prevs=prevs)
@@ -731,7 +731,7 @@ class forward_thm_impl(Method):
             for key, val in data.items():
                 if key.startswith("param_"):
                     if val != '':
-                        inst[key[6:]] = parser.parse_term(val)
+                        inst[key[6:]] = context.parse_term(val)
 
         provided = [k[6:] for k in data if k.startswith("param_")]
         prev_pts = [ProofTerm.atom(prev, state.get_proof_item(prev).th) for prev in prevs]
@@ -789,7 +789,7 @@ class rule(Method):
         with context.fresh_context(vars=state.get_vars(id)):
             for key, val in data.items():
                 if key.startswith("param_"):
-                    inst[key[6:]] = parser.parse_term(val)
+                    inst[key[6:]] = context.parse_term(val)
         if inst:
             state.apply_tactic(id, tactic.rule(), args=(data['theorem'], inst), prevs=prevs)
         else:
@@ -1055,7 +1055,7 @@ class inst_forall_impl(Method):
 
     def apply(self, state: ProofState, id, data, prevs):
         with context.fresh_context(vars=state.get_vars(id)):
-            t = parser.parse_term(data['s'])
+            t = context.parse_term(data['s'])
 
             for v in t.get_vars():
                 if v.name not in context.ctxt.vars:
@@ -1089,7 +1089,7 @@ class inst_exists_impl(Method):
 
     def apply(self, state: ProofState, id, data, prevs):
         with context.fresh_context(vars=state.get_vars(id)):
-            t = parser.parse_term(data['s'])
+            t = context.parse_term(data['s'])
 
             for v in t.get_vars():
                 if v.name not in context.ctxt.vars:
@@ -1442,7 +1442,7 @@ class trans_method(Method):
 
     def apply(self, state, id, data, prevs):
         with context.fresh_context(vars=state.get_vars(id)):
-            u = parser.parse_term(data['s'])
+            u = context.parse_term(data['s'])
             for v in u.get_vars():
                 if v.name not in context.ctxt.vars:
                     raise AssertionError('trans: extra variable %s' % v.name)

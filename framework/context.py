@@ -77,7 +77,7 @@ def set_context(thy_name: Optional[str], *, limit=None, svars=None, vars=None, d
     
     Parameters
     ==========
-
+    
     thy_name : str or None
         Name of the theory. If None, theory is not changed.
 
@@ -90,3 +90,41 @@ def set_context(thy_name: Optional[str], *, limit=None, svars=None, vars=None, d
     # Set context
     global ctxt
     ctxt = Context(svars=svars, vars=vars, defs=defs)
+
+
+# ---------------------------------------------------------------------------
+# Parsing in context.  The parser itself is pure data-in (syntax must not
+# read this module's global singleton -- audit §9.5); these wrappers bind
+# the current global context to the parser entry points.  Code above
+# syntax that relies on the ambient context calls these instead of
+# parser.parse_term etc. directly.
+# ---------------------------------------------------------------------------
+
+def parse_term(s):
+    """Parse a term under the current global context."""
+    return parser.parse_term(s, ctxt=ctxt)
+
+def parse_thm(s):
+    """Parse a theorem under the current global context."""
+    return parser.parse_thm(s, ctxt=ctxt)
+
+def parse_inst(s):
+    """Parse a term instantiation under the current global context."""
+    return parser.parse_inst(s, ctxt=ctxt)
+
+def parse_named_thm(s):
+    """Parse a named theorem under the current global context."""
+    return parser.parse_named_thm(s, ctxt=ctxt)
+
+def parse_term_list(s):
+    """Parse a list of terms under the current global context."""
+    return parser.parse_term_list(s, ctxt=ctxt)
+
+
+# The kernel's Term(str) constructor delegates to this hook (set by
+# syntax.parser).  Rebind it to context-aware parsing so implicit
+# Term(...) conversions inside framework and above see the current
+# global context.  framework depends on syntax, so this rebinding
+# direction is legal (syntax itself must not import this module).
+import kernel.term as _kernel_term
+_kernel_term.term_parser = parse_term

@@ -19,7 +19,7 @@ def test_conv(self: unittest.TestCase, thy_name: str, cv: conv.Conv, *,
     context.set_context(thy_name, vars=vars, limit=limit)
 
     if isinstance(t, str):
-        t = parser.parse_term(t)
+        t = context.parse_term(t)
     assert isinstance(t, Term)
 
     if failed is not None:
@@ -28,12 +28,12 @@ def test_conv(self: unittest.TestCase, thy_name: str, cv: conv.Conv, *,
         return
 
     if assms is not None:
-        assms = tuple(parser.parse_term(assm) for assm in assms)
+        assms = tuple(context.parse_term(assm) for assm in assms)
     else:
         assms = tuple()
 
     if isinstance(t_res, str):
-        t_res = parser.parse_term(t_res)
+        t_res = context.parse_term(t_res)
     assert isinstance(t_res, Term)
 
     res_th = cv.eval(t)
@@ -106,7 +106,7 @@ class ConvTest(unittest.TestCase):
         )
 
     def testRewrConv4(self):
-        cond = parser.parse_term("(x::nat) <= y")
+        cond = context.parse_term("(x::nat) <= y")
         test_conv(
             self, 'nat', rewr_conv("min_simp1", conds=[ProofTerm.sorry(Thm(cond))]),
             vars={"x": "nat", "y": "nat"},
@@ -245,7 +245,7 @@ class ConvTest(unittest.TestCase):
 
         context.set_context('function', vars={'x': 'nat', 'y': 'nat', 'f': 'nat => nat', 'g': 'nat => nat'})
         for t, th_name, res in test_data:
-            t = parser.parse_term(t)
+            t = context.parse_term(t)
             self.assertEqual(has_rewrite(th_name, t), res)
 
     def testHasRewriteSym(self):
@@ -256,7 +256,7 @@ class ConvTest(unittest.TestCase):
 
         context.set_context('set', vars={'g': "'a => 'b", 'f': "'b => 'c", 's': "'a set", 'h': 'nat => nat', 't': 'nat set'})
         for t, th_name, res in test_data:
-            t = parser.parse_term(t)
+            t = context.parse_term(t)
             self.assertEqual(has_rewrite(th_name, t, sym=True), res)
 
 

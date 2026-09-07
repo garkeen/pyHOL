@@ -185,7 +185,7 @@ class Axiom(Item):
         try:
             with context.fresh_context(vars=data['vars']):
                 self.vars = context.ctxt.vars
-                self.prop = parser.parse_term(data['prop'])
+                self.prop = context.parse_term(data['prop'])
 
             # theorem does not already exist
             if theory.thy.has_theorem(self.name):
@@ -324,7 +324,7 @@ class Definition(Item):
             self.cname = theory.thy.get_overload_const_name(self.name, self.type)
 
             with context.fresh_context(defs={self.name: self.type}):
-                self.prop = parser.parse_term(data['prop'])
+                self.prop = context.parse_term(data['prop'])
 
             # prop should be an equality
             if not self.prop.is_equals():
@@ -431,7 +431,7 @@ class Fun(Item):
 
             for rule in data['rules']:
                 with context.fresh_context(defs={self.name: self.type}):
-                    prop = parser.parse_term(rule['prop'])
+                    prop = context.parse_term(rule['prop'])
 
                 # prop should be an equality
                 if not prop.is_equals():
@@ -531,7 +531,7 @@ class Inductive(Item):
 
             for rule in data['rules']:
                 with context.fresh_context(defs={self.name: self.type}):
-                    prop = parser.parse_term(rule['prop'])
+                    prop = context.parse_term(rule['prop'])
 
                 # Test conclusion of the prop
                 _, concl = prop.strip_implies()

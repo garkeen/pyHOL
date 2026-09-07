@@ -11,7 +11,7 @@ from syntax.settings import settings, global_setting
 class PPrintTest(unittest.TestCase):
     def run_test(self, thy_name, s, expected_res, **kwargs):
         context.set_context(thy_name)
-        t = parser.parse_term(s)
+        t = context.parse_term(s)
         with global_setting(**kwargs):
             ast = pprint.get_ast_term(t)
             res = pprint.print_ast(ast)

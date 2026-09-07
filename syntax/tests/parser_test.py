@@ -69,7 +69,7 @@ class ParserTest(unittest.TestCase):
 
     def run_test(self, thy_name, *, vars=None, svars=None, s, Ts):
         context.set_context(thy_name, vars=vars, svars=svars)
-        t = parser.parse_term(s)
+        t = context.parse_term(s)
         T = parser.parse_type(Ts)
         self.assertIsInstance(t, Term, "xxxx1")
         self.assertEqual(t.checked_get_type(), T, "xxxx2")
@@ -88,8 +88,8 @@ class ParserTest(unittest.TestCase):
         for t1, t2 in test_data:
             with global_setting(unicode=False):
                 context.set_context(thy_name, vars=vars, svars=svars)
-                t1 = parser.parse_term(t1)
-                t2 = parser.parse_term(t2)
+                t1 = context.parse_term(t1)
+                t2 = context.parse_term(t2)
                 self.assertEqual(t1, t2)
 
     def testParseTerm(self):
@@ -239,7 +239,7 @@ class ParserTest(unittest.TestCase):
         for s, Ts in test_data:
             with global_setting(unicode=False):
                 context.set_context(thy_name, vars=vars, svars=svars)
-                t = parser.parse_term(s)
+                t = context.parse_term(s)
                 T = parser.parse_type(Ts)
                 self.assertIsInstance(t, Term)
                 self.assertEqual(t.checked_get_type(), T)
@@ -398,7 +398,7 @@ class ParserTest(unittest.TestCase):
 
     def testParseTermIsString(self):
         context.set_context('logic_base', vars={'a': "'a"})
-        a = parser.parse_term('a')
+        a = context.parse_term('a')
         self.assertEqual(type(a.name), str)
 
     def testParseUnicode(self):
@@ -418,7 +418,7 @@ class ParserTest(unittest.TestCase):
         context.set_context('logic_base',
             vars={'A': 'bool', 'B': 'bool', 'C': 'bool', 'P': "'a => bool", 'Q': "'a => bool"})
         for s, ascii_s in test_data:
-            t = parser.parse_term(s)
+            t = context.parse_term(s)
             self.assertIsInstance(t, Term)
             with global_setting(unicode=False):
                 self.assertEqual(print_term(t), ascii_s)
@@ -436,7 +436,7 @@ class ParserTest(unittest.TestCase):
 
         context.set_context('logic', vars={'A': 'bool', 'B': 'bool', 'C': 'bool'})
         for s, th in test_data:
-            self.assertEqual(parser.parse_thm(s), th)
+            self.assertEqual(context.parse_thm(s), th)
 
     def testParseProofRule(self):
         A = Var('A', BoolType)
@@ -460,7 +460,7 @@ class ParserTest(unittest.TestCase):
 
         context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
         for s, res in test_data:
-            self.assertEqual(parser.parse_proof_rule(s), res)
+            self.assertEqual(parser.parse_proof_rule(s, ctxt=context.ctxt), res)
 
     def testParseTypeInd(self):
         test_data = [
@@ -482,7 +482,7 @@ class ParserTest(unittest.TestCase):
 
         context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
         for s, res in test_data:
-            self.assertEqual(parser.parse_named_thm(s), res)
+            self.assertEqual(context.parse_named_thm(s), res)
 
     def testParseErrorCategorization(self):
         """Parser errors should be categorized and mention the location."""
@@ -495,7 +495,7 @@ class ParserTest(unittest.TestCase):
         ]
         for s, expected in cases:
             with self.assertRaises(parser.ParserError) as cm:
-                parser.parse_term(s)
+                context.parse_term(s)
             self.assertIn(expected, str(cm.exception))
             self.assertIn("column", str(cm.exception))
 
@@ -504,7 +504,7 @@ class ParserTest(unittest.TestCase):
         be reported, not silently treated as a typo'd free variable."""
         basic.load_theory('nat')
         with self.assertRaises(parser.ParserError) as cm:
-            parser.parse_term('bogusname + 1')
+            context.parse_term('bogusname + 1')
         self.assertIn("bogusname", str(cm.exception))
 
 if __name__ == "__main__":

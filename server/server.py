@@ -44,7 +44,7 @@ def parse_init_state(prop: Union[str, List[str], Term]) -> ProofState:
     """
     typecheck.checkinstance('parse_init_state', prop, (str, list, Term))
     if isinstance(prop, (str, list)):
-       prop = parser.parse_term(prop)
+       prop = context.parse_term(prop)
     assums, concl = prop.strip_implies()
 
     state = ProofState()
@@ -67,7 +67,7 @@ def parse_proof(proof) -> ProofState:
         if line['rule'] == "variable":
             nm, str_T = line['args'].split(',', 1)
             context.ctxt.vars[nm] = parser.parse_type(str_T.strip())
-        item = parser.parse_proof_rule(line)
+        item = parser.parse_proof_rule(line, ctxt=context.ctxt)
         state.prf.insert_item(item)
     state.check_proof()
 

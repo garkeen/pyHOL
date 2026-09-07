@@ -1,14 +1,26 @@
 # Author: Bohua Zhan
 
 """Hindley-Milner type inference algorithm."""
-import copy
 
 from kernel.type import STVar, TFun, TyInst
-from kernel.term import Term
-from kernel import term
 from kernel import theory
-from framework import context
-from util import unionfind
+
+
+class EmptyCtxt:
+    """Pure-data name->type tables consulted during inference.
+
+    Interface inversion (audit §9.5): syntax must not depend on layers
+    above it, so type inference reads context data through this plain
+    container instead of framework.context's global singleton.  Callers
+    above syntax pass their own object with the same three attributes
+    (svars, vars, defs); the default is an empty context.
+    """
+    svars = {}
+    vars = {}
+    defs = {}
+
+
+EMPTY_CTXT = EmptyCtxt()
 
 
 class TypeInferenceException(Exception):
@@ -35,12 +47,18 @@ def _unspecified_names(t, tyinst, unspecified):
             names.add(v.name)
     return sorted(names)
 
-def type_infer(t, *, forbid_internal=True):
+def type_infer(t, *, forbid_internal=True, ctxt=None):
     """Perform type inference on the given term. The input term
     has all types marked None, except those subterms whose type is
     explicitly given. This function works on terms with overloaded
     constants.
+
+    ctxt is a pure-data object with svars, vars, defs (name->type
+    tables); default empty.  Callers above syntax pass their context
+    (e.g. framework.context.ctxt) explicitly.
     """
+    if ctxt is None:
+        ctxt = EMPTY_CTXT
     # Union-find mapping for representatives of temporary
     # type variables.
     uf = dict()
@@ -119,8 +137,8 @@ def type_infer(t, *, forbid_internal=True):
         # otherwise, make a new type.
         if t.is_svar():
             if t.T is None:
-                if t.name in context.ctxt.svars:
-                    t.T = context.ctxt.svars[t.name]
+                if t.name in ctxt.svars:
+                    t.T = ctxt.svars[t.name]
                 elif t.name in incr_sctxt:
                     t.T = incr_sctxt[t.name]
                 else:
@@ -130,8 +148,8 @@ def type_infer(t, *, forbid_internal=True):
 
         elif t.is_var():
             if t.T is None:
-                if t.name in context.ctxt.vars:
-                    t.T = context.ctxt.vars[t.name]
+                if t.name in ctxt.vars:
+                    t.T = ctxt.vars[t.name]
                 elif t.name in incr_ctxt:
                     t.T = incr_ctxt[t.name]
                 else:
@@ -146,8 +164,8 @@ def type_infer(t, *, forbid_internal=True):
                 try:
                     T = theory.thy.get_term_sig(t.name, stvar=True)
                 except theory.TheoryException as e:
-                    if t.name in context.ctxt.defs:
-                        T = context.ctxt.defs[t.name]
+                    if t.name in ctxt.defs:
+                        T = ctxt.defs[t.name]
                     else:
                         raise e
                 tyinst = TyInst()
@@ -194,10 +212,10 @@ def type_infer(t, *, forbid_internal=True):
         else:
             raise TypeError
 
-    if context.ctxt.defs and t.is_equals():
+    if ctxt.defs and t.is_equals():
         t_head, t_args = t.lhs.strip_comb()
-        if t_head.is_const() and t_head.name in context.ctxt.defs:
-            t_head.T = context.ctxt.defs[t_head.name]
+        if t_head.is_const() and t_head.name in ctxt.defs:
+            t_head.T = ctxt.defs[t_head.name]
 
     infer(t, [])
 
@@ -238,7 +256,7 @@ def type_infer(t, *, forbid_internal=True):
     t.subst_type_inplace(tyinst)
     return t
 
-def infer_printed_type(t):
+def infer_printed_type(t, *, ctxt=None):
     """Infer the types that should be printed.
     
     The algorithm is as follows:
@@ -249,8 +267,6 @@ def infer_printed_type(t):
     4. Repeat until no internal type variables appear.
     
     """
-    from framework.context import Context
-
     def clear_const_type(t):
         if t.is_const() and not hasattr(t, "print_type"):
             t.backupT = t.T
@@ -276,7 +292,7 @@ def infer_printed_type(t):
 
     for i in range(100):
         clear_const_type(t)
-        type_infer(t, forbid_internal=False)
+        type_infer(t, forbid_internal=False, ctxt=ctxt)
 
         def has_internalT(T):
             return any(is_internal_type(subT) for subT in T.get_tsubs())

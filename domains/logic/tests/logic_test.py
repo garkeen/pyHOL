@@ -36,12 +36,12 @@ def test_macro(self: unittest.TestCase, thy_name: str, macro: Macro, *,
 
     macro = theory.global_macros[macro]
     if assms is not None:
-        assms = tuple(parser.parse_term(assm) for assm in assms)
+        assms = tuple(context.parse_term(assm) for assm in assms)
     else:
         assms = tuple()
     prev_ths = [Thm(assm, assm) for assm in assms]
     prevs = [ProofTerm.assume(assm) for assm in assms]
-    args = parser.parse_args(macro.sig, args)
+    args = parser.parse_args(macro.sig, args, ctxt=context.ctxt)
 
     if failed is not None:
         self.assertRaises(failed, macro.eval, args, prev_ths)
@@ -49,7 +49,7 @@ def test_macro(self: unittest.TestCase, thy_name: str, macro: Macro, *,
             self.assertRaises(failed, macro.get_proof_term, args, prevs)
         return
 
-    res = parser.parse_term(res)
+    res = context.parse_term(res)
 
     # Check the eval function
     self.assertEqual(macro.eval(args, prev_ths), Thm(res, assms))

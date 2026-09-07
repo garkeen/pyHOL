@@ -30,10 +30,10 @@ def test_method(self: unittest.TestCase, thy_name: str, *, vars=None,
     # Build starting state
     if assms is not None:
         assert isinstance(assms, list), "test_method: assms need to be a list"
-        assms = [parser.parse_term(t) for t in assms]
+        assms = [context.parse_term(t) for t in assms]
     else:
         assms = []
-    concl = parser.parse_term(concl)
+    concl = context.parse_term(concl)
     state = server.parse_init_state(Implies(*(assms + [concl])))
 
     # Obtain and run method
@@ -61,13 +61,13 @@ def test_method(self: unittest.TestCase, thy_name: str, *, vars=None,
         gaps = []  # assert no gaps
     else:
         assert isinstance(gaps, list), "test_method: gaps need to be a list"
-        gaps = [parser.parse_term(gap) for gap in gaps]
+        gaps = [context.parse_term(gap) for gap in gaps]
     self.assertEqual([gap.prop for gap in state.rpt.gaps], gaps)
 
     # Compare list of lines
     if lines:
         for id, t in lines.items():
-            t = parser.parse_term(t)
+            t = context.parse_term(t)
             self.assertEqual(state.get_proof_item(id).th.prop, t)
 
 
@@ -82,8 +82,8 @@ class MethodTest(unittest.TestCase):
         context.set_context(thy_name, vars=vars)
 
         # Build starting state
-        assms = [parser.parse_term(t) for t in assms] if assms is not None else []
-        concl = parser.parse_term(concl)
+        assms = [context.parse_term(t) for t in assms] if assms is not None else []
+        concl = context.parse_term(concl)
         state = server.parse_init_state(Implies(*(assms + [concl])))
 
         # Obtain method and run its search function. Unified dispatchers

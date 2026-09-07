@@ -252,6 +252,15 @@ def get_ast_type(T):
 
     return helper(T)
 
+def _is_if(t):
+    """Whether t is of the form if P then x else y.
+
+    Local shape predicate (equivalent to framework.logic.is_if): pprint
+    must not depend on layers above syntax (audit §9.5).
+    """
+    return t.is_comb("IF", 3)
+
+
 # Hash table for ASTs.
 term_ast = dict()
 
@@ -269,8 +278,6 @@ def get_ast_term(t):
     var_names = [v.name for v in t.get_vars()]
 
     # Import modules for custom parsed data
-    from framework import logic
-    from domains.nat import util_nat as nat
     from util import list
     from util import set
     from util import function
@@ -291,7 +298,7 @@ def get_ast_term(t):
                     return op_data.priority, UNARY
                 else:
                     return op_data.priority, BINARY
-            elif binder_data is not None or logic.is_if(t):
+            elif binder_data is not None or _is_if(t):
                 return 10, BINDER
             else:
                 return 95, FUN_APPL  # Function application
@@ -362,7 +369,7 @@ def get_ast_term(t):
 
             return Collect(bind_var, body_ast, t.get_type())
 
-        elif logic.is_if(t):
+        elif _is_if(t):
             P, x, y = t.args
             return ITE(helper(P, bd_vars), helper(x, bd_vars), helper(y, bd_vars), t.get_type())
 

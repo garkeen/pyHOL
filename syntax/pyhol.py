@@ -362,6 +362,21 @@ _SKIP_KEYS = {'method_name', 'goal_id'}
 # Keys that are fact_ids arrays -> format as comma-separated
 _FACT_KEYS = {'fact_ids'}
 
+# Method-direction metadata, self-described here so pyhol does not
+# import the method layer (audit §9.5: syntax only depends on
+# kernel+util).  Must stay in sync with server.stable_state's
+# BACKWARD/FORWARD sets; export_pyhol tests lock the round-trip.
+_BACKWARD_METHODS = {
+    'rule', 'resolve', 'intro', 'cases', 'type_cases', 'rewrite', 'apply_prev',
+    'inst', 'induct', 'refl', 'eq_intro', 'trans',
+    'unfold', 'simp', 'assumption',
+    'norm', 'z3',
+    'vcg',
+}
+_FORWARD_METHODS = {
+    'forward', 'rewrite', 'inst',
+}
+
 
 def _export_step(step):
     """Export a step dict to a .pyhol line.
@@ -373,13 +388,12 @@ def _export_step(step):
 
     # New format: goal is an int
     if 'goal' in step and isinstance(step.get('goal'), int):
-        from server.stable_state import BACKWARD, FORWARD
         # Dual-mode methods: fact mode is a forward step.
         if method in ('rewrite', 'inst') and step.get('target') == 'fact':
             prefix = '→ '
-        elif method in BACKWARD:
+        elif method in _BACKWARD_METHODS:
             prefix = '← '
-        elif method in FORWARD:
+        elif method in _FORWARD_METHODS:
             prefix = '→ '
         else:
             prefix = ''

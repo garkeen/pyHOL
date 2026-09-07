@@ -31,7 +31,7 @@ class MatcherTest(unittest.TestCase):
             "f": "'a => 'b", "a": "'a", "m": "nat", "n": "nat",
             "P": "nat => bool", "Q": "nat set => bool", "x": "nat", "s": "nat set"})
         for t, res in test_data:
-            t = parser.parse_term(t)
+            t = context.parse_term(t)
             self.assertEqual(matcher.is_pattern(t, []), res)
 
     def run_test(self, thy_name, pat, t, *, vars=None, svars=None, tyinst=None, inst=None, failed=None):
