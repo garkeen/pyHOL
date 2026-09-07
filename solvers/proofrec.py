@@ -15,7 +15,6 @@ from syntax.numeral import NatType, IntType, RealType
 from kernel.term import *
 from syntax.numeral import *  # noqa: F401,F403  (numeral sugar moved out of kernel)
 from syntax.logicops import *  # noqa: F401,F403  (logic sugar moved out of kernel)
-from kernel.thm import Thm
 from kernel.proofterm import ProofTerm, refl
 from kernel.macro import Macro
 from kernel.theory import check_proof, register_macro
@@ -23,6 +22,7 @@ from kernel import theory
 from kernel.report import ProofReport
 from core import basic, matcher
 from core import context
+from core.goal import Goal
 from core.logic import apply_theorem
 from theories.logic.logic import imp_disj_iff, disj_norm, resolution
 from theories.logic.macro import imp_conj_macro
@@ -599,7 +599,7 @@ def schematic_rules_rewr(thms, lhs, rhs):
             # MatchException is the expected failure; TheoryException
             # (theorem not in the current theory) must not abort the sweep.
             continue
-    return ProofTerm.sorry(Thm(Eq(lhs, rhs)))
+    return Goal(Eq(lhs, rhs)).sorry()
 
 def is_ineq(t):
     """determine whether t is an inequality"""
@@ -652,7 +652,7 @@ def compare_lhs_rhs(tm, cvs):
         if norm_rhs_pt.rhs == norm_lhs_pt.rhs:
             return norm_lhs_pt.transitive(norm_rhs_pt.symmetric())
         
-    return ProofTerm.sorry(Thm(tm))
+    return Goal(tm).sorry()
 
 def match_pattern(pat, tm):
     """If the schematic pattern can match with term tm, return true, else false"""
@@ -669,7 +669,7 @@ def try_tran_pt(pt1, pt2):
     if pt1.rhs == pt2.lhs:
         return pt1.transitive(pt2)
     else:
-        return ProofTerm.sorry(Thm(Eq(pt1.lhs, pt2.rhs)))
+        return Goal(Eq(pt1.lhs, pt2.rhs)).sorry()
 
 def analyze_type(tm):
     """
@@ -743,7 +743,7 @@ def rewrite_int(tm, has_bool=False):
         if pt.rhs == tm.rhs:
             return pt
         else:
-            return ProofTerm.sorry(Thm(tm))
+            return Goal(tm).sorry()
     elif tm.lhs.is_compares() and tm.rhs.is_not() and tm.rhs.arg.is_compares():
         pt_elim_neg_sym = refl(tm.rhs).on_rhs(integer.int_norm_neg_compares(), integer.omega_form_conv()).symmetric()
         pt_eq = integer_macro.int_eq_comparison_macro().get_proof_term(Eq(tm.lhs, pt_elim_neg_sym.lhs))
@@ -826,7 +826,7 @@ def rewrite_int_second_level(tm):
         if pt.rule != 'sorry':
             return pt_norm_full.symmetric().equal_elim(pt)
 
-    return ProofTerm.sorry(Thm(tm))
+    return Goal(tm).sorry()
 
 def rewrite_by_assertion(tm):
     """
@@ -909,7 +909,7 @@ def rewrite_real_second_level(tm):
         pt = compare_lhs_rhs(tm, arm)
         if pt.rule != 'sorry':
             return pt
-    return ProofTerm.sorry(Thm(tm))
+    return Goal(tm).sorry()
 
 # Cache of theorem names in library/smt.pyhol, keyed by prefix ('r' for
 # rewrite schematic rules, 'd' for def-axiom schematic rules).  A Z3 proof
@@ -1232,7 +1232,7 @@ def schematic_rules_rewr_cond(thms, lhs, rhs):
             return pt
         except Exception:
             continue
-    return ProofTerm.sorry(Thm(Eq(lhs, rhs)))
+    return Goal(Eq(lhs, rhs)).sorry()
 
 def _rewrite(tm):
     th_name = _smt_theorem_names('r')
@@ -1250,7 +1250,7 @@ def _rewrite(tm):
         heuristic = rewrite_bool
         heuristic_name = 'bool'
     else:
-        return ProofTerm.sorry(Thm(tm))
+        return Goal(tm).sorry()
 
     args1 = (tm, True) if (BoolType in Ts and heuristic_name != 'bool') else (tm,)
     pt1 = _guarded(heuristic, *args1)
@@ -1294,7 +1294,7 @@ def rewrite(t):
     try:
         return _rewrite(t)
     except ConvException:
-        return ProofTerm.sorry(Thm(t))
+        return Goal(t).sorry()
 
 def quant_inst(p):
     """
@@ -1363,7 +1363,7 @@ def mp(arg1, arg2):
     try:
         pt = ProofTerm.equal_elim(arg2, arg1)
     except:
-        pt = ProofTerm.sorry(Thm(arg2.prop, arg2.th.hyps, arg1.th.hyps))
+        pt = Goal(arg2.prop, arg2.th.hyps, arg1.th.hyps).sorry()
     return pt
 
 def iff_true(arg1, arg2):
@@ -1492,7 +1492,7 @@ def def_axiom(arg1):
     try:
         return solve_cnf(arg1)
     except:
-        return ProofTerm.sorry(Thm(arg1))
+        return Goal(arg1).sorry()
 
 def intro_def(concl):
     """
@@ -1691,7 +1691,7 @@ def sk(concl):
         else:
             lhs, rhs = concl.lhs, concl.rhs
         if not lhs.is_exists() or not rhs.is_comb() or (is_neg and not rhs.arg.is_comb()):
-            return ProofTerm.sorry(Thm(orig_concl))
+            return Goal(orig_concl).sorry()
         P_body = lhs.arg            # λx. P x  (λx. ¬(P x) in the ¬∀ case)
         # the application P c: rhs itself, or rhs.arg under the negation
         pt_app_target = rhs.arg if is_neg else rhs
@@ -1714,7 +1714,7 @@ def sk(concl):
         redundant.append(pt_assume.prop)
         return pt_chain
     except Exception:
-        return ProofTerm.sorry(Thm(orig_concl))
+        return Goal(orig_concl).sorry()
 
 
 def real_th_lemma(args):
@@ -2019,7 +2019,7 @@ def th_lemma(args):
         else:
             raise NotImplementedError
     except Exception:
-        return ProofTerm.sorry(Thm(concl))
+        return Goal(concl).sorry()
 
 def hypothesis(prop):
     """
@@ -2063,7 +2063,7 @@ def nnf_pos(pts, concl, z3terms):
     pt = rewrite_decision_net(concl)
     if pt is not None and pt.rule != 'sorry':
         return pt
-    return ProofTerm.sorry(Thm(concl))
+    return Goal(concl).sorry()
 
 def nnf_neg(pts, concl, z3terms):
     """nnf-neg: NNF transformation with flipped polarity.  The conclusion
@@ -2081,7 +2081,7 @@ def nnf_neg(pts, concl, z3terms):
             ])
         except Exception:
             pass
-    return ProofTerm.sorry(Thm(concl))
+    return Goal(concl).sorry()
 
 def elim_unused(eq):
     """
@@ -2123,7 +2123,7 @@ def convert_method(term, *args, subterms=None, assertions=[]):
             # monotonicity's argument collection has known blind spots
             # (polyadic connectives, newly supported operators); a gap
             # beats aborting the whole reconstruction.
-            return ProofTerm.sorry(Thm(concl))
+            return Goal(concl).sorry()
     elif name in ('trans', 'trans*'):
         return trans(args)
     elif name in ('mp', 'mp~'):

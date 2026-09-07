@@ -10,8 +10,8 @@ from copy import copy
 
 from kernel import term
 from kernel.term import Eq
-from kernel.thm import Thm
 from kernel.proofterm import ProofTerm
+from core.goal import Goal
 
 EQ_CONST, EQ_COMB = range(2)
 
@@ -448,7 +448,7 @@ class CongClosureHOL:
                     if (a, b) in self.pts:
                         eq_pt = self.pts[(a, b)]
                     else:
-                        eq_pt = ProofTerm.sorry(Thm(Eq(self.index[a], self.index[b])))
+                        eq_pt = Goal(Eq(self.index[a], self.index[b])).sorry()
                 else:
                     _, ((a1, a2), a), ((b1, b2), b) = eq
                     # We already should have:
