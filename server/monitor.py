@@ -18,7 +18,7 @@ from server import methods as method
 from framework import logic
 from framework import items
 from syntax import parser
-from prover import z3wrapper
+from solvers import z3wrapper
 from syntax.settings import settings, global_setting
 
 
@@ -263,7 +263,10 @@ if __name__ == "__main__":
     opts, args = getopt.getopt(sys.argv[1:], 'p')
 
     basic.load_metadata()
-    z3wrapper.check_z3 = False
+    # The z3 macro/method read the injected backend slot; flip it
+    # there (the wrapper module global is no longer consulted).
+    from framework.macros.z3 import backend as z3_backend
+    z3_backend.check_z3 = False
 
     files = []
     if not args:

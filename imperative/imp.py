@@ -19,7 +19,6 @@ from framework.logic import apply_theorem
 from framework.tactic import Tactic
 from syntax import pprint, settings
 from framework.method import Method, register_method, register_macro_method
-from prover import z3wrapper
 
 
 """Automation for Hoare logic."""

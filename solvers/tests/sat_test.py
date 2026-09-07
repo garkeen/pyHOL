@@ -6,8 +6,8 @@ from framework import logic
 from framework import basic
 from syntax import parser
 from framework import context
-from prover import tseitin
-from prover import sat
+from solvers import tseitin
+from solvers import sat
 
 
 class SATTest(unittest.TestCase):
@@ -55,12 +55,12 @@ class SATTest(unittest.TestCase):
         self.assertTrue(sat.is_solution(cnf, cert))
     
     def testPelletier(self):
-        with open('prover/tests/pelletier.json', 'r', encoding='utf-8') as f:
+        with open('solvers/tests/pelletier.json', 'r', encoding='utf-8') as f:
             f_data = json.load(f)
 
         for problem in f_data:
             context.set_context('sat', vars=problem['vars'])
-            prop = parser.parse_term(problem['prop'])
+            prop = context.parse_term(problem['prop'])
             cnf = tseitin.convert_cnf(tseitin.encode(Not(prop)).prop)
             res, cert = sat.solve_cnf(cnf)
             self.assertEqual(res, 'unsatisfiable')

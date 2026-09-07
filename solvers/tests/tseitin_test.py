@@ -6,7 +6,7 @@ from syntax.logicops import And, Or
 from kernel import report
 from kernel import theory
 from framework import basic
-from prover import tseitin
+from solvers import tseitin
 
 a = Var('a', BoolType)
 b = Var('b', BoolType)

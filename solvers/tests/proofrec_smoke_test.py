@@ -1,9 +1,9 @@
-"""Smoke tests for Z3 proof reconstruction (prover/proofrec.py).
+"""Smoke tests for Z3 proof reconstruction (solvers/proofrec.py).
 
 These tests require the external z3 package and are skipped automatically
 when it is not installed.  Run explicitly with:
 
-    python -m pytest prover/tests/proofrec_smoke_test.py -v
+    python -m pytest solvers/tests/proofrec_smoke_test.py -v
 
 Pass criterion: proofrec.proofrec returns a proof with rule != 'sorry'
 and no gaps for every goal.
@@ -24,11 +24,10 @@ class ProofrecSmokeTest(unittest.TestCase):
 
     def _run(self, vars_, goal):
         from framework import context
-        from syntax.parser import parse_term
         from kernel import theory
-        from prover import z3wrapper, proofrec
+        from solvers import z3wrapper, proofrec
         context.set_context('smt', vars=vars_)
-        t = parse_term(goal)
+        t = context.parse_term(goal)
         proof, assertions = z3wrapper.solve_and_proof(t)
         r = proofrec.proofrec(proof, assertions=assertions)
         self.assertNotEqual(r.rule, 'sorry', str(r.gaps))

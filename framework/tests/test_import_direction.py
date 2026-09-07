@@ -71,6 +71,38 @@ class ImportDirectionTest(unittest.TestCase):
                 offenders.append("%s: %s" % (rel, bad))
         self.assertEqual(offenders, [])
 
+    def testSolversDoNotImportServer(self):
+        """solvers/ must not import server.* (step 6: solvers are pure
+        algorithm cores consumed by theories/macros; they never see the
+        method/session layer)."""
+        offenders = []
+        for path in py_files_under('solvers'):
+            rel = os.path.relpath(path, ROOT).replace(os.sep, '/')
+            mods = imports_of(path)
+            bad = [m for m in mods if m == 'server' or m.startswith('server.')]
+            if bad:
+                offenders.append("%s: %s" % (rel, bad))
+        self.assertEqual(offenders, [])
+
+    def testSyntaxDoesNotImportUpperLayers(self):
+        """syntax/ (excluding tests) must not import framework/server/
+        domains/solvers (audit §9.5: syntax only depends on kernel+util;
+        tests are consumers and stay exempt)."""
+        offenders = []
+        for path in py_files_under('syntax'):
+            rel = os.path.relpath(path, ROOT).replace(os.sep, '/')
+            if rel.startswith('syntax/tests/'):
+                continue
+            mods = imports_of(path)
+            bad = [m for m in mods
+                   if m == 'framework' or m.startswith('framework.')
+                   or m == 'server' or m.startswith('server.')
+                   or m == 'domains' or m.startswith('domains.')
+                   or m == 'solvers' or m.startswith('solvers.')]
+            if bad:
+                offenders.append("%s: %s" % (rel, bad))
+        self.assertEqual(offenders, [])
+
     def testTheoriesDoNotImportServer(self):
         """domains/ and imperative/ must not import server.* (step 4:
         method registration goes through framework.method; the method

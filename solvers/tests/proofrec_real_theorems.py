@@ -57,7 +57,7 @@ def theorem_result(name):
         from framework import basic
         from kernel.theory import get_theorem
         from kernel import theory
-        from prover import z3wrapper
+        from solvers import z3wrapper
         basic.load_theory('smt')
 
         thm = get_theorem(name, svar=False)

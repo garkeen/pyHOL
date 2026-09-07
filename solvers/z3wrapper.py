@@ -33,7 +33,7 @@ def _mk_int_power(base, exp):
     ast = z3.Z3_mk_power(ctx.ref(), base.as_ast(), exp.as_ast())
     return z3.ArithRef(ast, ctx)
 from framework import conv
-from prover import fologic
+from solvers import fologic
 from util import name
 
 
@@ -477,7 +477,7 @@ def solve_and_reconstruct(t, debug=False):
     A1 ⟹ … ⟹ An ⟹ C, which is then bridged back to t's own shape
     (norm_term may normalize the statement) through their canonical
     forms."""
-    import prover.proofrec as proofrec
+    import solvers.proofrec as proofrec
     proof, assertions = solve_and_proof(t, debug)
     pt_false = proofrec.proofrec(proof, assertions=assertions)
     t_norm = norm_term(t)
@@ -521,6 +521,16 @@ def solve_and_proof(t, debug=False):
 
 def apply_z3(t):
     return ProofTerm('z3', args=t)
+
+
+# Inject the solver backend into the z3 oracle macro (by-name
+# injection, audit §6 supplement): framework/macros/z3.py owns the
+# macro; this module binds its backend slot on load.
+def _inject_z3_backend():
+    from framework.macros import z3 as z3_macro
+    z3_macro.backend.inject(z3_loaded, check_z3, solve)
+
+_inject_z3_backend()
 
 
 # Z3Macro and Z3Method moved to logic/macros/z3.py and server/methods/z3.py

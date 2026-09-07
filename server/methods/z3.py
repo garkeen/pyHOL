@@ -1,8 +1,8 @@
 # server/methods/z3.py - Z3 Method class
-# Extracted from prover/z3wrapper.py
+# Extracted from solvers/z3wrapper.py
 
 from framework.method import Method, register_method
-from prover.z3wrapper import z3_loaded, check_z3, solve
+from framework.macros.z3 import backend as z3_backend
 from kernel.term import Implies
 from syntax import pprint
 
@@ -22,7 +22,7 @@ class Z3Method(Method):
         return pprint.N("Apply Z3")
 
     def apply(self, state, id, data, prevs):
-        assert z3_loaded, "Z3 method: not installed"
+        assert z3_backend.z3_loaded, "Z3 method: not installed"
         prev_ths = [state.get_proof_item(prev).th for prev in prevs]
         assms = [prev.prop for prev in prev_ths]
 
@@ -30,6 +30,6 @@ class Z3Method(Method):
         assert cur_item.rule == "sorry", "introduction: id is not a gap"
         goal = cur_item.th.prop
 
-        if check_z3:
-            assert solve(Implies(*(assms + [goal]))), "Z3 method: not solved"
+        if z3_backend.check_z3:
+            assert z3_backend.solve(Implies(*(assms + [goal]))), "Z3 method: not solved"
         state.set_line(id, 'z3', args=goal, prevs=prevs)

@@ -42,7 +42,7 @@ from imperative import com as com_mod
 from imperative import parser2
 from imperative import imp
 from syntax import printer, settings, pyhol
-from prover import z3wrapper
+from solvers import z3wrapper
 from domains.nat import util_nat as nat
 
 

@@ -8,7 +8,7 @@ from sympy.abc import x
 from framework import context
 from domains.logic.tests.logic_test import test_macro
 from syntax import parser
-from prover import sympywrapper
+from solvers import sympywrapper
 
 
 class SymPyWrapperTest(unittest.TestCase):
@@ -22,7 +22,7 @@ class SymPyWrapperTest(unittest.TestCase):
 
         context.set_context('realintegral', vars={'x': 'real'})
         for s, res in test_data:
-            s = parser.parse_term(s)
+            s = context.parse_term(s)
             self.assertEqual(sympywrapper.convert(s), res)
 
     def testSymPySolve(self):
@@ -37,7 +37,7 @@ class SymPyWrapperTest(unittest.TestCase):
 
         context.set_context('transcendentals')
         for goal, res in test_data:
-            goal = parser.parse_term(goal)
+            goal = context.parse_term(goal)
             self.assertEqual(sympywrapper.solve_goal(goal), res)
 
     def testSymPySolve2(self):
@@ -62,8 +62,8 @@ class SymPyWrapperTest(unittest.TestCase):
 
         context.set_context('transcendentals', vars={'x': 'real'})
         for goal, cond, res in test_data:
-            goal = parser.parse_term(goal)
-            cond = parser.parse_term(cond)
+            goal = context.parse_term(goal)
+            cond = context.parse_term(cond)
             self.assertEqual(sympywrapper.solve_with_interval(goal, cond), res)
 
     def testAuto(self):

@@ -29,10 +29,10 @@ from domains.logic.macro import imp_conj_macro
 from framework.tactic import rewrite_goal_with_prev
 from framework.conv import rewr_conv, try_conv, top_conv, top_sweep_conv, bottom_conv, arg_conv, ConvException, Conv, arg1_conv, binop_conv, replace_conv
 from framework import auto
-from prover import sat, tseitin, simplex, simplex_strict
+from solvers import sat, tseitin, simplex, simplex_strict
 from syntax.settings import settings
 from syntax import parser
-from prover import omega
+from solvers import omega
 settings.unicode = True
 from collections import deque
 import functools

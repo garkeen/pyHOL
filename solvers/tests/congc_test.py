@@ -2,7 +2,7 @@
 
 import unittest
 
-from prover import congc
+from solvers import congc
 from kernel.type import TVar, TFun
 from syntax.numeral import NatType
 from kernel.term import Term, Eq
@@ -102,20 +102,20 @@ class CongClosureHOLTest(unittest.TestCase):
         for item in data:
             if item[0] == MERGE:
                 _, s, t = item
-                s = parser.parse_term(s)
-                t = parser.parse_term(t)
+                s = context.parse_term(s)
+                t = context.parse_term(t)
                 closure.merge(s, t)
                 if verbose:
                     print("Merge %s, %s\nAfter\n%s" % (s, t, closure))
             elif item[0] == CHECK:
                 _, s, t, b = item
-                s = parser.parse_term(s)
-                t = parser.parse_term(t)
+                s = context.parse_term(s)
+                t = context.parse_term(t)
                 self.assertEqual(closure.test(s, t), b)
             elif item[0] == EXPLAIN:
                 _, s, t = item
-                s = parser.parse_term(s)
-                t = parser.parse_term(t)
+                s = context.parse_term(s)
+                t = context.parse_term(t)
                 prf = closure.explain(s, t).export()
                 self.assertEqual(theory.check_proof(prf), Thm(Eq(s, t)))
                 if verbose:
@@ -123,11 +123,11 @@ class CongClosureHOLTest(unittest.TestCase):
                     print(prf)
             elif item[0] == MATCH:
                 _, pat, t, res = item
-                pat = parser.parse_term(pat)
-                t = parser.parse_term(t)
+                pat = context.parse_term(pat)
+                t = context.parse_term(t)
                 for res_inst in res:
                     for k in res_inst:
-                        res_inst[k] = parser.parse_term(res_inst[k])
+                        res_inst[k] = context.parse_term(res_inst[k])
                 inst = closure.ematch(pat, t)
                 self.assertEqual(inst, res)
             else:

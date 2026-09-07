@@ -247,11 +247,11 @@ def load_theory_cache(filename):
     # into the generic auto engine on import.
     from framework.macros import core, z3  # noqa: F401
     try:
-        from prover import sympywrapper  # noqa: F401
+        from solvers import sympywrapper  # noqa: F401
     except ImportError:
         pass
     try:
-        from prover import omega  # noqa: F401
+        from solvers import omega  # noqa: F401
     except ImportError:
         pass
 

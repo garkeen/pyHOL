@@ -2,7 +2,7 @@
 # Step 0 acceptance test (ARCHITECTURE_AUDIT.md §8 step 0):
 #
 #   Prove a theorem using ONLY kernel + syntax (no framework/core,
-#   no domains, no prover), with a macro, and close it via pure
+#   no domains, no solvers), with a macro, and close it via pure
 #   primitive replay.
 #
 # The macro must expand to a pure primitive stream that kernel/replay.py

@@ -10,7 +10,7 @@ holpy 的 Z3 证明重建把 Z3 4.x 给出的证明 DAG 逐步翻译成核内 Pr
 原定理陈述。每一步都由 holpy kernel 检查；重建结果可以用
 `theory.check_proof(pt.export())` 做核级验收。
 
-入口与工作流（`prover/z3wrapper.py` + `prover/proofrec.py`）：
+入口与工作流（`solvers/z3wrapper.py` + `solvers/proofrec.py`）：
 
 ```
 陈述 t（自由 schematic 变元 = 任意常量，无需量化）
@@ -65,7 +65,7 @@ holpy 的 Z3 证明重建把 Z3 4.x 给出的证明 DAG 逐步翻译成核内 Pr
      replace 重写）。
 - **`z3wrapper.solve_and_reconstruct(t)`**：求解 → 重建 → 闭合 → 桥接回
   `norm_term` 之前的原陈述形状，返回 `⊢ t`。
-- **真实定理闭环验证** `prover/tests/proofrec_real_theorems.py`：
+- **真实定理闭环验证** `solvers/tests/proofrec_real_theorems.py`：
   10 条真实库定理 **9 条 CLOSED**（int_add_comm、int_add_assoc、
   real_add_comm、r146、r149、r151、r152、r155、r156——最后一步全部
   断言"重建结论与库中存储陈述逐字相等 + check_proof 通过"）。
@@ -75,10 +75,10 @@ holpy 的 Z3 证明重建把 Z3 4.x 给出的证明 DAG 逐步翻译成核内 Pr
 
 | 工具 | 内容 | 结果 |
 | --- | --- | --- |
-| `prover/tests/proofrec_corpus.py` | 32 目标回归 runner；每目标独立子进程 + 20s 硬杀 + 全局预算 + xfail 记账 | 28 PASS + 4 XFAIL |
-| `prover/tests/proofrec_smoke_test.py` | 10 目标冒烟，断言 rule≠sorry、无 gap、**核级 check_proof** | 10/10 |
-| `prover/tests/proofrec_unit_test.py` | 6 个 z3-free 单元测试（occurs/数值求值/原子网/条件式 schematic/命题网） | 6/6 |
-| `prover/tests/proofrec_real_theorems.py` | 真实定理端到端闭环 | 9 CLOSED + 1 XFAIL |
+| `solvers/tests/proofrec_corpus.py` | 32 目标回归 runner；每目标独立子进程 + 20s 硬杀 + 全局预算 + xfail 记账 | 28 PASS + 4 XFAIL |
+| `solvers/tests/proofrec_smoke_test.py` | 10 目标冒烟，断言 rule≠sorry、无 gap、**核级 check_proof** | 10/10 |
+| `solvers/tests/proofrec_unit_test.py` | 6 个 z3-free 单元测试（occurs/数值求值/原子网/条件式 schematic/命题网） | 6/6 |
+| `solvers/tests/proofrec_real_theorems.py` | 真实定理端到端闭环 | 9 CLOSED + 1 XFAIL |
 | pytest 全套 | 回归基线 | 62 passed, 0 failed |
 
 语料覆盖类别：prop 3、int 6、real 3、divmod 6（含除零钉定、DIV/MOD 1、
@@ -111,14 +111,14 @@ holpy 的 Z3 证明重建把 Z3 4.x 给出的证明 DAG 逐步翻译成核内 Pr
 
 ```bash
 # 语料回归（仓库根目录）
-PROOFREC_TIMEOUT=20 python prover/tests/proofrec_corpus.py [类别...]
+PROOFREC_TIMEOUT=20 python solvers/tests/proofrec_corpus.py [类别...]
 # 真实定理闭环
-PROOFREC_TIMEOUT=40 python prover/tests/proofrec_real_theorems.py
+PROOFREC_TIMEOUT=40 python solvers/tests/proofrec_real_theorems.py
 # 冒烟 + 单元（注意：需从仓库根以 unittest discover 运行，直接当脚本跑
 # 会因 framework 不在 sys.path 报 ModuleNotFoundError）
-python -m unittest discover -s prover/tests -p "proofrec_*test.py"
+python -m unittest discover -s solvers/tests -p "proofrec_*test.py"
 # 全套 pytest
-python -m pytest prover/tests -q
+python -m pytest solvers/tests -q
 ```
 
 z3 4.16 实测环境：Python 3.12，Windows。
@@ -131,5 +131,5 @@ z3 4.16 实测环境：Python 3.12，Windows。
   命题/一阶步骤用原语与示意图定理组合建模、理论步骤（rewrite/th-lemma）
   用示意图定理 + 化简器 + 算术判定过程承接。
   论文原文曾以 `Z3recpaper.md` 存档于仓库根目录，因本文档已是实现现状的
-  权威描述、代码头注释（`prover/proofrec.py`）亦保留引用，存档正文不再保留，
+  权威描述、代码头注释（`solvers/proofrec.py`）亦保留引用，存档正文不再保留，
   需要时按标题自行检索论文。

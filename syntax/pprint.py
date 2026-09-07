@@ -281,7 +281,6 @@ def get_ast_term(t):
     from util import list
     from util import set
     from util import function
-    from domains.nat import interval
     from util import string
 
     def get_priority_pair(t):
@@ -353,7 +352,7 @@ def get_ast_term(t):
             return String(string.dest_string(t))
 
         # Intervals
-        elif interval.is_interval(t):
+        elif t.is_comb('nat_interval', 2):
             return Interval(helper(t.arg1, bd_vars), helper(t.arg, bd_vars), t.get_type())
 
         elif t.is_comb('collect', 1) and t.arg.is_abs():

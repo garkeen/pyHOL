@@ -1,7 +1,6 @@
 import unittest
-from syntax.parser import parse_term
 from framework import context
-from prover import simplex_strict
+from solvers import simplex_strict
 from syntax.logicops import false
 
 class StrictSimplexTest(unittest.TestCase):
@@ -16,7 +15,7 @@ class StrictSimplexTest(unittest.TestCase):
         context.set_context("real", vars= {"x_1" : "real", "x_2": "real", "x_3": "real", "x_4": "real"})
 
         for tableau in test_data:
-            tableau = [parse_term(tm) for tm in tableau]
+            tableau = [context.parse_term(tm) for tm in tableau]
             pt = simplex_strict.StrictSimplexMacro().get_proof_term(args=tableau)
             self.assertNotEqual(pt.rule, "sorry")
             self.assertEqual(pt.prop, false)

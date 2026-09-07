@@ -4,9 +4,9 @@ import unittest
 from kernel import term
 from syntax.numeral import IntType
 from framework import context
-# from prover.omega import Factoid, negate_key, combine_real_factoid, combine_dark_factoid, factoid_gcd,\
+# from solvers.omega import Factoid, negate_key, combine_real_factoid, combine_dark_factoid, factoid_gcd,\
 #     dest_plus, dest_times, term_to_factoid, database
-from prover.omega import *
+from solvers.omega import *
 
 class OmegaTest(unittest.TestCase):
     """

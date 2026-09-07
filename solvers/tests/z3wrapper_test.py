@@ -13,7 +13,7 @@
 # from domains.logic.tests.logic_test import test_macro
 # from syntax import parser
 # from framework import context
-# from prover import z3wrapper
+# from solvers import z3wrapper
 # from server.tests.method_test import test_method
 #
 #

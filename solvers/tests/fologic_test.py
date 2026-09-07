@@ -4,10 +4,10 @@ import unittest
 
 from kernel.type import BoolType, TFun, TVar
 from framework import basic
-from prover.fologic import simplify, nnf
+from solvers.fologic import simplify, nnf
 from syntax import parser
 from framework import context
-from prover import fologic
+from solvers import fologic
 
 
 class FOLogicTest(unittest.TestCase):
@@ -19,7 +19,7 @@ class FOLogicTest(unittest.TestCase):
 
         context.set_context('logic', vars={'y': "'a"})
         for fm, res in test_data:
-            fm = parser.parse_term(fm)
+            fm = context.parse_term(fm)
             self.assertEqual(fologic.has_bound0(fm.body), res)
 
     def testSimplify(self):
@@ -32,8 +32,8 @@ class FOLogicTest(unittest.TestCase):
 
         context.set_context('logic', vars={'p': 'bool', 'q': 'bool', 'P': "'a => bool", 'Q': "'a => bool"})
         for fm, res in test_data:
-            fm = parser.parse_term(fm)
-            res = parser.parse_term(res)
+            fm = context.parse_term(fm)
+            res = context.parse_term(res)
             self.assertEqual(fologic.simplify(fm), res)
 
     def testNNF(self):
@@ -45,8 +45,8 @@ class FOLogicTest(unittest.TestCase):
 
         context.set_context('logic', vars={'P': "'a => bool", 'Q': "'a => bool"})
         for fm, res in test_data:
-            fm = parser.parse_term(fm)
-            res = parser.parse_term(res)
+            fm = context.parse_term(fm)
+            res = context.parse_term(res)
             self.assertEqual(fologic.nnf(fm), res)
 
     def testASKolem(self):
@@ -60,8 +60,8 @@ class FOLogicTest(unittest.TestCase):
 
         context.set_context('nat', vars={'P': "'a => bool", 'Q': "'a => bool"})
         for fm, res in test_data:
-            fm = parser.parse_term(fm)
-            res = parser.parse_term(res)
+            fm = context.parse_term(fm)
+            res = context.parse_term(res)
             self.assertEqual(fologic.askolemize(fm), res)
 
 

@@ -1,7 +1,7 @@
 import unittest
 from framework import context
 from syntax import parser
-from prover import simplex
+from solvers import simplex
 
 context.set_context('real', vars={
     "x9_plus": "real", "x9_minus": "real", "x6_plus": "real", "x6_minus": "real", "x5_plus": "real", "x5_minus": "real", "x4_plus": "real", "x4_minus": "real",

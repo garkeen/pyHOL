@@ -372,8 +372,8 @@ class HOLTransformer(Transformer):
         return Const("comp_fun", None)(f, g)
 
     def nat_interval(self, m, n):
-        from domains.nat import interval
-        return interval.mk_interval(m, n)
+        from kernel.type import TFun
+        return Const("nat_interval", TFun(NatType, NatType, TConst("set", NatType)))(m, n)
 
     def thm(self, *args):
         return Thm(args[-1], tuple(args[:-1]))

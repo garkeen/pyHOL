@@ -1,12 +1,40 @@
 # framework/macros/z3.py - Z3 Macro class (domain-independent)
-# Extracted from prover/z3wrapper.py
+# Extracted from solvers/z3wrapper.py
+#
+# By-name injection (audit §6 supplement): this macro lives in the
+# oracle slot of the macro layer and must not module-import solver
+# code.  The solver backend (z3_loaded / check_z3 / solve) is injected
+# by solvers/z3wrapper.py when it is loaded; until then the macro
+# evaluates as an unchecked oracle that only prints a warning -- the
+# same behavior as z3-not-installed.
 
 from kernel.term import Term, Implies
 from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
 from kernel.proofterm import ProofTerm
-from prover.z3wrapper import z3_loaded, check_z3, solve
+
+
+class Z3Backend:
+    """Injection slot for the z3 solver backend.
+
+    By default the backend is absent: the macro is an unchecked
+    oracle.  solvers/z3wrapper.py calls inject() on load, binding
+    z3_loaded / check_z3 / solve to the real solver.
+    """
+
+    def __init__(self):
+        self.z3_loaded = False
+        self.check_z3 = False
+        self.solve = None
+
+    def inject(self, z3_loaded, check_z3, solve):
+        self.z3_loaded = z3_loaded
+        self.check_z3 = check_z3
+        self.solve = solve
+
+
+backend = Z3Backend()
 
 
 @register_macro('z3')
@@ -18,10 +46,10 @@ class Z3Macro(Macro):
         self.limit = None
 
     def eval(self, args, prevs):
-        if z3_loaded:
+        if backend.z3_loaded:
             assms = [prev.prop for prev in prevs]
-            if check_z3:
-                assert solve(Implies(*(assms + [args]))), "Z3: not solved."
+            if backend.check_z3:
+                assert backend.solve(Implies(*(assms + [args]))), "Z3: not solved."
         else:
             print("Warning: Z3 is not installed")
 

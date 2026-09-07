@@ -7,7 +7,7 @@
 # from z3 import IntVal, RealVal, BoolVal, Function, IntSort, BoolSort, Context, Solver, Ints, set_param, And as zAnd
 # from z3 import Const as zConst, Int as zInt
 # import z3
-# from prover import z3wrapper, proofrec
+# from solvers import z3wrapper, proofrec
 # from kernel.type import BoolType, TFun, TVar, STVar
 from syntax.numeral import NatType, IntType
 # from kernel.term import Var, Implies, Inst, Eq, equals, SVar, Const, TFun, \

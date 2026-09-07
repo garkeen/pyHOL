@@ -6,9 +6,8 @@ Chapter 3, Handbook of Practical Logic and Automated Reasoning.
 
 from kernel.type import TFun
 from kernel import term
-from kernel.term import Term, Var, Abs, Implies, Forall
+from kernel.term import Var, Abs, Forall
 from syntax.logicops import And, Or, Not, false, true, exists
-from framework import logic
 from util import name
 
 def has_bound0(fm):

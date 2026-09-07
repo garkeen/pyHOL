@@ -22,7 +22,7 @@ from domains.integer.conv import int_neq_false_conv, int_gcd_compares
 
 
 def mk_int_const_ineq_pt(value):
-    """Test-local stand-in for the prover-layer factory (prover/
+    """Test-local stand-in for the solver-layer factory (solvers/
     proofrec.py:mk_int_const_ineq_pt): emits the int_const_ineq oracle
     node for the sign fact of an integer constant."""
     if value > 0:
