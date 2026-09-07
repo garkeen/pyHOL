@@ -242,11 +242,13 @@ def mk_axiom(prop):
     """Make the theorem for a theory axiom.
 
     The only place outside the kernel where a Thm may be constructed
-    for loading into a theory: definition-legality checks
-    (structural recursion, strict positivity) have already been
-    performed by the time this is called.
+    for loading into a theory: the axiom assumption rule's single
+    loading-time channel (audit §7.2/§7.3), delegating to the kernel's
+    axiom hole constructor.  Definition-legality checks (structural
+    recursion, strict positivity) have already been performed by the time
+    this is called.
     """
-    return Thm(prop)
+    return Thm.axiom(prop)
 
 
 def datatype_axioms(name, args, constrs):
