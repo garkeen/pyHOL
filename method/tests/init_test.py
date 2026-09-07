@@ -49,7 +49,7 @@ def testSteps(self, thy_name, thm_name, *, no_gaps=True, print_proof=False, \
 # Helper function, not a pytest test
 testSteps.__test__ = False
 
-class ServerTest(unittest.TestCase):
+class TestInit(unittest.TestCase):
     def testInitState(self):
         context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
         state = server.parse_init_state("A & B --> B & A")
