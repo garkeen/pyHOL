@@ -8,10 +8,10 @@ from syntax.logicops import And, Or, Not
 from kernel.thm import Thm
 from kernel import term_ord
 from kernel.proofterm import ProofTerm
-from framework import basic
-from framework.logic import apply_theorem
-from domains.logic.logic import conj_norm
-from framework.conv import rewr_conv, every_conv, top_conv
+from core import basic
+from core.logic import apply_theorem
+from theories.logic.logic import conj_norm
+from core.conv import rewr_conv, every_conv, top_conv
 
 
 def is_logical(t):

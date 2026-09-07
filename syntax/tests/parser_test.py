@@ -7,11 +7,11 @@ from kernel.term import Var, Term, Eq, Inst
 from syntax.logicops import And
 from kernel.thm import Thm
 from kernel.proof import ProofItem
-from framework import basic
+from core import basic
 from syntax.printer import print_term, print_type
 from syntax import parser
 from syntax.settings import global_setting
-from framework import context
+from core import context
 
 
 class ParserTest(unittest.TestCase):

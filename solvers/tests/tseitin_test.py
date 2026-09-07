@@ -5,7 +5,7 @@ from kernel.term import Term, Var, Implies
 from syntax.logicops import And, Or
 from kernel import report
 from kernel import theory
-from framework import basic
+from core import basic
 from solvers import tseitin
 
 a = Var('a', BoolType)

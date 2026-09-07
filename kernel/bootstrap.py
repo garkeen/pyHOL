@@ -16,7 +16,7 @@
 # The bootstrap macros implement the semantic core of their framework
 # counterparts (framework/macros/core.py intros / trivial) restricted to
 # pure primitives, so kernel+syntax can prove non-trivial theorems
-# end-to-end without the framework.
+# end-to-end without the core.
 
 from kernel.thm import Thm
 from kernel.term import Term, Implies

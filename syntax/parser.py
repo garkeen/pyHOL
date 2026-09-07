@@ -159,7 +159,7 @@ grammar = r"""
 class HOLTransformer(Transformer):
     def __init__(self, ctxt=None):
         # Pure-data name->type tables (interface inversion, audit §9.5):
-        # the parser does not read framework.context's global singleton;
+        # the parser does not read core.context's global singleton;
         # callers above syntax pass their context explicitly.
         self.ctxt = ctxt if ctxt is not None else infertype.EMPTY_CTXT
 

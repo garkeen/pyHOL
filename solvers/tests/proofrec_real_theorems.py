@@ -54,7 +54,7 @@ def run_theorem(name, timeout):
 
 def theorem_result(name):
     try:
-        from framework import basic
+        from core import basic
         from kernel.theory import get_theorem
         from kernel import theory
         from solvers import z3wrapper

@@ -112,7 +112,7 @@ def goal_result(entry):
         import importlib.util
         if importlib.util.find_spec('z3') is None:
             return 'SKIPPED', 'z3 not installed'
-        from framework import basic, context
+        from core import basic, context
         from syntax.parser import parse_term
         from kernel import theory
         from solvers import z3wrapper, proofrec

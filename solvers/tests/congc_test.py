@@ -8,9 +8,9 @@ from syntax.numeral import NatType
 from kernel.term import Term, Eq
 from kernel.thm import Thm
 from kernel import theory
-from framework import basic
+from core import basic
 from syntax import parser, printer
-from framework import context
+from core import context
 
 MERGE, CHECK, EXPLAIN, MATCH = range(4)
 

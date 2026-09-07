@@ -6,11 +6,11 @@ from functools import partial
 from kernel.type import TVar, TFun, BoolType
 from syntax.numeral import NatType
 from kernel.term import Term, Var, Const, Comb, Abs, Bound, Implies, Lambda, Eq
-from framework import basic
-from framework import logic
-from domains.nat import util_nat as nat
+from core import basic
+from core import logic
+from theories.nat import util_nat as nat
 from util.list import ListType, cons, mk_append, nil
-from framework import context
+from core import context
 from syntax.infertype import type_infer, infer_printed_type, TypeInferenceException
 
 Ta = TVar("a")

@@ -15,9 +15,9 @@ from math import gcd, ceil, floor
 from kernel import term
 from kernel import term_ord
 from kernel import proofterm
-from domains.integer import conv as integer
-from framework import logic, basic
-from framework import conv
+from theories.integer import conv as integer
+from core import logic, basic
+from core import conv
 
 basic.load_theory('int')
 
@@ -900,7 +900,7 @@ _FLIP_THEOREMS = {
 def _flip_negated(pt):
     """Turn ~(a R b) into the positive comparison. Passes through
     positive comparisons unchanged. Raises TacticException otherwise."""
-    from framework.conv import rewr_conv
+    from core.conv import rewr_conv
     p = pt.prop
     if is_integer_ineq(p):
         return pt
@@ -980,7 +980,7 @@ def omega_solve(goal, pts):
 
 
 # Register the omega decision procedure for integer comparisons.
-from framework import auto as _auto_omega
+from core import auto as _auto_omega
 _auto_omega.add_global_autos(numeral.less_eq(numeral.IntType), omega_solve)
 _auto_omega.add_global_autos(numeral.less(numeral.IntType), omega_solve)
 _auto_omega.add_global_autos(numeral.greater_eq(numeral.IntType), omega_solve)

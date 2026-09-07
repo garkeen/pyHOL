@@ -16,11 +16,11 @@ z3_available = importlib.util.find_spec("z3") is not None
 class ProofrecUnitTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from framework import basic
+        from core import basic
         basic.load_theory('smt')
 
     def _parse(self, vars_, s):
-        from framework import context
+        from core import context
         context.set_context('smt', vars=vars_)
         return context.parse_term(s)
 

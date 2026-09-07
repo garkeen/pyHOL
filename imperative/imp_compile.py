@@ -35,15 +35,15 @@ from kernel.term import Term, Var, Lambda, Eq, Const
 from syntax.numeral import Number
 from syntax.logicops import Not, true, false
 from kernel import theory
-from framework import basic
-from framework.logic import mk_if
+from core import basic
+from core.logic import mk_if
 from imperative import expr as expr_mod
 from imperative import com as com_mod
 from imperative import parser2
 from imperative import imp
 from syntax import printer, settings, pyhol
 from solvers import z3wrapper
-from domains.nat import util_nat as nat
+from theories.nat import util_nat as nat
 
 
 class CompileError(Exception):
@@ -62,7 +62,7 @@ def _load_theories(imports):
     theory, in dependency order.  Unlike repeated basic.load_theory calls
     (each of which resets the global theory to EmptyTheory), this merges
     all the imported theories into a single context."""
-    from framework.basic import load_theory_cache, load_metadata
+    from core.basic import load_theory_cache, load_metadata
     load_metadata()
     theory_cache = load_theory_cache.__globals__.get('theory_cache', {})
     closure = []
@@ -115,7 +115,7 @@ def _register_recursive_preds():
     from kernel.term import Var, Forall, Eq, Const
     from syntax.logicops import Or, And
     from syntax.numeral import NatType
-    from framework import conv
+    from core import conv
 
     def strip_foralls(t):
         """Strip outer !x_1 ... x_n. Stored theorems use free Vars

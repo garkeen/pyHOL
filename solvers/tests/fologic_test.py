@@ -3,10 +3,10 @@
 import unittest
 
 from kernel.type import BoolType, TFun, TVar
-from framework import basic
+from core import basic
 from solvers.fologic import simplify, nnf
 from syntax import parser
-from framework import context
+from core import context
 from solvers import fologic
 
 

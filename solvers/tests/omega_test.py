@@ -3,7 +3,7 @@ from syntax import logicops
 import unittest
 from kernel import term
 from syntax.numeral import IntType
-from framework import context
+from core import context
 # from solvers.omega import Factoid, negate_key, combine_real_factoid, combine_dark_factoid, factoid_gcd,\
 #     dest_plus, dest_times, term_to_factoid, database
 from solvers.omega import *

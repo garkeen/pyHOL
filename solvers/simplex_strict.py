@@ -12,13 +12,13 @@ from syntax.numeral import RealType, IntType
 from kernel.proofterm import ProofTerm, refl
 from kernel.theory import register_macro, Thm, get_theorem
 from kernel.macro import Macro
-from framework.logic import apply_theorem
-from framework import basic, matcher
-from framework import auto
-from domains.real import conv as real
-from domains.real import macro as real_macro
-from domains.integer import conv as integer
-from framework.conv import Conv, ConvException, rewr_conv, top_conv, arg_conv, arg1_conv, bottom_conv, try_conv
+from core.logic import apply_theorem
+from core import basic, matcher
+from core import auto
+from theories.real import conv as real
+from theories.real import macro as real_macro
+from theories.integer import conv as integer
+from core.conv import Conv, ConvException, rewr_conv, top_conv, arg_conv, arg1_conv, bottom_conv, try_conv
 from collections import namedtuple
 from collections import deque
 import math

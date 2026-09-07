@@ -1,6 +1,6 @@
 # 方法层与证明状态
 
-> 代码事实以 `server/methods/core.py` 为准。
+> 代码事实以 `method/methods/core.py` 为准。
 
 方法（Method）是用户层 API：前端/IDE 面对的接口。每个 `.pyhol` 证明步骤调用的就是某个方法。方法本身不新增逻辑内容，只是把"怎么用策略/宏"封装成带参数、带搜索建议、带显示的人类友好接口。
 
@@ -34,7 +34,7 @@ class ProofState:
 
 ### 2.1 StableProofState
 
-新管线使用 `StableProofState`（`server/stable_state.py`）包装旧的 `ProofState`：
+新管线使用 `StableProofState`（`method/stable_state.py`）包装旧的 `ProofState`：
 - 稳定 ID（`#[N]`，int）通过 `th -> sid` 映射追踪，**不随插入/删除漂移**
 - goal 变 fact 时 ID 不变
 - `apply_method_dict(step)`：接受稳定 ID 的步骤，翻译为位置 ID 调用底层 `ProofState`
@@ -92,7 +92,7 @@ method.apply -> state.set_line(rule, args, prevs, th) / 直接改写行结构
 
 ## 4. 方法目录
 
-方法词表（`server/methods/core.py` 注册 + 领域宏方法）：
+方法词表（`method/methods/core.py` 注册 + 领域宏方法）：
 `rule` / `resolve` / `rewrite` / `intro` / `cases` / `type_cases` / `induct` / `cut` / `inst` /
 `accept` / `refl` / `eq_intro` / `trans` / `unfold` / `forward` / `elim` / `var` /
 `assumption` / `norm` / `simp` + oracle（`z3` / `vcg`）+ 领域宏方法。
@@ -198,7 +198,7 @@ qed
 
 ## 7. 自动搜索（前端 forward/backward-search）
 
-搜索逻辑在前端触发、后端 `app/ide_v2.py` + `server/stable_state.py` 执行：
+搜索逻辑在前端触发、后端 `backend/ide_v2.py` + `method/stable_state.py` 执行：
 
 - `rule.search`：经模式网（`candidates_for`）取带 `hint_backward`/`hint_backward1` 属性的候选定理，逐条试跑 `rule().get_proof_term`，成功则记录子目标。另有精确匹配通道（C1，见 §7.1）：全局模式网中整条命题匹配 goal 的定理一律作为 `rule` 建议（不看属性）。
 - 双模式方法在搜索层同时贡献两种模式的结果，以 `target`/`source` 标记区分；正向搜索只保留 fact 模式结果（`stable_state.search_forward` 对 `rewrite`/`inst` 过滤 `target == 'fact'`）。
@@ -206,7 +206,7 @@ qed
 - 每个方法按 `no_order` 属性决定是否对 `prevs` 做排列：有 `no_order` 的方法只按原始事实顺序搜索；其余方法额外生成模糊结果（其他排列与子集，从大到小）。
 - 搜索结果不做"solves 过滤"：前端按 `_goal` 是否为空显示 `closes` / `N subgoals`，两种结果都保留。
 
-### 7.1 搜索后端：模式网络（framework/search.py）
+### 7.1 搜索后端：模式网络（core/search.py）
 
 搜索是数据驱动的表查询，不是逐方法的全量扫描：
 
@@ -228,7 +228,7 @@ qed
 ## 9. 方法的注册
 
 ```python
-from server.methods.core import register_method
+from method.methods.core import register_method
 
 @register_method('my_method')
 class my_method(Method):

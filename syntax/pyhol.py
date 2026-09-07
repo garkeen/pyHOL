@@ -364,7 +364,7 @@ _FACT_KEYS = {'fact_ids'}
 
 # Method-direction metadata, self-described here so pyhol does not
 # import the method layer (audit §9.5: syntax only depends on
-# kernel+util).  Must stay in sync with server.stable_state's
+# kernel+util).  Must stay in sync with method.stable_state's
 # BACKWARD/FORWARD sets; export_pyhol tests lock the round-trip.
 _BACKWARD_METHODS = {
     'rule', 'resolve', 'intro', 'cases', 'type_cases', 'rewrite', 'apply_prev',

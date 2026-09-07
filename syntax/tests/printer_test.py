@@ -9,18 +9,18 @@ from kernel.term import SVar, Var, Const, Comb, Abs, Bound, Term, Implies, \
 from syntax.logicops import And, Or, Not, Exists, true, false
 from syntax.numeral import Nat, Int, Real
 from kernel.thm import Thm
-from framework import basic
-from framework import logic
-from domains.nat import conv as nat
+from core import basic
+from core import logic
+from theories.nat import conv as nat
 from syntax.numeral import less, less_eq
 nat.less = less(NatType)
 nat.less_eq = less_eq(NatType)
-from domains.real import conv as real
+from theories.real import conv as real
 from util import list
 from util import set
 from util import string
 from util import function
-from domains.nat import interval
+from theories.nat import interval
 from syntax import printer
 from syntax.settings import settings, global_setting
 

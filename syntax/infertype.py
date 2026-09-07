@@ -11,7 +11,7 @@ class EmptyCtxt:
 
     Interface inversion (audit §9.5): syntax must not depend on layers
     above it, so type inference reads context data through this plain
-    container instead of framework.context's global singleton.  Callers
+    container instead of core.context's global singleton.  Callers
     above syntax pass their own object with the same three attributes
     (svars, vars, defs); the default is an empty context.
     """
@@ -55,7 +55,7 @@ def type_infer(t, *, forbid_internal=True, ctxt=None):
 
     ctxt is a pure-data object with svars, vars, defs (name->type
     tables); default empty.  Callers above syntax pass their context
-    (e.g. framework.context.ctxt) explicitly.
+    (e.g. core.context.ctxt) explicitly.
     """
     if ctxt is None:
         ctxt = EMPTY_CTXT

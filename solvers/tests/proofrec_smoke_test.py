@@ -19,11 +19,11 @@ z3_available = importlib.util.find_spec("z3") is not None
 class ProofrecSmokeTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from framework import basic
+        from core import basic
         basic.load_theory('smt')
 
     def _run(self, vars_, goal):
-        from framework import context
+        from core import context
         from kernel import theory
         from solvers import z3wrapper, proofrec
         context.set_context('smt', vars=vars_)

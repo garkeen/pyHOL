@@ -8,13 +8,13 @@
 #
 # from kernel.type import TFun
 # from kernel.thm import Thm
-# from domains.nat import util_nat as nat
-# from framework import basic
-# from domains.logic.tests.logic_test import test_macro
+# from theories.nat import util_nat as nat
+# from core import basic
+# from theories.logic.tests.logic_test import test_macro
 # from syntax import parser
-# from framework import context
+# from core import context
 # from solvers import z3wrapper
-# from server.tests.method_test import test_method
+# from method.tests.method_test import test_method
 #
 #
 # class Z3WrapperTest(unittest.TestCase):

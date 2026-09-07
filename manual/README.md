@@ -39,7 +39,7 @@
 **越根本越细、越易改越略**：
 - 01-05（逻辑理论与核心抽象）最详细，因为这些极难改动。
 - 06（方法层）中等，较稳定但可能微调。
-- 07（系统组织）粗略，因为实现层（如 `domains/` 包机制）是权益之计，后续可能调整。
+- 07（系统组织）粗略，因为实现层（如 `theories/` 包机制）是权益之计，后续可能调整。
 
 ## 速查
 
@@ -49,11 +49,11 @@
 
 ### 核心宏
 
-`framework/macros/core.py` 注册（领域无关）：
+`core/macros/core.py` 注册（领域无关）：
 
 `intros` / `resolve_theorem` / `beta_norm` / `apply_theorem` / `apply_theorem_for` / `apply_theorem_inst` / `apply_induct` / `apply_fact` / `apply_fact_for` / `rewrite_goal` / `rewrite_goal_sym` / `rewrite_goal_with_prev` / `rewrite_goal_with_prev_sym` / `rewrite_fact` / `rewrite_fact_sym` / `rewrite_fact_with_prev` / `forall_elim_gen` / `trivial` / `auto_close`
 
-领域宏示例：`imp_conj` / `imp_disj` / `resolution`（domains/logic）、`nat_norm` / `real_norm`、`eval_Sem` / `vcg`（imperative）、`z3`（framework/macros/z3.py，oracle）。
+领域宏示例：`imp_conj` / `imp_disj` / `resolution`（theories/logic）、`nat_norm` / `real_norm`、`eval_Sem` / `vcg`（imperative）、`z3`（core/macros/z3.py，oracle）。
 
 ### 内置策略
 

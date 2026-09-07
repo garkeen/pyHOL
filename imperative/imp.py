@@ -7,18 +7,18 @@ from syntax.logicops import true
 from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
-from domains.nat import util_nat as nat
-from domains.nat import conv as nat_conv
+from theories.nat import util_nat as nat
+from theories.nat import conv as nat_conv
 from util import function
-from domains.function import conv as function_conv
-from domains.logic.logic import norm_bool_expr
-from framework.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_conv, binop_conv, \
+from theories.function import conv as function_conv
+from theories.logic.logic import norm_bool_expr
+from core.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_conv, binop_conv, \
     every_conv, rewr_conv, assums_conv, beta_norm
 from kernel.proofterm import ProofTerm
-from framework.logic import apply_theorem
-from framework.tactic import Tactic
+from core.logic import apply_theorem
+from core.tactic import Tactic
 from syntax import pprint, settings
-from framework.method import Method, register_method, register_macro_method
+from core.method import Method, register_method, register_macro_method
 
 
 """Automation for Hoare logic."""
@@ -249,7 +249,7 @@ class vcg_tactic(Tactic):
 
 
 # Register vcg as a method so imp_compile can reference it
-from framework.method import register_method, Method
+from core.method import register_method, Method
 from syntax import pprint as _pprint
 
 @register_method('vcg')

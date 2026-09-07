@@ -21,7 +21,7 @@ from syntax.logicops import true, false
 from kernel.thm import Thm
 from kernel.proofterm import ProofTerm
 from kernel import theory
-from framework import logic
+from core import logic
 
 def _mk_int_power(base, exp):
     """Integer-sorted power node.  z3py's ** builds a Real-sorted
@@ -32,7 +32,7 @@ def _mk_int_power(base, exp):
     ctx = base.ctx
     ast = z3.Z3_mk_power(ctx.ref(), base.as_ast(), exp.as_ast())
     return z3.ArithRef(ast, ctx)
-from framework import conv
+from core import conv
 from solvers import fologic
 from util import name
 
@@ -527,7 +527,7 @@ def apply_z3(t):
 # injection, audit §6 supplement): framework/macros/z3.py owns the
 # macro; this module binds its backend slot on load.
 def _inject_z3_backend():
-    from framework.macros import z3 as z3_macro
+    from core.macros import z3 as z3_macro
     z3_macro.backend.inject(z3_loaded, check_z3, solve)
 
 _inject_z3_backend()

@@ -17,11 +17,11 @@ from syntax.logicops import And
 # from kernel.report import ProofReport
 # from kernel import theory
 # from kernel.thm import Thm
-# from framework import basic
-# from framework import matcher
-# from framework import context
+# from core import basic
+# from core import matcher
+# from core import context
 # from kernel.proofterm import ProofTerm
-# from domains.nat import util_nat as nat
+# from theories.nat import util_nat as nat
 # from fractions import Fraction
 # from syntax.parser import parse_term
 #

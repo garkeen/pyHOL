@@ -1,5 +1,5 @@
 import unittest
-from framework import context
+from core import context
 from syntax import parser
 from solvers import simplex
 

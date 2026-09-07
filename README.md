@@ -8,10 +8,10 @@ holpy 是一个用 Python 实现的高阶逻辑（HOL）定理证明器，基于
 kernel/          逻辑内核（Type/Term/Thm/15原语/ProofTerm/Theory）
   │   15 条原语是唯一凭空构造定理的入口
   ▼
-framework/       逻辑层（Conv/Tactic/Macro/Matcher/Context/Auto/Search）
+core/            逻辑层（Conv/Tactic/Macro/Matcher/Context/Auto/Search/Verify）
   │   组合原语与宏，提供自动化基础设施
   ▼
-server/ + app/   应用层（Method/ProofState/Flask API）
+method/ + backend/ 应用层（Method/ProofState/Flask API）
                   面向用户的 API 与 web IDE
 ```
 
@@ -38,8 +38,8 @@ cd frontend && npm install && npm run dev
 
 ```bash
 # 单元回归（平时只跑相关模块）
-python -m pytest framework/tests/ domains/logic/tests/ -q
-python -m pytest server/tests/method_test.py -q
+python -m pytest core/tests/ theories/logic/tests/ -q
+python -m pytest method/tests/method_test.py -q
 
 # 全库定理验证（很贵！平时不要跑）
 python validate_library.py            # 按缓存跳过未改动的理论
@@ -67,12 +67,12 @@ python validate_library.py --force    # 忽略缓存，全量重验
 | 目录 | 职责 |
 |---|---|
 | `kernel/` | 逻辑内核（Type/Term/Thm/原语/Proof/ProofTerm/Theory/Macro/Extension/Report） |
-| `framework/` | 逻辑层基础设施（Tactic/Conv/Macro/Matcher/Auto/Search） |
-| `domains/` | 领域扩展包（logic/nat/real/integer/function/expr） |
-| `server/` | 方法层与证明状态（ProofState/Method/Items/Monitor） |
+| `core/` | 逻辑层基础设施（Tactic/Conv/Macro/Matcher/Auto/Search/Verify/Items） |
+| `theories/` | 领域扩展包（logic/nat/real/integer/function/expr） |
+| `method/` | 方法层与证明状态（ProofState/Method/StableState） |
 | `syntax/` | 解析、打印、设置、`.pyhol` 格式 |
-| `prover/` | 外部求解器与自动证明（Z3/Omega/Simplex/Tseitin/SAT/Congc/Sympy） |
-| `app/` | Flask 后端 API |
+| `solvers/` | 外部求解器与自动证明（Z3/Omega/Simplex/Tseitin/SAT/Congc/Sympy） |
+| `backend/` | Flask 后端 API |
 | `frontend/` | Vue 3 前端 |
 | `library/` | 理论库（`.pyhol` 文件） |
 | `imperative/` | Hoare 逻辑程序验证（独立子模块，`.imp` 格式） |

@@ -1,5 +1,5 @@
 import unittest
-from framework import context
+from core import context
 from solvers import simplex_strict
 from syntax.logicops import false
 

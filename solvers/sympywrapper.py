@@ -17,10 +17,10 @@ from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
 from kernel.proofterm import ProofTerm, TacticException
-from domains.real import conv as real
+from theories.real import conv as real
 from util import set as hol_set
-from framework import auto
-from framework import logic
+from core import auto
+from core import logic
 
 
 class SymPyException(Exception):

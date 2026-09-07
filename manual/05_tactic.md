@@ -1,6 +1,6 @@
 # 策略系统
 
-> 代码事实以 `framework/tactic.py` 为准。
+> 代码事实以 `core/tactic.py` 为准。
 
 策略（Tactic）是证明构造的中间层：Method 层调用策略，策略执行推理决策（匹配、参数检测、效果检查），返回 `ProofTerm`（其 rule 为宏或原语）。策略本身不直接出现在 `.pyhol` 证明文件中——那是 Method 层的序列化产物。
 
@@ -135,7 +135,7 @@ Macro + Primitive (机械求值/展开)
 - **策略层做推理**：一阶匹配、schematic 变量检测、`has_rewrite` 效果预检。
 - **宏层做机械操作**：`implies_elim` 链、`forall_elim`/`forall_intr`、conv 重写。
 - 策略返回的 ProofTerm 的 `rule` 始终是宏名或原语名，不引用其他策略——**无同层调用**。
-- `cases` 和 `inst_exists_goal` 内部调用 `apply_theorem`（`framework.logic` 函数，非策略），产生宏 ProofTerm——这是函数调用，不是策略间调用。
+- `cases` 和 `inst_exists_goal` 内部调用 `apply_theorem`（`core.logic` 函数，非策略），产生宏 ProofTerm——这是函数调用，不是策略间调用。
 - `_backward_rule` 是模块级辅助函数（非 Tactic），被 `rule` 和 `inst_exists_goal` 共享以避免代码重复。
 
 ## 7. 策略与转换的关系

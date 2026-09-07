@@ -24,9 +24,9 @@ def main():
     # instead of returning stale cached results.
     force = '--force' in sys.argv
 
-    from framework import basic
-    import server.stable_state  # wires the replay pipeline
-    from framework.verify import validate_theory
+    from core import basic
+    import method.stable_state  # wires the replay pipeline
+    from core.verify import validate_theory
 
     basic.load_metadata()
     depend_list = basic.get_import_order(sorted(basic.theory_cache.keys()))

@@ -6,10 +6,10 @@ by Sascha Böhme and Tjark Weber.
 
 import z3
 from z3.z3consts import *
-from domains.integer import conv as integer
-from domains.integer import macro as integer_macro
-from domains.logic import conv as proplogic
-from domains.real.conv import norm_neg_real_ineq_conv, real_const_eq_conv, real_eval_conv, real_norm_comparison
+from theories.integer import conv as integer
+from theories.integer import macro as integer_macro
+from theories.logic import conv as proplogic
+from theories.real.conv import norm_neg_real_ineq_conv, real_const_eq_conv, real_eval_conv, real_norm_comparison
 from kernel.type import TFun, BoolType, STVar, TVar
 from syntax.numeral import NatType, IntType, RealType
 from kernel.term import *
@@ -21,14 +21,14 @@ from kernel.macro import Macro
 from kernel.theory import check_proof, register_macro
 from kernel import theory
 from kernel.report import ProofReport
-from framework import basic, matcher
-from framework import context
-from framework.logic import apply_theorem
-from domains.logic.logic import imp_disj_iff, disj_norm, resolution
-from domains.logic.macro import imp_conj_macro
-from framework.tactic import rewrite_goal_with_prev
-from framework.conv import rewr_conv, try_conv, top_conv, top_sweep_conv, bottom_conv, arg_conv, ConvException, Conv, arg1_conv, binop_conv, replace_conv
-from framework import auto
+from core import basic, matcher
+from core import context
+from core.logic import apply_theorem
+from theories.logic.logic import imp_disj_iff, disj_norm, resolution
+from theories.logic.macro import imp_conj_macro
+from core.tactic import rewrite_goal_with_prev
+from core.conv import rewr_conv, try_conv, top_conv, top_sweep_conv, bottom_conv, arg_conv, ConvException, Conv, arg1_conv, binop_conv, replace_conv
+from core import auto
 from solvers import sat, tseitin, simplex, simplex_strict
 from syntax.settings import settings
 from syntax import parser
@@ -1184,7 +1184,7 @@ def _ground_eval(tm):
     terms by numeral evaluation (the trusted nat_eval / int_eval macros,
     extended to power / DIV / MOD).  Returns None unless both sides
     evaluate to the same numeral."""
-    from domains.nat.conv import nat_eval_conv
+    from theories.nat.conv import nat_eval_conv
     T = tm.lhs.get_type()
     if T == IntType:
         cv = integer.int_eval_conv()

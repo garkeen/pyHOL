@@ -255,7 +255,7 @@ def get_ast_type(T):
 def _is_if(t):
     """Whether t is of the form if P then x else y.
 
-    Local shape predicate (equivalent to framework.logic.is_if): pprint
+    Local shape predicate (equivalent to core.logic.is_if): pprint
     must not depend on layers above syntax (audit §9.5).
     """
     return t.is_comb("IF", 3)

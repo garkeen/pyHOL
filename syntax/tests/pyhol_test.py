@@ -3,7 +3,7 @@
 pyhol self-describes method directions (_BACKWARD_METHODS /
 _FORWARD_METHODS) so that syntax does not import the method layer
 (audit §9.5).  These tests lock the copy against drift from
-server.stable_state, which owns the semantics.
+method.stable_state, which owns the semantics.
 """
 
 import unittest
@@ -12,13 +12,13 @@ import unittest
 class PyholDirectionTest(unittest.TestCase):
     def testBackwardForwardInSyncWithStableState(self):
         from syntax import pyhol
-        from server.stable_state import BACKWARD, FORWARD
+        from method.stable_state import BACKWARD, FORWARD
 
         self.assertEqual(pyhol._BACKWARD_METHODS, BACKWARD)
         self.assertEqual(pyhol._FORWARD_METHODS, FORWARD)
 
     def testPyholDoesNotImportServerOrFramework(self):
-        """syntax/pyhol.py must not import server.* or framework.*
+        """syntax/pyhol.py must not import method.* or core.*
         at any nesting level (audit §9.5: syntax only depends on
         kernel+util)."""
         import ast
@@ -36,9 +36,9 @@ class PyholDirectionTest(unittest.TestCase):
             elif isinstance(node, ast.ImportFrom) and node.module:
                 mods.add(node.module)
         bad = [m for m in mods
-               if m == 'server' or m.startswith('server.')
-               or m == 'framework' or m.startswith('framework.')
-               or m == 'domains' or m.startswith('domains.')]
+               if m == 'server' or m.startswith('method.')
+               or m == 'framework' or m.startswith('core.')
+               or m == 'domains' or m.startswith('theories.')]
         self.assertEqual(bad, [])
 
 

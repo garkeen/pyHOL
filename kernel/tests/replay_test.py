@@ -8,10 +8,10 @@
 # The macro must expand to a pure primitive stream that kernel/replay.py
 # can re-verify. Everything runs in an EmptyTheory -- no library theories,
 # no macros registered by framework/macros (their proof machinery lives
-# in framework.conv).
+# in core.conv).
 #
 # This test is the "kernel断奶" acceptance test: it must pass without
-# importing anything from framework.
+# importing anything from core.
 
 import io
 import json
@@ -45,12 +45,12 @@ def And(a, b):
 class NoFrameworkImportTest(unittest.TestCase):
     def testNoFrameworkLoaded(self):
         """Importing the kernel in a fresh interpreter must not pull in
-        the framework. Checked in a subprocess so the verdict does not
+        the core. Checked in a subprocess so the verdict does not
         depend on what other tests imported earlier in this process."""
         code = (
             "import sys, json; import kernel; "
             "print(json.dumps(sorted(m for m in sys.modules "
-            "if m == 'framework' or m.startswith('framework.'))))"
+            "if m == 'framework' or m.startswith('core.'))))"
         )
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         res = subprocess.run([sys.executable, '-c', code], capture_output=True,

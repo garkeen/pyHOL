@@ -5,9 +5,9 @@
 import unittest
 import os
 
-from framework import basic
-import server.stable_state  # wires replay
-from framework import verify
+from core import basic
+import method.stable_state  # wires replay
+from core import verify
 from imperative.imp_compile import parse_imp, compile_programs, compile_file, CompileError
 
 

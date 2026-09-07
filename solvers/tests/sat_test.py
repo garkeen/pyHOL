@@ -2,10 +2,10 @@ import unittest
 import json
 
 from syntax.logicops import Not
-from framework import logic
-from framework import basic
+from core import logic
+from core import basic
 from syntax import parser
-from framework import context
+from core import context
 from solvers import tseitin
 from solvers import sat
 

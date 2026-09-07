@@ -1,6 +1,6 @@
 # 宏系统与信任模型
 
-> 代码事实以 `kernel/macro.py`、`kernel/theory.py`（宏注册部分）、`framework/macros/core.py` 为准。
+> 代码事实以 `kernel/macro.py`、`kernel/theory.py`（宏注册部分）、`core/macros/core.py` 为准。
 
 宏（Macro）是 holpy 的核心抽象之一，是"初等证明步骤的缩写"。本章讲宏的机制、信任级别、与校验的关系。
 
@@ -95,7 +95,7 @@ class my_macro(Macro):
 
 ## 8. 核心宏目录
 
-注册在 `framework/macros/core.py`。最常用的宏：
+注册在 `core/macros/core.py`。最常用的宏：
 
 | 宏名 | sig | 功能 |
 |---|---|---|
@@ -135,7 +135,7 @@ class my_macro(Macro):
 
 `apply_theorem_for` 多接受一个 `Inst`，用于匹配失败时手填实例化。
 
-`framework.logic.apply_theorem(th_name, *pts, concl=None, inst=None)` 是包装函数：无 `concl`/`inst` 时用 `apply_theorem` 宏，否则用 `apply_theorem_for`。
+`core.logic.apply_theorem(th_name, *pts, concl=None, inst=None)` 是包装函数：无 `concl`/`inst` 时用 `apply_theorem` 宏，否则用 `apply_theorem_for`。
 
 ## 10. rewrite_goal 详解
 

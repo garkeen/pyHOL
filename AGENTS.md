@@ -5,9 +5,10 @@ holpy 是用 Python 实现的 HOL 定理证明器（LCF 风格）。三层架构
 ```
 kernel/      逻辑内核：Type/Term/Thm/15 原语/ProofTerm/Theory，只此可造定理
   ↓
-framework/   逻辑层：Conv/Tactic/Macro/Matcher/Auto/Search，组合原语与宏
+core/        逻辑层：Conv/Tactic/Macro/Matcher/Auto/Search/Items/Defcheck/Verify，
+             组合原语与宏；theories/ 为领域内容，solvers/ 为纯算法核
   ↓
-server/+app/ 应用层：Method/ProofState/Flask API，点击式证明，不写证明语言
+method/+backend/ 应用层：Method/ProofState/Flask API，点击式证明，不写证明语言
 ```
 
 信任模型：15 条原语是唯一凭空构造定理的入口；宏按 level 展开或求值
@@ -34,13 +35,13 @@ server/+app/ 应用层：Method/ProofState/Flask API，点击式证明，不写�
 - 被动 assert：标非法输入。每个新入口至少一个“必须失败”的用例
   （抛指定异常、gap 不变、无副作用）。
 
-测试布局：测试跟模块走（`kernel/tests/`、`framework/tests/`…），跨模块的才放顶层。
+测试布局：测试跟模块走（`kernel/tests/`、`core/tests/`…），跨模块的才放顶层。
 全量 library 验证（`validate_library.py`）很贵，平时只跑相关回归；
 验证结果走顶层 `.cache/` 缓存，命中即跳过重放，`--force` 才全量重验。
 
 ## 3. 架构要分离，中间层可序列化
 
-- 模块单向依赖：`framework` 不依赖 `server`，`kernel` 不依赖任何人。
+- 模块单向依赖：`core` 不依赖 `method`，`kernel` 不依赖任何人。
   新增引用先查 import 方向，循环依赖宁可把代码下沉，不许上浮。
 - 证明表示可序列化：ProofTerm ⟷ 线性 Proof ⟷ `.pyhol` 文本 ⟷ JSON，
   链条上每一段都可独立重验。证明行一旦生成不可改写（无 thin/sym 这类行改写）。

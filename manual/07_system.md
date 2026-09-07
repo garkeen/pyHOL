@@ -8,10 +8,10 @@
 kernel/          逻辑内核（Type/Term/Thm/原语/ProofTerm/Theory）
   │   15 条原语是唯一凭空构造定理的入口
   ▼
-framework/       逻辑层（Conv/Tactic/Macro/Matcher/Context/Auto/Search）
+core/       逻辑层（Conv/Tactic/Macro/Matcher/Context/Auto/Search）
   │   组合原语与宏，提供自动化基础设施
   ▼
-server/ + app/   应用层（Method/ProofState/Flask API）
+method/ + backend/ 应用层（Method/ProofState/Flask API）
                   面向用户的 API 与 web IDE
 ```
 
@@ -62,27 +62,27 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 
 ### 2.6 定义合法性检查
 
-两项语法检查（`server/struct_recursion.py`）在解析时执行，失败则报错拒收：
+两项语法检查（`method/struct_recursion.py`）在解析时执行，失败则报错拒收：
 
 - `Fun`（`def.ind`）：**结构递归**。恰有一个参数在每条等式中匹配构造器模式（其余参数是普通变量）；每个递归调用必须作用于该参数模式的构造器子项（如 `Suc m` 的子项 `m`），其他参数可经 `hd`/`tl` 等全函数变换；同一构造器不得有重复等式。通过即存在实现，等式作为公理一致。
 - `Datatype`（`type.ind`）：**严格正性**。构造器参数中类型自身只能正出现：直接作为参数，或位于函数类型值域；出现于函数定义域（负出现，如 `(bad ⇒ bad) ⇒ bad`）或嵌套于其他归纳类型（如 `bad list`）则拒绝。否则注入性公理与 Cantor 定理矛盾。
 
 ## 3. 领域扩展机制
 
-> **注**：当前的 `domains/` 包机制是权益之计，后续可能调整。
+> **注**：当前的 `theories/` 包机制是权益之计，后续可能调整。
 
 当前机制：
 - `.pyhol` 头部 `domains <name>` 声明要加载的领域包。
-- `framework/basic.py` 在加载理论时 `importlib.import_module('domains.<name>')`。
+- `core/basic.py` 在加载理论时 `importlib.import_module('theories.<name>')`。
 - 领域包的 `__init__.py` 导入 `conv.py`、`macro.py`、`method.py`，通过 `@register_macro`/`@register_method` 装饰器注册（幂等）。
 
-领域包目录：`domains/{nat,real,integer,function,expr}/`，每个含 `__init__.py` + `conv.py` + `macro.py` + `method.py`（部分）。
+领域包目录：`theories/{nat,real,integer,function,expr}/`，每个含 `__init__.py` + `conv.py` + `macro.py` + `method.py`（部分）。
 
-`server/methods/__init__.py` 也会预加载所有领域包，确保方法在理论加载前就注册。
+`method/methods/__init__.py` 也会预加载所有领域包，确保方法在理论加载前就注册。
 
 ## 4. 自动化
 
-### 4.1 auto（framework/auto.py）
+### 4.1 auto（core/auto.py）
 
 `solve(goal, pts, depth=0)`：自动证明 goal。策略：
 1. 若 goal 匹配某条件，直接返回。
@@ -102,27 +102,27 @@ server/ + app/   应用层（Method/ProofState/Flask API）
 求解器注册（`basic.load_theory_cache` 随理论默认加载，`auto_test.py` 断住数量）：
 sympy（实数/自然数比较，oracle level 0）8 + 2，omega（整数比较，反证关门）4 + 4。
 
-### 4.2 Z3（prover/z3wrapper.py）
+### 4.2 Z3（solvers/z3wrapper.py）
 
 - `convert(t, ...)`：HOL 项 -> Z3 表达式。
 - `norm_term(t)`：用一组重写定理归一化后调 `fologic.simplify`。
 - `solve(t)`：调 Z3 检查 `¬t` 是否 unsat（unsat 即证明）。
-- `z3` 宏（level 0，oracle，`framework/macros/z3.py`）：不可展开，依赖 Z3 正确性；`z3` 方法（`server/methods/z3.py`）以 oracle 行落证明。
+- `z3` 宏（level 0，oracle，`core/macros/z3.py`）：不可展开，依赖 Z3 正确性；`z3` 方法（`method/methods/z3.py`）以 oracle 行落证明。
 
-### 4.3 其他 prover
+### 4.3 其他求解器
 
 | 模块 | 职责 |
 |---|---|
-| `prover/omega.py` | 自然数线性算术（Omega Test 决策过程） |
-| `prover/simplex.py` / `simplex_strict.py` | Simplex 算法（实数/整数） |
-| `prover/tseitin.py` | Tseitin 编码（命题公式 -> CNF） |
-| `prover/sat.py` | DPLL SAT 求解（单文件） |
-| `prover/congc.py` | 同余闭包（congruence closure）算法 |
-| `prover/sympywrapper.py` | 用 sympy solveset 判定区间上的实数不等式 |
-| `prover/proofrec.py` | Z3 proof reconstruction |
-| `prover/fologic.py` | 一阶逻辑简化 |
+| `solvers/omega.py` | 自然数线性算术（Omega Test 决策过程） |
+| `solvers/simplex.py` / `simplex_strict.py` | Simplex 算法（实数/整数） |
+| `solvers/tseitin.py` | Tseitin 编码（命题公式 -> CNF） |
+| `solvers/sat.py` | DPLL SAT 求解（单文件） |
+| `solvers/congc.py` | 同余闭包（congruence closure）算法 |
+| `solvers/sympywrapper.py` | 用 sympy solveset 判定区间上的实数不等式 |
+| `solvers/proofrec.py` | Z3 proof reconstruction |
+| `solvers/fologic.py` | 一阶逻辑简化 |
 
-> `sat/` 与 `smt/`（veriT 集成）已移除；自动证明的 best-first 搜索在 `framework/auto.py`（见 §4.1）。
+> `sat/` 与 `smt/`（veriT 集成）已移除；自动证明的 best-first 搜索在 `core/auto.py`（见 §4.1）。
 
 ### 4.4 方法层自动化
 
@@ -147,11 +147,11 @@ sympy（实数/自然数比较，oracle level 0）8 + 2，omega（整数比较�
 
 ## 6. 应用层
 
-### 6.1 Flask 后端（app/）
+### 6.1 Flask 后端（backend/）
 
-- `app/app.py`：Flask 应用工厂（`create_app()`，CORS + 自定义 JSON provider）。
-- `app/ide.py`：理论编辑与文件管理接口（`/api/find-files`、`/api/save-file`、`/api/validate-theory` 等）。
-- `app/ide_v2.py`：新管线证明接口（`/api/v2/init-saved-proof`、`/api/v2/apply-method`、`/api/v2/backward-search`、`/api/v2/forward-search`）。
+- `backend/app.py`：Flask 应用工厂（`create_app()`，CORS + 自定义 JSON provider）。
+- `backend/ide.py`：理论编辑与文件管理接口（`/api/find-files`、`/api/save-file`、`/api/validate-theory` 等）。
+- `backend/ide_v2.py`：新管线证明接口（`/api/v2/init-saved-proof`、`/api/v2/apply-method`、`/api/v2/backward-search`、`/api/v2/forward-search`）。
 - `app/imperative.py`：Hoare 逻辑程序验证接口（独立子模块，`.imp` 文件）。
 - `app/manual.py`：手册阅读接口（`/api/manual-list`、`/api/manual-load`）。
 
@@ -169,7 +169,7 @@ Vue 3 + Vite 单页应用，路由（`src/router.js`）：
 
 
 
-### 6.3 校验监控（server/monitor.py）
+### 6.3 校验监控（method/monitor.py）
 
 `validate_theory(filename)`：重放所有定理的证明，记录状态（`VALID`/`STEP_FAILED`/`DEP_FAILED`/`AXIOM`/`UNPROVED`），并记录每个失败定理的错误原因，缓存到 `.json`。
 
@@ -178,11 +178,11 @@ Vue 3 + Vite 单页应用，路由（`src/router.js`）：
 | 目录 | 职责 |
 |---|---|
 | `kernel/` | 逻辑内核（Type/Term/Thm/原语/Proof/ProofTerm/Theory/Macro/Extension/Report） |
-| `domains/` | 领域扩展包（logic/nat/real/integer/function/expr） |
-| `framework/` | 逻辑层基础设施（Tactic/Conv/Macro/Matcher/Auto/Search） |
-| `server/` | 方法层与证明状态（ProofState/Method/Items/Monitor） |
+| `theories/` | 领域扩展包（logic/nat/real/integer/function/expr） |
+| `core/` | 逻辑层基础设施（Tactic/Conv/Macro/Matcher/Auto/Search） |
+| `method/` | 方法层与证明状态（ProofState/Method/Items/Monitor） |
 | `syntax/` | 解析、打印、设置、`.pyhol` 格式 |
-| `prover/` | 外部求解器与自动证明（Z3/Omega/Simplex/Tseitin/SAT/Congc/Sympy） |
+| `solvers/` | 外部求解器与自动证明（Z3/Omega/Simplex/Tseitin/SAT/Congc/Sympy） |
 | `app/` | Flask 后端 API |
 | `frontend/` | Vue 3 前端 |
 | `library/` | 理论库（`.pyhol` 文件） |

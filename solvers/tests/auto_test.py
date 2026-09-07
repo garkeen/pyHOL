@@ -2,7 +2,7 @@
 
 import unittest
 
-from framework import basic
+from core import basic
 from solvers.auto import auto
 
 
