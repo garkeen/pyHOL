@@ -7,6 +7,7 @@ from syntax.logicops import true
 from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
+from core.goal import Goal
 from theories.nat import util_nat as nat
 from theories.nat import conv as nat_conv
 from util import function
@@ -244,7 +245,7 @@ class vcg_tactic(Tactic):
         T = Q.get_type().domain_type()
         pt = vcg_norm(T, goal.prop)
 
-        ptAs = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in pt.assums]
+        ptAs = [Goal(A, goal.hyps).sorry() for A in pt.assums]
         return ProofTerm("vcg", goal.prop, ptAs)
 
 

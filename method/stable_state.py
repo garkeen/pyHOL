@@ -24,6 +24,7 @@ from core.method import global_methods
 from core import method as core_method
 from core import tactic
 from core import context
+from core.goal import Goal
 
 # Items with these rules carry no new goal/fact content: they only
 # reference already-registered lines. They get a positional ItemID for
@@ -107,9 +108,10 @@ class StableProofState:
 
         prop = context.parse_term(prop_str) if isinstance(prop_str, str) else prop_str
         sps.state.prf = Proof()
-        sps.state.prf.add_item(0, 'sorry', th=Thm(prop, ()))
+        th0 = Goal(prop).th
+        sps.state.prf.add_item(0, 'sorry', th=th0)
         sps.state.check_proof(compute_only=True)
-        sps.th2sid[Thm(prop, ())] = 0
+        sps.th2sid[th0] = 0
         return sps
 
     def replay(self, steps: List[dict]) -> bool:

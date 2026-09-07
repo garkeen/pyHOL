@@ -11,6 +11,7 @@ from kernel import theory
 from kernel.proofterm import ProofTerm, TacticException
 from core import logic
 from core import matcher
+from core.goal import Goal
 from core.conv import then_conv, top_conv, rewr_conv, beta_conv, beta_norm_conv, \
     top_sweep_conv, has_rewrite, loc_conv
 from core.logic import apply_theorem
@@ -99,7 +100,7 @@ def _backward_rule(th_name, goal, inst, prevs):
     goal_Alen = len(goal.assums)
     if goal_Alen > 0:
         As = As[:-goal_Alen]
-    pts = prevs + [ProofTerm.sorry(Thm(A, goal.hyps)) for A in As[len(prevs):]]
+    pts = prevs + [Goal(A, goal.hyps).sorry() for A in As[len(prevs):]]
 
     if set(term.get_svars(th.assums)) != set(th.prop.get_svars()) or set(term.get_stvars(th.assums)) != set(th.prop.get_stvars()) or not matcher.is_pattern_list(th.assums, []):
         return apply_theorem(th_name, *pts, inst=inst)
@@ -177,7 +178,7 @@ class intros(Tactic):
 
         vars, As, C = logic.strip_all_implies(goal.prop, var_names, svar=False)
         
-        pt = ProofTerm.sorry(Thm(C, goal.hyps, tuple(As)))
+        pt = Goal(C, goal.hyps, tuple(As)).sorry()
         ptAs = [ProofTerm.assume(A) for A in As]
         ptVars = [ProofTerm.variable(var.name, var.T) for var in vars]
         return ProofTerm('intros', None, ptVars + ptAs + [pt])
@@ -217,7 +218,7 @@ class var_induct(Tactic):
         # After substitution, only take the same number of assumptions
         As, _ = th.prop.subst_norm(inst).strip_implies()
         As = As[:num_orig]
-        pts = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in As]
+        pts = [Goal(A, goal.hyps).sorry() for A in As]
         return ProofTerm("apply_induct", (th_name, var, goal.prop), pts)
 
 class simp(Tactic):
@@ -238,7 +239,7 @@ class simp(Tactic):
         if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
             return ProofTerm('simp', goal.prop, [])
         return ProofTerm('simp', goal.prop,
-                         [ProofTerm.sorry(Thm(new_goal, goal.hyps))])
+                         [Goal(new_goal, goal.hyps).sorry()])
 
 
 class rewrite_goal(Tactic):
@@ -268,7 +269,7 @@ class rewrite_goal(Tactic):
         if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
             return ProofTerm(macro_name, args=(th_name, C), prevs=prevs)
         else:
-            new_goal = ProofTerm.sorry(Thm(new_goal, goal.hyps))
+            new_goal = Goal(new_goal, goal.hyps).sorry()
             assert new_goal.prop != goal.prop, "rewrite: unable to apply theorem"
             return ProofTerm(macro_name, args=(th_name, C), prevs=[new_goal] + prevs)
 
@@ -287,7 +288,7 @@ class rewrite_goal_with_conv(Tactic):
         if new_goal == C:
             return ProofTerm.reflexive(C)
         
-        new_goal_pt = ProofTerm.sorry(Thm(new_goal, goal.hyps))
+        new_goal_pt = Goal(new_goal, goal.hyps).sorry()
         return ProofTerm('equal_elim', None, [
             ProofTerm('symmetric', None, [self.cv.get_proof_term(C)]),
             new_goal_pt
@@ -322,7 +323,7 @@ class rewrite_goal_with_prev(Tactic):
 
         prevs = list(prevs)
         if not new_goal.is_reflexive():
-            prevs.append(ProofTerm.sorry(Thm(new_goal, goal.hyps)))
+            prevs.append(Goal(new_goal, goal.hyps).sorry())
         return ProofTerm('rewrite_goal_with_prev', args=C, prevs=prevs)
 
 class apply_prev(Tactic):
@@ -358,7 +359,7 @@ class apply_prev(Tactic):
         inst_As, inst_C = pt.prop.strip_implies()
 
         inst_arg = [inst[new_name] for new_name in new_names]
-        new_goals = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in inst_As[len(prev_pts):]]
+        new_goals = [Goal(A, goal.hyps).sorry() for A in inst_As[len(prev_pts):]]
         
         # When there are no remaining premises, the fact directly proves the goal.
         # Return the fact itself (possibly with forall/instantiation) without
@@ -393,8 +394,8 @@ class cases(Tactic):
 
         As = goal.hyps
         C = goal.prop
-        goal1 = ProofTerm.sorry(Thm(Implies(case_expr, C), goal.hyps))
-        goal2 = ProofTerm.sorry(Thm(Implies(Not(case_expr), C), goal.hyps))
+        goal1 = Goal(Implies(case_expr, C), goal.hyps).sorry()
+        goal2 = Goal(Implies(Not(case_expr), C), goal.hyps).sorry()
         return apply_theorem(cases_thm, goal1, goal2)
 
 
@@ -436,7 +437,7 @@ class datatype_cases(Tactic):
         # After substitution, only take the same number of assumptions
         As, _ = th.prop.subst_norm(inst).strip_implies()
         As = As[:num_orig]
-        pts = [ProofTerm.sorry(Thm(A, goal.hyps)) for A in As]
+        pts = [Goal(A, goal.hyps).sorry() for A in As]
         return apply_theorem(cases_thm, *pts, inst=inst)
 
 class inst_exists_goal(Tactic):
@@ -491,7 +492,7 @@ class unfold(Tactic):
         if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
             return ProofTerm(macro_name, (th_name, goal.prop), [])
         return ProofTerm(macro_name, (th_name, goal.prop),
-                         [ProofTerm.sorry(Thm(new_goal, goal.hyps))])
+                         [Goal(new_goal, goal.hyps).sorry()])
 
 
 class rewrite_goal_loc(Tactic):
@@ -518,7 +519,7 @@ class rewrite_goal_loc(Tactic):
         if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
             return ProofTerm(macro_name, (th_name, self.loc, goal.prop), [])
         return ProofTerm(macro_name, (th_name, self.loc, goal.prop),
-                         [ProofTerm.sorry(Thm(new_goal, goal.hyps))])
+                         [Goal(new_goal, goal.hyps).sorry()])
 
 
 class assumption(Tactic):
@@ -547,8 +548,8 @@ class equal_intr(Tactic):
         if not goal.prop.is_equals():
             raise TacticException('equal_intr: goal is not an equality')
         A, B = goal.prop.arg1, goal.prop.arg
-        pt_AB = ProofTerm.sorry(Thm(Implies(A, B), goal.hyps))
-        pt_BA = ProofTerm.sorry(Thm(Implies(B, A), goal.hyps))
+        pt_AB = Goal(Implies(A, B), goal.hyps).sorry()
+        pt_BA = Goal(Implies(B, A), goal.hyps).sorry()
         return ProofTerm.equal_intr(pt_AB, pt_BA)
 
 
@@ -566,8 +567,8 @@ class trans(Tactic):
         if u.get_type() != s.get_type():
             raise TacticException('trans: middle term has type %s, expect %s' % (
                 str(u.get_type()), str(s.get_type())))
-        pt_su = ProofTerm.sorry(Thm(Eq(s, u), goal.hyps))
-        pt_ut = ProofTerm.sorry(Thm(Eq(u, t), goal.hyps))
+        pt_su = Goal(Eq(s, u), goal.hyps).sorry()
+        pt_ut = Goal(Eq(u, t), goal.hyps).sorry()
         return pt_su.transitive(pt_ut)
 
 

@@ -6,13 +6,13 @@ from typing import List, Union
 
 from kernel import term
 from kernel.term import Term, Var
-from kernel.thm import Thm
+from kernel.proofterm import ProofTerm
 from kernel.proof import ProofItem, Proof, ItemID, ProofStateException
 from kernel import report
 from kernel import theory
-from kernel.proofterm import ProofTerm
 from core import logic, matcher
 from core import context
+from core.goal import Goal
 from core import tactic
 from core.context import Context
 from syntax import parser, printer
@@ -52,7 +52,7 @@ def parse_init_state(prop: Union[str, List[str], Term]) -> ProofState:
         state.vars.append(Var(nm, T))
     state.prf = Proof(*assums)
     n = len(assums)
-    state.prf.add_item(n, "sorry", th=Thm(concl, tuple(assums)))
+    state.prf.add_item(n, "sorry", th=Goal(concl, tuple(assums)).th)
     state.prf.add_item(n + 1, "intros", prevs=range(n+1))
     state.check_proof(compute_only=True)
     return state

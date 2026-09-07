@@ -23,6 +23,7 @@ from core.method import (
 )
 from core.tactic import Tactic, trivial
 from core import conv
+from core.goal import Goal
 from syntax import parser, printer, pprint
 from syntax.numeral import NatType, RealType, IntType
 from syntax.settings import settings, global_setting
@@ -429,7 +430,7 @@ class cut_method(Method):
                     raise AssertionError('Insert goal: extra variable %s' % v.name)
 
         state.add_line_before(id, 1)
-        state.set_line(id, 'sorry', th=Thm(C, hyps))
+        state.set_line(id, 'sorry', th=Goal(C, hyps).th)
         state.line_meta[str(id)] = {'origin': 'cut'}
 
 
