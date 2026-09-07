@@ -4,7 +4,7 @@
 
 from lark import Lark, Transformer, v_args, exceptions
 
-from util.lark_error import translate_lark_error
+from syntax.lark_error import translate_lark_error
 from kernel.type import TFun, BoolType
 from kernel.term import Term, Var, Const, Abs
 from syntax.logicops import true

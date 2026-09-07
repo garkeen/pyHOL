@@ -4,7 +4,7 @@ from typing import Tuple, List, Union
 import copy
 from lark import Lark, Transformer, v_args, exceptions
 
-from util.lark_error import LarkParseError, translate_lark_error
+from syntax.lark_error import LarkParseError, translate_lark_error
 import syntax
 from kernel import type as hol_type
 from kernel.type import Type, STVar, TVar, TConst, TFun, BoolType, TyInst
