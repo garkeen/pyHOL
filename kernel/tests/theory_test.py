@@ -28,6 +28,25 @@ class TheoryTest(unittest.TestCase):
     def setUp(self):
         theory.thy = theory.EmptyTheory()
 
+    def testRegisterMacroSetsName(self):
+        """register_macro backfills the macro's registration name, which
+        level-0 eval macros use to label their oracle holes."""
+        from kernel.macro import Macro
+        from kernel.theory import register_macro, get_macro
+
+        @register_macro('dummy_oracle_test')
+        class DummyOracleMacro(Macro):
+            def __init__(self):
+                self.level = 0
+                self.sig = None
+                self.limit = None
+
+        try:
+            self.assertEqual(get_macro('dummy_oracle_test').name,
+                             'dummy_oracle_test')
+        finally:
+            del theory.global_macros['dummy_oracle_test']
+
     def testEmptyTheory(self):
         self.assertEqual(theory.thy.get_type_sig("bool"), 0)
         self.assertEqual(theory.thy.get_type_sig("fun"), 2)

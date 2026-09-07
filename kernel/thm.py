@@ -420,4 +420,5 @@ def oracle_thm(name, prop, *hyps):
     the ONLY constructor for theorems produced by a level-0 oracle
     macro eval.  The verification trust set admits or rejects by name,
     and the hole appears in replay as ("oracle", name, th).."""
+    assert isinstance(name, str) and name, "oracle_thm: oracle name required"
     return Thm(prop, *hyps)

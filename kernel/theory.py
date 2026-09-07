@@ -648,6 +648,8 @@ def register_macro(name: str):
         # Idempotent: skip if already registered (supports reloading theories).
         if name in global_macros:
             return macro_cls
-        global_macros[name] = macro_cls()
+        macro = macro_cls()
+        macro.name = name
+        global_macros[name] = macro
         return macro_cls
     return decorator

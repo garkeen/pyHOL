@@ -23,8 +23,13 @@ class Macro:
     level -- trustworthiness level of a macro. Smaller is greater
     trustworthiness.
 
+    name -- the registration name, filled in by register_macro. A
+    level-0 macro's eval uses it to mint its result through
+    oracle_thm, so the hole is labeled by the oracle's own name.
+
     """
     def __init__(self):
+        self.name = None
         self.level = None
         self.sig = None
 

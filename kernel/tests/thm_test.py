@@ -52,6 +52,12 @@ class ThmTest(unittest.TestCase):
     def testAssume(self):
         self.assertEqual(Thm.assume(A), Thm(A, A))
 
+    def testOracleThmNameRequired(self):
+        """Passive assert: oracle_thm rejects an empty or missing name."""
+        from kernel.thm import oracle_thm
+        self.assertRaises(AssertionError, oracle_thm, "", A)
+        self.assertRaises(AssertionError, oracle_thm, None, A)
+
     def testImpliesIntr(self):
         th = Thm(B, A)
         self.assertEqual(Thm.implies_intr(A, th), Thm(Implies(A,B)))
