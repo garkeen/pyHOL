@@ -33,7 +33,6 @@ from solvers import sat, tseitin, simplex, simplex_strict
 from syntax.settings import settings
 from syntax import parser
 from solvers import omega
-settings.unicode = True
 from collections import deque
 import functools
 import operator
