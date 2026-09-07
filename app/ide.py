@@ -14,7 +14,7 @@ from server import server, methods as method
 from kernel.proof import ItemID
 from framework import basic
 from framework import context
-from server import monitor
+from framework import verify
 from framework import items
 from app.app import app
 from syntax import pyhol
@@ -373,7 +373,7 @@ def validate_theory():
     """
     data = json.loads(request.get_data().decode("utf-8"))
     force = data.get('force', False)
-    statuses, errors = monitor.validate_theory(data['filename'], force=force)
+    statuses, errors = verify.validate_theory(data['filename'], force=force)
     counts = {}
     for s in statuses.values():
         counts[s] = counts.get(s, 0) + 1

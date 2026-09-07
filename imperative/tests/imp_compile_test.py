@@ -6,7 +6,8 @@ import unittest
 import os
 
 from framework import basic
-from server import monitor
+import server.stable_state  # wires replay
+from framework import verify
 from imperative.imp_compile import parse_imp, compile_programs, compile_file, CompileError
 
 
@@ -100,7 +101,7 @@ program p2
     def test_validate_compiled(self):
         basic.load_metadata()
         for name in ['mult_add_loop', 'if_demo']:
-            res, _ = monitor.validate_theory(name, force=True)
+            res, _ = verify.validate_theory(name, force=True)
             # All VC theorems should be VALID.
             for thm_name, status in res.items():
                 self.assertEqual(status, 'VALID', "%s/%s" % (name, thm_name))

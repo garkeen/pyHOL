@@ -108,9 +108,10 @@ class ImportDirectionTest(unittest.TestCase):
         method registration goes through framework.method; the method
         layer reads the registry, it is not a dependency of theories)."""
         # Whitelist shrinks over the migration steps:
-        #  - imperative/tests/imp_compile_test.py calls
-        #    monitor.validate_theory, which moves to core/verify at
-        #    step 8. Remove from the whitelist then.
+        #  - imperative/tests/imp_compile_test.py wires the
+        #    method-layer replay into core/verify (server.stable_state).
+        #    The monitor reference promised at step 4 is gone; this
+        #    assembly import disappears at step 9 when server -> method.
         whitelist = {'imperative/tests/imp_compile_test.py'}
         offenders = []
         for path in py_files_under('domains', 'imperative'):

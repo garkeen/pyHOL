@@ -25,7 +25,8 @@ def main():
     force = '--force' in sys.argv
 
     from framework import basic
-    from server.monitor import validate_theory
+    import server.stable_state  # wires the replay pipeline
+    from framework.verify import validate_theory
 
     basic.load_metadata()
     depend_list = basic.get_import_order(sorted(basic.theory_cache.keys()))

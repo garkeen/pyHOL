@@ -631,3 +631,17 @@ class StableProofState:
                             continue  # already in exact
                         collect(method_name, method, list(perm), exact=False)
         return {'results': results, 'fuzzy': fuzzy}
+
+# Wire the stable-ID replay into the core verify pipeline (audit §7.4):
+# framework.verify owns the four-state judgement and calls this
+# injected function; the method layer must not be imported by framework.
+def _verify_replay(item, name):
+    vars_dict = dict(item.vars) if item.vars else {}
+    sps = StableProofState.create(item.prop, vars_dict)
+    for step in item.steps:
+        if not sps.apply_method_dict(step):
+            raise Exception('replay failed at step: %s' % step.get('method_name', '?'))
+    return sps.num_gaps
+
+from framework import verify as _verify_mod
+_verify_mod.set_replay_fn(_verify_replay)
