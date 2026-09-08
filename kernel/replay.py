@@ -17,13 +17,13 @@
 # replay is a pure function -- it does not write back into the proof,
 # does not cache subproofs, and returns the assumption list explicitly:
 #
-#   replay(prf) -> (Thm, holes)
+#   replay(prf, axioms) -> (Thm, holes)
 #   holes = [(rule, label, Thm)]  with rule in {'sorry', 'axiom', 'oracle'}
 #
-# A theorem line's axiom status is read from the theory's thm_status
-# table (maintained by the validation pipeline; 'AXIOM' marks entries
-# accepted by the axiom assumption rule). Theorems without an AXIOM
-# status are trusted theory content, as in check_proof.
+# Axiom knowledge is injected, never read from the theory: the caller
+# passes the set of theorem names admitted by the axiom assumption rule
+# (audit §7.4 -- proof status is validation-pipeline output, not kernel
+# data; the old thm_status lookup in the kernel is gone).
 
 from kernel.thm import Thm, primitive_deriv
 from kernel.proof import Proof
@@ -41,15 +41,14 @@ class ReplayException(Exception):
         return self.msg
 
 
-def is_axiom(name: str) -> bool:
-    """Whether the theorem with the given name entered the theory via
-    the axiom assumption rule (as recorded in thm_status)."""
-    status = theory.thy.data.get("thm_status", {})
-    return status.get(name) == "AXIOM"
+def _replay(prf: Proof, axioms):
+    """Core replay loop. Returns (final Thm, holes, id-tuple -> Thm map).
 
+    axioms -- set/frozenset of theorem names that entered the theory
+    via the axiom assumption rule; a theorem line naming one of them is
+    recorded as an axiom hole. The empty set means no axiom holes.
 
-def _replay(prf: Proof):
-    """Core replay loop. Returns (final Thm, holes, id-tuple -> Thm map)."""
+    """
     assert isinstance(prf, Proof), "replay"
 
     ths = {}  # id tuple -> Thm, theorems derived so far
@@ -81,7 +80,7 @@ def _replay(prf: Proof):
             except theory.TheoryException:
                 raise ReplayException("theorem not found: %s" % args)
             ths[key] = th
-            if is_axiom(args):
+            if args in axioms:
                 holes.append(("axiom", args, th))
             res_th = th
             continue
@@ -137,25 +136,31 @@ def _replay(prf: Proof):
     return res_th, holes, ths
 
 
-def replay(prf: Proof):
+def replay(prf: Proof, axioms=frozenset()):
     """Re-derive the theorem of the given proof using primitives only.
 
     Returns the pair (final theorem, holes), where holes lists every
     assumption rule used:
 
       ("sorry", None, th)    -- an open gap in the proof,
-      ("axiom", name, th)    -- a theorem line accepted by the axiom rule.
+      ("axiom", name, th)    -- a theorem line accepted by the axiom rule,
+      ("oracle", name, th)   -- a named oracle line.
+
+    axioms -- iterable of theorem names admitted by the axiom assumption
+    rule. The empty default means no axiom holes (pure-kernel proofs
+    against hand-built theories); the validation pipeline passes the
+    AXIOM set it maintains outside the kernel.
 
     The proof is not modified. Unknown rules raise ReplayException:
     macro lines must be expanded before replay.
 
     """
-    res_th, holes, _ = _replay(prf)
+    res_th, holes, _ = _replay(prf, frozenset(axioms))
     return res_th, holes
 
 
-def replay_full(prf: Proof):
+def replay_full(prf: Proof, axioms=frozenset()):
     """Like replay, additionally returning the map from id tuple to
     derived theorem for every line. Used by the bootstrap expander to
     annotate appended lines."""
-    return _replay(prf)
+    return _replay(prf, frozenset(axioms))

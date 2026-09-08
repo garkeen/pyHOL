@@ -27,6 +27,25 @@ from core import context
 
 
 # ---------------------------------------------------------------------------
+# Proof-status tables (audit §7.4): theorem status is output of this
+# pipeline, not kernel data.  The tables themselves live in core.basic
+# (beside the .json cache read/write); the kernel's thm_status and
+# thm_error tables are gone.  Writing goes through the set_status /
+# set_error helpers so every mutation of the tables is greppable.
+# ---------------------------------------------------------------------------
+
+def axioms():
+    """Set of theorem names admitted by the axiom assumption rule.
+
+    This is what the kernel-side replay must be *given* (injected as
+    the axioms argument) -- the kernel does not read any status table.
+    """
+    return frozenset(
+        name for name, status in basic.statuses.items()
+        if status == 'AXIOM')
+
+
+# ---------------------------------------------------------------------------
 # Replay injection: method.stable_state.StableProofState lives above
 # this layer.  The method layer wires it at import time; until then
 # validate_theory raises instead of silently skipping proofs.
@@ -104,15 +123,26 @@ def validate_theory(filename, *, force=False):
     cached statuses without re-validating.  If force=True, ignores the
     cache and re-validates everything.
 
-    Returns (statuses, errors): statuses maps theorem names to states
-    ('VALID', 'STEP_FAILED', 'DEP_FAILED', 'AXIOM', 'UNPROVED');
-    errors maps failed theorems to a message.
+    Returns (statuses, errors) for THIS file's theorem entries:
+    statuses maps theorem names to states ('VALID', 'STEP_FAILED',
+    'DEP_FAILED', 'AXIOM', 'UNPROVED'); errors maps failed theorems
+    to a message.  (The cross-theory tables in core.basic accumulate
+    for /api/theory-status; they are not the return value.)
     """
-    if not force and basic.is_cache_valid(filename):
-        basic.load_theory(filename)
-        return theory.get_all_statuses(), theory.get_all_errors()
-
     basic.load_theory(filename)
+
+    if not force and basic.is_cache_valid(filename):
+        with open(basic.status_cache_file(filename), encoding='utf-8') as f:
+            import json
+            data = json.load(f)
+        statuses = dict(data.get('theorems', {}))
+        errors = {name: None for name in statuses}
+        # Reflect the cached statuses into the cross-theory tables.
+        for name, st in statuses.items():
+            basic.set_status(name, st)
+            basic.set_error(name, None)
+        return statuses, errors
+
     content = basic.theory_cache[filename]['content']
     statuses = {}
     errors = {}
@@ -127,8 +157,8 @@ def validate_theory(filename, *, force=False):
 
         if item.ty == 'thm.ax':
             statuses[name] = 'AXIOM'
-            theory.thy.set_status(name, 'AXIOM')
-            theory.thy.set_error(name, None)
+            basic.set_status(name, 'AXIOM')
+            basic.set_error(name, None)
             continue
 
         if item.ty != 'thm':
@@ -136,8 +166,8 @@ def validate_theory(filename, *, force=False):
 
         if not item.steps:
             statuses[name] = 'UNPROVED'
-            theory.thy.set_status(name, 'UNPROVED')
-            theory.thy.set_error(name, None)
+            basic.set_status(name, 'UNPROVED')
+            basic.set_error(name, None)
             continue
 
         # Check whether any referenced theorem has a failed state --
@@ -162,8 +192,8 @@ def validate_theory(filename, *, force=False):
 
         if dep_failed:
             statuses[name] = 'DEP_FAILED'
-            theory.thy.set_status(name, 'DEP_FAILED')
-            theory.thy.set_error(name, errors[name])
+            basic.set_status(name, 'DEP_FAILED')
+            basic.set_error(name, errors[name])
             continue
 
         # Replay the proof via the injected stable-ID pipeline.
@@ -178,8 +208,8 @@ def validate_theory(filename, *, force=False):
             statuses[name] = 'STEP_FAILED'
             errors[name] = '%s: %s' % (e.__class__.__name__, str(e))
 
-        theory.thy.set_status(name, statuses[name])
-        theory.thy.set_error(name, errors[name])
+        basic.set_status(name, statuses[name])
+        basic.set_error(name, errors[name])
 
     basic.save_status(filename, statuses)
     return statuses, errors

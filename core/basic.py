@@ -106,19 +106,53 @@ def _status_cache_dir():
     """Directory holding proof-status .json caches (top-level .cache/)."""
     return os.path.join(dirname, '.cache')
 
+# Proof-status tables, migrated out of the kernel (audit §7.4): the
+# status of a theorem entry is output of the verification pipeline
+# (core/verify), not logical-kernel data.  core/verify writes here;
+# loading (load_theory) backfills from the .json cache and defaults
+# thm entries without a cached status to UNPROVED.
+statuses = dict()
+errors = dict()
+
+def set_status(name, status):
+    """Record the proof status of a theorem."""
+    statuses[name] = status
+
+def set_error(name, error):
+    """Record the error message for a theorem (or None to clear it)."""
+    errors[name] = error
+
+def clear_statuses():
+    """Clear the proof-status tables.
+
+    Statuses accumulate across load_theory calls (each load backfills
+    from its .json cache), mirroring the old kernel-table behavior;
+    starting a fresh session or theory switch resets them here.
+    """
+    statuses.clear()
+    errors.clear()
+
+def get_all_statuses():
+    """Return a copy of all theorem statuses."""
+    return dict(statuses)
+
+def get_all_errors():
+    """Return a copy of all recorded theorem error messages."""
+    return dict(errors)
+
 def status_cache_file(filename):
     """Return .json cache path under top-level .cache/."""
     return os.path.join(_status_cache_dir(), filename + '.json')
 
 def load_status(filename):
-    """Load proof status from .json cache into thy.thm_status."""
+    """Load proof status from .json cache into the status table."""
     path = status_cache_file(filename)
     if not os.path.exists(path):
         return
     with open(path, encoding='utf-8') as f:
         data = json.load(f)
     for name, status in data.get('theorems', {}).items():
-        theory.thy.set_status(name, status)
+        set_status(name, status)
 
 def save_status(filename, status_dict):
     """Save proof status to .json cache."""
@@ -367,10 +401,12 @@ def load_theory(filename: str, *, limit=None):
     if limit and not found_limit:
         raise TheoryException("load_theory: limit %s not found" % str(limit))
 
-    # Load cached proof status
+    # Load cached proof status; thm entries without a cached status
+    # default to UNPROVED (the status table lives here, not in the
+    # kernel -- audit §7.4).
     load_status(filename)
     for item in cache['content']:
-        if item.ty == 'thm' and theory.thy.get_status(item.name) is None:
-            theory.thy.set_status(item.name, 'UNPROVED')
+        if item.ty == 'thm' and item.name not in statuses:
+            set_status(item.name, 'UNPROVED')
 
     return None

@@ -88,27 +88,33 @@ class PurePrimitiveReplayTest(unittest.TestCase):
                                  ("sorry", None, Thm(A))])
 
     def testTheorem(self):
-        """Theorem lines replay through the theory."""
+        """Theorem lines replay through the theory. Axiom knowledge is
+        injected by the caller: without it, every theorem line is
+        trusted content and the hole list stays empty."""
         theory.thy.add_theorem("triv", Thm(Implies(A, A)))
         prf = Proof()
         prf.add_item(0, "theorem", args="triv")
 
-        th, holes = replay.replay(prf)
+        th, holes = replay.replay(prf, axioms=frozenset())
         self.assertEqual(th, theory.thy.get_theorem("triv"))
         self.assertEqual(holes, [])
 
     def testAxiomHole(self):
-        """A theorem line referencing an axiom enters the hole list."""
+        """A theorem line naming an injected axiom enters the hole list."""
         theory.thy.add_theorem("ax1", Thm(A_to_B))
-        theory.thy.set_status("ax1", "AXIOM")
         prf = Proof()
         prf.add_item(0, "theorem", args="ax1")
 
-        th, holes = replay.replay(prf)
+        th, holes = replay.replay(prf, axioms={"ax1"})
         self.assertEqual(th, theory.thy.get_theorem("ax1"))
         self.assertEqual(len(holes), 1)
         self.assertEqual(holes[0][0], "axiom")
         self.assertEqual(holes[0][1], "ax1")
+
+        # Passive case: the same theory theorem, not in the axiom set,
+        # is trusted content -- no hole (kernel reads no status table).
+        th, holes = replay.replay(prf, axioms=frozenset())
+        self.assertEqual(holes, [])
 
     def testHoleConstructors(self):
         """The three hole constructors mint the same statements as the

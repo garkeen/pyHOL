@@ -432,4 +432,4 @@ def theorem_search():
 @app.route('/api/theory-status', methods=['GET'])
 def theory_status():
     """Return current proof statuses for all theorems."""
-    return jsonify(theory.get_all_statuses())
+    return jsonify(basic.get_all_statuses())
