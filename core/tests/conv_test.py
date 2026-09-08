@@ -8,6 +8,7 @@ from kernel.thm import Thm
 from kernel import theory
 from kernel.proofterm import ProofTerm
 from core import conv
+from core import verify as core_verify
 from core.conv import beta_conv, else_conv, try_conv, abs_conv, top_conv, bottom_conv, \
     top_sweep_conv, arg_conv, rewr_conv, has_rewrite, ConvException
 from syntax import parser, printer
@@ -15,7 +16,8 @@ from core import context
 
 
 def test_conv(self: unittest.TestCase, thy_name: str, cv: conv.Conv, *,
-              vars=None, t: Term, t_res=None, failed=None, assms=None, limit=None):
+              vars=None, t: Term, t_res=None, failed=None, assms=None, limit=None,
+              oracles=frozenset()):
     context.set_context(thy_name, vars=vars, limit=limit)
 
     if isinstance(t, str):
@@ -42,7 +44,7 @@ def test_conv(self: unittest.TestCase, thy_name: str, cv: conv.Conv, *,
         msg="\nExpected: %s\nGot %s" % (printer.print_thm(expected_th), printer.print_thm(res_th)))
     pt = cv.get_proof_term(t)
     prf = pt.export()
-    self.assertEqual(theory.check_proof(prf), res_th)
+    self.assertEqual(core_verify.verify(prf, trust=oracles), res_th)
 
 # Helper function, not a pytest test (name shared by importing modules)
 test_conv.__test__ = False

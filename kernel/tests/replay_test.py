@@ -21,7 +21,7 @@ import sys
 import unittest
 
 from kernel.type import TVar, TFun, BoolType
-from kernel.term import Var, Implies, Eq, Forall, Const
+from kernel.term import Var, Implies, Eq, Inst, Forall, Const
 from kernel.thm import Thm
 from kernel.proof import Proof
 from kernel import theory
@@ -144,6 +144,55 @@ class PurePrimitiveReplayTest(unittest.TestCase):
 
         th, holes = replay.replay(prf)
         self.assertEqual(th, Thm(Forall(x, Eq(x, x))))
+        self.assertEqual(holes, [])
+
+    def testReference(self):
+        """A reference line reuses the cited item's theorem as-is,
+        hypotheses included. It records no hole: nothing new enters the
+        proof."""
+        prf = Proof(A_to_B)
+        prf.add_item(1, "reference", prevs=[0], th=Thm(A_to_B, A_to_B))
+
+        th, holes = replay.replay(prf)
+        self.assertEqual(th, Thm(A_to_B, A_to_B))
+        self.assertEqual(holes, [])
+
+    def testReferenceThenSubstitution(self):
+        """The matching-instantiation case: the reference re-cites, a
+        substitution primitive instantiates. Two lines, both replayable."""
+        theory.thy.add_theorem("triv", Thm(Implies(A, A)))
+        x_eq_y = Eq(x, x)
+        prf = Proof()
+        prf.add_item(0, "theorem", args="triv")
+        prf.add_item(1, "reference", prevs=[0])
+        prf.add_item(2, "substitution", args=Inst(A=x_eq_y), prevs=[1])
+
+        th, holes = replay.replay(prf)
+        self.assertEqual(th, Thm(Implies(x_eq_y, x_eq_y)))
+        self.assertEqual(holes, [])
+
+    def testReferenceNoPrev(self):
+        """Passive: a reference line must cite at least one fact."""
+        prf = Proof(A_to_B)
+        prf.add_item(1, "reference", prevs=[], th=Thm(A_to_B, A_to_B))
+
+        self.assertRaises(replay.ReplayException, replay.replay, prf)
+
+    def testReferenceNotYetDerived(self):
+        """Passive: citing an item that has not been derived fails."""
+        prf = Proof()
+        prf.add_item(0, "reference", prevs=[1], th=Thm(A_to_B))
+
+        self.assertRaises(replay.ReplayException, replay.replay, prf)
+
+    def testReferenceTheoremNotTrusted(self):
+        """Passive: the reference's own item.th is not trusted -- replay
+        derives the cited item's theorem, whatever the line claims."""
+        prf = Proof(A_to_B)
+        prf.add_item(1, "reference", prevs=[0], th=Thm(A))  # the line lies
+
+        th, holes = replay.replay(prf)
+        self.assertEqual(th, Thm(A_to_B, A_to_B))
         self.assertEqual(holes, [])
 
     def testUnknownRule(self):

@@ -4,7 +4,7 @@
 # half of verify. It knows ONLY:
 #
 #   * the 15 primitive derivation rules,
-#   * theorem / variable lines,
+#   * theorem / variable / reference lines,
 #   * the assumption rules (sorry lines, axiom-bearing theorem lines,
 #     named oracle lines),
 #
@@ -102,6 +102,21 @@ def _replay(prf: Proof, axioms):
             res_th = th
             continue
 
+        if rule == "reference":
+            # Pure reference: reuse the cited item's theorem as-is. No new
+            # information is derived, so no hole is recorded. The cited
+            # theorem is authoritative -- item.th is not trusted here (it
+            # is bound by the caller's can_prove on the final line).
+            if not prevs:
+                raise ReplayException("reference must cite a fact")
+            prev_th = ths.get(prevs[0].id)
+            if prev_th is None:
+                raise ReplayException(
+                    "reference: fact %s not yet derived" % prevs[0])
+            ths[key] = prev_th
+            res_th = prev_th
+            continue
+
         if rule == "subproof":
             raise ReplayException(
                 "subproof lines must be flattened before replay")
@@ -145,6 +160,9 @@ def replay(prf: Proof, axioms=frozenset()):
       ("sorry", None, th)    -- an open gap in the proof,
       ("axiom", name, th)    -- a theorem line accepted by the axiom rule,
       ("oracle", name, th)   -- a named oracle line.
+
+    A reference line records no hole: it only re-cites an earlier item's
+    theorem, so no new assumption enters the proof.
 
     axioms -- iterable of theorem names admitted by the axiom assumption
     rule. The empty default means no axiom holes (pure-kernel proofs

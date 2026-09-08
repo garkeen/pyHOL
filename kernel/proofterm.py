@@ -69,9 +69,6 @@ class ProofTerm:
         else:
             self.gaps = list(set(sum([prev.gaps for prev in self.prevs], [])))
 
-        # Used for checking
-        self.checked = False
-
     def __repr__(self):
         return str(self)
 
@@ -205,43 +202,6 @@ class ProofTerm:
         typecheck.checkinstance('sorry', th, Thm)
         return ProofTerm("sorry", None, [], th)
 
-    def check(self, *, check_level=0, rpt=None):
-        """Check the given proof term by expanding macros.
-        
-        Returns the proof report.
-        
-        """
-        def rec(pt: ProofTerm):
-            if pt.checked:
-                return
-
-            # First, check the prevs that self relies on.
-            for prev in pt.prevs:
-                rec(prev)
-
-            if pt.rule == 'atom':
-                raise AssertionError("check proofterm: atom")
-            elif pt.rule == 'sorry':
-                rpt.add_gap(pt.th)
-            elif pt.rule == 'variable':
-                pass
-            elif pt.rule == 'theorem':
-                rpt.apply_theorem(pt.args)
-            elif pt.rule in primitive_deriv:
-                rpt.apply_primitive_deriv()
-            else:
-                macro = theory.get_macro(pt.rule)
-                if macro.level <= check_level:
-                    rpt.eval_macro(pt.rule)
-                else:
-                    expand_pt = macro.get_proof_term(pt.args, pt.prevs)
-                    rpt.expand_macro(pt.rule)
-                    rec(expand_pt)
-            pt.checked = True
-
-        rec(self)
-        return
-
     def export(self, prefix=None, prf=None, subproof=True):
         """Convert to proof object."""
 
@@ -249,26 +209,38 @@ class ProofTerm:
             # Should not call _export when self is already in seq_to_id
             assert pt.th not in seq_to_id, "export: th already found."
 
-            # Should be called only on derivations
-            assert pt.rule != 'atom', "export: atom"
+            # An atom root is a pure reference: the cited item's theorem is
+            # reused as-is. Atom prevs never reach rec (they are inlined as
+            # ids below), so this is the only atom case -- the expansion ends
+            # with a single reference line.
+            is_ref = pt.rule == 'atom'
+            if is_ref:
+                assert pt.args is not None, \
+                    "export: atom without a reference id"
+                ids = [pt.args]
+            else:
+                ids = []
+                for prev in pt.prevs:
+                    if prev.rule == 'atom':
+                        ids.append(prev.args)
+                    elif prev.th in seq_to_id:
+                        ids.append(seq_to_id[prev.th])
+                    else:
+                        rec(prev)
+                        ids.append(prf.items[-1].id)
 
-            ids = []
-            for prev in pt.prevs:
-                if prev.rule == 'atom':
-                    ids.append(prev.args)
-                elif prev.th in seq_to_id:
-                    ids.append(seq_to_id[prev.th])
-                else:
-                    rec(prev)
-                    ids.append(prf.items[-1].id)
-            
             if subproof:
                 id = ItemID(prefix.id + (len(prf.items),))
             else:
                 id = ItemID(prefix.id[:-1] + (prefix.id[-1] + len(prf.items),))
 
-            seq_to_id[pt.th] = id
-            prf.add_item(id, pt.rule, args=pt.args, prevs=ids, th=pt.th)
+            if is_ref:
+                # A reference only cites: it does not own the theorem, so
+                # seq_to_id is left untouched.
+                prf.add_item(id, "reference", prevs=ids, th=pt.th)
+            else:
+                seq_to_id[pt.th] = id
+                prf.add_item(id, pt.rule, args=pt.args, prevs=ids, th=pt.th)
 
         # Current id prefix. Used in generating ids.
         if prefix is None:

@@ -5,7 +5,7 @@ import unittest
 from kernel.type import TVar, TFun
 from kernel.term import Var, Term, Eq
 from kernel.thm import Thm
-from kernel.proof import Proof
+from kernel.proof import Proof, ItemID
 from kernel import theory
 from kernel.proofterm import ProofTerm
 
@@ -27,7 +27,7 @@ class ProofTermTest(unittest.TestCase):
 
         prf = pt3.export()
         self.assertEqual(len(prf.items), 3)
-        self.assertEqual(theory.check_proof(prf), pt3.th)
+        self.assertEqual(theory.verify(prf), pt3.th)
 
     def testExport2(self):
         """Repeated theorems."""
@@ -38,7 +38,7 @@ class ProofTermTest(unittest.TestCase):
 
         prf = pt4.export()
         self.assertEqual(len(prf.items), 4)
-        self.assertEqual(theory.check_proof(prf), pt4.th)
+        self.assertEqual(theory.verify(prf), pt4.th)
 
     def testExport3(self):
         """Case with atoms."""
@@ -51,7 +51,24 @@ class ProofTermTest(unittest.TestCase):
         prf.add_item(1, rule="sorry", th=Thm(Eq(y,z)))
         pt3.export(prf=prf)
 
-        self.assertEqual(theory.check_proof(prf), Thm(Eq(x,z)))
+        self.assertEqual(theory.verify(prf), Thm(Eq(x,z)))
+
+    def testExportAtomRoot(self):
+        """An atom root exports as a pure reference line: it re-cites the
+        item it came from and derives nothing of its own, so the kernel
+        replays it as a citation."""
+        pt = ProofTerm.atom(0, Thm(Eq(x, y)))
+
+        prf = Proof()
+        prf.add_item(0, rule="sorry", th=Thm(Eq(x, y)))
+        prf = pt.export(prefix=ItemID(1), prf=prf)
+
+        ref = prf.items[1]
+        self.assertEqual(ref.rule, "reference")
+        self.assertEqual(ref.args, None)
+        self.assertEqual(ref.prevs, [ItemID(0)])
+        self.assertEqual(ref.th, Thm(Eq(x, y)))
+        self.assertEqual(theory.verify(prf), Thm(Eq(x, y)))
 
 
 if __name__ == "__main__":

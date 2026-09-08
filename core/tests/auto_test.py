@@ -46,21 +46,29 @@ class AutoTest(unittest.TestCase):
 
     def testSympySolve(self):
         # Real comparisons closed by the sympy decision procedure.
-        test_macro(self, 'real', 'auto', args="sqrt 2 >= 1", res="sqrt 2 >= 1")
+        # The proof expands to the sympy level-0 oracle (computation
+        # without derivation: audit §7.1 trust set).
+        test_macro(self, 'real', 'auto', args="sqrt 2 >= 1", res="sqrt 2 >= 1",
+                   oracles=frozenset({'sympy'}))
         test_macro(self, 'real', 'auto', args="~((1::real) = 2)",
-                   res="~((1::real) = 2)")
+                   res="~((1::real) = 2)",
+                   oracles=frozenset({'sympy'}))
         # Non-arithmetic variable goal still fails honestly.
         test_macro(self, 'real', 'auto',
                    vars={'C': 'bool'}, args="C", failed=TacticException)
 
     def testOmegaSolve(self):
         # Integer comparisons closed by the omega decision procedure.
+        # The proof expands to the int_const_ineq / int_eval level-0
+        # oracles (computation without derivation: audit §7.1 trust set).
         test_macro(self, 'int', 'auto',
                    vars={'x': 'int', 'y': 'int'},
-                   assms=["x < y"], args="~(y <= x)", res="~(y <= x)")
+                   assms=["x < y"], args="~(y <= x)", res="~(y <= x)",
+                   oracles=frozenset({'int_const_ineq', 'int_eval'}))
         test_macro(self, 'int', 'auto',
                    vars={'x': 'int', 'y': 'int'},
-                   assms=["y < x", "x < y"], args="x <= y", res="x <= y")
+                   assms=["y < x", "x < y"], args="x <= y", res="x <= y",
+                   oracles=frozenset({'int_const_ineq', 'int_eval'}))
         # Satisfiable input fails honestly.
         test_macro(self, 'int', 'auto',
                    vars={'x': 'int', 'y': 'int'},

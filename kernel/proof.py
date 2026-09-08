@@ -30,6 +30,9 @@ class ItemID():
     def __eq__(self, other):
         return isinstance(other, ItemID) and self.id == other.id
 
+    def __hash__(self):
+        return hash(self.id)
+
     def incr_id_after(self, start: "ItemID", n: int) -> "ItemID":
         """Perform the id adjustment necessary for adding n lines before
         start id. The exact logic is as follows:

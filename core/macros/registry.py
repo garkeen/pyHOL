@@ -545,16 +545,25 @@ class auto_close_macro(Macro):
 
     """
     def __init__(self):
-        # An auto_close line only references an already-verified line.
-        # No new derivation is performed, so it is trusted at level 0
-        # (never expanded, always resolved by evaluation).
-        self.level = 0
+        # Pure reference line (audit §7.1: closable, never an oracle);
+        # kernel/replay resolves auto_close lines by citing the fact.
+        self.level = None
         self.sig = None
         self.limit = None
 
     def get_proof_term(self, args, pts):
-        assert args is None and len(pts) == 1, "auto_close_macro"
-        return pts[0]
+        """args is None for an exact citation, or an Inst when the cited
+        fact must be specialized to the current line: the expander
+        computes that instantiation (it owns both theorems), so the
+        auto_close line itself stays argument-free and the specialization
+        is recorded as visible subst_type / substitution primitive lines."""
+        assert len(pts) == 1, "auto_close_macro"
+        pt = pts[0]
+        if args:
+            if args.tyinst:
+                pt = pt.subst_type(args.tyinst)
+            pt = pt.substitution(args)
+        return pt
 
 
 # Register all domain-independent core macros

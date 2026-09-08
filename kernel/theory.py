@@ -321,137 +321,45 @@ class Theory:
         else:
             raise TypeError
 
-    def _check_proof_item(self, prf, seq, rpt, no_gaps, compute_only, check_level):
-        """Check a single proof item.
+    def verify(self, prf, *, axioms=frozenset()):
+        """Kernel half of verify (audit §7.1): pure primitive replay
+        with assumption rules. Macros must be expanded by core/verify.py
+        first; macro lines raise CheckProofException.
 
-        prf -- proof to be checked.
-        seq -- proof item to be checked.
-        rpt -- report for proof-checking. Modified by the function.
-        no_gaps -- disable gaps.
-        compute_only -- only executes rule if theorem is not present.
-        check_level -- trust level for proof checking. Trust all macros
-            with macro.level <= self.check_level.
-        
+        axioms is injected (the kernel reads no status table). The report
+        and the macro-aware options (no_gaps, trust, compute_only) live in
+        the core half and are not part of this signature.
         """
-        if seq.rule == "":
-            # Empty line in the proof
-            return None
+        from kernel import replay as _replay_mod
+        from kernel.replay import ReplayException
 
-        if seq.rule == "sorry":
-            # Gap in the proof
-            assert seq.th is not None, "sorry must have explicit statement."
-            if no_gaps:
-                raise CheckProofException("gaps are not allowed")
-            if rpt is not None:
-                rpt.add_gap(seq.th)
-            return None
-
-        if compute_only and seq.th is not None:
-            # In compute_only mode, skip when a theorem exists. However,
-            # subproofs still need to be checked.
-            if seq.rule == "subproof":
-                for s in seq.subproof.items:
-                    self._check_proof_item(prf, s, rpt, no_gaps, compute_only, check_level)
-            return None
-
-        if seq.rule == "theorem":
-            # Copies an existing theorem in the theory into the proof.
-            try:
-                res_th = self.get_theorem(seq.args)
-                if rpt is not None:
-                    rpt.apply_theorem(seq.args)
-            except TheoryException:
-                raise CheckProofException("theorem not found")
-        elif seq.rule == "variable":
-            # Declares a variable. Skip check.
-            nm, T = seq.args
-            res_th = Thm.mk_VAR(Var(nm, T))
-        elif seq.rule == "subproof":
-            for s in seq.subproof.items:
-                self._check_proof_item(prf, s, rpt, no_gaps, compute_only, check_level)
-            res_th = seq.subproof.items[-1].th
-        else:
-            # Otherwise, apply one of the proof methods. First, we
-            # obtain list of previous sequents used by the proof method:
-            prev_ths = []
-            assert isinstance(seq.prevs, list), "prevs should be a list"
-            for prev in seq.prevs:
-                if not seq.id.can_depend_on(prev):
-                    raise CheckProofException("id %s cannot depend on %s" % (seq.id, prev))
-                try:
-                    prev_ths.append(prf.find_item(prev).th)
-                except ProofStateException:
-                    raise CheckProofException("previous item not found")
-            
-            for prev, prev_th in zip(seq.prevs, prev_ths):
-                if prev_th is None:
-                    raise CheckProofException("previous theorem %s is None" % prev)
-
-            if seq.rule in primitive_deriv:
-                # If the method is one of the primitive derivations, obtain and
-                # apply that primitive derivation.
-                rule_fun, _ = primitive_deriv[seq.rule]
-                try:
-                    res_th = rule_fun(*prev_ths) if seq.args is None else rule_fun(seq.args, *prev_ths)
-                    if rpt is not None:
-                        rpt.apply_primitive_deriv()
-                except InvalidDerivationException:
-                    raise CheckProofException("invalid derivation")
-                except TypeError:
-                    raise CheckProofException("invalid input to derivation " + seq.rule)
-
-            elif has_macro(seq.rule):
-                # Otherwise, the proof method corresponds to a macro. If
-                # the level of the macro is less than or equal to the current
-                # trust level, simply evaluate the macro to check that results
-                # match. Otherwise, expand the macro and check all of the steps.
-                macro = get_macro(seq.rule)
-                assert macro.level is None or (isinstance(macro.level, int) and macro.level >= 0), \
-                    ("check_proof: invalid macro level " + str(macro.level))
-                if macro.level is not None and macro.level <= check_level:
-                    res_th = macro.eval(seq.args, prev_ths)
-                    if rpt is not None:
-                        rpt.eval_macro(seq.rule)
-                else:
-                    seq.subproof = macro.expand(seq.id, seq.args, list(zip(seq.prevs, prev_ths)))
-                    if rpt is not None:
-                        rpt.expand_macro(seq.rule)
-                    for s in seq.subproof.items:
-                        self._check_proof_item(prf, s, rpt, no_gaps, compute_only, check_level)
-                    res_th = seq.subproof.items[-1].th
-                    seq.subproof = None
-            else:
-                raise CheckProofException("proof method not found: " + seq.rule)
-
-        if seq.th is None:
-            # No expected theorem is provided
-            seq.th = res_th
-        elif not res_th.can_prove(seq.th):
-            # Resulting res_th is OK as long as the conclusion is the same,
-            # and the assumptions is a subset of that of seq.th.
-            raise CheckProofException("output does not match\n" + str(seq.th) + "\n vs.\n" + str(res_th))
-
-        # Check the current statement is correctly typed.
+        assert isinstance(prf, Proof), "verify"
         try:
-            seq.th.check_thm_type()
-        except TypeCheckException:
-            raise CheckProofException("typing error")
+            res_th, holes = _replay_mod.replay(prf, axioms=axioms)
+        except ReplayException as e:
+            raise CheckProofException(e.msg)
 
-        return None
-
-    def check_proof(self, prf, rpt=None, *, no_gaps=False, compute_only=False, check_level=0):
-        """Verify the given proof object. Returns the final theorem if check
-        passes. Otherwise throws CheckProofException.
-
-        prf -- proof to be checked.
-        rpt -- report for proof-checking. Modified by the function.
-        
-        """
-        assert isinstance(prf, Proof), "check_proof"
-        for seq in prf.items:
-            self._check_proof_item(prf, seq, rpt, no_gaps, compute_only, check_level)
-
-        return prf.items[-1].th
+        # Final theorem = last non-empty line's statement. can_prove
+        # accepts weaker hypotheses (the line may state more); stronger
+        # is rejected. Typing is checked once at the end.
+        last = None
+        for seq in reversed(prf.items):
+            if seq.rule != "":
+                last = seq
+                break
+        if last is not None:
+            if last.th is None:
+                last.th = res_th
+            elif not res_th.can_prove(last.th):
+                raise CheckProofException(
+                    "output does not match\n%s\n vs.\n%s"
+                    % (last.th, res_th))
+            try:
+                last.th.check_thm_type()
+            except TypeCheckException:
+                raise CheckProofException("typing error")
+            return last.th
+        return res_th
 
     def get_proof_rule_sig(self, name):
         """Obtain the argument signature of the proof rule."""
@@ -459,7 +367,7 @@ class Theory:
             return str
         elif name == "variable":
             return Tuple[str, Type]
-        elif name == "sorry" or name == "subproof":
+        elif name in ("sorry", "subproof", "reference"):
             return None
         elif name in primitive_deriv:
             _, sig = primitive_deriv[name]
@@ -513,7 +421,7 @@ class Theory:
                 self.extend_constant(ext)
             elif ext.is_theorem():
                 if ext.prf:
-                    self.check_proof(ext.prf)
+                    self.verify(ext.prf)
                 else:  # No proof - add as axiom
                     ext_report.add_axiom(ext.name, ext.th)
 
@@ -577,8 +485,14 @@ def print_theorem(*args):
     for name in args:
         print('%s: %s' % (name, get_theorem(name, svar=False)))
 
-def check_proof(prf, rpt=None, *, no_gaps=False, compute_only=False, check_level=0):
-    return thy.check_proof(prf, rpt, no_gaps=no_gaps, compute_only=compute_only, check_level=check_level)
+def verify(prf, *, axioms=frozenset()):
+    """Verify the given proof against the current global theory.
+
+    Kernel half of the split (audit §7.1); the macro-aware core half
+    lives in core/verify.py. Axiom names are injected (axioms) -- the
+    kernel reads no status table.
+    """
+    return thy.verify(prf, axioms=axioms)
 
 
 """Global store of macros. Keys are names of the macros,

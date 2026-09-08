@@ -12,6 +12,7 @@ from kernel.proofterm import ProofTerm
 from core import basic
 from core import tactic
 from core import context
+from core import verify as core_verify
 from syntax import parser
 
 
@@ -41,7 +42,7 @@ class TacticTest(unittest.TestCase):
         # Export and check proof
         prefix = ItemID(len(prevs)-1) if len(prevs) > 0 else ItemID(len(prevs))
         prf = pt.export(prefix=prefix, prf=prf, subproof=False)
-        self.assertEqual(theory.check_proof(prf), Thm(goal, assms))
+        self.assertEqual(core_verify.verify(prf), Thm(goal, assms))
 
         # Test agreement of new goals
         new_goals = [context.parse_term(new_goal)
