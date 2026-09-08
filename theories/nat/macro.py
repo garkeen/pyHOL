@@ -10,7 +10,7 @@ from kernel.thm import oracle_thm
 from kernel import theory
 from kernel.theory import register_macro
 from kernel.macro import Macro
-from kernel.proofterm import ProofTerm, refl
+from kernel.proofterm import ProofTerm, refl, eval_macro
 from core import auto
 from core.logic import apply_theorem
 from core.conv import arg_conv, binop_conv, rewr_conv
@@ -146,7 +146,7 @@ class nat_const_ineq_macro(Macro):
         return pt.on_prop(arg_conv(binop_conv(rewr_of_nat_conv(sym=True))))
 
 def nat_const_ineq(a, b):
-    return ProofTerm("nat_const_ineq", Not(Eq(a, b)), [])
+    return eval_macro("nat_const_ineq", Not(Eq(a, b)), [])
 
 
 @register_macro('nat_const_less_eq')
@@ -177,7 +177,7 @@ class nat_const_less_eq_macro(Macro):
         return ex_eq.on_prop(rewr_conv('less_eq_exist', sym=True))
 
 def nat_less_eq(t1, t2):
-    return ProofTerm("nat_const_less_eq", t1 <= t2)
+    return eval_macro("nat_const_less_eq", t1 <= t2)
 
 @register_macro('nat_const_less')
 class nat_const_less_macro(Macro):
@@ -197,4 +197,4 @@ class nat_const_less_macro(Macro):
         return apply_theorem("less_lesseqI", less_eq_pt, ineq_pt)
 
 def nat_less(t1, t2):
-    return ProofTerm("nat_const_less", t1 < t2)
+    return eval_macro("nat_const_less", t1 < t2)

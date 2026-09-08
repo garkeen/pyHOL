@@ -16,7 +16,7 @@ from kernel.term import Term
 from kernel.thm import oracle_thm
 from kernel.macro import Macro
 from kernel.theory import register_macro, get_macro
-from kernel.proofterm import ProofTerm, TacticException
+from kernel.proofterm import ProofTerm, TacticException, eval_macro
 from theories.real import conv as real
 from util import set as hol_set
 from core import auto

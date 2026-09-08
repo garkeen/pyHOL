@@ -8,7 +8,7 @@ from kernel.term import Term
 from kernel.thm import oracle_thm
 from kernel.macro import Macro
 from kernel.theory import register_macro, get_theorem
-from kernel.proofterm import ProofTerm, refl
+from kernel.proofterm import ProofTerm, refl, eval_macro
 from syntax.numeral import IntType, Int, greater, less
 from syntax.logicops import Not
 from core import matcher
@@ -235,16 +235,16 @@ def int_multiple_ineq_equiv_proof(prevs):
     rhs_mul = int(lhs_coeff[0] / gcd(lhs_coeff[0], rhs_coeff[0]))
 
     if lhs_mul > 0:
-        pt_lhs_mul = ProofTerm('int_const_ineq', greater(IntType)(Int(lhs_mul), Int(0)))
+        pt_lhs_mul = eval_macro('int_const_ineq', greater(IntType)(Int(lhs_mul), Int(0)))
 
     if lhs_mul < 0:
-        pt_lhs_mul = ProofTerm('int_const_ineq', less(IntType)(Int(lhs_mul), Int(0)))
+        pt_lhs_mul = eval_macro('int_const_ineq', less(IntType)(Int(lhs_mul), Int(0)))
 
     if rhs_mul > 0:
-        pt_rhs_mul = ProofTerm('int_const_ineq', greater(IntType)(Int(rhs_mul), Int(0)))
+        pt_rhs_mul = eval_macro('int_const_ineq', greater(IntType)(Int(rhs_mul), Int(0)))
 
     if rhs_mul < 0:
-        pt_rhs_mul = ProofTerm('int_const_ineq', less(IntType)(Int(rhs_mul), Int(0)))
+        pt_rhs_mul = eval_macro('int_const_ineq', less(IntType)(Int(rhs_mul), Int(0)))
 
     pt_lhs_mul = int_ineq_mul_const_proof(pt_lhs_mul, p1)
     pt_rhs_mul = int_ineq_mul_const_proof(pt_rhs_mul, p2)

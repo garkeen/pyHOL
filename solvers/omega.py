@@ -1,3 +1,4 @@
+from kernel.proofterm import eval_macro
 """
 Implementation of Omega Test decision procedure.
 
@@ -776,9 +777,9 @@ class OmegaHOL:
             c is a number, return a pt: c ⋈ 0
             """
             if c > 0:
-                return proofterm.ProofTerm('int_const_ineq', numeral.greater(numeral.IntType)(numeral.Int(c), numeral.Int(0)))
+                return proofterm.eval_macro('int_const_ineq', numeral.greater(numeral.IntType)(numeral.Int(c), numeral.Int(0)))
             else:
-                return proofterm.ProofTerm('int_const_ineq', numeral.less(numeral.IntType)(numeral.Int(c), numeral.Int(0)))
+                return proofterm.eval_macro('int_const_ineq', numeral.less(numeral.IntType)(numeral.Int(c), numeral.Int(0)))
         
         def ineq_mul_const(c, pt):
             assert c != 0
@@ -792,7 +793,7 @@ class OmegaHOL:
         pt_final = logic.apply_theorem('int_pos_plus', pt1_mul_c1, pt2_mul_c2).on_prop(conv.arg_conv(integer.omega_simp_full_conv()))
 
         if pt_final.prop.arg.is_number(): # ⊢ 0 <= -3
-            pt_less_zero = proofterm.ProofTerm('int_const_ineq', numeral.less(numeral.IntType)(pt_final.prop.arg, numeral.Int(0)))
+            pt_less_zero = proofterm.eval_macro('int_const_ineq', numeral.less(numeral.IntType)(pt_final.prop.arg, numeral.Int(0)))
             return logic.apply_theorem('int_zero_less_eq_neg', pt_less_zero, pt_final)
         else:
             return pt_final
@@ -801,7 +802,7 @@ class OmegaHOL:
         fact = term_to_factoid(vars, pt.prop)
         g = functools.reduce(gcd, fact[:-1])
         assert g > 1
-        pt1 = proofterm.ProofTerm('int_const_ineq', numeral.Int(g) > numeral.Int(0))
+        pt1 = proofterm.eval_macro('int_const_ineq', numeral.Int(g) > numeral.Int(0))
         pt2 = pt
         elim_gcd_fact = [floor(i / g) for i in fact]
         if int(fact[-1] / g) != fact[-1] / g:    
@@ -814,8 +815,8 @@ class OmegaHOL:
             pt3 = integer.int_norm_conv().get_proof_term(g * elim_gcd_no_constant).transitive(
                         integer.int_norm_conv().get_proof_term(original_no_constant).symmetric())
             n = floor(-fact[-1] / g)
-            pt4 = proofterm.ProofTerm('int_const_ineq', numeral.Int(g) * numeral.Int(n) + fact[-1] < 0)
-            pt5 = proofterm.ProofTerm('int_const_ineq', numeral.Int(g) * (numeral.Int(n) + numeral.Int(1)) + fact[-1] > 0)
+            pt4 = proofterm.eval_macro('int_const_ineq', numeral.Int(g) * numeral.Int(n) + fact[-1] < 0)
+            pt5 = proofterm.eval_macro('int_const_ineq', numeral.Int(g) * (numeral.Int(n) + numeral.Int(1)) + fact[-1] > 0)
             pt6 = integer.int_eval_conv().get_proof_term(-(numeral.Int(n) + numeral.Int(1)))
             return logic.apply_theorem('int_gcd', pt1, pt2, pt3, pt4, pt5).on_prop(
                 conv.top_sweep_conv(conv.rewr_conv(pt6)),
@@ -846,7 +847,7 @@ class OmegaHOL:
         pt1 = lower
         pt2 = upper.on_prop(conv.top_sweep_conv(conv.rewr_conv(pt_eq)))
         lower_bound, upper_bound = -numeral.Int(integer.int_eval(lower.prop.arg.arg)), numeral.Int(integer.int_eval(upper.prop.arg.arg))
-        pt3 = proofterm.ProofTerm('int_const_ineq', numeral.greater(numeral.IntType)(lower_bound, upper_bound))
+        pt3 = proofterm.eval_macro('int_const_ineq', numeral.greater(numeral.IntType)(lower_bound, upper_bound))
         return logic.apply_theorem('int_comp_contr', pt1, pt2, pt3)
 
     def handle_unsat_result(self, res):

@@ -15,7 +15,7 @@ from theories.function import conv as function_conv
 from theories.logic.logic import norm_bool_expr
 from core.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_conv, binop_conv, \
     every_conv, rewr_conv, assums_conv, beta_norm
-from kernel.proofterm import ProofTerm
+from kernel.proofterm import ProofTerm, eval_macro
 from core.logic import apply_theorem
 from core.tactic import Tactic
 from syntax import pprint, settings
@@ -246,7 +246,7 @@ class vcg_tactic(Tactic):
         pt = vcg_norm(T, goal.prop)
 
         ptAs = [Goal(A, goal.hyps).sorry() for A in pt.assums]
-        return ProofTerm("vcg", goal.prop, ptAs)
+        return eval_macro("vcg", goal.prop, ptAs)
 
 
 # Register vcg as a method so imp_compile can reference it
@@ -280,8 +280,8 @@ def vcg_solve(goal):
 
     T = Q.get_type().domain_type()
     pt = vcg_norm(T, goal)
-    vc_pt = [ProofTerm("z3", vc, []) for vc in pt.assums]
-    return ProofTerm("vcg", goal, vc_pt)
+    vc_pt = [eval_macro("z3", vc, []) for vc in pt.assums]
+    return eval_macro("vcg", goal, vc_pt)
 
 
 @register_method('vcg')

@@ -9,7 +9,7 @@ from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, Eq, 
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import term_ord
 from kernel import theory
-from kernel.proofterm import ProofTerm, refl
+from kernel.proofterm import ProofTerm, refl, eval_macro
 from core import matcher
 from syntax.logicops import true, false, neg, conj, disj, Not, And, Or, \
     exists, Exists  # noqa: F401  (re-export; also installs Term methods)
@@ -151,7 +151,7 @@ def apply_theorem(th_name: str, *pts: ProofTerm, concl=None, inst=None) -> Proof
     typecheck.checkinstance('apply_theorem', pts, [ProofTerm])
     if concl is None and inst is None:
         # Normal case, can use apply_theorem
-        return ProofTerm("apply_theorem", th_name, pts)
+        return eval_macro("apply_theorem", th_name, pts)
     else:
         pt = ProofTerm.theorem(th_name)
         if inst is None:
@@ -160,7 +160,7 @@ def apply_theorem(th_name: str, *pts: ProofTerm, concl=None, inst=None) -> Proof
             inst = matcher.first_order_match(pt.concl, concl, inst)
         for i, prev in enumerate(pts):
             inst = matcher.first_order_match(pt.assums[i], prev.prop, inst)
-        return ProofTerm("apply_theorem_for", (th_name, inst), pts)
+        return eval_macro("apply_theorem_for", (th_name, inst), pts)
 
 def strip_disj(t):
     res = []

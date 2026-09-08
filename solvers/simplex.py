@@ -13,7 +13,7 @@ Bruno Dutertre and Leonardo de Moura. A Fast Linear-Arithmetic Solver for DPLL(T
 from kernel.term import Term, Var, Inst, Eq, Const, TFun
 from syntax.numeral import Int, greater_eq, Real, less_eq, minus, greater, less, of_int
 from syntax.numeral import RealType, IntType
-from kernel.proofterm import ProofTerm
+from kernel.proofterm import ProofTerm, eval_macro
 from kernel.theory import register_macro, Thm, get_theorem
 from kernel.macro import Macro
 from core.logic import apply_theorem
@@ -987,7 +987,7 @@ class SimplexHOLWrapper:
             old_assertion = self.upper_bound_pts[x]
             old_upper_bound = real.real_eval(old_assertion.prop.arg)
             if old_upper_bound >= upper_bound:
-                pt_less = ProofTerm('real_compare', less_eq(RealType)(Real(upper_bound), Real(old_upper_bound)))
+                pt_less = eval_macro('real_compare', less_eq(RealType)(Real(upper_bound), Real(old_upper_bound)))
                 self.upper_bound_pts[x] = apply_theorem('real_leq_comp1', upper_bound_pt, old_assertion, pt_less)
             new_upper_bound = upper_bound if (old_upper_bound >= upper_bound) else old_upper_bound
         else:
@@ -1000,7 +1000,7 @@ class SimplexHOLWrapper:
             lower_assertion = self.lower_bound_pts[x]
             lower_bound = real.real_eval(lower_assertion.prop.arg)
             if lower_bound > new_upper_bound: # incosistency
-                pt_up_less_low = ProofTerm('real_compare', less(RealType)(Real(new_upper_bound), Real(lower_bound)))
+                pt_up_less_low = eval_macro('real_compare', less(RealType)(Real(new_upper_bound), Real(lower_bound)))
                 pt_contr = apply_theorem('real_comp_contr1', pt_up_less_low, lower_assertion, self.upper_bound_pts[x])
                 self.unsat[x] = self.elim_aux_vars(pt_contr)
                 raise AssertUpperException(str(pt_contr))
@@ -1020,7 +1020,7 @@ class SimplexHOLWrapper:
             old_assertion = self.lower_bound_pts[x]
             old_lower_bound = real.real_eval(old_assertion.prop.arg)
             if old_lower_bound <= lower_bound:
-                pt_greater = ProofTerm('real_compare', greater_eq(RealType)(Real(lower_bound), Real(old_lower_bound)))
+                pt_greater = eval_macro('real_compare', greater_eq(RealType)(Real(lower_bound), Real(old_lower_bound)))
                 self.lower_bound_pts[x] = apply_theorem('real_geq_comp2', old_assertion, lower_bound_pt, pt_greater)
             new_lower_bound = lower_bound if (old_lower_bound <= lower_bound) else old_lower_bound
         else:
@@ -1033,7 +1033,7 @@ class SimplexHOLWrapper:
             upper_assertion = self.upper_bound_pts[x]
             upper_bound = real.real_eval(upper_assertion.prop.arg)
             if upper_bound < new_lower_bound: # incosistency
-                pt_up_less_low = ProofTerm('real_compare', less(RealType)(Real(upper_bound), Real(new_lower_bound)))
+                pt_up_less_low = eval_macro('real_compare', less(RealType)(Real(upper_bound), Real(new_lower_bound)))
                 pt_contr = apply_theorem('real_comp_contr1', pt_up_less_low, self.lower_bound_pts[x], upper_assertion)
                 self.unsat[x] = self.elim_aux_vars(pt_contr)
                 raise AssertLowerException(str(pt_contr))
@@ -1118,7 +1118,7 @@ class SimplexHOLWrapper:
                 # the coefficient must < 0, so coeff * upper_bound is coeff * x 's lower bound 
                 coeff = self.simplex.aij(contr_var.name, var.name)
                 assert coeff < 0
-                pt_coeff_less_zero = ProofTerm('real_compare', less(RealType)(Real(coeff), Real(0)))
+                pt_coeff_less_zero = eval_macro('real_compare', less(RealType)(Real(coeff), Real(0)))
                 # ⊢ x <= u --> a < 0 --> a * u <= a * x
                 pt_lower_bound = apply_theorem('real_leq_mul_neg', upper_bound, pt_coeff_less_zero)
                 # pt_lower_bound_2 = ProofTerm.implies_elim(upper_bound, pt_lower_bound_1)
@@ -1129,7 +1129,7 @@ class SimplexHOLWrapper:
                 # the coefficient must > 0, so coeff * lower_bound is coeff * x 's lower bound 
                 coeff = self.simplex.aij(contr_var.name, var.name)
                 assert coeff > 0
-                pt_coeff_greater_zero = ProofTerm('real_compare', greater(RealType)(Real(coeff), Real(0)))
+                pt_coeff_greater_zero = eval_macro('real_compare', greater(RealType)(Real(coeff), Real(0)))
                 # ⊢ x >= l --> a > 0 --> a * l <= a * x
                 pt_lower_bound = apply_theorem('real_geq_mul_pos', lower_bound, pt_coeff_greater_zero)
                 # pt_lower_bound_2 = ProofTerm.implies_elim(lower_bound, pt_lower_bound_1)
@@ -1152,7 +1152,7 @@ class SimplexHOLWrapper:
             lower_bound_value = pt_comb.prop.arg1
             upper_bound_pt = self.upper_bound_pts[contr_var]
             upper_bound_value = upper_bound_pt.prop.arg
-            pt_upper_less_lower = ProofTerm('real_compare', upper_bound_value < lower_bound_value)
+            pt_upper_less_lower = eval_macro('real_compare', upper_bound_value < lower_bound_value)
             pt_concl = self.elim_aux_vars(apply_theorem('real_comp_contr2', pt_upper_less_lower, pt_comb, upper_bound_pt))
             self.unsat[contr_var] = pt_concl
 
@@ -1165,7 +1165,7 @@ class SimplexHOLWrapper:
                 # the coefficient must > 0, so coeff * upper_bound is coeff * x 's upper bound 
                 coeff = self.simplex.aij(contr_var.name, var.name)
                 assert coeff > 0
-                pt_coeff_greater_zero = ProofTerm('real_compare', greater(RealType)(Real(coeff), Real(0)))
+                pt_coeff_greater_zero = eval_macro('real_compare', greater(RealType)(Real(coeff), Real(0)))
                 # ⊢ x <= u --> a > 0 --> a * x <= a * u
                 pt_upper_bound = apply_theorem('real_leq_mul_pos', upper_bound, pt_coeff_greater_zero)
                 ineq_atom_pts.append(pt_upper_bound)
@@ -1174,7 +1174,7 @@ class SimplexHOLWrapper:
                 # the coefficient must < 0, so coeff * lower_bound is coeff * x 's upper bound 
                 coeff = self.simplex.aij(contr_var.name, var.name)
                 assert coeff < 0
-                pt_coeff_greater_zero = ProofTerm('real_compare', less(RealType)(Real(coeff), Real(0)))
+                pt_coeff_greater_zero = eval_macro('real_compare', less(RealType)(Real(coeff), Real(0)))
                 # ⊢ x >= l --> a < 0 --> a * x <= a * l
                 pt_lower_bound = apply_theorem('real_geq_mul_less', lower_bound, pt_coeff_greater_zero)
                 ineq_atom_pts.append(pt_lower_bound)
@@ -1195,7 +1195,7 @@ class SimplexHOLWrapper:
             upper_bound_value = pt_comb.prop.arg
             lower_bound_pt = self.lower_bound_pts[contr_var]
             lower_bound_value = lower_bound_pt.prop.arg
-            pt_upper_less_lower = ProofTerm('real_compare', upper_bound_value < lower_bound_value)
+            pt_upper_less_lower = eval_macro('real_compare', upper_bound_value < lower_bound_value)
             pt_concl = self.elim_aux_vars(apply_theorem('real_comp_contr1', pt_upper_less_lower, lower_bound_pt, pt_comb))            
             self.unsat[contr_var] = pt_concl
 

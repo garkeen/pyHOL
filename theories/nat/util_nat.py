@@ -9,7 +9,7 @@ from syntax.numeral import Binary, Nat
 from syntax.logicops import Not
 from kernel.thm import Thm
 from kernel import theory
-from kernel.proofterm import ProofTerm
+from kernel.proofterm import ProofTerm, eval_macro
 from core.logic import apply_theorem
 from util import poly
 from theories.nat.conv import (
@@ -103,10 +103,10 @@ def ineq_proof_term(m, n):
         return apply_theorem("ineq_sym", ineq_proof_term(n, m))
 
 def nat_const_ineq(a, b):
-    return ProofTerm("nat_const_ineq", Not(Eq(a, b)), [])
+    return eval_macro("nat_const_ineq", Not(Eq(a, b)), [])
 
 def nat_less_eq(t1, t2):
-    return ProofTerm("nat_const_less_eq", t1 <= t2)
+    return eval_macro("nat_const_less_eq", t1 <= t2)
 
 def nat_less(t1, t2):
-    return ProofTerm("nat_const_less", t1 < t2)
+    return eval_macro("nat_const_less", t1 < t2)

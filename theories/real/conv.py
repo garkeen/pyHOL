@@ -10,7 +10,7 @@ from syntax.numeral import RealType
 from kernel import term
 from kernel.term import Term, Const, Eq
 from syntax.numeral import Nat, Real, Sum, Prod
-from kernel.proofterm import TacticException
+from kernel.proofterm import TacticException, eval_macro
 from kernel import term_ord
 from theories.nat import util_nat as nat
 from theories.integer import util_integer as integer
@@ -205,7 +205,7 @@ class real_eval_conv(Conv):
             return refl(t)
         if simp_t == t:
             return refl(t)
-        return ProofTerm('real_eval', Eq(t, simp_t))
+        return eval_macro('real_eval', Eq(t, simp_t))
 
 
 """Normalization of polynomials.
@@ -738,7 +738,7 @@ class real_norm_conv(Conv):
         if t2 == t:
             return refl(t)
         else:
-            return ProofTerm('real_norm', Eq(t, t2))
+            return eval_macro('real_norm', Eq(t, t2))
 
 
 def is_real_ineq(tm):
@@ -797,7 +797,7 @@ class norm_neg_real_ineq_conv(Conv):
 
 class real_const_eq_conv(Conv):
     def get_proof_term(self, t):
-        return ProofTerm('real_const_eq', t)
+        return eval_macro('real_const_eq', t)
 
 class real_norm_comparison(Conv):
     """Given an real comparison(including equation and inequation), move all term to

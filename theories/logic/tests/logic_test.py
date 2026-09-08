@@ -11,7 +11,7 @@ from kernel.proof import Proof
 from kernel.report import ProofReport
 from kernel import theory
 from kernel.macro import Macro
-from kernel.proofterm import ProofTerm
+from kernel.proofterm import ProofTerm, eval_macro
 from core.logic import get_forall_names
 from theories.logic.logic import norm_bool_expr, norm_conj_assoc, conj_norm, disj_norm
 from core import basic
@@ -142,7 +142,7 @@ class LogicTest(unittest.TestCase):
         pt2 = ProofTerm.variable('x', Ta)
         pt3 = ProofTerm.assume(P(x))
         pt4 = ProofTerm.sorry(Thm(C, P(x)))
-        pt4 = ProofTerm('intros', args=[ex_P], prevs=[pt1, pt2, pt3, pt4])
+        pt4 = eval_macro('intros', args=[ex_P], prevs=[pt1, pt2, pt3, pt4])
         prf = pt4.export()
         self.assertEqual(theory.check_proof(prf), Thm(C, ex_P))
 

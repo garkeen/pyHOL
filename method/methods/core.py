@@ -11,7 +11,7 @@ from kernel.thm import Thm, InvalidDerivationException
 from kernel import report
 from kernel.proof import ProofItem, ItemID, Proof, ProofStateException
 from kernel import theory
-from kernel.proofterm import ProofTerm, TacticException
+from kernel.proofterm import ProofTerm, TacticException, eval_macro
 from core import matcher
 from core import logic
 from core import context
@@ -356,7 +356,7 @@ class ProofState():
         else:
             macro_args = (cur_item.th.prop,) + tuple(args)
 
-        pt = ProofTerm(macro_name, macro_args, prevs)
+        pt = eval_macro(macro_name, macro_args, prevs)
         return self._finish_backward(id, pt)
 
     def assume_line(self, id, prop):

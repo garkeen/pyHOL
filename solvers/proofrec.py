@@ -15,7 +15,7 @@ from syntax.numeral import NatType, IntType, RealType
 from kernel.term import *
 from syntax.numeral import *  # noqa: F401,F403  (numeral sugar moved out of kernel)
 from syntax.logicops import *  # noqa: F401,F403  (logic sugar moved out of kernel)
-from kernel.proofterm import ProofTerm, refl
+from kernel.proofterm import ProofTerm, refl, eval_macro
 from kernel.macro import Macro
 from kernel.theory import check_proof, register_macro
 from kernel import theory
@@ -56,9 +56,9 @@ def mk_int_const_ineq_pt(value):
 
     """
     if value > 0:
-        return ProofTerm('int_const_ineq', greater(IntType)(Int(value), Int(0)))
+        return eval_macro('int_const_ineq', greater(IntType)(Int(value), Int(0)))
     else:
-        return ProofTerm('int_const_ineq', less(IntType)(Int(value), Int(0)))
+        return eval_macro('int_const_ineq', less(IntType)(Int(value), Int(0)))
 
 
 conj_expr = dict()

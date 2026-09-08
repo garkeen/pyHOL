@@ -10,7 +10,7 @@ from kernel.term import Term, Var, Eq
 from kernel.thm import oracle_thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
-from kernel.proofterm import refl, ProofTerm
+from kernel.proofterm import refl, ProofTerm, eval_macro
 from syntax.numeral import RealType, Real
 from syntax.logicops import true, false, Not, Exists
 from core import matcher
@@ -189,14 +189,14 @@ def _min_positive_proof(pts):
                     pts[1:], pts[0])
 
      # ⊢ 0 < 2
-    two_pos_pt = ProofTerm("real_compare", Real(0) < Real(2))
+    two_pos_pt = eval_macro("real_compare", Real(0) < Real(2))
 
     # ⊢ min(...) / 2 > 0
     min_divides_two_pos = logic.apply_theorem("real_lt_div",
             min_pos_pt.on_prop(rewr_conv("real_ge_to_le")), two_pos_pt).on_prop(rewr_conv("real_ge_to_le", sym=True))
 
     # ⊢ 2 ≥ 1
-    two_larger_one = ProofTerm("real_compare", Real(2) >= Real(1))
+    two_larger_one = eval_macro("real_compare", Real(2) >= Real(1))
 
     # ⊢ min(...) ≥ min(...) / 2
     larger_half_pt = logic.apply_theorem("real_divides_larger_1", two_larger_one, min_pos_pt)
@@ -236,7 +236,7 @@ def _geq_bounds_proof(pt_lower_bound, pts, delta):
         else:
             expr = greater_eq(ineq.arg1, Real(0)+delta)
 
-        pt_eq_comp = ProofTerm("real_eq_comparison", Eq(ineq, expr))
+        pt_eq_comp = eval_macro("real_eq_comparison", Eq(ineq, expr))
         geq_pt.insert(0, pt_2.on_prop(replace_conv(pt_eq_comp)))
 
         if i != len(pts) - 1:
@@ -254,14 +254,14 @@ def _max_negative_proof(pts):
                     pts[1:], pts[0])
 
     # ⊢ 0 < 2
-    two_pos_pt = ProofTerm("real_compare", Real(2) > Real(0))
+    two_pos_pt = eval_macro("real_compare", Real(2) > Real(0))
 
     # ⊢ max(...) / 2 < 0
     max_divides_two_pos = logic.apply_theorem("real_neg_div_pos",
             max_pos_pt, two_pos_pt)
 
     # ⊢ 2 ≥ 1
-    two_larger_one = ProofTerm("real_compare", Real(2) >= Real(1))
+    two_larger_one = eval_macro("real_compare", Real(2) >= Real(1))
 
     # ⊢ max(...) ≤ max(...) / 2
     less_half_pt = logic.apply_theorem("real_neg_divides_larger_1", two_larger_one, max_pos_pt)
@@ -300,7 +300,7 @@ def _leq_bounds_proof(pt_upper_bound, pts, delta):
         else:
             expr = less_eq(ineq.arg1, Real(0)-delta)
 
-        pt_eq_comp = ProofTerm("real_eq_comparison", Eq(ineq, expr))
+        pt_eq_comp = eval_macro("real_eq_comparison", Eq(ineq, expr))
         leq_pt.insert(0, pt_2.on_prop(replace_conv(pt_eq_comp)))
         if i != len(pts) - 1:
             pt_b = pt_1

@@ -12,7 +12,7 @@ from kernel import theory
 from kernel import term_ord
 from core.conv.core import Conv, ConvException, all_conv, rewr_conv, \
     then_conv, arg_conv, arg1_conv, binop_conv
-from kernel.proofterm import ProofTerm, refl
+from kernel.proofterm import ProofTerm, refl, eval_macro
 
 
 # Basic definitions
@@ -174,7 +174,7 @@ class nat_eval_conv(Conv):
         simp_t = Nat(nat_eval(t))
         if simp_t == t:
             return refl(t)
-        return ProofTerm('nat_eval', Eq(t, simp_t))
+        return eval_macro('nat_eval', Eq(t, simp_t))
 
 
 # Normalization on the semiring.

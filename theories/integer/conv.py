@@ -6,7 +6,7 @@ from syntax.numeral import Int, Sum, Prod, less, less_eq, greater, greater_eq, i
 from syntax.logicops import Not
 from kernel import term_ord
 from kernel import theory
-from kernel.proofterm import ProofTerm, refl
+from kernel.proofterm import ProofTerm, refl, eval_macro
 from kernel.proofterm import ProofTerm
 from kernel.report import ProofReport
 from core import basic
@@ -115,7 +115,7 @@ class int_eval_conv(Conv):
         if simp_t == t:
             return refl(t)
         else:
-            return ProofTerm('int_eval', Eq(t, int_eval(t)))
+            return eval_macro('int_eval', Eq(t, int_eval(t)))
 
 def convert_to_poly(t):
     """Convert an integer term t to polynomial normal form."""

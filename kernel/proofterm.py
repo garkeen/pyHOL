@@ -54,11 +54,13 @@ class ProofTerm:
             rule_fun, _ = primitive_deriv[rule]
             self.th = rule_fun(*prev_ths) if args is None else rule_fun(args, *prev_ths)
         else:
-            macro = theory.get_macro(rule)
-            if th is None:
-                self.th = macro.eval(args, prev_ths)
-            else:
-                self.th = th
+            # Macro node: the theorem must be provided explicitly (by
+            # eval_macro).  Construction no longer evaluates the macro
+            # as a side effect -- evaluation is an explicit action
+            # (audit §7.1).
+            assert th is not None, \
+                "ProofTerm: macro node '%s' must provide th (use eval_macro)" % rule
+            self.th = th
 
         self.args = args
         self.prevs: List[ProofTerm] = prevs
@@ -321,3 +323,18 @@ class ProofTerm:
 def refl(t: Term) -> ProofTerm:
     """Obtain the proof term for t = t."""
     return ProofTerm.reflexive(t)
+
+
+def eval_macro(name, args, prevs=[]) -> ProofTerm:
+    """Explicitly evaluate a macro and record the result as a macro node.
+
+    The evaluation is visible at the construction site (audit §7.1:
+    ProofTerm.__init__ does not call macro.eval implicitly).  Behavior
+    is identical to the former implicit path: the macro is looked up
+    by name, evaluated on the previous theorems, and the resulting
+    theorem is recorded on the macro node.
+    """
+    macro = theory.get_macro(name)
+    th = macro.eval(args, [prev.th for prev in prevs])
+    return ProofTerm(name, args, prevs, th=th)
+

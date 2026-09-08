@@ -19,7 +19,7 @@ from kernel import term
 from kernel.term import Term, Var, Comb, Abs, Inst, BoolType, Implies
 from syntax.logicops import true, false
 from kernel.thm import Thm
-from kernel.proofterm import ProofTerm
+from kernel.proofterm import ProofTerm, eval_macro
 from kernel import theory
 from core import logic
 
@@ -520,7 +520,7 @@ def solve_and_proof(t, debug=False):
         z3.set_param(proof=False)
 
 def apply_z3(t):
-    return ProofTerm('z3', args=t)
+    return eval_macro('z3', args=t)
 
 
 # Inject the solver backend into the z3 oracle macro (by-name

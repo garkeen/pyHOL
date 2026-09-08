@@ -11,7 +11,7 @@ from kernel.term import Term, Var
 from kernel.macro import Macro
 from kernel import theory
 from kernel.theory import register_macro
-from kernel.proofterm import ProofTerm, TacticException, refl
+from kernel.proofterm import ProofTerm, TacticException, refl, eval_macro
 from core import logic
 from core.logic import apply_theorem
 from core import matcher
@@ -393,7 +393,7 @@ class auto_macro(Macro):
 
 
 def auto_solve(t, pts=None):
-    return ProofTerm('auto', args=t, prevs=pts)
+    return eval_macro('auto', args=t, prevs=pts)
 
 class norm_conv(Conv):
     """Convert a term to its normal form under the registered

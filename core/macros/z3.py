@@ -12,7 +12,7 @@ from kernel.term import Term, Implies
 from kernel.thm import oracle_thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
-from kernel.proofterm import ProofTerm
+from kernel.proofterm import ProofTerm, eval_macro
 
 
 class Z3Backend:
@@ -60,4 +60,4 @@ class Z3Macro(Macro):
 
 
 def apply_z3(t):
-    return ProofTerm('z3', args=t)
+    return eval_macro('z3', args=t)

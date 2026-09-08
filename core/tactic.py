@@ -8,7 +8,7 @@ from kernel.term import Term, Implies, Lambda, Inst, Eq
 from syntax.logicops import Not, false
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import theory
-from kernel.proofterm import ProofTerm, TacticException
+from kernel.proofterm import ProofTerm, TacticException, eval_macro
 from core import logic
 from core import matcher
 from core.goal import Goal
@@ -63,7 +63,7 @@ def _whole_prop_match(th_name: str, goal: Thm):
     # as one apply_theorem_inst macro line (expands to theorem +
     # subst_type + substitution on check), keeping the proof area free
     # of raw primitive reference lines.
-    pt = ProofTerm('apply_theorem_inst', (th_name, inst), [])
+    pt = eval_macro('apply_theorem_inst', (th_name, inst), [])
     assert pt.th.prop == goal.prop, "_whole_prop_match: instantiation mismatch"
     return pt
 
@@ -161,7 +161,7 @@ class resolve(Tactic):
             "(accepted shapes: ~A, A --> false, A = false)" % th_name
 
         # Matching against the fact is done in the macro.
-        return ProofTerm('resolve_theorem', (args, goal.prop), prevs)
+        return eval_macro('resolve_theorem', (args, goal.prop), prevs)
 
 class intros(Tactic):
     """Given a goal of form !x_1 ... x_n. A_1 --> ... --> A_n --> C,
@@ -181,7 +181,7 @@ class intros(Tactic):
         pt = Goal(C, goal.hyps, tuple(As)).sorry()
         ptAs = [ProofTerm.assume(A) for A in As]
         ptVars = [ProofTerm.variable(var.name, var.T) for var in vars]
-        return ProofTerm('intros', None, ptVars + ptAs + [pt])
+        return eval_macro('intros', None, ptVars + ptAs + [pt])
 
 class var_induct(Tactic):
     """Apply induction rule on a variable.
@@ -219,7 +219,7 @@ class var_induct(Tactic):
         As, _ = th.prop.subst_norm(inst).strip_implies()
         As = As[:num_orig]
         pts = [Goal(A, goal.hyps).sorry() for A in As]
-        return ProofTerm("apply_induct", (th_name, var, goal.prop), pts)
+        return eval_macro("apply_induct", (th_name, var, goal.prop), pts)
 
 class simp(Tactic):
     """Simplify the goal by iterated rewriting with all unconditional
@@ -237,8 +237,8 @@ class simp(Tactic):
         assert cv_acc is not None and new_goal != goal.prop, \
             "simp: nothing to simplify"
         if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
-            return ProofTerm('simp', goal.prop, [])
-        return ProofTerm('simp', goal.prop,
+            return eval_macro('simp', goal.prop, [])
+        return eval_macro('simp', goal.prop,
                          [Goal(new_goal, goal.hyps).sorry()])
 
 
@@ -267,11 +267,11 @@ class rewrite_goal(Tactic):
         else:
             macro_name = 'rewrite_goal'
         if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
-            return ProofTerm(macro_name, args=(th_name, C), prevs=prevs)
+            return eval_macro(macro_name, args=(th_name, C), prevs=prevs)
         else:
             new_goal = Goal(new_goal, goal.hyps).sorry()
             assert new_goal.prop != goal.prop, "rewrite: unable to apply theorem"
-            return ProofTerm(macro_name, args=(th_name, C), prevs=[new_goal] + prevs)
+            return eval_macro(macro_name, args=(th_name, C), prevs=[new_goal] + prevs)
 
 class rewrite_goal_with_conv(Tactic):
     """Rewrite the goal using a pre-built Conv object."""
@@ -324,7 +324,7 @@ class rewrite_goal_with_prev(Tactic):
         prevs = list(prevs)
         if not new_goal.is_reflexive():
             prevs.append(Goal(new_goal, goal.hyps).sorry())
-        return ProofTerm('rewrite_goal_with_prev', args=C, prevs=prevs)
+        return eval_macro('rewrite_goal_with_prev', args=C, prevs=prevs)
 
 class apply_prev(Tactic):
     """Applies an existing fact in the backward direction."""
@@ -369,9 +369,9 @@ class apply_prev(Tactic):
         
         if set(new_names).issubset({v.name for v in term.get_vars(As)}) and \
            matcher.is_pattern_list(As, []):
-            return ProofTerm('apply_fact', args=None, prevs=prevs + new_goals)
+            return eval_macro('apply_fact', args=None, prevs=prevs + new_goals)
         else:
-            return ProofTerm('apply_fact_for', args=inst_arg, prevs=prevs + new_goals)
+            return eval_macro('apply_fact_for', args=inst_arg, prevs=prevs + new_goals)
 
 class cases(Tactic):
     """Case checking on an expression.
@@ -490,8 +490,8 @@ class unfold(Tactic):
         assert new_goal != goal.prop, "unfold: no effect"
         macro_name = 'unfold_sym' if self.sym else 'unfold'
         if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
-            return ProofTerm(macro_name, (th_name, goal.prop), [])
-        return ProofTerm(macro_name, (th_name, goal.prop),
+            return eval_macro(macro_name, (th_name, goal.prop), [])
+        return eval_macro(macro_name, (th_name, goal.prop),
                          [Goal(new_goal, goal.hyps).sorry()])
 
 
@@ -517,8 +517,8 @@ class rewrite_goal_loc(Tactic):
         assert new_goal != goal.prop, "rewrite_goal_loc: no effect"
         macro_name = 'rewrite_goal_loc_sym' if self.sym else 'rewrite_goal_loc'
         if new_goal.is_equals() and new_goal.lhs == new_goal.rhs:
-            return ProofTerm(macro_name, (th_name, self.loc, goal.prop), [])
-        return ProofTerm(macro_name, (th_name, self.loc, goal.prop),
+            return eval_macro(macro_name, (th_name, self.loc, goal.prop), [])
+        return eval_macro(macro_name, (th_name, self.loc, goal.prop),
                          [Goal(new_goal, goal.hyps).sorry()])
 
 
@@ -581,7 +581,7 @@ class trivial(Tactic):
     """
     def get_proof_term(self, *, args=None, prevs=None):
         goal = prevs[0].th
-        return ProofTerm('trivial', goal.prop, prevs[1:])
+        return eval_macro('trivial', goal.prop, prevs[1:])
 
 class elim_exists(Tactic):
     """Backward exists-elimination as a checked derivation.
@@ -607,7 +607,7 @@ class elim_exists(Tactic):
     """
     def get_proof_term(self, *, args=None, prevs=None):
         names, exists_pt, wired_prev_pts, wired_args = args
-        return ProofTerm('intros', wired_args, list(wired_prev_pts))
+        return eval_macro('intros', wired_args, list(wired_prev_pts))
 
 class accept(Tactic):
     """Close the goal by direct reference to a theorem of the theory.
@@ -697,7 +697,7 @@ class accept(Tactic):
         # Return the theorem application with the matched assumptions
         # recorded as premises, committed as a single accept macro line
         # (expands to assume + theorem + implies_elim chain on check).
-        return ProofTerm('accept', (th_name, inst, matched_hs), [])
+        return eval_macro('accept', (th_name, inst, matched_hs), [])
 
 class apply_theorem_forward(Tactic):
     """Forward: apply a theorem to facts to derive a new fact. No goal.
@@ -756,7 +756,7 @@ class rewrite_fact_forward(Tactic):
         # Reasoning: does the theorem actually rewrite the fact?
         if not has_rewrite(args, prevs[0].prop, sym=self.sym, conds=prevs[1:]):
             raise InvalidDerivationException("rewrite_fact using %s" % args)
-        return ProofTerm('rewrite_fact_sym' if self.sym else 'rewrite_fact', args, prevs)
+        return eval_macro('rewrite_fact_sym' if self.sym else 'rewrite_fact', args, prevs)
 
 
 class apply_fact_forward(Tactic):
@@ -782,8 +782,8 @@ class apply_fact_forward(Tactic):
             inst = matcher.first_order_match(As[idx], pt_prev.prop, inst)
         # Return apply_fact (macro does forall_elim/implies_elim/forall_intr).
         if args:
-            return ProofTerm('apply_fact_for', args, prevs)
-        return ProofTerm('apply_fact', None, prevs)
+            return eval_macro('apply_fact_for', args, prevs)
+        return eval_macro('apply_fact', None, prevs)
 
 
 class rewrite_fact_with_prev_forward(Tactic):
@@ -808,7 +808,7 @@ class rewrite_fact_with_prev_forward(Tactic):
         cv1 = top_sweep_conv(rewr_conv(eq_pt))
         if cv1.eval(pt.prop).is_reflexive():
             raise InvalidDerivationException("rewrite_fact_with_prev: no effect")
-        return ProofTerm('rewrite_fact_with_prev', args, prevs)
+        return eval_macro('rewrite_fact_with_prev', args, prevs)
 
 
 class forall_elim_forward(Tactic):
@@ -823,4 +823,4 @@ class forall_elim_forward(Tactic):
         assert len(prevs) == 1, "forall_elim_forward"
         assert isinstance(args, Term), "forall_elim_forward"
         assert prevs[0].prop.is_forall(), "forall_elim_forward: fact is not forall"
-        return ProofTerm('forall_elim_gen', args, prevs)
+        return eval_macro('forall_elim_gen', args, prevs)

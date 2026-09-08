@@ -17,7 +17,7 @@ import core.basic as basic
 from syntax import parser
 from kernel.term import Term
 from syntax.numeral import IntType, Int, greater, less
-from kernel.proofterm import ProofTerm
+from kernel.proofterm import ProofTerm, eval_macro
 from theories.integer.conv import int_neq_false_conv, int_gcd_compares
 
 
@@ -26,9 +26,9 @@ def mk_int_const_ineq_pt(value):
     proofrec.py:mk_int_const_ineq_pt): emits the int_const_ineq oracle
     node for the sign fact of an integer constant."""
     if value > 0:
-        return ProofTerm('int_const_ineq', greater(IntType)(Int(value), Int(0)))
+        return eval_macro('int_const_ineq', greater(IntType)(Int(value), Int(0)))
     else:
-        return ProofTerm('int_const_ineq', less(IntType)(Int(value), Int(0)))
+        return eval_macro('int_const_ineq', less(IntType)(Int(value), Int(0)))
 
 
 class ConvPremiseInjectionTest(unittest.TestCase):

@@ -10,7 +10,7 @@ from syntax.logicops import Not, And, Or, true, false
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import term_ord
 from kernel import theory
-from kernel.proofterm import ProofTerm, refl
+from kernel.proofterm import ProofTerm, refl, eval_macro
 from core.conv import Conv, then_conv, all_conv, arg_conv, binop_conv, rewr_conv, \
     top_conv, top_sweep_conv, beta_conv, beta_norm_conv, has_rewrite
 from core import matcher
@@ -66,16 +66,16 @@ def conj_thms(*pts):
 def imp_conj_iff(goal: Term) -> ProofTerm:
     """Goal is of the form A_1 & ... & A_m <--> B_1 & ... & B_n, where
     the sets {A_1, ..., A_m} and {B_1, ..., B_n} are equal."""
-    pt1 = ProofTerm('imp_conj', Implies(goal.lhs, goal.rhs))
-    pt2 = ProofTerm('imp_conj', Implies(goal.rhs, goal.lhs))
+    pt1 = eval_macro('imp_conj', Implies(goal.lhs, goal.rhs))
+    pt2 = eval_macro('imp_conj', Implies(goal.rhs, goal.lhs))
     return ProofTerm.equal_intr(pt1, pt2)
 
 
 def imp_disj_iff(goal: Term):
     """Goal is of the form A_1 | ... | A_m <--> B_1 | ... | B_n, where
     the sets {A_1, ..., A_m} and {B_1, ..., B_n} are equal."""
-    pt1 = ProofTerm('imp_disj', Implies(goal.lhs, goal.rhs))
-    pt2 = ProofTerm('imp_disj', Implies(goal.rhs, goal.lhs))
+    pt1 = eval_macro('imp_disj', Implies(goal.lhs, goal.rhs))
+    pt2 = eval_macro('imp_disj', Implies(goal.rhs, goal.lhs))
     return ProofTerm.equal_intr(pt1, pt2)
 
 class disj_norm(Conv):
@@ -91,4 +91,4 @@ class conj_norm(Conv):
         return imp_conj_iff(goal)
 
 def resolution(pt1, pt2):
-    return ProofTerm('resolution', None, [pt1, pt2])
+    return eval_macro('resolution', None, [pt1, pt2])
