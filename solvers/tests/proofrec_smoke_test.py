@@ -14,6 +14,14 @@ import importlib.util
 
 z3_available = importlib.util.find_spec("z3") is not None
 
+# Level-0 computation oracles used by reconstructed arithmetic proofs:
+# numeral evaluation (int/real), real comparison constants.  Declared
+# explicitly -- the strict default (empty trust) rejects every oracle
+# (audit §7.1).
+ORACLES = frozenset(
+    {'int_eval', 'real_eval', 'real_compare', 'real_eq_comparison',
+     'real_const_eq'})
+
 
 @unittest.skipUnless(z3_available, "z3 not installed")
 class ProofrecSmokeTest(unittest.TestCase):
@@ -24,7 +32,7 @@ class ProofrecSmokeTest(unittest.TestCase):
 
     def _run(self, vars_, goal):
         from core import context
-        from kernel import theory
+        from core import verify as core_verify
         from solvers import z3wrapper, proofrec
         context.set_context('smt', vars=vars_)
         t = context.parse_term(goal)
@@ -34,7 +42,7 @@ class ProofrecSmokeTest(unittest.TestCase):
         self.assertEqual(len(r.gaps), 0, str(r.gaps))
         # kernel-level acceptance: the exported low-level proof must
         # replay without gaps (throws CheckProofException otherwise)
-        theory.check_proof(r.export())
+        core_verify.verify(r.export(), trust=ORACLES)
 
     # propositional (SAT net / rewrite_bool)
     def test_prop(self):

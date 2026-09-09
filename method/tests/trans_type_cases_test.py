@@ -109,7 +109,7 @@ class TypeCasesMethodTest(unittest.TestCase):
         self.assertTrue(sps.apply_method_dict(
             {'method_name': 'refl', 'goal': first_goal()}))
         self.assertEqual(sps.num_gaps, 0)
-        th = sps.check_proof(no_gaps=True)
+        th = sps.verify(no_gaps=True)
         self.assertEqual(str(th.prop), '!n. n = 0 | (?m. n = Suc m)')
 
 

@@ -5,7 +5,7 @@ so a divergence in one goal cannot stall the suite (Windows has no
 SIGALRM).  A goal passes only when
 
   1. proofrec.proofrec returns a proof with rule != 'sorry' and no gaps,
-  2. kernel-level check_proof on the result reports no gaps.
+  2. kernel-level verify on the result reports no gaps.
 
 The runner prints a per-goal table and exits non-zero when any goal is
 not PASS, so it can gate commits.
@@ -23,6 +23,14 @@ import sys
 import time
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Level-0 computation oracles used by reconstructed arithmetic proofs in
+# the smt corpus (numeral evaluation and real comparison constants;
+# declared explicitly, audit §7.1 default is empty).
+ORACLES = frozenset(
+    {'int_eval', 'real_eval', 'real_compare', 'real_eq_comparison',
+     'real_const_eq'})
+
 
 # (name, category, context vars, goal[, xfail reason])
 # xfail goals are known gaps: Z3 proves integer power through internal
@@ -113,8 +121,8 @@ def goal_result(entry):
         if importlib.util.find_spec('z3') is None:
             return 'SKIPPED', 'z3 not installed'
         from core import basic, context
+        from core import verify as core_verify
         from syntax.parser import parse_term
-        from kernel import theory
         from solvers import z3wrapper, proofrec
         basic.load_theory('smt')
         _, _, vars_, goal = entry[:4]
@@ -127,7 +135,7 @@ def goal_result(entry):
         if len(pt.gaps) != 0:
             return 'GAP', _safe(pt.gaps)
         # kernel-level acceptance check: expects the exported low-level Proof
-        theory.check_proof(pt.export())
+        core_verify.verify(pt.export(), trust=ORACLES)
         return 'PASS', ''
     except Exception as e:
         return 'FAIL', '%s: %s' % (type(e).__name__, e)

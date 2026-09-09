@@ -11,9 +11,9 @@ workflow that an empty (trusted) proof would have to satisfy:
   3. reconstruct the proof DAG with proofrec (kernel ProofTerms),
   4. close the stripped sequent back to the statement (close_sequent),
   5. verify the conclusion equals the stored statement EXACTLY and run
-     kernel check_proof.
+     kernel verify.
 
-CLOSED = gap-free + exact statement match + kernel check_proof passes;
+CLOSED = gap-free + exact statement match + kernel verify passes;
 this is the criterion for discharging a trusted pyhol theorem.
 """
 
@@ -55,8 +55,8 @@ def run_theorem(name, timeout):
 def theorem_result(name):
     try:
         from core import basic
+        from core import verify as core_verify
         from kernel.theory import get_theorem
-        from kernel import theory
         from solvers import z3wrapper
         basic.load_theory('smt')
 
@@ -66,7 +66,12 @@ def theorem_result(name):
             return 'GAP', 'rule=%s gaps=%d' % (pt.rule, len(pt.gaps))
         if pt.prop != thm.prop:
             return 'MISMATCH', 'reconstructed prop differs from statement'
-        theory.check_proof(pt.export())
+        # Level-0 oracles used by reconstructed real/integer arithmetic
+        # proofs (numeral evaluation; audit §7.1 default is empty).
+        core_verify.verify(
+            pt.export(),
+            trust=frozenset({'int_eval', 'real_eval', 'real_compare',
+                             'real_eq_comparison', 'real_const_eq'}))
         return 'CLOSED', 'kernel-checked, matches stored statement'
     except Exception as e:
         return 'FAIL', '%s: %s' % (type(e).__name__, str(e)[:120])

@@ -17,7 +17,7 @@ from syntax.numeral import *  # noqa: F401,F403  (numeral sugar moved out of ker
 from syntax.logicops import *  # noqa: F401,F403  (logic sugar moved out of kernel)
 from kernel.proofterm import ProofTerm, refl, eval_macro
 from kernel.macro import Macro
-from kernel.theory import check_proof, register_macro
+from kernel.theory import verify, register_macro
 from kernel import theory
 from kernel.report import ProofReport
 from core import basic, matcher
@@ -2460,7 +2460,7 @@ def proofrec(proof, bounds=deque(), trace=False, debug=False, assertions=None):
     time2 = time.perf_counter()
     # print("total time: ", time2 - time1)
     # rpt = ProofReport()
-    # theory.check_proof(r[0].export(), rpt)
+    # theory.verify(r[0].export(), rpt)
     # print(rpt)
     # print(r[0].export())
     return conclusion

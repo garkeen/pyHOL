@@ -33,7 +33,7 @@ def testSteps(self, thy_name, thm_name, *, no_gaps=True, print_proof=False, \
             ok = sps.apply_method_dict(step)
             if not ok:
                 self.fail("replay failed at step %d: %s" % (i, step.get('method_name', '?')))
-        sps.check_proof(no_gaps=no_gaps)
+        sps.verify(no_gaps=no_gaps)
         if print_proof:
             print("Final state:")
             print(sps.state.prf)
@@ -54,19 +54,19 @@ class TestInit(unittest.TestCase):
         context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
         state = server.parse_init_state("A & B --> B & A")
         self.assertEqual(len(state.prf.items), 3)
-        self.assertEqual(state.check_proof(), parser.parse_thm("|- A & B --> B & A"))
+        self.assertEqual(state.verify(), parser.parse_thm("|- A & B --> B & A"))
 
     def testInitState2(self):
         context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
         state = server.parse_init_state("A --> B --> A & B")
         self.assertEqual(len(state.prf.items), 4)
-        self.assertEqual(state.check_proof(), parser.parse_thm("|- A --> B --> A & B"))
+        self.assertEqual(state.verify(), parser.parse_thm("|- A --> B --> A & B"))
 
     def testInitState3(self):
         context.set_context('logic_base', vars={'A': 'bool'})
         state = server.parse_init_state("A | ~A")
         self.assertEqual(len(state.prf.items), 2)
-        self.assertEqual(state.check_proof(), parser.parse_thm("|- A | ~A"))
+        self.assertEqual(state.verify(), parser.parse_thm("|- A | ~A"))
 
     def testJsonData(self):
         context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
@@ -106,11 +106,11 @@ class TestInit(unittest.TestCase):
 
         state.add_line_before(2, 1)
         self.assertEqual(len(state.prf.items), 4)
-        self.assertEqual(state.check_proof(), parser.parse_thm("|- A & B --> B & A"))
+        self.assertEqual(state.verify(), parser.parse_thm("|- A & B --> B & A"))
 
         state.add_line_before(2, 3)
         self.assertEqual(len(state.prf.items), 7)
-        self.assertEqual(state.check_proof(), parser.parse_thm("|- A & B --> B & A"))
+        self.assertEqual(state.verify(), parser.parse_thm("|- A & B --> B & A"))
 
     def testRemoveLine(self):
         context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
@@ -119,7 +119,7 @@ class TestInit(unittest.TestCase):
         state.add_line_before(2, 1)
         state.remove_line(2)
         self.assertEqual(len(state.prf.items), 3)
-        self.assertEqual(state.check_proof(), parser.parse_thm("|- A & B --> B & A"))
+        self.assertEqual(state.verify(), parser.parse_thm("|- A & B --> B & A"))
 
     def testSetLine(self):
         context.set_context('logic_base', vars={'A': 'bool', 'B': 'bool'})
@@ -128,7 +128,7 @@ class TestInit(unittest.TestCase):
         state.add_line_before(2, 1)
         state.set_line(2, "theorem", args="conjD1")
         self.assertEqual(len(state.prf.items), 4)
-        self.assertEqual(state.check_proof(), parser.parse_thm("|- A & B --> B & A"))
+        self.assertEqual(state.verify(), parser.parse_thm("|- A & B --> B & A"))
 
     def testConjComm(self):
         """Proof of A & B --> B & A."""

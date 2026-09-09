@@ -6,6 +6,7 @@ from syntax.logicops import And, Or
 from kernel import report
 from kernel import theory
 from core import basic
+from core import verify as core_verify
 from solvers import tseitin
 
 a = Var('a', BoolType)
@@ -35,7 +36,10 @@ class TseitinTest(unittest.TestCase):
         self.assertEqual(len(pt.prop.strip_conj()), 16)
         
         rpt = report.ProofReport()
-        self.assertEqual(theory.check_proof(pt.export(), rpt, check_level=1), pt.th)
+        prf = pt.export()
+        # Tseitin encoding is pure propositional logic: no level-0
+        # oracle, so the strict empty trust applies.
+        self.assertEqual(core_verify.verify(prf, rpt), pt.th)
         self.assertEqual(len(rpt.gaps), 0)
 
         cnf = tseitin.convert_cnf(pt.prop)

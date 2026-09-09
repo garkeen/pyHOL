@@ -54,7 +54,7 @@ def parse_init_state(prop: Union[str, List[str], Term]) -> ProofState:
     n = len(assums)
     state.prf.add_item(n, "sorry", th=Goal(concl, tuple(assums)).th)
     state.prf.add_item(n + 1, "intros", prevs=range(n+1))
-    state.check_proof(compute_only=True)
+    state.verify(compute_only=True)
     return state
 
 def parse_proof(proof) -> ProofState:
@@ -69,6 +69,6 @@ def parse_proof(proof) -> ProofState:
             context.ctxt.vars[nm] = parser.parse_type(str_T.strip())
         item = parser.parse_proof_rule(line, ctxt=context.ctxt)
         state.prf.insert_item(item)
-    state.check_proof()
+    state.verify()
 
     return state

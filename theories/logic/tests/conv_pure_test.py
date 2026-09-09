@@ -16,7 +16,6 @@ from kernel.term import Var, Term
 from syntax.logicops import And, Or, Not
 from kernel.thm import Thm, primitive_deriv
 from kernel.proof import Proof
-from kernel.report import ProofReport
 from kernel import theory
 from core import basic, context
 from theories.logic.conv import sort_conj, norm_full
@@ -47,9 +46,10 @@ class ConvPurityTest(unittest.TestCase):
         t = And(c, And(a, b))
         pt = sort_conj().get_proof_term(t)
         self.assertPure(pt)
-        # The result is still checked by the kernel.
+        # The result is still checked by the kernel: the purity assertion
+        # above already rules out sorry lines, so no gap option is needed.
         prf = pt.export()
-        th = theory.check_proof(prf, ProofReport(), no_gaps=True)
+        th = theory.verify(prf)
         self.assertEqual(th.prop, pt.th.prop)
 
     def testNormFullPure(self):
@@ -60,7 +60,7 @@ class ConvPurityTest(unittest.TestCase):
         pt = norm_full().get_proof_term(t)
         self.assertPure(pt)
         prf = pt.export()
-        theory.check_proof(prf, ProofReport(), no_gaps=True)
+        theory.verify(prf)
 
 
 if __name__ == "__main__":

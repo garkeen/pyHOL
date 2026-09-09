@@ -82,8 +82,14 @@ class SymPyWrapperTest(unittest.TestCase):
         ]
 
         vars = {'x': 'real'}
+        # auto on interval arithmetic expands to the sympy / numeral
+        # level-0 oracles (computation without derivation, audit §7.1).
         for expr in test_data:
-            test_macro(self, 'interval_arith', 'auto', vars=vars, args=expr, res=expr)
+            test_macro(self, 'interval_arith', 'auto', vars=vars, args=expr,
+                       res=expr,
+                       oracles=frozenset({'sympy', 'real_const_eq',
+                                          'real_compare', 'real_eval',
+                                          'int_eval', 'real_norm'}))
 
 
 if __name__ == "__main__":
