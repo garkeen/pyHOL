@@ -204,15 +204,15 @@ class HOLTransformer(Transformer):
             return Const("of_nat", None)(Binary(int(n)))
 
     def literal_list(self, *args):
-        from util import list
+        from syntax import list_tools as list
         return list.mk_literal_list(args, None)
 
     def char(self, c):
-        from util import string
+        from syntax import string_tools as string
         return string.mk_char(str(c))
 
     def string(self, s):
-        from util import string
+        from syntax import string_tools as string
         return string.mk_string(str(s))
 
     def if_expr(self, P, x, y):
@@ -279,11 +279,11 @@ class HOLTransformer(Transformer):
         return some_t(Abs(str(var_name), None, body.abstract_over(Var(var_name, None))))
 
     def collect_set(self, var_name, T, body):
-        from util import set
+        from syntax import set_tools as set
         return set.collect(T)(Abs(str(var_name), T, body.abstract_over(Var(var_name, None))))
 
     def collect_set_notype(self, var_name, body):
-        from util import set
+        from syntax import set_tools as set
         return set.collect(None)(Abs(str(var_name), None, body.abstract_over(Var(var_name, None))))
 
     def power(self, lhs, rhs):
@@ -347,7 +347,7 @@ class HOLTransformer(Transformer):
         return Const("equals", None)(s, t)
 
     def literal_set(self, *args):
-        from util import set
+        from syntax import set_tools as set
         return set.mk_literal_set(args, None)
 
     def mem(self, x, A):

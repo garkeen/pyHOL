@@ -7,7 +7,6 @@ from kernel import term
 from kernel.term import Term, Const, Implies, Eq, Forall, Lambda, Inst
 from kernel import term_ord
 from util import typecheck
-from syntax.settings import settings
 
 
 class InvalidDerivationException(Exception):
@@ -84,7 +83,10 @@ class Thm:
 
     def __str__(self):
         """Print the given theorem."""
-        turnstile = "⊢" if settings.unicode else "|-"
+        # Kernel prints ASCII "|-" only; unicode rendering of theorems
+        # belongs to the syntax layer (syntax/printer.print_thm reads
+        # settings.unicode). Kernel must not import syntax (audit §9.5).
+        turnstile = "|-"
         if self.hyps:
             str_hyps = ", ".join(str(hyp) for hyp in self.hyps)
             return str_hyps + ' ' + turnstile + ' ' + str(self.prop)

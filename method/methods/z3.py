@@ -2,7 +2,7 @@
 # Extracted from solvers/z3wrapper.py
 
 from core.method import Method, register_method
-from core.macros.z3 import backend as z3_backend
+from core.macro.z3 import backend as z3_backend
 from kernel.term import Implies
 from syntax import pprint
 

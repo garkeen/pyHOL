@@ -14,12 +14,12 @@ from kernel.proofterm import TacticException, eval_macro
 from kernel import term_ord
 from theories.nat import util_nat as nat
 from theories.integer import util_integer as integer
-from util.set import setT
+from syntax.set_tools import setT
 from core import auto
 from core import matcher
 from core.conv import rewr_conv, binop_conv, arg1_conv, arg_conv, try_conv, Conv, ConvException
 from kernel.proofterm import refl, ProofTerm
-from util import poly
+from theories import poly
 
 # Basic definitions
 

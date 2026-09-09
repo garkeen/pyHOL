@@ -397,8 +397,16 @@ replay(prf) -> (Thm, holes)
 - **任务 B**（`b56dec7d`/`55b1d499`/`7ca28dc1`）：kernel 瘦身、core 展开器、`ProofTerm.eval` 显式化、Thm 三洞 + lint 落锁、56 个测试调用点从 kernel 半验迁 `core_verify`、elimin 中间态修复（`ProofState.bulk_edit` 原子重接线）、信任集是死参数打通（`ProofState`/`StableProofState` 会话 trust 集缺省空 + `apply_macro` 对 level-0 宏显式授权 + `validate_theory`/`validate_library` 传显式 `LIBRARY_ORACLES` + `solvers.z3wrapper` 装配注入）、holes 落信任报告（`rpt.axioms`/`rpt.oracles`）、`set_line` 信任绕过关闭（`compute_only` 全行 emit 仅跳过独立重放）。B8 全量 `--force` 对照（1786 条：OK 364/FAIL 2 均为旧 36 遗留，零新增 STEP，STEP→VALID 66，VALID→DEP_FAILED 882 全经 UNPROVED 传播即 deviation 1）。
 - **未进本文档的债（仍在工作区外排队）**：“计算即 oracle”推导化（line 366）、宏适配器化后半（nat/logic/expr）、util 双向依赖（§9.4）、kernel→`syntax.settings` 线 + `pyhol.py` 搬家（§9.5）、`test_backend_api.py` 12 errors（任务 D）、solver 胶水 6 文件评估（任务 E）、REPL（步骤 10）。
 
+**【2026-09-09 第二轮收尾，五项销账】**：
+- **util 双向依赖（§9.4）落地**：poly→`theories/poly.py`，function/list/set/string→`syntax/*_tools.py`（审计原判"全下沉 theories"对后 4 个错，真身是 syntax 语法糖项构造器，详见 §9.4 落地记录）；util 剩 name/typecheck/unionfind，lint `util/tests/test_util_pure.py` 锁死双向依赖。
+- **kernel→settings 线（§9.5）落地**：删 `kernel/thm.py` 的 syntax.settings import，`Thm.__str__` 纯 ASCII；unicode 渲染归 `syntax/printer.print_thm`。**遗留 pyhol.py 搬家**。
+- **lint 白名单过期销账**：`imp_compile_test.py` 的 method 装配 import 上移顶层 `test_imp_validate.py`（按 AGENTS"跨模块的才放顶层"，顺手补 `trust=LIBRARY_ORACLES` 修 ide.py 同款缺陷）；`testTheoriesDoNotImportServer` 白名单清空。
+- **铁律 2 lint 落地**：`testGoalConsumptionFace` 断住 Goal 消费面——合法面 `core/goal.py`+`core/tactic.py`+`method/`+`imperative/`，白名单仅 `solvers/proofrec.py`+`solvers/congc.py`（solver 胶水债，任务 E 收尾时缩短）。§8 末"lint 同时断住两条铁律"至此为真。
+- **core/macro 与 core/macros 双目录合并**：`git mv core/macros/{registry,z3}.py core/macro/`，删 `core/macros/`；6 处 import + `test_macro_invariant` MACRO_FILES 路径改写；core/macro/__init__.py 注释更新。目录名=类别名（§5.7）兑现。
+- 验证：kernel 132P、syntax 70P、kernel+theories+solvers+method+imperative 377P、util 3P、import lint 7 条全绿；z3 注入链双向冒烟（先宏后 solver / 先 solver 后宏均绑定）。库全量验证按用户约束跳过。
+
 每步加 import 方向 lint（AST 扫描），白名单逐步缩短——这就是 `AGENTS.md` 第 4 条"新增引用先查 import 方向"的自动化。
-lint 同时断住两条铁律：kernel 外无裸 `Thm(` 构造（白名单见 §7.3）、kernel 外不出现 Goal 类型（铁律 2 的镜像）。
+lint 同时断住两条铁律：kernel 外无裸 `Thm(` 构造（白名单见 §7.3）、kernel 外不出现 Goal 类型（铁律 2 的镜像，`testGoalConsumptionFace` 落地）。
 
 信任模型全程不动：15 原语一行不碰，任何中间形态都有 `check_proof` 兜底。这是敢大改的底气。
 （重命名落地后，兜底的名字就是 verify。）
@@ -441,9 +449,18 @@ lint 同时断住两条铁律：kernel 外无裸 `Thm(` 构造（白名单见 §
 
 **【2026-09-09，任务 B 未动】**：步骤 0–9 全没碰，`util/` 仍 7 文件混放。该下沉 theories 的：`function.py`、`list.py`、`poly.py`、`set.py`、`string.py`。后果：铁律 1 在 util 上留永久解释成本（纯结构债，不阻塞功能）。
 
+**【2026-09-09 落地】**：util 分家完成，但**审计原处方有一半是错的**——核对消费面后修正：
+- `util/poly.py` → `theories/poly.py`（消费面纯 theories：nat/util_nat、integer/util_integer+conv、real/conv，4 文件）。
+- `util/function.py`、`list.py`、`set.py`、`string.py` → `syntax/`（`function_tools.py`/`list_tools.py`/`set_tools.py`/`string_tools.py`）。**真身是 syntax 层的项构造器**：它们造字面量列表、字符串、集合、函数更新等**语法糖对应的项编码**，主消费方是 `syntax/parser.py`（解析糖）与 `pprint.py`（打印），不是 theories。审计原判"下沉 theories"对这 4 个不成立——挪去 theories 会让 syntax 反向咬 theories。
+- `util/` 现只剩纯工具 `name`/`typecheck`/`unionfind`，加 lint `util/tests/test_util_pure.py` 断住"util 不得 import kernel/syntax/theories/core/method/solvers"（白名单空），双向依赖从构造上封死。
+- 顺带删除 `imperative/imp.py` 的死 import `from util import function`（零调用方）。
+- 消费面改写：`from util import poly` → `from theories import poly`；`from util import set` → `from syntax import set_tools as set`（保 `set.mk_mem` 等下游零改动，`set` shadow 内建名是原代码既有形态）。回归：syntax 70P、kernel+theories+solvers+method+imperative 377P、util 3P 全绿。
+
 ### 9.5 syntax 的"只依赖 kernel+util"仍需内部清理
 
 **【2026-09-09，任务 B 未动——实测】**：`kernel/thm.py:10 from syntax.settings import settings`、`:87 turnstile = "⊢" if settings.unicode else "|-"`——"kernel 断奶时这根线必须断"仍未断，步骤 0 标【已完成】却漏了这根。另 `pyhol.py` 仍在 syntax，未迁 `core/pyhol.py`。
+
+**【2026-09-09 settings 线落地】**：`kernel/thm.py` 删 `from syntax.settings import settings`，`Thm.__str__` 改纯 ASCII `|-`。核对发现 `syntax/printer.py:53 print_thm(th)` 本就持 settings 感知的定理打印（`:57 turnstile = "⊢" if settings.unicode else "|-"`）——kernel 的 settings 读取是冗余，unicode 渲染已有 syntax 层正确出口。验证：kernel 132P 全绿，全库无测试断言 `str(Thm)` 必含 `⊢`（unicode 经 `print_thm`）。**遗留**：`pyhol.py` 仍在 syntax 未迁 core（本轮不动）。
 
 铁律 1 说 kernel+syntax 独立可用，但 syntax 现含两块不同的东西：
 - **真语法层**：parser/printer/numeral/operator/settings——kernel+syntax 独立性靠它们。

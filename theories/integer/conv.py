@@ -17,7 +17,7 @@ from theories.nat import util_nat as nat
 from syntax.settings import settings
 from math import gcd
 from core import matcher
-from util import poly
+from theories import poly
 import functools
 
 

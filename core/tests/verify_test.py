@@ -177,7 +177,7 @@ class VerifyTest(unittest.TestCase):
     def testAutoCloseMacro(self):
         """auto_close (level None) expands to a reference: exact citation
         verifies end-to-end with the macro recorded as expanded."""
-        import core.macros.registry  # noqa: F401 -- registers auto_close
+        import core.macro.registry  # noqa: F401 -- registers auto_close
         prf = Proof(A)                      # line 0: assume A
         prf.add_item(1, "auto_close", prevs=[0], th=Thm(A, A))
 

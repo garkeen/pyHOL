@@ -278,10 +278,10 @@ def get_ast_term(t):
     var_names = [v.name for v in t.get_vars()]
 
     # Import modules for custom parsed data
-    from util import list
-    from util import set
-    from util import function
-    from util import string
+    from syntax import list_tools as list
+    from syntax import set_tools as set
+    from syntax import function_tools as function
+    from syntax import string_tools as string
 
     def get_priority_pair(t):
         """Obtain the binding priority of the top-most operation of t."""

@@ -104,22 +104,50 @@ class ImportDirectionTest(unittest.TestCase):
         self.assertEqual(offenders, [])
 
     def testTheoriesDoNotImportServer(self):
-        """domains/ and imperative/ must not import method.* (step 4:
+        """theories/ and imperative/ must not import method.* (step 4:
         method registration goes through core.method; the method
-        layer reads the registry, it is not a dependency of theories)."""
-        # Whitelist shrinks over the migration steps:
-        #  - imperative/tests/imp_compile_test.py wires the
-        #    method-layer replay into core/verify (method.stable_state).
-        #    The monitor reference promised at step 4 is gone; this
-        #    assembly import disappears at step 9 when server -> method.
-        whitelist = {'imperative/tests/imp_compile_test.py'}
+        layer reads the registry, it is not a dependency of theories).
+
+        The whitelist is empty (was: imp_compile_test.py wiring the
+        method-layer replay). That cross-layer integration test moved
+        to the top level (test_imp_validate.py) per AGENTS.md
+        "跨模块的才放顶层"; the unit compile tests stayed in
+        imperative/tests/ without the assembly import."""
         offenders = []
         for path in py_files_under('theories', 'imperative'):
             rel = os.path.relpath(path, ROOT).replace('\\', '/')
-            if rel in whitelist:
-                continue
             mods = imports_of(path)
             bad = [m for m in mods if m == 'server' or m.startswith('method.')]
+            if bad:
+                offenders.append("%s: %s" % (rel, bad))
+        self.assertEqual(offenders, [])
+
+    def testGoalConsumptionFace(self):
+        """The goal concept (core.goal.Goal) lives only where tactics open
+        subgoals. Allowed consumers outside tests:
+          - core/goal.py     (the single definition point)
+          - core/tactic.py  (the tactic layer)
+          - method/**        (L3 proof language: ProofState opens goals)
+          - imperative/**    (hoare-domain tactic content)
+        The solver-glue files (solvers/proofrec.py, solvers/congc.py)
+        mint goals while building proofs and are the documented deferred
+        debt (audit §8 step 6 supplement: "solver 胶水 6 文件"). They are
+        the only whitelist entries; shrinking them is part of that task.
+        New leaks (a fresh solver file, a conv file, a theories/conv)
+        are caught here."""
+        whitelist = {'solvers/proofrec.py', 'solvers/congc.py'}
+        offenders = []
+        for path in py_files_under('core', 'method', 'imperative',
+                                   'theories', 'solvers', 'backend', 'syntax'):
+            rel = os.path.relpath(path, ROOT).replace('\\', '/')
+            if rel.endswith('/tests/') or '/tests/' in rel + '/' \
+                    or rel == 'core/goal.py' or rel == 'core/tactic.py' \
+                    or rel.startswith('method/') or rel.startswith('imperative/') \
+                    or rel in whitelist:
+                continue
+            mods = imports_of(path)
+            bad = [m for m in mods
+                   if m == 'core.goal' or m.startswith('core.goal.')]
             if bad:
                 offenders.append("%s: %s" % (rel, bad))
         self.assertEqual(offenders, [])

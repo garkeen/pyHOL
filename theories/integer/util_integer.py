@@ -12,7 +12,7 @@ from kernel.proofterm import ProofTerm
 from theories.nat import util_nat as nat
 from core import logic
 from core.logic import apply_theorem
-from util import poly
+from theories import poly
 
 
 # Basic definitions

@@ -527,7 +527,7 @@ def apply_z3(t):
 # injection, audit §6 supplement): framework/macros/z3.py owns the
 # macro; this module binds its backend slot on load.
 def _inject_z3_backend():
-    from core.macros import z3 as z3_macro
+    from core.macro import z3 as z3_macro
     z3_macro.backend.inject(z3_loaded, check_z3, solve)
 
 _inject_z3_backend()

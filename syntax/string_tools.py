@@ -4,7 +4,7 @@ from kernel.type import TFun, TConst
 from syntax.numeral import NatType
 from kernel.term import Term, Const
 from syntax.numeral import Binary
-from util.list import ListType, mk_literal_list, is_literal_list, dest_literal_list
+from syntax.list_tools import ListType, mk_literal_list, is_literal_list, dest_literal_list
 
 """Utility functions for characters and strings."""
 

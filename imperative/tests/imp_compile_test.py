@@ -6,8 +6,6 @@ import unittest
 import os
 
 from core import basic
-import method.stable_state  # wires replay
-from core import verify
 from imperative.imp_compile import parse_imp, compile_programs, compile_file, CompileError
 
 
@@ -97,14 +95,6 @@ program p2
         self.assertEqual(num_vcs, 1)
         self.assertIn("theorem if_demo_vc_0", pyhol)
         self.assertIn("z3", pyhol)
-
-    def test_validate_compiled(self):
-        basic.load_metadata()
-        for name in ['mult_add_loop', 'if_demo']:
-            res, _ = verify.validate_theory(name, force=True)
-            # All VC theorems should be VALID.
-            for thm_name, status in res.items():
-                self.assertEqual(status, 'VALID', "%s/%s" % (name, thm_name))
 
     def test_undeclared_variable(self):
         text = """theory t

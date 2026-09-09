@@ -16,7 +16,7 @@ from core import basic
 from core import logic
 from core import verify as core_verify
 from theories.nat import conv as nat
-from util import set
+from syntax import set_tools as set
 
 
 class BasicTest(unittest.TestCase):

@@ -9,7 +9,7 @@ from kernel.term import Term, Var, Const, Comb, Abs, Bound, Implies, Lambda, Eq
 from core import basic
 from core import logic
 from theories.nat import util_nat as nat
-from util.list import ListType, cons, mk_append, nil
+from syntax.list_tools import ListType, cons, mk_append, nil
 from core import context
 from syntax.infertype import type_infer, infer_printed_type, TypeInferenceException
 

@@ -10,7 +10,6 @@ from kernel.theory import register_macro
 from core.goal import Goal
 from theories.nat import util_nat as nat
 from theories.nat import conv as nat_conv
-from util import function
 from theories.function import conv as function_conv
 from theories.logic.logic import norm_bool_expr
 from core.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_conv, binop_conv, \

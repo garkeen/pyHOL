@@ -16,10 +16,10 @@ from syntax.numeral import less, less_eq
 nat.less = less(NatType)
 nat.less_eq = less_eq(NatType)
 from theories.real import conv as real
-from util import list
-from util import set
-from util import string
-from util import function
+from syntax import list_tools as list
+from syntax import set_tools as set
+from syntax import string_tools as string
+from syntax import function_tools as function
 from theories.nat import interval
 from syntax import printer
 from syntax.settings import settings, global_setting

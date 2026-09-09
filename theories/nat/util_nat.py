@@ -11,7 +11,7 @@ from kernel.thm import Thm
 from kernel import theory
 from kernel.proofterm import ProofTerm, eval_macro
 from core.logic import apply_theorem
-from util import poly
+from theories import poly
 from theories.nat.conv import (
     zero, one, plus, minus, times, Suc,
     equals, less_eq, less, greater_eq, greater, even, odd,

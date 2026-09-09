@@ -7,7 +7,7 @@ from kernel.macro import Macro
 from kernel.theory import register_macro
 from core.conv import Conv, rewr_conv, then_conv, arg_conv, argn_conv
 from kernel.proofterm import ProofTerm, refl
-from util.function import is_fun_upd
+from syntax.function_tools import is_fun_upd
 
 
 class fun_upd_eval_conv(Conv):
