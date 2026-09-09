@@ -94,6 +94,19 @@ class ProofState():
         self.vars = []
         self.prf = Proof()
         self.rpt = None
+        # Bulk edit mode: suppresses the per-line verify in
+        # add_line_before / remove_line / set_line. Used by methods
+        # whose edit sequence has intermediate states that are not
+        # self-consistent (e.g. elim rewires several lines at once);
+        # the caller must run verify(compute_only=True) before the
+        # next operation exposes the state.
+        self._no_verify = False
+        # Trust set for computation-oracle macros (audit §7.1): names
+        # admitted to evaluate during this proof session. Empty by
+        # default (reject every oracle); apply_macro on a level-0
+        # macro adds its name -- the user explicitly requesting the
+        # oracle through the checked channel IS the authorization.
+        self.trust = frozenset()
         # Display metadata keyed by item id (str): 'origin' (cut),
         # 'manual' (apply_prev closure), 'fact' (forward line),
         # 'case' (list of Terms, the case-branch label).
@@ -149,10 +162,37 @@ class ProofState():
             }
         return res
 
-    def check_proof(self, *, no_gaps=False, compute_only=False):
-        """Check the given proof. Report is stored in rpt."""
+    def verify(self, *, no_gaps=False, compute_only=False, trust=None):
+        """Verify the proof (audit §7.1: renamed from check_proof).
+        Goes through the core expander (core.verify), which expands
+        macros into a flattened primitive stream and gates computation
+        oracles by the trust set, then the kernel half replays it.
+        Report is stored in rpt.
+
+        trust=None (default) uses the session trust set (self.trust);
+        an explicit argument overrides it.
+        """
+        from core import verify as core_verify
         self.rpt = report.ProofReport()
-        return theory.check_proof(self.prf, rpt=self.rpt, no_gaps=no_gaps, compute_only=compute_only)
+        return core_verify.verify(self.prf, self.rpt, no_gaps=no_gaps,
+                                  trust=self.trust if trust is None else trust,
+                                  axioms=core_verify.axioms(),
+                                  compute_only=compute_only)
+
+    def bulk_edit(self):
+        """Context manager: suppress per-line verify during a
+        multi-line edit (see __init__)."""
+        import contextlib
+
+        @contextlib.contextmanager
+        def ctx():
+            old = self._no_verify
+            self._no_verify = True
+            try:
+                yield
+            finally:
+                self._no_verify = old
+        return ctx()
 
     def add_line_before(self, id, n: int):
         """Add n lines before the given id."""
@@ -164,7 +204,8 @@ class ProofState():
         for item in prf.items[split+n:]:
             item.incr_proof_item(id, n)
 
-        self.check_proof(compute_only=True)
+        if not self._no_verify:
+            self.verify(compute_only=True)
 
     def remove_line(self, id):
         """Remove line with the given id."""
@@ -175,14 +216,16 @@ class ProofState():
         for item in prf.items[split:]:
             item.decr_proof_item(id)
 
-        self.check_proof(compute_only=True)
+        if not self._no_verify:
+            self.verify(compute_only=True)
 
     def set_line(self, id, rule, *, args=None, prevs=None, th=None):
         """Set the item with the given id to the following data."""
         id = ItemID(id)
         prf = self.prf.get_parent_proof(id)
         prf.items[id.last()] = ProofItem(id, rule, args=args, prevs=prevs, th=th)
-        self.check_proof(compute_only=True)
+        if not self._no_verify:
+            self.verify(compute_only=True)
 
     def get_proof_item(self, id):
         """Obtain the proof item with the given id."""
@@ -261,7 +304,7 @@ class ProofState():
             cur_id = item.id
             prf = self.prf.get_parent_proof(cur_id)
             prf.items[cur_id.last()] = item
-        self.check_proof(compute_only=True)
+        self.verify(compute_only=True)
 
         # The covered goal moved to id+len-1; its metadata entry at the
         # original id is stale (the position now holds the first exported
@@ -343,6 +386,13 @@ class ProofState():
         if macro.limit is not None:
             assert theory.thy.has_theorem(macro.limit), \
                 "apply_macro: %s is not available in this theory." % macro_name
+        if macro.level == 0:
+            # Computation oracle explicitly requested through the
+            # checked channel (audit §7.1): this application IS the
+            # authorization -- record the name in the session trust
+            # set so the emitted oracle line passes verification and
+            # shows up in the trust report (rpt.oracles).
+            self.trust = self.trust | {macro_name}
 
         id = ItemID(id)
         prevs = [ItemID(prev) for prev in prevs] if prevs else []
@@ -363,7 +413,7 @@ class ProofState():
         """Checked entry point for the primitive assumption rule.
 
         The only place outside proof construction (Proof.__init__) that
-        writes an assume line: set_line runs check_proof, so the
+        writes an assume line: set_line runs verify, so the
         primitive is validated by the kernel exactly as at proof replay
         (audit 【C】 -- no tactic wrapper needed, assume has no search
         or matching logic).
@@ -940,7 +990,7 @@ class intro(Method):
 
         cur_item.rule = "subproof"
         cur_item.subproof = pt.export(prefix=id)
-        state.check_proof(compute_only=True)
+        state.verify(compute_only=True)
 
         # Exhibit auto-close of the subgoal lines: those already proved
         # Exhibit auto-close of the subgoal lines: those already proved
@@ -990,37 +1040,47 @@ class elim(Method):
 
         # Visible structure: one line per fresh variable plus the
         # assumption of the exists body, inserted before the gap.
-        state.add_line_before(id, len(vars) + 1)
-        for i, var in enumerate(vars):
-            state.set_line(id.incr_id(i), 'variable', args=(var.name, var.T), prevs=[])
-        state.assume_line(id.incr_id(len(vars)), body)
+        # The whole wiring is one atomic edit: intermediate states
+        # (gap with extended hyps before the intros line is rewired)
+        # are not self-consistent, so per-line verify is suppressed
+        # and the result is verified once below.
+        with state.bulk_edit():
+            state.add_line_before(id, len(vars) + 1)
+            for i, var in enumerate(vars):
+                state.set_line(id.incr_id(i), 'variable',
+                               args=(var.name, var.T), prevs=[])
+            state.assume_line(id.incr_id(len(vars)), body)
 
-        # Locate the enclosing intros line; the lines in between
-        # (including the gap) get their hyps extended with the body.
-        intros_item = None
-        i = len(vars) + 1
-        while intros_item is None:
-            try:
-                item = state.get_proof_item(id.incr_id(i))
-            except ProofStateException:
-                raise AssertionError("elim: cannot find intros at the end")
-            if item.rule == 'intros':
-                intros_item = item
-            else:
-                state.set_line(id.incr_id(i), item.rule, args=item.args,
-                               prevs=item.prevs,
-                               th=Goal(item.th.prop, item.th.hyps, body).th)
-                i += 1
+            # Locate the enclosing intros line; the lines in between
+            # (including the gap) get their hyps extended with the body.
+            intros_item = None
+            i = len(vars) + 1
+            while intros_item is None:
+                try:
+                    item = state.get_proof_item(id.incr_id(i))
+                except ProofStateException:
+                    raise AssertionError("elim: cannot find intros at the end")
+                if item.rule == 'intros':
+                    intros_item = item
+                else:
+                    state.set_line(id.incr_id(i), item.rule, args=item.args,
+                                   prevs=item.prevs,
+                                   th=Goal(item.th.prop, item.th.hyps, body).th)
+                    i += 1
 
-        # Rewire the enclosing intros line: the exists fact, fresh
-        # variables and the body assumption are inserted before the
-        # continuation; the exists prop is prepended to the args.
-        new_intros_ids = [prevs[0]] + [id.incr_id(k) for k in range(len(vars) + 1)]
-        intros_item.args = [exists_prop] + \
-            (list(intros_item.args) if intros_item.args else [])
-        intros_item.prevs = intros_item.prevs[:-1] + new_intros_ids + \
-            [intros_item.prevs[-1]]
-        state.check_proof(compute_only=True)
+            # Rewire the enclosing intros line: the exists fact, fresh
+            # variables and the body assumption are inserted before the
+            # continuation; the exists prop is prepended to the args.
+            new_intros_ids = [prevs[0]] + [id.incr_id(k)
+                                           for k in range(len(vars) + 1)]
+            intros_item.args = [exists_prop] + \
+                (list(intros_item.args) if intros_item.args else [])
+            intros_item.prevs = intros_item.prevs[:-1] + new_intros_ids + \
+                [intros_item.prevs[-1]]
+            # The rewiring changes the derivation; drop the stale theorem
+            # so the verify below re-derives it from the rewired prevs.
+            intros_item.th = None
+        state.verify(compute_only=True)
 
         # Derive the rewired intros line as a CHECKED proof term and
         # assert the committed line matches it. The wiring above is the

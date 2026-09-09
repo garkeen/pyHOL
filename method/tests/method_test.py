@@ -52,7 +52,7 @@ def test_method(self: unittest.TestCase, thy_name: str, *, vars=None,
         return
 
     method.apply_method(state, args)
-    self.assertEqual(state.check_proof(), Thm(Implies(*(assms + [concl]))))
+    self.assertEqual(state.verify(), Thm(Implies(*(assms + [concl]))))
     
     # Compare list of gaps
     if gaps is None:
@@ -607,6 +607,39 @@ class MethodTest(unittest.TestCase):
             failed=AssertionError
         )
 
+    def testApplyMacroOracleAuthorized(self):
+        """apply_macro on a level-0 oracle macro authorizes its name in
+        the session trust set (audit §7.1): the emitted oracle line
+        verifies, no gap remains, and the trust report records the
+        oracle.  Applying an untrusted oracle line without going
+        through apply_macro stays a hard failure."""
+        from kernel.macro import Macro
+        from kernel.thm import oracle_thm
+        from kernel.term import Var
+        from kernel.type import BoolType
+        from kernel import theory as ktheory
+
+        class DummyOracleMacro(Macro):
+            def __init__(self):
+                self.level = 0
+                self.sig = Term
+                self.limit = None
+
+            def eval(self, goal, prevs):
+                return oracle_thm('dummy_oracle', goal)
+
+        context.set_context('logic', vars={'A': 'bool'})
+        ktheory.global_macros['dummy_oracle'] = DummyOracleMacro()
+        try:
+            state = server.parse_init_state("A")
+            state.apply_macro(0, 'dummy_oracle')
+            self.assertIn('dummy_oracle', state.trust)
+            self.assertEqual(state.verify(),
+                             Thm(Var('A', BoolType)))
+            self.assertEqual(state.rpt.oracles, {'dummy_oracle'})
+        finally:
+            del ktheory.global_macros['dummy_oracle']
+
 
 class AcceptMethodTest(unittest.TestCase):
     """accept semantics: stripped-conclusion match + C6 whole-prop fallback."""
@@ -633,7 +666,7 @@ class AcceptMethodTest(unittest.TestCase):
         items = sps.state.prf.items
         self.assertEqual(len(items), 2)
         self.assertEqual(items[0].rule, 'apply_theorem_inst')
-        rpt = sps.state.check_proof(no_gaps=True)
+        rpt = sps.state.verify(no_gaps=True)
         self.assertTrue(rpt is not None)
 
     def testAcceptStripped(self):

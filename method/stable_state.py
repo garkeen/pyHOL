@@ -64,12 +64,20 @@ class StableProofState:
         self.th2sid: Dict[Thm, int] = {}
         self.next_sid = 1
         self.rpt = None
+        self.trust = frozenset()
 
     def _ensure_sid(self, th: Thm) -> int:
         if th not in self.th2sid:
             self.th2sid[th] = self.next_sid
             self.next_sid += 1
         return self.th2sid[th]
+
+    def set_trust(self, trust):
+        """Set the session trust set (audit §7.1): names of computation
+        oracle macros admitted to evaluate. Propagates to the wrapped
+        ProofState so every internal verify() uses it."""
+        self.trust = frozenset(trust)
+        self.state.trust = self.trust
 
     def _build_pos2sid(self) -> Dict[str, int]:
         """Build positional-ID -> stable-ID mapping by traversing proof tree."""
@@ -92,9 +100,14 @@ class StableProofState:
         return new_items
 
     @classmethod
-    def create(cls, prop_str, vars_dict=None) -> 'StableProofState':
-        """Create initial state: #0 = full proposition (no implicit splitting)."""
+    def create(cls, prop_str, vars_dict=None, trust=frozenset()) -> 'StableProofState':
+        """Create initial state: #0 = full proposition (no implicit splitting).
+
+        trust -- session trust set for computation-oracle macros
+        (audit §7.1); empty by default (reject every oracle).
+        """
         sps = cls()
+        sps.set_trust(trust)
         # Set up context variables
         if vars_dict:
             from kernel.type import Type
@@ -110,7 +123,7 @@ class StableProofState:
         sps.state.prf = Proof()
         th0 = Goal(prop).th
         sps.state.prf.add_item(0, 'sorry', th=th0)
-        sps.state.check_proof(compute_only=True)
+        sps.state.verify(compute_only=True)
         sps.th2sid[th0] = 0
         return sps
 
@@ -124,7 +137,7 @@ class StableProofState:
             try:
                 old_ths = set(self.th2sid.keys())
                 apply_method(self.state, step)
-                self.state.check_proof(compute_only=True)
+                self.state.verify(compute_only=True)
                 self._find_new_items(old_ths)
             except Exception:
                 return False
@@ -177,7 +190,7 @@ class StableProofState:
         old_ths = set(self.th2sid.keys())
         try:
             apply_method(self.state, step_dict)
-            self.state.check_proof(compute_only=True)
+            self.state.verify(compute_only=True)
         except Exception:
             return False
 
@@ -236,7 +249,7 @@ class StableProofState:
         old_ths = set(self.th2sid.keys())
         try:
             apply_method(self.state, step_dict)
-            self.state.check_proof(compute_only=True)
+            self.state.verify(compute_only=True)
         except Exception:
             return False
 
@@ -291,19 +304,26 @@ class StableProofState:
         old_ths = set(self.th2sid.keys())
         try:
             apply_method(self.state, step_dict)
-            self.state.check_proof(compute_only=True)
+            self.state.verify(compute_only=True)
         except Exception:
             return None
         return self._find_new_items(old_ths)
 
-    def check_proof(self, *, no_gaps=False):
+    def verify(self, *, no_gaps=False, trust=None):
+        """Full verification of the proof state (audit §7.1).
+
+        trust=None (default) uses the session trust set; an explicit
+        argument overrides it for this call only.
+        """
         self.rpt = None
-        return self.state.check_proof(no_gaps=no_gaps)
+        if trust is not None:
+            return self.state.verify(no_gaps=no_gaps, trust=trust)
+        return self.state.verify(no_gaps=no_gaps)
 
     @property
     def num_gaps(self):
         if self.state.rpt is None:
-            self.state.check_proof(compute_only=True)
+            self.state.verify(compute_only=True)
         return len(self.state.rpt.gaps)
 
     def get_open_goals(self) -> List[Tuple[int, Thm]]:
@@ -323,7 +343,7 @@ class StableProofState:
 
         # Ensure rpt is computed
         if self.state.rpt is None:
-            self.state.check_proof(compute_only=True)
+            self.state.verify(compute_only=True)
 
         return {
             'vars': vars,
@@ -637,9 +657,9 @@ class StableProofState:
 # Wire the stable-ID replay into the core verify pipeline (audit §7.4):
 # core.verify owns the four-state judgement and calls this
 # injected function; the method layer must not be imported by core.
-def _verify_replay(item, name):
+def _verify_replay(item, name, trust=frozenset()):
     vars_dict = dict(item.vars) if item.vars else {}
-    sps = StableProofState.create(item.prop, vars_dict)
+    sps = StableProofState.create(item.prop, vars_dict, trust=trust)
     for step in item.steps:
         if not sps.apply_method_dict(step):
             raise Exception('replay failed at step: %s' % step.get('method_name', '?'))

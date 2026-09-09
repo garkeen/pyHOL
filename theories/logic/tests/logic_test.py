@@ -16,6 +16,7 @@ from core.logic import get_forall_names
 from theories.logic.logic import norm_bool_expr, norm_conj_assoc, conj_norm, disj_norm
 from core import basic
 from core import matcher
+from core import verify as core_verify
 from core.tests.conv_test import test_conv
 from theories.nat import util_nat as nat
 from syntax import parser
@@ -31,7 +32,7 @@ y = Var("y", Ta)
 
 def test_macro(self: unittest.TestCase, thy_name: str, macro: Macro, *,
                vars=None, assms=None, res=None, args="", failed=None,
-               limit=None, eval_only=False):
+               limit=None, eval_only=False, oracles=frozenset()):
     context.set_context(thy_name, vars=vars, limit=limit)
 
     macro = theory.global_macros[macro]
@@ -58,7 +59,8 @@ def test_macro(self: unittest.TestCase, thy_name: str, macro: Macro, *,
     if not eval_only:
         pt = macro.get_proof_term(args, prevs)
         prf = pt.export()
-        self.assertEqual(theory.check_proof(prf), Thm(res, assms))
+        self.assertEqual(core_verify.verify(prf, trust=oracles),
+                         Thm(res, assms))
 
 # Helper function, not a pytest test (name shared by importing modules)
 test_macro.__test__ = False
@@ -144,7 +146,7 @@ class LogicTest(unittest.TestCase):
         pt4 = ProofTerm.sorry(Thm(C, P(x)))
         pt4 = eval_macro('intros', args=[ex_P], prevs=[pt1, pt2, pt3, pt4])
         prf = pt4.export()
-        self.assertEqual(theory.check_proof(prf), Thm(C, ex_P))
+        self.assertEqual(core_verify.verify(prf), Thm(C, ex_P))
 
     def testRewriteGoal(self):
         test_macro(

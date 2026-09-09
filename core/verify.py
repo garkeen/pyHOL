@@ -331,6 +331,16 @@ def verify(prf, rpt=None, *, no_gaps=False, trust=frozenset(), axioms=None,
     except ReplayException as e:
         raise CheckProofException(e.msg)
 
+    # Trust report (audit §7.2): every non-primitive assumption the
+    # proof rests on is recorded -- axiom lines and oracle lines into
+    # the report; sorry holes are already in rpt.gaps.
+    if rpt is not None:
+        for rule, label, _th in holes:
+            if rule == 'axiom':
+                rpt.add_axiom_hole(label)
+            elif rule == 'oracle':
+                rpt.add_oracle_hole(label)
+
     # Final theorem = last non-empty line's statement (can_prove
     # accepts weaker hypotheses; stronger is rejected). Typing checked
     # once at the end.
@@ -365,19 +375,20 @@ _replay_fn = None
 def set_replay_fn(fn):
     """Register the proof replay function.
 
-    fn(item, name) must replay item.steps under item.vars and return
-    the number of open goals (0 for a complete proof), raising on any
-    replay failure.
+    fn(item, name, trust=frozenset()) must replay item.steps under
+    item.vars and return the number of open goals (0 for a complete
+    proof), raising on any replay failure.  trust is the caller's
+    computation-oracle declaration (audit §7.1).
     """
     global _replay_fn
     _replay_fn = fn
 
 
-def _replay(item, name):
+def _replay(item, name, trust=frozenset()):
     assert _replay_fn is not None, (
         "verify: replay function not registered -- "
         "import method.stable_state (the method layer) first")
-    return _replay_fn(item, name)
+    return _replay_fn(item, name, trust=trust)
 
 
 # ---------------------------------------------------------------------------
@@ -424,12 +435,16 @@ def _import_statuses(filename, seen=None):
 # Four-state judgement.
 # ---------------------------------------------------------------------------
 
-def validate_theory(filename, *, force=False):
+def validate_theory(filename, *, force=False, trust=frozenset()):
     """Validate all theorems in a theory file.
 
     Uses the .json cache: if the .pyhol file has not changed, returns
     cached statuses without re-validating.  If force=True, ignores the
     cache and re-validates everything.
+    trust -- names of computation-oracle macros admitted while
+    replaying proofs (audit §7.1).  Empty default rejects every
+    oracle; library validation passes the explicit set of the legacy
+    computation oracles (audit line 366 debt).
 
     Returns (statuses, errors) for THIS file's theorem entries:
     statuses maps theorem names to states ('VALID', 'STEP_FAILED',
@@ -509,7 +524,7 @@ def validate_theory(filename, *, force=False):
             with theory.fresh_theory():
                 context.set_context(filename, limit=('thm', name),
                                     vars=dict(item.vars) if item.vars else {})
-                gaps = _replay(item, name)
+                gaps = _replay(item, name, trust=trust)
             statuses[name] = 'VALID' if gaps == 0 else 'STEP_FAILED'
             errors[name] = None if gaps == 0 else 'proof has %d open goal(s)' % gaps
         except Exception as e:

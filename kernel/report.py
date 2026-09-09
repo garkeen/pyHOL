@@ -32,6 +32,13 @@ class ProofReport():
         self.macros_eval = set()
         self.macros_expand = set()
         self.gaps = []
+        # Trust report (audit §7.2): every non-primitive assumption the
+        # proof actually rests on.  axioms -- names of theorem lines
+        # admitted by the axiom rule; oracles -- names of computation
+        # oracle lines (each was checked against the trust set by the
+        # expander before evaluation).  sorry holes are rpt.gaps.
+        self.axioms = set()
+        self.oracles = set()
 
     def __str__(self):
         return "\n".join([
@@ -57,6 +64,8 @@ class ProofReport():
             "th_names": sorted(list(self.th_names)),
             "macros_eval": sorted(list(self.macros_eval)),
             "macros_expand": sorted(list(self.macros_expand)),
+            "axioms": sorted(list(self.axioms)),
+            "oracles": sorted(list(self.oracles)),
             "num_gaps": len(self.gaps)
         }
 
@@ -80,6 +89,14 @@ class ProofReport():
     def add_gap(self, th: Thm):
         """Register a gap with conclusion theorem t."""
         self.gaps.append(th)
+
+    def add_axiom_hole(self, name: str):
+        """Record an axiom assumption (audit §7.2 trust report)."""
+        self.axioms.add(name)
+
+    def add_oracle_hole(self, name: str):
+        """Record a computation-oracle assumption (audit §7.2)."""
+        self.oracles.add(name)
 
     def steps_stat(self):
         """Return the triple of thm_steps, prim_steps, macro_steps."""

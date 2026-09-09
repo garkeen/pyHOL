@@ -136,6 +136,71 @@ class VerifyTest(unittest.TestCase):
         self.assertEqual(core_verify.verify(prf, rpt), Thm(B))
         self.assertEqual(rpt.gaps, [Thm(Implies(A, B)), Thm(A)])
 
+    def testOracleTrusted(self):
+        """Oracle line admitted by the trust set: the proof verifies and
+        the trust report records the oracle (audit §7.2)."""
+        prf = Proof()
+        prf.add_item(0, "oracle", args="dummy_solver", th=Thm(A, A))
+
+        rpt = ProofReport()
+        self.assertEqual(core_verify.verify(prf, rpt, trust={'dummy_solver'}),
+                         Thm(A, A))
+        self.assertEqual(rpt.oracles, {'dummy_solver'})
+
+    def testOracleUntrusted(self):
+        """Oracle line without a trust declaration is a hard failure
+        (audit §7.1: the strict default rejects every oracle)."""
+        prf = Proof()
+        prf.add_item(0, "oracle", args="dummy_solver", th=Thm(A, A))
+
+        self.assertRaisesRegex(
+            CheckProofException, "not trusted", core_verify.verify, prf)
+
+    def testAxiomHole(self):
+        """A theorem line naming an axiom is recorded in the trust
+        report (audit §7.2); without the axiom declaration the same
+        line is an ordinary theorem and records no hole."""
+        theory.thy.add_theorem("some_axiom", Thm(Implies(A, A)))
+        axiom_th = theory.thy.get_theorem("some_axiom")
+        prf = Proof()
+        prf.add_item(0, "theorem", args="some_axiom")
+
+        rpt = ProofReport()
+        self.assertEqual(core_verify.verify(prf, rpt, axioms={'some_axiom'}),
+                         axiom_th)
+        self.assertEqual(rpt.axioms, {'some_axiom'})
+
+        rpt2 = ProofReport()
+        self.assertEqual(core_verify.verify(prf, rpt2), axiom_th)
+        self.assertEqual(rpt2.axioms, set())
+
+    def testAutoCloseMacro(self):
+        """auto_close (level None) expands to a reference: exact citation
+        verifies end-to-end with the macro recorded as expanded."""
+        import core.macros.registry  # noqa: F401 -- registers auto_close
+        prf = Proof(A)                      # line 0: assume A
+        prf.add_item(1, "auto_close", prevs=[0], th=Thm(A, A))
+
+        rpt = ProofReport()
+        self.assertEqual(core_verify.verify(prf, rpt), Thm(A, A))
+        self.assertIn('auto_close', rpt.macros_expand)
+
+    def testSubproofExpanded(self):
+        """A subproof line is flattened: its items are emitted inline and
+        the enclosing line stands as a reference citable by later lines."""
+        inner = Proof()
+        inner.add_item((1, 0), "assume", args=A)
+        inner.add_item((1, 1), "implies_elim", prevs=[(0,), (1, 0)])
+
+        prf = Proof(Implies(A, B))          # line (0,): assume A --> B
+        prf.add_item(1, "subproof", th=Thm(B, (Implies(A, B), A)))
+        prf.items[1].subproof = inner
+        prf.add_item(2, "implies_intr", args=A, prevs=[(1,)])
+
+        rpt = ProofReport()
+        self.assertEqual(core_verify.verify(prf, rpt),
+                         Thm(Implies(A, B), (Implies(A, B),)))
+
 
 if __name__ == "__main__":
     unittest.main()
