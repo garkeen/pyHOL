@@ -1,4 +1,4 @@
-# domains/expr/method.py - Expression evaluation method, auto-generated
+# theories/expr/method.py - Expression evaluation method, auto-generated
 # from the prove_avalI macro (checked apply_macro entry point).
 
 from core.method import register_macro_method

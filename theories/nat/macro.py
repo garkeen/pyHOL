@@ -1,4 +1,4 @@
-# domains/nat/macro.py - Nat Macro classes
+# theories/nat/macro.py - Nat Macro classes
 
 from kernel.type import TFun, BoolType
 from syntax.numeral import NatType

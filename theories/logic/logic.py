@@ -1,4 +1,4 @@
-# domains/logic/logic.py - Domain-dependent logic utilities
+# theories/logic/logic.py - Domain-dependent logic utilities
 # These functions hardcode logic.pyhol theorem names
 
 from typing import List, Tuple

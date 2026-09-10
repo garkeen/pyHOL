@@ -16,7 +16,7 @@ admitted by the axiom rule -- recorded as 'AXIOM' for display, not a
 state.
 
 The replay itself goes through the method layer's stable-ID pipeline
-(injected at load via set_replay_fn -- framework must not import the
+(injected at load via set_replay_fn -- core must not import the
 method layer).  The cache format (.cache/<theory>.json keyed on source
 mtime) is unchanged from the monitor-era implementation.
 """

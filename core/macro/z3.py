@@ -1,4 +1,4 @@
-# framework/macros/z3.py - Z3 Macro class (domain-independent)
+# core/macro/z3.py - Z3 Macro class (domain-independent)
 # Extracted from solvers/z3wrapper.py
 #
 # By-name injection (audit §6 supplement): this macro lives in the

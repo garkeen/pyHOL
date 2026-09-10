@@ -1,4 +1,4 @@
-# framework/macro/simp.py - The simp macro's expansion mechanism.
+# core/macro/simp.py - The simp macro's expansion mechanism.
 #
 # simp_sweep applies all hint_rewrite theorems of the current theory,
 # round by round, to a fixed point. It is shared by the simp tactic

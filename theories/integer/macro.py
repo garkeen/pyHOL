@@ -1,6 +1,6 @@
-# domains/integer/macro.py - Integer macros.
+# theories/integer/macro.py - Integer macros.
 # Importing this module registers int_norm (polynomial normalization
-# for integer equalities), mirroring nat_norm in domains/nat/macro.py.
+# for integer equalities), mirroring nat_norm in theories/nat/macro.py.
 
 from math import gcd
 

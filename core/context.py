@@ -123,8 +123,8 @@ def parse_term_list(s):
 
 # The kernel's Term(str) constructor delegates to this hook (set by
 # syntax.parser).  Rebind it to context-aware parsing so implicit
-# Term(...) conversions inside framework and above see the current
-# global context.  framework depends on syntax, so this rebinding
+# Term(...) conversions inside core and above see the current
+# global context.  core depends on syntax, so this rebinding
 # direction is legal (syntax itself must not import this module).
 import kernel.term as _kernel_term
 _kernel_term.term_parser = parse_term

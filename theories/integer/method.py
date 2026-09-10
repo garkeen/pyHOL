@@ -1,4 +1,4 @@
-# domains/integer/method.py - Integer methods, auto-generated from macros.
+# theories/integer/method.py - Integer methods, auto-generated from macros.
 
 from core.method import register_macro_method
 

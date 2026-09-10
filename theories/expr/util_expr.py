@@ -1,4 +1,4 @@
-# domains/expr/util_expr.py - Expression type constants
+# theories/expr/util_expr.py - Expression type constants
 # Domain-dependent: constants of expr.pyhol (aexp, N, V, Plus, Times, avalI)
 
 from kernel.type import TConst, TFun, BoolType

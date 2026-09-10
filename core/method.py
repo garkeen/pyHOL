@@ -1,9 +1,9 @@
-# framework/method.py - Method registry (the core registration API).
+# core/method.py - Method registry (the core registration API).
 #
 # The Method base class, the global method store, and the registration
 # channels (register_method, register_macro_method, register_norm) live
 # here, below the application layer: domains and imperative register
-# into this registry directly, and the method layer (server/methods) is
+# into this registry directly, and the method layer (method/methods) is
 # a reader -- it contributes its own interactive methods through the
 # same checked API and serves the registry to the frontend.
 #

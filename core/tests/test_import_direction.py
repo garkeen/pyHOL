@@ -59,9 +59,9 @@ class ImportDirectionTest(unittest.TestCase):
                    or m.startswith('tactic.')]
             self.assertEqual(bad, [], "%s imports tactic layer: %s" % (fname, bad))
 
-    def testFrameworkDoesNotImportServer(self):
-        """framework/ must not import method.* (step 5: items/defcheck
-        live in framework; the framework layer never depends on the
+    def testCoreDoesNotImportMethod(self):
+        """core/ must not import method.* (step 5: items/defcheck
+        live in core; the core layer never depends on the
         method/session layer above it)."""
         offenders = []
         for path in py_files_under('core'):

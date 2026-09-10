@@ -1,4 +1,4 @@
-# domains/nat/method.py - Nat methods, auto-generated from macros.
+# theories/nat/method.py - Nat methods, auto-generated from macros.
 # Each macro is exposed as an interactive method through the standard
 # register_macro_method channel (checked apply_macro entry point).
 

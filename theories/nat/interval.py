@@ -1,4 +1,4 @@
-# domains/nat/interval.py - Interval conversions
+# theories/nat/interval.py - Interval conversions
 # Domain-dependent: hardcodes nat.pyhol theorem names (natseg_emptyI, natseg_lrec)
 
 from kernel.type import TFun

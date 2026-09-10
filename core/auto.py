@@ -1,4 +1,4 @@
-# framework/auto.py - Generic proof automation (domain-independent)
+# core/auto.py - Generic proof automation (domain-independent)
 #
 # A head-term -> proof-procedure dispatch engine shared by all domains:
 # nat/real/... register their normalization and solving procedures into

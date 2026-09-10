@@ -1,7 +1,7 @@
 """Domain extensions for holpy.
 
 Each subpackage registers domain-specific conv, macro, and method classes
-via the decorators in kernel.theory / method.methods.core / logic.auto.
+via the decorators in kernel.theory / core.method / core.auto.
 
 A domain is loaded by basic.py when the corresponding .pyhol file declares
 `domains <name>` in its header. The import triggers @register_* decorators,

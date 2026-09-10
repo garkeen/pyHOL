@@ -1,4 +1,4 @@
-# domains/nat/util_nat.py - Natural number utility functions
+# theories/nat/util_nat.py - Natural number utility functions
 # Migrated from util/nat.py
 
 from kernel.type import TFun, BoolType

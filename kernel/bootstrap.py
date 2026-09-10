@@ -5,16 +5,16 @@
 #
 #   * bootstrap_macros: registry of macros whose get_proof_term builds
 #     ProofTerm trees with PRIMITIVES ONLY -- no conv, no matcher, no
-#     framework imports. They live beside kernel.theory.global_macros
-#     as a separate registry: the framework's richer macros (intros
+#     core imports. They live beside kernel.theory.global_macros
+#     as a separate registry: core's richer macros (intros
 #     with apply_theorem, rewrite_*, simp, ...) remain in
 #     kernel.theory.global_macros, the kernel extension slot.
 #   * expand_macro_proof(prf, name, args, prevs, prev_ids): expand a
 #     macro line of a proof into a pure primitive stream appended to
 #     the proof, verified by kernel.replay.
 #
-# The bootstrap macros implement the semantic core of their framework
-# counterparts (framework/macros/core.py intros / trivial) restricted to
+# The bootstrap macros implement the semantic core of their core
+# counterparts (core/macro/registry.py intros / trivial) restricted to
 # pure primitives, so kernel+syntax can prove non-trivial theorems
 # end-to-end without the core.
 
@@ -32,7 +32,7 @@ class intros_macro(Macro):
     |- A_1 --> ... --> A_n --> C.
 
     get_proof_term expects prevs = [pt_A1, ..., pt_An, pt_C], mirroring
-    the framework intros macro's variable/assume/continuation order
+    the core intros macro's variable/assume/continuation order
     restricted to the assume case.
 
     """
@@ -84,7 +84,7 @@ class trivial_macro(Macro):
 
 """Registry of kernel-only bootstrap macros. Separate from
 kernel.theory.global_macros (the kernel extension slot filled by the
-framework and domain packages)."""
+core and domain packages)."""
 bootstrap_macros = {
     "intros": intros_macro(),
     "trivial": trivial_macro(),

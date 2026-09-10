@@ -1,4 +1,4 @@
-# domains/logic/conv.py - Propositional logic conversions
+# theories/logic/conv.py - Propositional logic conversions
 # Domain-dependent: hardcodes logic.pyhol theorem names
 
 from kernel.term import Term, BoolType, Var

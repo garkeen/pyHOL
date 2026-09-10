@@ -524,7 +524,7 @@ def apply_z3(t):
 
 
 # Inject the solver backend into the z3 oracle macro (by-name
-# injection, audit §6 supplement): framework/macros/z3.py owns the
+# injection, audit §6 supplement): core/macro/z3.py owns the
 # macro; this module binds its backend slot on load.
 def _inject_z3_backend():
     from core.macro import z3 as z3_macro

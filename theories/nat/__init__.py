@@ -1,7 +1,7 @@
-# domains/nat/__init__.py
+# theories/nat/__init__.py
 # Importing this package registers nat-specific conv, macro, and method.
 # Triggered by basic.py when the 'nat' domain is declared in a .pyhol file,
-# or by server/methods/__init__.py for eager loading.
+# or by method/methods/__init__.py for eager loading.
 
 # Import order matters: conv first (no domain deps), then macro (uses conv),
 # then method (uses macro). util_nat is imported on demand.

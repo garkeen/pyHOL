@@ -1,13 +1,13 @@
 # Author: Bohua Zhan
 # Step 0 acceptance test (ARCHITECTURE_AUDIT.md §8 step 0):
 #
-#   Prove a theorem using ONLY kernel + syntax (no framework/core,
+#   Prove a theorem using ONLY kernel + syntax (no core,
 #   no domains, no solvers), with a macro, and close it via pure
 #   primitive replay.
 #
 # The macro must expand to a pure primitive stream that kernel/replay.py
 # can re-verify. Everything runs in an EmptyTheory -- no library theories,
-# no macros registered by framework/macros (their proof machinery lives
+# no macros registered by core/macro (their proof machinery lives
 # in core.conv).
 #
 # This test is the "kernel断奶" acceptance test: it must pass without
@@ -211,7 +211,7 @@ class PurePrimitiveReplayTest(unittest.TestCase):
 class BootstrapMacroTest(unittest.TestCase):
     """The full step-0 scenario: a theorem proved through a kernel-only
     macro, expanded into a pure primitive stream and re-verified by
-    replay -- without any framework import."""
+    replay -- without any core import."""
 
     def setUp(self):
         theory.thy = theory.EmptyTheory()
@@ -272,9 +272,9 @@ class BootstrapMacroTest(unittest.TestCase):
         self.assertEqual(th, Thm(goal))
         self.assertEqual(holes, [])
 
-    def testFrameworkMacroRejected(self):
-        """Framework macros are not bootstrap macros: the kernel-side
-        expander returns None for them (no fallback to framework)."""
+    def testCoreMacroRejected(self):
+        """Core macros are not bootstrap macros: the kernel-side
+        expander returns None for them (no fallback to core)."""
         from kernel.bootstrap import expand_macro_proof
         prf = Proof()
         res = expand_macro_proof(prf, "rewrite_goal", args=None,

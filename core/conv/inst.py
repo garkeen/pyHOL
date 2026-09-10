@@ -1,4 +1,4 @@
-# framework/conv/inst.py - Primitive theorem instantiation for convs.
+# core/conv/inst.py - Primitive theorem instantiation for convs.
 #
 # Step 1 of the rewrite plan (ARCHITECTURE_AUDIT.md §8): convs must not
 # emit macro nodes (audit iron law: conv 不得出现宏名). A conv's output

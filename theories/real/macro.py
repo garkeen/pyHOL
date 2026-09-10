@@ -1,4 +1,4 @@
-# domains/real/macro.py - Real macros.
+# theories/real/macro.py - Real macros.
 # Macro definitions moved here from conv.py (rewrite step 1,
 # ARCHITECTURE_AUDIT.md §8): macro.py defines, conv.py only converts.
 # Importing this module registers the real macros.

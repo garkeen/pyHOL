@@ -594,5 +594,5 @@ term.term_parser = parse_term  # rebound to context-aware parsing below
 
 # The kernel's Term(s-from-string) constructor goes through this hook.
 # Binding it to context-aware parsing would make syntax depend on
-# framework, so the rebinding lives in framework/context.py instead
-# (framework already depends on syntax). Do NOT rebind here.
+# core, so the rebinding lives in core/context.py instead
+# (core already depends on syntax). Do NOT rebind here.

@@ -1,4 +1,4 @@
-# framework/search.py - Pattern-net theorem index for suggest/search.
+# core/search.py - Pattern-net theorem index for suggest/search.
 #
 # Replaces the "iterate all theorems and match each one" approach:
 # theorems are indexed by the head skeleton of their conclusion

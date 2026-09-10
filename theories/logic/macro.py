@@ -1,4 +1,4 @@
-# domains/logic/macro.py - Domain-dependent macros (hardcode logic.pyhol theorem names)
+# theories/logic/macro.py - Domain-dependent macros (hardcode logic.pyhol theorem names)
 
 from typing import List, Tuple
 

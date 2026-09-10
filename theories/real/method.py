@@ -1,4 +1,4 @@
-# domains/real/method.py - Real methods.
+# theories/real/method.py - Real methods.
 # The real_norm method is auto-generated from the real_norm macro
 # (defined in domains/real/macro.py) via register_macro_method: the
 # checked apply_macro entry point. This module performs the
