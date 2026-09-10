@@ -12,8 +12,8 @@ from kernel import report
 from kernel import theory
 from core import logic, matcher
 from core import context
-from core.goal import Goal
-from core import tactic
+from tactic.goal import Goal
+from tactic import steps as tactic
 from core.context import Context
 from syntax import parser, printer
 from syntax.settings import settings, global_setting

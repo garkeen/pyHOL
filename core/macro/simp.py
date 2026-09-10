@@ -3,9 +3,9 @@
 # simp_sweep applies all hint_rewrite theorems of the current theory,
 # round by round, to a fixed point. It is shared by the simp tactic
 # (pre-check), the simp macro (kernel expansion) and the auto macro
-# (fixpoint loop). Moved here from core/tactic.py in rewrite
+# (fixpoint loop). Moved here from tactic/steps.py in rewrite
 # step 2 (ARCHITECTURE_AUDIT.md §8): the tactic layer imports it from
-# this module (downward), and framework/tactic.py no longer imports
+# this module (downward), and tactic/steps.py no longer imports
 # core.auto -- the tactic<->auto import cycle is dissolved.
 #
 # The lazy `from core import auto` below is the same-layer

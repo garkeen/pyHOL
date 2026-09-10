@@ -22,11 +22,11 @@ from kernel import theory
 from kernel.report import ProofReport
 from core import basic, matcher
 from core import context
-from core.goal import Goal
+from tactic.goal import Goal
 from core.logic import apply_theorem
 from theories.logic.logic import imp_disj_iff, disj_norm, resolution
 from theories.logic.macro import imp_conj_macro
-from core.tactic import rewrite_goal_with_prev
+from tactic.steps import rewrite_goal_with_prev
 from core.conv import rewr_conv, try_conv, top_conv, top_sweep_conv, bottom_conv, arg_conv, ConvException, Conv, arg1_conv, binop_conv, replace_conv
 from core import auto
 from solvers import sat, tseitin, simplex, simplex_strict

@@ -378,7 +378,7 @@ class HOLTransformer(Transformer):
     def thm(self, *args):
         # Script front door: the user states a goal (assums ..., concl).
         # The statement is minted through the kernel's sorry constructor
-        # (syntax layer is below core.goal; same mint, kernel channel).
+        # (syntax layer is below tactic; same mint, kernel channel).
         return Thm.sorry(args[-1], tuple(args[:-1]))
 
     def term_pair(self, name, T):

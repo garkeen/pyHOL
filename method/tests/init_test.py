@@ -12,7 +12,7 @@ from kernel.report import ProofReport
 from core import logic
 from core import basic
 from core import context
-from core import tactic
+from tactic import steps as tactic
 from method import methods as method
 from method import init as server
 from syntax import parser

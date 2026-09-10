@@ -22,9 +22,9 @@ from method.methods.core import ProofState, apply_method
 from core.method import get_method_sig, get_method_list_params
 from core.method import global_methods
 from core import method as core_method
-from core import tactic
+from tactic import steps as tactic
 from core import context
-from core.goal import Goal
+from tactic.goal import Goal
 
 # Items with these rules carry no new goal/fact content: they only
 # reference already-registered lines. They get a positional ItemID for

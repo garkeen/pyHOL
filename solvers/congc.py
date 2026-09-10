@@ -11,7 +11,7 @@ from copy import copy
 from kernel import term
 from kernel.term import Eq
 from kernel.proofterm import ProofTerm
-from core.goal import Goal
+from tactic.goal import Goal
 
 EQ_CONST, EQ_COMB = range(2)
 

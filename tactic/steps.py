@@ -1,4 +1,8 @@
 # Author: Bohua Zhan
+# tactic/steps.py - Tactic base class and the backward tactic steps.
+# L2 逆向翻译层（ARCHITECTURE_AUDIT.md §2）：每个 Tactic 子类把 goal
+# 形状分析翻译成宏名+参数（+显式子目标），不含推导逻辑、无组合子。
+# goal 概念见 tactic/goal.py。
 
 from copy import copy
 
@@ -11,7 +15,7 @@ from kernel import theory
 from kernel.proofterm import ProofTerm, TacticException, eval_macro
 from core import logic
 from core import matcher
-from core.goal import Goal
+from tactic.goal import Goal
 from core.conv import then_conv, top_conv, rewr_conv, beta_conv, beta_norm_conv, \
     top_sweep_conv, has_rewrite, loc_conv
 from core.logic import apply_theorem

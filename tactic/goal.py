@@ -1,4 +1,4 @@
-# core/goal.py - The goal concept: statement of an open target.
+# tactic/goal.py - The goal concept: statement of an open target.
 
 """Single definition point of the goal concept (audit \u00a77.3).
 

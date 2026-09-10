@@ -10,7 +10,7 @@ from kernel.proof import Proof, ProofItem, ItemID
 from kernel import theory
 from kernel.proofterm import ProofTerm
 from core import basic
-from core import tactic
+from tactic import steps as tactic
 from core import context
 from core import verify as core_verify
 from syntax import parser

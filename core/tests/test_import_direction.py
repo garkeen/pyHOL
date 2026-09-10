@@ -2,10 +2,10 @@
 # lint（AST 扫描），白名单逐步缩短").
 #
 # Locks the dissolution of the tactic<->auto import cycle:
-#   - framework/tactic.py must not reference core.auto (the cycle
+#   - tactic/steps.py must not reference core.auto (the cycle
 #     came from simp_sweep's lazy auto import; simp_sweep now lives in
-#     framework/macro/simp.py).
-#   - framework/macro/ (macro layer) must not import core.tactic
+#     core/macro/simp.py).
+#   - core/macro/ (macro layer) must not import tactic
 #     (tactic sits above macro; imports only go downward).
 
 import ast
@@ -40,22 +40,23 @@ def py_files_under(*dirs):
 
 class ImportDirectionTest(unittest.TestCase):
     def testTacticDoesNotImportAuto(self):
-        """framework/tactic.py must not import core.auto, at any
-        nesting level (step 2: tactic<->auto cycle dissolved)."""
-        mods = imports_of(os.path.join(FRAMEWORK_DIR, 'tactic.py'))
+        """tactic/steps.py must not import core.auto, at any
+        nesting level (step 2: tactic<->auto cycle dissolved; the
+        simp_sweep dependency lives in core.macro.simp)."""
+        mods = imports_of(os.path.join(ROOT, 'tactic', 'steps.py'))
         bad = [m for m in mods if m == 'core.auto' or m.startswith('core.auto.')]
         self.assertEqual(bad, [])
 
     def testMacroLayerDoesNotImportTactic(self):
-        """framework/macro/ must not import core.tactic (macro
-        layer is below the tactic layer)."""
+        """core/macro/ must not import tactic (macro layer is below the
+        tactic layer)."""
         macro_dir = os.path.join(FRAMEWORK_DIR, 'macro')
         for fname in os.listdir(macro_dir):
             if not fname.endswith('.py'):
                 continue
             mods = imports_of(os.path.join(macro_dir, fname))
-            bad = [m for m in mods if m == 'core.tactic'
-                   or m.startswith('core.tactic.')]
+            bad = [m for m in mods if m == 'tactic'
+                   or m.startswith('tactic.')]
             self.assertEqual(bad, [], "%s imports tactic layer: %s" % (fname, bad))
 
     def testFrameworkDoesNotImportServer(self):
@@ -123,10 +124,10 @@ class ImportDirectionTest(unittest.TestCase):
         self.assertEqual(offenders, [])
 
     def testGoalConsumptionFace(self):
-        """The goal concept (core.goal.Goal) lives only where tactics open
+        """The goal concept (tactic.goal.Goal) lives only where tactics open
         subgoals. Allowed consumers outside tests:
-          - core/goal.py     (the single definition point)
-          - core/tactic.py  (the tactic layer)
+          - tactic/goal.py    (the single definition point)
+          - tactic/steps.py   (the L2 tactic layer)
           - method/**        (L3 proof language: ProofState opens goals)
           - imperative/**    (hoare-domain tactic content)
         The solver-glue files (solvers/proofrec.py, solvers/congc.py)
@@ -137,17 +138,17 @@ class ImportDirectionTest(unittest.TestCase):
         are caught here."""
         whitelist = {'solvers/proofrec.py', 'solvers/congc.py'}
         offenders = []
-        for path in py_files_under('core', 'method', 'imperative',
+        for path in py_files_under('core', 'tactic', 'method', 'imperative',
                                    'theories', 'solvers', 'backend', 'syntax'):
             rel = os.path.relpath(path, ROOT).replace('\\', '/')
             if rel.endswith('/tests/') or '/tests/' in rel + '/' \
-                    or rel == 'core/goal.py' or rel == 'core/tactic.py' \
+                    or rel == 'tactic/goal.py' or rel == 'tactic/steps.py' \
                     or rel.startswith('method/') or rel.startswith('imperative/') \
                     or rel in whitelist:
                 continue
             mods = imports_of(path)
             bad = [m for m in mods
-                   if m == 'core.goal' or m.startswith('core.goal.')]
+                   if m == 'tactic.goal' or m.startswith('tactic.goal.')]
             if bad:
                 offenders.append("%s: %s" % (rel, bad))
         self.assertEqual(offenders, [])

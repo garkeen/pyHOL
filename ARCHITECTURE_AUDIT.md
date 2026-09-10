@@ -345,8 +345,8 @@ replay(prf) -> (Thm, holes)
 
 - 现行实现（`server/monitor.py:validate_theory`）四态语义与此对齐，随验证管线迁 `core/verify`；`thm_status` / `thm_error` 两张表从 `EmptyTheory`（kernel/theory.py）一并迁出，kernel 的七张表回归纯逻辑数据。
 - **两处现行偏差，重写时修正**（2026-09-06 核对 `validate_theory` 源码）：
-  1. **UNPROVED 依赖漏判**：依赖检查只把 `STEP_FAILED`/`DEP_FAILED` 当失败；若本定理无 steps 而**它依赖的定理恰是 UNPROVED**，仍判 UNPROVED——按"后三态皆失败"的定义，这应记 DEP_FAILED（依赖了失败态）。
-  2. **跨文件依赖不查**：依赖状态只查本文件内已判定的定理（`statuses` 字典）；import 来的定理若在别的文件验证失败，本文件引用它不会被判 DEP_FAILED。重写后依赖检查应沿理论的 import DAG 查询状态（含库验证缓存）。
+  1. **UNPROVED 依赖漏判**：依赖检查只把 `STEP_FAILED`/`DEP_FAILED` 当失败；若本定理无 steps 而**它依赖的定理恰是 UNPROVED**，仍判 UNPROVED——按"后三态皆失败"的定义，这应记 DEP_FAILED（依赖了失败态）。**【已修正 2026-09-07 步骤 8】**：`core/verify.py` 的依赖表 `_FAILED_STATES = {STEP_FAILED, DEP_FAILED, UNPROVED}`，依赖 UNPROVED 的完整证明正确判 DEP_FAILED。B8 全量对照中 VALID→DEP_FAILED 882 条全部经 UNPROVED 传播——这是此修正的**预期行为**（policy 收紧落地），不是未决债务，详见 §9.1。
+  2. **跨文件依赖不查**：依赖状态只查本文件内已判定的定理（`statuses` 字典）；import 来的定理若在别的文件验证失败，本文件引用它不会被判 DEP_FAILED。重写后依赖检查应沿理论的 import DAG 查询状态（含库验证缓存）。**【已修正 2026-09-07 步骤 8】**：`_import_statuses` 沿 import DAG 递归读已缓存理论状态，引用别文件失败定理不再漏判。
 - AXIOM 不是状态，是条目类型；在重放视角下是 axiom 假设规则（§7.2）。
 - 库验证（`validate_library.py`）的缓存机制不变：命中即跳过、`--force` 全量。
 
@@ -391,6 +391,22 @@ replay(prf) -> (Thm, holes)
 9. **server 拆分 + 更名（§2/§5.7）**：items/defcheck/verify 的逻辑已在步骤 5/8 下沉 core，此步做纯更名与拆分——`server` 剩余定名 `method/`（methods/proofstate/stable），`app` → `backend`，`method.py` 并入 tactic 侧 goal 构造。更名一步到位（改名与挪位同步，不留过渡态），全量单测 + 前端 API 路径核对。【已完成 2026-09-07】**四包一步到位 git mv，零 shim**：`framework/` → `core/`、`domains/` → `theories/`、`server/` → `method/`、`app/` → `backend/`（81 个 rename 登记，git 全部识别为 rename 保留历史）。**method/server.py 处置**：审计原案"并入 tactic 侧 goal 构造"——核实它是 ProofState 行树构造（`parse_init_state`/`parse_proof`，method 层对象），tactic 层不该引用 method 对象；改名 `method/init.py` 留在 method 层，名字对齐语义。**全库 import 改写**：114 文件机械替换（from framework/import framework/from server/from domains/from app 全形态 + 字符串引用）+ 手工修误伤——`from server import server` 这类同包重名别名（backend/ide、method/stable_state、method/tests 的 `server.parse_init_state`/`parse_proof` 改挂 `method.init as server`）。**核心重构名核对**：`core/method.py`（注册表）与 `method/`（包）同名但 Python 命名空间不冲突（`core.method` vs 顶层 `method`），import 方向 lint 6 条全绿验证无环。**测试随模块走**：core/tests、method/tests、theories/*/tests 全部 git mv 随迁；test_macro_invariant 的 MACRO_FILES 路径、lint 的 py_files_under 目录同步。**文档同步**：AGENTS.md（三层图/测试布局/依赖律）、README.md（架构图/表/测试命令）、manual 6 篇（机械替换 + 手工 app/ 残留与 prover 小节标题）；前端 Editor.vue 被替换脚本误伤（`meta_domains` 变量名含 domains）已回滚，前端其余为自身变量名无波及。**全部测试批次**：core+kernel+theories 273、solvers 62、syntax+imperative 76、method 114、lint 6 条——全绿；nat/real 库理论 force 验证四态分布与更名前缓存逐类一致（nat: VALID 49/UNPROVED 37/DEP_FAILED 134/STEP_FAILED 5/AXIOM 1；real: STEP_FAILED 62/DEP_FAILED 142/UNPROVED 122/VALID 8），更名零行为漂移。
 10. **REPL 落地（§5.8）**：`repl/` 薄壳接 method 通道与 verify 反馈；验收 = 不启动 backend/frontend 也能交互完成一个库级定理的证明与验证。**新功能，最后考虑**——前 0-9 步全部完成、架构稳定后再动。
 
+### 步骤 9.5 tactic 独立成包（债务 9，2026-09-10，已完成）
+
+目标态 §2 画了独立 `tactic/` 层（L2），但步骤 0-9 没有任何一步把它从 core 抽出去——步骤 9 的 `framework/ → core/` 整目录 mv 把 `tactic.py`/`goal.py` 带进了 core。**落地**：
+- `core/goal.py` → `tactic/goal.py`（Goal 概念全系统唯一定义点，§7.3 兑现）
+- `core/tactic.py` → `tactic/steps.py`（Tactic 基类 + rule/cases/intro/induct/rewrite/accept/forward 全战术 = 形状分析 + 宏名+参数）
+- `core/tests/{goal_test,tactic_test}.py` → `tactic/tests/`（测试跟模块走）
+- `core/__init__.py` 注释更新（去掉"Tactic base class"占位）
+
+**消费方改 import（8 文件）**：`imperative/imp.py`、`method/{init,methods/core,stable_state}.py`、`method/tests/init_test.py`、`solvers/{congc,proofrec}.py`。项目内已有 `from method import methods as method` 的同款别名先例，故统一用 `from tactic import steps as tactic` 保持 `tactic.xxx()` 调用零改动；Goal 用 `from tactic.goal import Goal`。
+
+**lint 同步**（`core/tests/test_import_direction.py`）：`testTacticDoesNotImportAuto` 路径改 `tactic/steps.py`；`testMacroLayerDoesNotImportTactic` 改断 `core/macro/` 不 import `tactic`（原来 core.tactic）；`testGoalConsumptionFace` 白名单 `core/{goal,tactic}.py` → `tactic/{goal,steps}.py`，扫描目录加 `tactic/`。顺带把 `core/macro/simp.py:6`、`kernel/tests/thm_priv_test.py:6`、`syntax/parser.py:381` 的旧路径注释改掉。
+
+**可剥离性表（§0）兑现**："剥掉 L3 剩 kernel+core+theories+tactic（程序化驱动 goal，无证明语言）"终于可验证——`tactic/` 只 import core，method 不反向 import tactic。
+
+**验证**：tactic/tests 27（含 lint 7）、method 115、imperative 25、solvers 62 全绿。宏观上现在代码结构 = §2 目标态（`tactic/` 是第五个顶层逻辑包，与 kernel/core/theories/method 并列）。
+
 ### 任务 A/B（§7 遗留收尾，2026-09-08/09，已完成）
 
 - **任务 A**（`dd49da16`）：`thm_status`/`thm_error` 迁出 kernel + replay 的 axiom 注入——`axioms()` 就位，`replay(prf, axioms=frozenset())`。
@@ -422,7 +438,7 @@ lint 同时断住两条铁律：kernel 外无裸 `Thm(` 构造（白名单见 §
 `validate_run.log` 现况（2123 条定理行）：**OK 1449，STEP_FAILED/DEP_FAILED 639，FAIL 36**。
 失败按理论分布：trig_sin_cos 一家 STEP_FAILED 36 + DEP_FAILED 302（36 个失败根因雪崩出 302 个依赖失败）；transcendentals 151、gcd 40、nat 38……
 
-**【已核实 2026-09-09，任务 B 的 B8 全量对照】**：本轮因改了展开器（compute_only 全行 emit + oracle 信任门控），`--force` 全量重放（1786 条）：OK 364 / DEP_FAILED 1420 / FAIL 2。**确认为零新增失败**：当前 5 条 STEP_FAILED（`nat.le_1_1`、`prime.distinct_prime_coprime` + 3 条 mult_add_loop VC）全部在旧 36 名单/旧缓存 STEP 里；另有 **STEP→VALID 66 条**（16 条 `step: elim` 旧 FAIL 被 elim 中间态修复带回来）。VALID→DEP_FAILED 882 条全部经 UNPROVED 传播（§7.4 deviation 1 的在案行为，任务 A 已提交 `dd49da16`）或其链式——DEP 直接根为 STEP 的仅 1 条（`iterate.natseg_0`→`le_1_1`，旧遗留）。结论：OK 集的缩水是 UNPROVED 依赖判定收紧（policy 精确化）所致，无机制性退化。**注意 OK 口径差异**：§7.4 deviation 1 落地后"OK"不再是 VALID 的子集口径，基线对照以 `VALID` 集为准。
+**【已核实 2026-09-09，任务 B 的 B8 全量对照】**：本轮因改了展开器（compute_only 全行 emit + oracle 信任门控），`--force` 全量重放（1786 条）：OK 364 / DEP_FAILED 1420 / FAIL 2。**确认为零新增失败**：当前 5 条 STEP_FAILED（`nat.le_1_1`、`prime.distinct_prime_coprime` + 3 条 mult_add_loop VC）全部在旧 36 名单/旧缓存 STEP 里；另有 **STEP→VALID 66 条**（16 条 `step: elim` 旧 FAIL 被 elim 中间态修复带回来）。VALID→DEP_FAILED 882 条全部经 UNPROVED 传播——这是 §7.4 偏差 1 **修正后的预期行为**（步骤 8 落地"UNPROVED 计入失败态"：依赖 UNPROVED 的完整证明正确判 DEP_FAILED），**不是未决债务**；按其链式——DEP 直接根为 STEP 的仅 1 条（`iterate.natseg_0`→`le_1_1`，旧遗留）。结论：OK 集的缩水是 UNPROVED 依赖判定收紧（policy 精确化）所致，无机制性退化。**注意 OK 口径差异**：§7.4 偏差 1 修正落地后"OK"不再是 VALID 的子集口径，基线对照以 `VALID` 集为准。
 
 **定性：这是内容债，不是机制 bug**——原作就没有证完这些理论（DEP_FAILED 的瀑布正是"依赖失败"状态的正常传播）。**重写不负责补证它们**。
 
@@ -460,7 +476,9 @@ lint 同时断住两条铁律：kernel 外无裸 `Thm(` 构造（白名单见 §
 
 **【2026-09-09，任务 B 未动——实测】**：`kernel/thm.py:10 from syntax.settings import settings`、`:87 turnstile = "⊢" if settings.unicode else "|-"`——"kernel 断奶时这根线必须断"仍未断，步骤 0 标【已完成】却漏了这根。另 `pyhol.py` 仍在 syntax，未迁 `core/pyhol.py`。
 
-**【2026-09-09 settings 线落地】**：`kernel/thm.py` 删 `from syntax.settings import settings`，`Thm.__str__` 改纯 ASCII `|-`。核对发现 `syntax/printer.py:53 print_thm(th)` 本就持 settings 感知的定理打印（`:57 turnstile = "⊢" if settings.unicode else "|-"`）——kernel 的 settings 读取是冗余，unicode 渲染已有 syntax 层正确出口。验证：kernel 132P 全绿，全库无测试断言 `str(Thm)` 必含 `⊢`（unicode 经 `print_thm`）。**遗留**：`pyhol.py` 仍在 syntax 未迁 core（本轮不动）。
+**【2026-09-09 settings 线落地】**：`kernel/thm.py` 删 `from syntax.settings import settings`，`Thm.__str__` 改纯 ASCII `|-`。核对发现 `syntax/printer.py:53 print_thm(th)` 本就持 settings 感知的定理打印（`:57 turnstile = "⊢" if settings.unicode else "|-"`）——kernel 的 settings 读取是冗余，unicode 渲染已有 syntax 层正确出口。验证：kernel 132P 全绿，全库无测试断言 `str(Thm)` 必含 `⊢`（unicode 经 `print_thm`）。
+
+**【2026-09-09 pyhol 判据修正：留在 syntax，不迁 core】**：再核对 `syntax/pyhol.py`（1097 行）的依赖面——模块只 `import re`，函数内仅 `ast`（`literal_eval`），**不 import items/stable_state/任何 core/method**。它的真身是".pyhol 语言格式的解析与生成"（JSON dict ↔ 文本 无损双向），与 `parser.py`（项文本→Term）、`printer.py`（Term→文本）同属 syntax 的语言职责；审计原判"编排 items/stable_state，真身是 core 服务"与代码事实不符（§9.4 util/function 同型误判，按该先例纠错）。**结论：`pyhol.py` 留在 syntax，债务清单里的"pyhol.py 搬家"销账**。消费方（core/basic、backend/ide、solvers/proofrec 等）从 syntax 读它是正常方向。（审计 §9.5 一并点名的 `json_output.py` 已核实不存在于 syntax/，全库零引用——那是更早更名期的残留幽灵，一并销账。）
 
 铁律 1 说 kernel+syntax 独立可用，但 syntax 现含两块不同的东西：
 - **真语法层**：parser/printer/numeral/operator/settings——kernel+syntax 独立性靠它们。

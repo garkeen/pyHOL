@@ -3,7 +3,7 @@ import unittest
 from kernel.term import Var, Eq, BoolType
 from kernel.thm import Thm
 from kernel.proofterm import ProofTerm
-from core.goal import Goal
+from tactic.goal import Goal
 
 A = Var("A", BoolType)
 B = Var("B", BoolType)

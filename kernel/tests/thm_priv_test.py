@@ -3,8 +3,8 @@
 # 信任模型的墙：15 推理原语 + 3 假设规则（sorry / axiom / oracle）是
 # 仅有的凭空构造定理的入口。kernel 之外的生产代码不得裸调 Thm(...)：
 #
-#   - 开洞语句走 core.goal.Goal（内部经 Thm.sorry），或语法层
-#     前门直接走 Thm.sorry（syntax 低于 core，不许 import core.goal）；
+#   - 开洞语句走 tactic.goal.Goal（内部经 Thm.sorry），或语法层
+#     前门直接走 Thm.sorry（syntax 低于 tactic，不许 import tactic.goal）；
 #   - 公理装载走 core.defcheck.mk_axiom（内部经 Thm.axiom）；
 #   - level-0 宏 eval 走 kernel.thm.oracle_thm（具名洞）；
 #   - 其余一律经 ProofTerm 推导后取 .th，或引用已有 Thm。

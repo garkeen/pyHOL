@@ -15,15 +15,15 @@ from kernel.proofterm import ProofTerm, TacticException, eval_macro
 from core import matcher
 from core import logic
 from core import context
-from core import tactic
+from tactic import steps as tactic
 from core import search as fw_search
 from core.method import (
     Method, get_method, get_method_sig, get_method_list_params,
     norm_registry, register_method,
 )
-from core.tactic import Tactic, trivial
+from tactic.steps import Tactic, trivial
 from core import conv
-from core.goal import Goal
+from tactic.goal import Goal
 from syntax import parser, printer, pprint
 from syntax.numeral import NatType, RealType, IntType
 from syntax.settings import settings, global_setting

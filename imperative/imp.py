@@ -7,7 +7,7 @@ from syntax.logicops import true
 from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
-from core.goal import Goal
+from tactic.goal import Goal
 from theories.nat import util_nat as nat
 from theories.nat import conv as nat_conv
 from theories.function import conv as function_conv
@@ -16,7 +16,7 @@ from core.conv import arg_conv, then_conv, top_conv, beta_conv, beta_norm_conv, 
     every_conv, rewr_conv, assums_conv, beta_norm
 from kernel.proofterm import ProofTerm, eval_macro
 from core.logic import apply_theorem
-from core.tactic import Tactic
+from tactic.steps import Tactic
 from syntax import pprint, settings
 from core.method import Method, register_method, register_macro_method
 
