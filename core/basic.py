@@ -1,15 +1,10 @@
 # Author: Bohua Zhan
-import io
 import os
 import json
 import importlib
 
-from kernel import term
-from kernel.term import Var
 from kernel import theory
-from kernel.theory import Theory, TheoryException
-from kernel.thm import Thm
-from kernel import extension
+from kernel.theory import TheoryException
 from core import items
 from syntax import pyhol
 
@@ -290,7 +285,7 @@ def load_theory_cache(filename):
         pass
 
     # Load domain packages declared in the .pyhol header.
-    # Domain packages live in domains/<name>/ and register their
+    # Domain packages live in theories/<name>/ and register their
     # conv/macro/method via decorators on import.  For example,
     # logic.pyhol declares `domains logic`, which activates the
     # propositional-logic automation bound to it.
@@ -302,7 +297,7 @@ def load_theory_cache(filename):
             import sys
             print(f"Warning: failed to load domain '{domain_name}': {e}", file=sys.stderr)
 
-    # Imperative program verification is not a domains/ package; the
+    # Imperative program verification is not a theories/ package; the
     # hoare theory activates it directly.
     if filename == 'hoare':
         from imperative import imp  # noqa: F401

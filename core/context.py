@@ -5,7 +5,6 @@ from typing import List, Optional, Dict, Union
 
 from kernel.term import Var
 from kernel.type import Type
-from kernel.theory import Theory
 from syntax import parser
 
 

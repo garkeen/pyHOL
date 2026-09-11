@@ -12,7 +12,6 @@ from kernel.macro import Macro
 from kernel import theory
 from kernel.theory import register_macro
 from kernel.proofterm import ProofTerm, TacticException, refl, eval_macro
-from core import logic
 from core.logic import apply_theorem
 from core import matcher
 from core.conv import Conv, ConvException, eta_conv, top_conv
@@ -62,6 +61,21 @@ def add_global_autos_norm(head, f):
 
 
 solve_record = dict()
+
+
+def _cache_key(t):
+    """Cache key for the auto cache tables (audit C1).
+
+    The caches hold fully constructed ProofTerms, whose theorem lines
+    were resolved against the current global theory.  Keying by the
+    theory object (in addition to the term) prevents cross-theory reuse
+    when load_theory replaces the global theory inside one process: a
+    goal of the same syntax in two different theories never shares a
+    cache entry.  Within one theory the key is stable, because
+    load_theory replaces (never mutates) the global theory object.
+    """
+    return (id(theory.thy), t)
+
 
 def solve(goal, pts=None, depth=0):
     """The main automation function.
@@ -141,11 +155,14 @@ def solve(goal, pts=None, depth=0):
 
     res_pt = None
 
-    if not pts and goal in solve_record:
-        res_pt = solve_record[goal]
+    if not pts:
+        # Cache hit means the goal was already solved in this theory.
+        key = _cache_key(goal)
+        if key in solve_record:
+            res_pt = solve_record[key]
 
-    # Call registered functions
-    elif goal.is_not() and goal.arg.head in global_autos_neg:
+    # Call registered functions (skipped when the cache hit settled it)
+    if res_pt is None and goal.is_not() and goal.arg.head in global_autos_neg:
         for f in global_autos_neg[goal.arg.head]:
             try:
                 res_pt = f(goal, pts)
@@ -153,7 +170,7 @@ def solve(goal, pts=None, depth=0):
             except TacticException:
                 pass
 
-    elif goal.head in global_autos:
+    if res_pt is None and goal.head in global_autos:
         for f in global_autos[goal.head]:
             try:
                 res_pt = f(goal, pts)
@@ -163,7 +180,7 @@ def solve(goal, pts=None, depth=0):
 
     if res_pt is not None:
         if not pts:
-            solve_record[goal] = res_pt
+            solve_record[_cache_key(goal)] = res_pt
         return eq_pt.symmetric().equal_elim(res_pt)
     else:
         return solve_hints(eq_pt.rhs, pts, depth=depth)
@@ -266,9 +283,11 @@ def norm(t, pts=None):
     if t.is_number():
         return refl(t)
 
-    # Record
-    if not pts and t in norm_record:
-        return norm_record[t]
+    # Record (cache is keyed by theory object + term; see _cache_key)
+    if not pts:
+        key = _cache_key(t)
+        if key in norm_record:
+            return norm_record[key]
 
     eq_pt = refl(t.head)
 
@@ -306,7 +325,7 @@ def norm(t, pts=None):
         res_pt = eq_pt
 
     if not pts:
-        norm_record[t] = res_pt
+        norm_record[_cache_key(t)] = res_pt
     return res_pt
 
 def norm_rules(th_names):

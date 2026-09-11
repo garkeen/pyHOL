@@ -1,14 +1,13 @@
 # Author: Bohua Zhan
 
 from copy import copy
-from typing import Dict, Tuple
+from typing import Tuple
 import contextlib
 
 from kernel.type import Type, TVar, TFun, BoolType, TypeMatchException
-from kernel.term import Term, Var, TypeCheckException
-from kernel.thm import Thm, primitive_deriv, InvalidDerivationException
-from kernel.proof import Proof, ProofStateException
-from kernel import extension
+from kernel.term import TypeCheckException
+from kernel.thm import Thm, primitive_deriv
+from kernel.proof import Proof
 from kernel.report import ExtensionReport
 
 
@@ -479,11 +478,6 @@ def fresh_theory():
 
 def get_theorem(name, *, svar=True):
     return thy.get_theorem(name, svar=svar)
-
-def print_theorem(*args):
-    """Print the theorems with the given names."""
-    for name in args:
-        print('%s: %s' % (name, get_theorem(name, svar=False)))
 
 def verify(prf, *, axioms=frozenset()):
     """Verify the given proof against the current global theory.

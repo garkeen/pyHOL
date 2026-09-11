@@ -1,9 +1,5 @@
 # Author: Bohua Zhan
 
-from kernel.term import Const
-from kernel.thm import Thm
-
-
 class Extension():
     """Represents a single extension to the theory.
 

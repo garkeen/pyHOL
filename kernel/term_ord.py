@@ -76,8 +76,5 @@ def fast_compare_list(t1, t2):
             return fast_compare(t1[i], t2[i])
     return 0
 
-def sorted_typs(ts):
-    return sorted(set(ts), key=cmp_to_key(fast_compare_typ))
-
 def sorted_terms(ts):
     return sorted(set(ts), key=cmp_to_key(fast_compare))

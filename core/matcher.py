@@ -7,8 +7,8 @@ By default, all variables in the pattern can be instantiated.
 """
 from copy import copy
 
-from kernel.type import TVar, TFun, TypeMatchException
-from kernel.term import Term, Var, Const, Comb, Abs, Bound, Inst, Lambda
+from kernel.type import TFun, TypeMatchException
+from kernel.term import Term, Var, Abs, Bound, Inst, Lambda
 from kernel import term
 from syntax import operator
 from util import name
@@ -312,10 +312,3 @@ def is_fo_pattern(t: Term):
         return all(is_fo_pattern(arg) for arg in t.args)
     else:
         return True
-
-def is_fo_pattern_list(ts):
-    """Test whether ts is a list of first-order patterns, that is no schematic variables
-    appear in function position.
-    
-    """
-    return all(is_fo_pattern(t) for t in ts)

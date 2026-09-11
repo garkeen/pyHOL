@@ -2,7 +2,6 @@
 
 from collections import UserDict
 
-from kernel import term_ord
 from util import typecheck
 
 

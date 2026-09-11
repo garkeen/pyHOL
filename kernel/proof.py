@@ -3,7 +3,7 @@
 import copy
 from typing import List, Optional, Tuple, Union
 
-from kernel.term import Term, Inst
+from kernel.term import Inst
 from kernel.thm import Thm
 
 class ItemID():

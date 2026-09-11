@@ -1,10 +1,8 @@
 # Author: Bohua Zhan
 
 from typing import Union
-from kernel.proof import Proof
-from kernel.type import TyInst
 from kernel import term
-from kernel.term import Term, Var, Bound, Inst
+from kernel.term import Term, Inst
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import theory
 from kernel.proofterm import ProofTerm, refl

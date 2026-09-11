@@ -12,7 +12,7 @@ from kernel.term import Term, Implies
 from kernel.thm import oracle_thm
 from kernel.macro import Macro
 from kernel.theory import register_macro
-from kernel.proofterm import ProofTerm, eval_macro
+from kernel.proofterm import eval_macro
 
 
 class Z3Backend:

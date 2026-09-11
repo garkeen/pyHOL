@@ -2,14 +2,9 @@
 
 from typing import List, Tuple
 
-from kernel.type import TVar, TFun, TyInst, BoolType
-from kernel import term
-from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, Eq, \
-    TermException
-from kernel.thm import Thm, InvalidDerivationException
-from kernel import term_ord
-from kernel import theory
-from kernel.proofterm import ProofTerm, refl, eval_macro
+from kernel.type import TFun, BoolType
+from kernel.term import Term, SVar, Var, Const, Inst, Lambda
+from kernel.proofterm import ProofTerm, eval_macro
 from core import matcher
 from syntax.logicops import true, false, neg, conj, disj, Not, And, Or, \
     exists, Exists  # noqa: F401  (re-export; also installs Term methods)
@@ -48,10 +43,6 @@ def mk_the(x, body):
     assert x.is_var(), "mk_the"
     the_t = Const("The", TFun(TFun(x.T, BoolType), x.T))
     return the_t(Lambda(x, body))
-
-def is_some(t):
-    """Whether t is of the form SOME x. P x."""
-    return t.is_comb('Some', 1)
 
 def mk_some(x, body):
     """Given a variable x and a term P possibly depending on x, return
@@ -132,10 +123,6 @@ def strip_exists(t, names):
         return ([v] + vars, body)
     else:
         return ([], t)
-
-def mk_xor(x: Term, y: Term) -> Term:
-    assert x.get_type() == BoolType and y.get_type() == BoolType
-    return Const("xor", TFun(BoolType, BoolType, BoolType))(x, y)
 
 def is_xor(t: Term):
     return t.is_comb('xor', 2)

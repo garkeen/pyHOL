@@ -7,7 +7,7 @@
 # a reader -- it contributes its own interactive methods through the
 # same checked API and serves the registry to the frontend.
 #
-# Rewrite step 4 (ARCHITECTURE_AUDIT.md §8): domains/*/method.py must
+# Rewrite step 4 (ARCHITECTURE_AUDIT.md §8): theories/*/method.py must
 # not import method.*; this registry is the contract between the layers.
 
 from typing import Dict

@@ -18,9 +18,8 @@
 # pure primitives, so kernel+syntax can prove non-trivial theorems
 # end-to-end without the core.
 
-from kernel.thm import Thm
-from kernel.term import Term, Implies
-from kernel.proof import Proof, ItemID, ProofItem
+from kernel.term import Term
+from kernel.proof import Proof, ItemID
 from kernel.proofterm import ProofTerm
 from kernel.macro import Macro
 from kernel import replay

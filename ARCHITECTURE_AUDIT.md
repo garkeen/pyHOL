@@ -442,6 +442,17 @@ replay(prf) -> (Thm, holes)
 
 **落地**：sympywrapper/tseitin 两条薄胶水消解（6 文件 → 4 文件）；新增 lint `testSolversDoNotImportTheories`（`core/tests/test_import_direction.py`，AST 扫描 solvers/ 全树、tests 豁免，白名单 = omega/simplex/simplex_strict/proofrec 四文件）断住评估结果——sympywrapper/tseitin 的 theories import 从此构造上不可能，白名单即挂账清单，缩短条件=熔合拆分或实验链下线。顺带删 proofrec 死 import `imp_conj_macro`（随宏适配器化后半一并）。验证：solvers 70P（含 tseitin/sat/omega/smoke 全链）、import lint 8 条全绿。
 
+### 任务 F：核心审查（2026-09-11）——已知简化清单
+
+核心（kernel/ + core/）审查发现的行为性简化与特判，记录为已知而非未决债务：
+
+- **C2：Term 谓词半在 kernel 半在 syntax（import 副作用注入）**。`is_conj`/`is_disj`/`strip_conj`/`strip_disj`/`is_not`/`is_exists`/`strip_exists` 不在 `kernel/term.py` 定义，由 `syntax/logicops.py:121-127` **import 时猴子补丁到 kernel.Term**（kernel 原生只有 is_implies/is_forall/is_equals/is_VAR 等）。任何用 `t.is_conj()` 的模块都依赖"装载顺序上先有人 import 了 logicops"——core 必经 registry/logic 的 logicops 导入保副作用，行为正确；但这是**靠装载顺序而不是构造约束**维持的设计简化。未动：改动面 = 谓词收进 kernel 或反转依赖，属结构重构，单独立项。
+- **D1：`core/basic.py:307` `if filename == 'hoare'` 硬编码理论名**激活 imperative 包（"not a theories/ package"）。有注释说明，是已拍板的设计特例，记录即可。
+- **C3（风格）**：`core/verify.py` 函数内 `import json`；`Thm.__init__` 的 hyps 去重四分支（Term 或 tuple 双形态历史接口）。不动。
+- **C1（已修复，见下）：auto 缓存跨理论存活**。
+
+**C1 修复（2026-09-11）**：`core/auto.py` 的 `norm_record`/`solve_record` 是模块级全局字典、键只有项、缓存的是**构造完成的 ProofTerm**（其 theorem 行已按构造时理论解析）。`clear_cache` 原本零调用 → 进程内跨 `load_theory` 换理论时，同结构目标可能**复用上一理论的证明项**（引用的定理名按旧理论语境解析）。修复：缓存键改为 `(id(theory.thy), t)`——同一理论内 `load_theory` 只替换不原地修改全局 theory 对象，键稳定；跨理论永不共享条目。附 `_cache_key` docstring 说明。
+
 每步加 import 方向 lint（AST 扫描），白名单逐步缩短——这就是 `AGENTS.md` 第 4 条"新增引用先查 import 方向"的自动化。
 lint 同时断住两条铁律：kernel 外无裸 `Thm(` 构造（白名单见 §7.3）、kernel 外不出现 Goal 类型（铁律 2 的镜像，`testGoalConsumptionFace` 落地）。
 

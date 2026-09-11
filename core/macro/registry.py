@@ -3,25 +3,20 @@
 
 from typing import List, Tuple
 
-from kernel.type import TVar, TFun, TyInst, BoolType
-from kernel import term
-from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, Eq
+from kernel.term import Term, Inst, Lambda
 from syntax.logicops import Not, And, Or, true, false  # noqa: F401  (re-export; installs Term methods)
 from kernel.thm import InvalidDerivationException
 from kernel import theory
-from kernel.theory import register_macro
 from kernel.macro import Macro
-from core.conv import Conv, then_conv, all_conv, arg_conv, binop_conv, rewr_conv, \
-    top_conv, top_sweep_conv, beta_conv, beta_norm_conv, has_rewrite
+from core.conv import then_conv, rewr_conv, \
+    top_conv, top_sweep_conv, beta_norm_conv, has_rewrite
 from kernel.proofterm import ProofTerm, refl
 from core import matcher
 from core.macro.simp import simp_sweep
 from util import name
-from util import typecheck
 
 # Import utility functions from core.logic
-from core.logic import apply_theorem, get_forall_names, strip_all_implies, \
-    strip_exists, strip_conj, strip_disj
+from core.logic import apply_theorem, get_forall_names, strip_all_implies
 
 
 class intros_macro(Macro):

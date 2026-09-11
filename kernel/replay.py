@@ -175,10 +175,3 @@ def replay(prf: Proof, axioms=frozenset()):
     """
     res_th, holes, _ = _replay(prf, frozenset(axioms))
     return res_th, holes
-
-
-def replay_full(prf: Proof, axioms=frozenset()):
-    """Like replay, additionally returning the map from id tuple to
-    derived theorem for every line. Used by the bootstrap expander to
-    annotate appended lines."""
-    return _replay(prf, frozenset(axioms))
