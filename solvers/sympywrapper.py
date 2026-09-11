@@ -12,15 +12,20 @@ from fractions import Fraction
 from kernel.type import TFun, BoolType
 from syntax.numeral import RealType, NatType
 from kernel import term
-from kernel.term import Term
+from kernel.term import Term, Const
 from kernel.thm import oracle_thm
 from kernel.macro import Macro
 from kernel.theory import register_macro, get_macro
 from kernel.proofterm import ProofTerm, TacticException, eval_macro
-from theories.real import conv as real
 from syntax import set_tools as hol_set
 from core import auto
 from core import logic
+
+# The real constant pi, inlined here (same encoding as
+# theories/real/conv.py) so that this module depends only on
+# kernel+syntax+core (audit §8 task E: solvers must not import
+# theories).
+pi = Const("pi", RealType)
 
 
 class SymPyException(Exception):
@@ -38,7 +43,7 @@ def convert(t):
             return sympy.Symbol(t.name)
         else:
             raise SymPyException("convert: unexpected variable type: %s" % str(t.T))
-    elif t == real.pi:
+    elif t == pi:
         return sympy.pi
     elif t.is_number():
         val = t.dest_number()

@@ -7,6 +7,7 @@ from kernel import report
 from kernel import theory
 from core import basic
 from core import verify as core_verify
+from theories.logic.logic import conj_norm
 from solvers import tseitin
 
 a = Var('a', BoolType)
@@ -31,7 +32,7 @@ class TseitinTest(unittest.TestCase):
 
     def testTseitin(self):
         t = Or(Implies(a,And(c,d)),Implies(b,And(c,e)))
-        pt = tseitin.encode(t)
+        pt = tseitin.encode(t, conj_norm)
         self.assertEqual(len(pt.hyps), 11)
         self.assertEqual(len(pt.prop.strip_conj()), 16)
         

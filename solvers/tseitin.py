@@ -8,9 +8,7 @@ from syntax.logicops import And, Or, Not
 from kernel.thm import Thm
 from kernel import term_ord
 from kernel.proofterm import ProofTerm
-from core import basic
 from core.logic import apply_theorem
-from theories.logic.logic import conj_norm
 from core.conv import rewr_conv, every_conv, top_conv
 
 
@@ -29,7 +27,7 @@ def logic_subterms(t):
 
     return term_ord.sorted_terms(rec(t))
 
-def encode(t):
+def encode(t, norm_conj):
     """Given a propositional formula t, compute its Tseitin encoding.
 
     The theorem is structured as follows:
@@ -43,6 +41,11 @@ def encode(t):
     The conclusion is in CNF. Each clause except the last is an
     expansion of one of As. The last clause is obtained by performing
     substitutions of As on F.
+
+    norm_conj is the conjunction-normalization Conv (theories.logic.
+    logic.conj_norm).  It is injected by the caller (audit §8 task E:
+    solvers do not import theories; domain glue lives at the call
+    site, like the z3 backend injection).
 
     """
     # Mapping from subterms to newly introduced variables
@@ -80,7 +83,7 @@ def encode(t):
         encode_pt = encode_pt.on_prop(top_conv(rewr_conv(th)))
     
     # Normalize the conjuncts
-    return encode_pt.on_prop(conj_norm())
+    return encode_pt.on_prop(norm_conj())
 
 def convert_cnf(t):
     """Convert a term to CNF form (as a list of lists of literals)."""

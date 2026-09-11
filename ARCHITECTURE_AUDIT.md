@@ -368,6 +368,12 @@ replay(prf) -> (Thm, holes)
 3. **宏类瘦身为适配器**：证明逻辑抽到 macro 模块普通函数，宏类只剩名字/level/sig/转调。eval 平行双实现（apply_theorem）在此步删除，eval 一律派生自展开结果或显式声明+一致性测试（§7.3）。【已完成 2026-09-06】
    - **eval 收敛为不变量**（用户拍板全删）：11 个自定义 eval 删除——core.py 4 个（`apply_theorem`【审计点名双实现】、`rewrite_goal`【断言即求值】、`beta_norm`【正例，默认 eval 同为派生故一并删】、`auto_close`【恒等式】）+ nat 3 个（`nat_norm`/`nat_const_ineq`/`nat_const_less_eq`）+ `int_norm` + logic `imp_conj`/`imp_disj` + expr `prove_avalI`；eval 统一走宏基类默认（sorry prevs → 展开 → 取 th）。level-0 oracle（nat_eval/int_eval/int_const_ineq/real 系 5 个/z3）eval-only 形态即"显式声明"，保持不动；`real_norm` 的死 gpt（只抛 NotImplementedError）删除使其成为干净 oracle。不变量 lint：`framework/tests/test_macro_invariant.py`——有 gpt 的宏不得自定义 eval（AST 扫描）+ 全部宏模块 pyflakes 零 undefined name。
    - **适配器化（重灾区优先，用户拍板）**：real `relax_strict_simplex`（230 行：4 个 stage 方法 + 主体 → `_min_positive_proof`/`_geq_bounds_proof`/`_max_negative_proof`/`_leq_bounds_proof`/`relax_strict_simplex_proof`）；integer omega 家族 6 个宏（int_eq_macro/int_ineq/int_ineq_mul_const/int_multiple_ineq_equiv/omega_norm_int_ineq/int_eq_comparison → 同名 `_proof` 函数）。nat/logic/expr 的中小函数体保持现状，随步骤 8 需要时再抽。
+   - **【2026-09-11 后半销账：nat/logic/expr 适配器化完成】**：
+     - `theories/nat/macro.py`：`nat_norm`/`nat_const_ineq`/`nat_const_less_eq`/`nat_const_less` 的证明逻辑抽到模块级 `nat_norm_proof`/`nat_const_ineq_proof`/`nat_const_less_eq_proof`/`nat_const_less_proof`；形状判定随之上移（`is_nat_const_ineq`/`is_nat_const_less_eq`，can_eval 与 proof 函数共用同一判定，消除原"`get_proof_term` 里断言 `self.can_eval`"的类内自引）；`nat_const_less_proof` 改直调两个 proof 函数（原经宏类实例中转）。宏类只剩名字/level/sig/can_eval/转调。
+     - `theories/logic/macro.py`：`imp_conj`/`imp_disj`/`resolution` 的嵌套闭包体抽到 `imp_conj_proof`/`imp_disj_proof`/`resolution_proof`；`resolution` 的 `self.get_proof_term` 自递归改为模块函数自递归。
+     - `theories/expr/macro.py`：`get_avalI_th`/`get_avalI` 上移为模块级 `avalI_proof_th`/`avalI_eval`，宏类只剩 can_eval + 转调（`get_avalI*` 方法此前无外部消费方，直接移除）。
+     - 顺带删 `solvers/proofrec.py` 死 import `imp_conj_macro`（全库核实零使用）。
+     - 新增 `theories/nat/tests/macro_test.py`：nat 宏此前零直接覆盖（仅经库回放/interval 间接触达），补 `test_macro` 8 例（nat_norm/nat_const_ineq/nat_const_less_eq/nat_const_less 各一正一败，验 eval + get_proof_term + verify 全链）。logic 三宏已有 test_macro 覆盖（logic_test.py 17 例），expr 宏由 imperative 测试覆盖。
    - **顺带修复潜伏 NameError**（b947a8a7 遗留，pyflakes 抓出）：integer 8 宏搬入 macro.py 时 `refl`/`rewr_conv`/`matcher`/`ConvException` 未随迁——omega 系 gpt 一调用即 NameError，此前被 proofrec 的宽 except 吞掉走降级路径而未翻转验证状态。修复后 `domains/integer/tests/test_omega_macro_paths.py` 3 例先红后绿。
    - **验证**：framework+kernel+domains 255 例、server 128 例全绿；全量 1786 条与快照一致（OK 零缩水、零翻转——nat_norm 的 eval 派生化未暴露任何此前被盲断言掩盖的失败）。
 4. **method 注册表下沉**：`domains/*/method.py` 改走 core 注册 API，method 层改为读者。【已完成 2026-09-06】`framework/method.py`（包名 framework 待步骤 9 改名 core）承载注册表全机制：`Method` 基类、`global_methods`、`has_method`/`get_method`/`get_all_methods`/`get_method_sig`/`get_method_list_params`/`register_method`、`register_macro_method`、`norm_registry`+`register_norm`（nat/real/int 三类型接线随迁）。`server/methods/core.py` 切出三块（-108 行），只 import 自用名字——不做 re-export shim（§5.7 纪律 1）；`stable_state.py`/`methods/z3.py`/`methods/__init__.py`/`tests/method_test.py` 与 `imperative/imp.py`（2 处）全部直接改读 core.method。4 个 domain（nat/real/integer/expr）的 method.py 注册改走 framework API——domains→server 反向依赖清零。lint 新增规则 `testTheoriesDoNotImportServer`（AST 扫描 domains/ + imperative/ 全树；白名单一项：`imperative/tests/imp_compile_test.py` 调 `monitor.validate_theory`，步骤 8 迁 core/verify 时移除）。`get_method_sig`/`method_list_params` JSON 形状零变化（注册表内容逐字节相同，前端零改动，§9.7 隐藏验收面通过）。
@@ -411,7 +417,7 @@ replay(prf) -> (Thm, holes)
 
 - **任务 A**（`dd49da16`）：`thm_status`/`thm_error` 迁出 kernel + replay 的 axiom 注入——`axioms()` 就位，`replay(prf, axioms=frozenset())`。
 - **任务 B**（`b56dec7d`/`55b1d499`/`7ca28dc1`）：kernel 瘦身、core 展开器、`ProofTerm.eval` 显式化、Thm 三洞 + lint 落锁、56 个测试调用点从 kernel 半验迁 `core_verify`、elimin 中间态修复（`ProofState.bulk_edit` 原子重接线）、信任集是死参数打通（`ProofState`/`StableProofState` 会话 trust 集缺省空 + `apply_macro` 对 level-0 宏显式授权 + `validate_theory`/`validate_library` 传显式 `LIBRARY_ORACLES` + `solvers.z3wrapper` 装配注入）、holes 落信任报告（`rpt.axioms`/`rpt.oracles`）、`set_line` 信任绕过关闭（`compute_only` 全行 emit 仅跳过独立重放）。B8 全量 `--force` 对照（1786 条：OK 364/FAIL 2 均为旧 36 遗留，零新增 STEP，STEP→VALID 66，VALID→DEP_FAILED 882 全经 UNPROVED 传播即 deviation 1）。
-- **未进本文档的债（仍在工作区外排队）**：“计算即 oracle”推导化（line 366）、宏适配器化后半（nat/logic/expr）、util 双向依赖（§9.4）、kernel→`syntax.settings` 线 + `pyhol.py` 搬家（§9.5）、`test_backend_api.py` 12 errors（任务 D）、solver 胶水 6 文件评估（任务 E）、REPL（步骤 10）。
+- **未进本文档的债（仍在工作区外排队）**：“计算即 oracle”推导化（line 366）、util 双向依赖（§9.4）、kernel→`syntax.settings` 线 + `pyhol.py` 搬家（§9.5）、`test_backend_api.py` 12 errors（任务 D）、REPL（步骤 10）。（宏适配器化后半与任务 E 已于 2026-09-11 销账，见下。）
 
 **【2026-09-09 第二轮收尾，五项销账】**：
 - **util 双向依赖（§9.4）落地**：poly→`theories/poly.py`，function/list/set/string→`syntax/*_tools.py`（审计原判"全下沉 theories"对后 4 个错，真身是 syntax 语法糖项构造器，详见 §9.4 落地记录）；util 剩 name/typecheck/unionfind，lint `util/tests/test_util_pure.py` 锁死双向依赖。
@@ -420,6 +426,21 @@ replay(prf) -> (Thm, holes)
 - **铁律 2 lint 落地**：`testGoalConsumptionFace` 断住 Goal 消费面——合法面 `core/goal.py`+`core/tactic.py`+`method/`+`imperative/`，白名单仅 `solvers/proofrec.py`+`solvers/congc.py`（solver 胶水债，任务 E 收尾时缩短）。§8 末"lint 同时断住两条铁律"至此为真。
 - **core/macro 与 core/macros 双目录合并**：`git mv core/macros/{registry,z3}.py core/macro/`，删 `core/macros/`；6 处 import + `test_macro_invariant` MACRO_FILES 路径改写；core/macro/__init__.py 注释更新。目录名=类别名（§5.7）兑现。
 - 验证：kernel 132P、syntax 70P、kernel+theories+solvers+method+imperative 377P、util 3P、import lint 7 条全绿；z3 注入链双向冒烟（先宏后 solver / 先 solver 后宏均绑定）。库全量验证按用户约束跳过。
+
+### 任务 E：solver 胶水 6 文件评估（2026-09-11，已收口）
+
+步骤 6 遗留的评估（"推迟到步骤 9 更名时一并评估"）至此执行。6 文件逐一定性（生产消费面全库核实）：
+
+| 文件 | 违规 import 面 | 生产消费方 | 定性 | 处置 |
+|---|---|---|---|---|
+| `solvers/sympywrapper.py` | `theories.real.conv`（唯一用途 `real.pi`） | `core/basic.py` 常规装载 | 胶水薄（1 符号） | **消解**：`pi = Const("pi", RealType)` 内联（同 theories/real/conv.py:44 的编码），theories import 删除。auto 注册面（`add_global_autos` 实数/自然数比较头）合法——按 AGENTS 求解器以 `(goal, pts) -> ProofTerm` 注册进 `global_autos` 即设计机制，不算胶水 |
+| `solvers/tseitin.py` | `theories.logic.logic.conj_norm`（encode 末步归一化，1 处） | 仅 `solvers/proofrec.py`（实验链）+ 测试 | 胶水薄（1 符号） | **消解**：`encode(t, norm_conj)` 参数注入（对齐 z3 按名注入先例——归一化 Conv 由调用方传入，solvers 模块级不 import 领域）；调用点 3 处（proofrec + sat_test + tseitin_test）。顺带删死 import `core import basic` |
+| `solvers/omega.py` | `theories.integer.conv`（strip_plus/omega_form_conv/int_norm_conv/int_eval_conv 等，10+ 处证明构造） | `core/basic.py` 常规装载 + proofrec | **算法与证明装配熔合**：factoid 数据库/solve_matrix 纯数论核（~700 行）与 proof 构造（~150 行，全部经 integer convs）在同一 solve 流程交织 | **保持现状**：拆分需把全部证明构造点参数化注入，量级大（§2 树注记原判）；solvers 是旁路服务无循环，不阻塞依赖律。挂账，白名单记录 |
+| `solvers/simplex.py` | `theories.real.conv` + `theories.integer.conv`；自注册 `simplex_macro`/`integer_simplex` 宏 | **零**（仅 proofrec + 自身测试） | 同 simplex_strict；与 proofrec 同属 z3 实验链 | **保持现状**（归入实验链，见下） |
+| `solvers/simplex_strict.py` | `theories.real.{conv,macro}` + `theories.integer.conv`；自注册 3 宏 | **零**（仅 proofrec + 自身测试） | 同上 | **保持现状** |
+| `solvers/proofrec.py` | 5 个 theories 模块 + tactic + core（量最大） | **零**（仅 smoke/单元测试；z3wrapper 重建路径，用户已拍板"实验性，不接入真实 verify"） | 实验代码，拆分无近期收益 | **保持现状**（既有拍板，重申） |
+
+**落地**：sympywrapper/tseitin 两条薄胶水消解（6 文件 → 4 文件）；新增 lint `testSolversDoNotImportTheories`（`core/tests/test_import_direction.py`，AST 扫描 solvers/ 全树、tests 豁免，白名单 = omega/simplex/simplex_strict/proofrec 四文件）断住评估结果——sympywrapper/tseitin 的 theories import 从此构造上不可能，白名单即挂账清单，缩短条件=熔合拆分或实验链下线。顺带删 proofrec 死 import `imp_conj_macro`（随宏适配器化后半一并）。验证：solvers 70P（含 tseitin/sat/omega/smoke 全链）、import lint 8 条全绿。
 
 每步加 import 方向 lint（AST 扫描），白名单逐步缩短——这就是 `AGENTS.md` 第 4 条"新增引用先查 import 方向"的自动化。
 lint 同时断住两条铁律：kernel 外无裸 `Thm(` 构造（白名单见 §7.3）、kernel 外不出现 Goal 类型（铁律 2 的镜像，`testGoalConsumptionFace` 落地）。

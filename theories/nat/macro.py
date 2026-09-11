@@ -71,14 +71,20 @@ class nat_norm_macro(Macro):
         return pt1.prop.rhs == pt2.prop.rhs
 
     def get_proof_term(self, goal, pts):
-        assert len(pts) == 0, "nat_norm_macro"
-        assert goal.is_equals(), "nat_norm_macro: goal is not an equality."
+        return nat_norm_proof(goal, pts)
 
-        t1, t2 = goal.args
-        pt1 = norm_full().get_proof_term(t1)
-        pt2 = norm_full().get_proof_term(t2)
-        assert pt1.prop.rhs == pt2.prop.rhs, "nat_norm_macro: normalization is not equal."
-        return pt1.transitive(pt2.symmetric())
+
+def nat_norm_proof(goal, pts):
+    """Proof logic of nat_norm_macro: normalize both sides of an
+    equality of nat terms and chain the two conversions."""
+    assert len(pts) == 0, "nat_norm_macro"
+    assert goal.is_equals(), "nat_norm_macro: goal is not an equality."
+
+    t1, t2 = goal.args
+    pt1 = norm_full().get_proof_term(t1)
+    pt2 = norm_full().get_proof_term(t2)
+    assert pt1.prop.rhs == pt2.prop.rhs, "nat_norm_macro: normalization is not equal."
+    return pt1.transitive(pt2.symmetric())
 
 
 def ineq_zero_proof_term(n):
@@ -122,6 +128,23 @@ def ineq_proof_term(m, n):
         return apply_theorem("ineq_sym", ineq_proof_term(n, m))
 
 
+def is_nat_const_ineq(goal):
+    """Shape check for nat_const_ineq_macro: goal is ~(m = n) with
+    distinct number literals m, n."""
+    if not (goal.is_not() and goal.arg.is_equals()):
+        return False
+
+    m, n = goal.arg.args
+    return m.is_number() and n.is_number() and m.dest_number() != n.dest_number()
+
+def nat_const_ineq_proof(goal, pts):
+    """Proof logic of nat_const_ineq_macro."""
+    assert len(pts) == 0 and is_nat_const_ineq(goal), "nat_const_ineq_macro"
+
+    m, n = goal.arg.args
+    pt = ineq_proof_term(m.dest_number(), n.dest_number())
+    return pt.on_prop(arg_conv(binop_conv(rewr_of_nat_conv(sym=True))))
+
 @register_macro('nat_const_ineq')
 class nat_const_ineq_macro(Macro):
     """Given m and n, with m ~= n, return the inequality theorem."""
@@ -132,22 +155,35 @@ class nat_const_ineq_macro(Macro):
 
     def can_eval(self, goal):
         assert isinstance(goal, Term), "nat_const_ineq_macro"
-        if not (goal.is_not() and goal.arg.is_equals()):
-            return False
-
-        m, n = goal.arg.args
-        return m.is_number() and n.is_number() and m.dest_number() != n.dest_number()
+        return is_nat_const_ineq(goal)
 
     def get_proof_term(self, goal, pts):
-        assert len(pts) == 0 and self.can_eval(goal), "nat_const_ineq_macro"
-
-        m, n = goal.arg.args
-        pt = ineq_proof_term(m.dest_number(), n.dest_number())
-        return pt.on_prop(arg_conv(binop_conv(rewr_of_nat_conv(sym=True))))
+        return nat_const_ineq_proof(goal, pts)
 
 def nat_const_ineq(a, b):
     return eval_macro("nat_const_ineq", Not(Eq(a, b)), [])
 
+
+def is_nat_const_less_eq(goal):
+    """Shape check for nat_const_less_eq_macro: goal is m <= n with
+    number literals m <= n."""
+    if not goal.is_less_eq():
+        return False
+
+    m, n = goal.args
+    return m.is_number() and n.is_number() and m.dest_number() <= n.dest_number()
+
+def nat_const_less_eq_proof(goal, pts):
+    """Proof logic of nat_const_less_eq_macro."""
+    assert len(pts) == 0 and is_nat_const_less_eq(goal), "nat_const_less_eq_macro"
+
+    m, n = goal.args
+    assert m.dest_number() <= n.dest_number()
+    p = Nat(n.dest_number() - m.dest_number())
+    eq = refl(m + p).on_rhs(norm_full()).symmetric()
+    goal2 = rewr_conv('less_eq_exist').eval(goal).prop.rhs
+    ex_eq = apply_theorem('exI', eq, concl=goal2)
+    return ex_eq.on_prop(rewr_conv('less_eq_exist', sym=True))
 
 @register_macro('nat_const_less_eq')
 class nat_const_less_eq_macro(Macro):
@@ -159,25 +195,24 @@ class nat_const_less_eq_macro(Macro):
 
     def can_eval(self, goal):
         assert isinstance(goal, Term), "nat_const_less_eq_macro"
-        if not goal.is_less_eq():
-            return False
-
-        m, n = goal.args
-        return m.is_number() and n.is_number() and m.dest_number() <= n.dest_number()
+        return is_nat_const_less_eq(goal)
 
     def get_proof_term(self, goal, pts):
-        assert len(pts) == 0 and self.can_eval(goal), "nat_const_less_eq_macro"
-
-        m, n = goal.args
-        assert m.dest_number() <= n.dest_number()
-        p = Nat(n.dest_number() - m.dest_number())
-        eq = refl(m + p).on_rhs(norm_full()).symmetric()
-        goal2 = rewr_conv('less_eq_exist').eval(goal).prop.rhs
-        ex_eq = apply_theorem('exI', eq, concl=goal2)
-        return ex_eq.on_prop(rewr_conv('less_eq_exist', sym=True))
+        return nat_const_less_eq_proof(goal, pts)
 
 def nat_less_eq(t1, t2):
     return eval_macro("nat_const_less_eq", t1 <= t2)
+
+def nat_const_less_proof(goal, pts):
+    """Proof logic of nat_const_less_macro: combine less_eq with
+    the disequality of the operands."""
+    assert isinstance(goal, Term)
+    assert len(pts) == 0, "nat_const_less_macro"
+    m, n = goal.args
+    assert m.dest_number() < n.dest_number()
+    less_eq_pt = nat_const_less_eq_proof(m <= n, [])
+    ineq_pt = nat_const_ineq_proof(Not(Eq(m, n)), [])
+    return apply_theorem("less_lesseqI", less_eq_pt, ineq_pt)
 
 @register_macro('nat_const_less')
 class nat_const_less_macro(Macro):
@@ -188,13 +223,7 @@ class nat_const_less_macro(Macro):
         self.limit = 'bit1_neq_one'
 
     def get_proof_term(self, goal, pts):
-        assert isinstance(goal, Term)
-        assert len(pts) == 0, "nat_const_less_macro"
-        m, n = goal.args
-        assert m.dest_number() < n.dest_number()
-        less_eq_pt = nat_const_less_eq_macro().get_proof_term(m <= n, [])
-        ineq_pt = nat_const_ineq_macro().get_proof_term(Not(Eq(m, n)), [])
-        return apply_theorem("less_lesseqI", less_eq_pt, ineq_pt)
+        return nat_const_less_proof(goal, pts)
 
 def nat_less(t1, t2):
     return eval_macro("nat_const_less", t1 < t2)

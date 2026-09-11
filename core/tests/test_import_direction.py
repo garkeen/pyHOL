@@ -153,6 +153,39 @@ class ImportDirectionTest(unittest.TestCase):
                 offenders.append("%s: %s" % (rel, bad))
         self.assertEqual(offenders, [])
 
+    def testSolversDoNotImportTheories(self):
+        """solvers/ (excluding tests) must not import theories.*
+        (audit §3 dependency law: solvers are a bypass pure-algorithm
+        service consumed by theories/*/macro.py, they never import a
+        domain).  Task E evaluation (2026-09-11) settled the six glue
+        files:
+          - solvers/sympywrapper.py, solvers/tseitin.py -- glue
+            dissolved (pi inlined; conj_norm injected by callers);
+          - solvers/omega.py, solvers/simplex.py,
+            solvers/simplex_strict.py, solvers/proofrec.py -- algorithm
+            and proof assembly are fused (omega) or experimental-only
+            consumers (simplex*/proofrec: z3 chain, user-decided to
+            keep); they stay on the whitelist as documented debt.
+        New leaks are caught here; shrinking the whitelist is the
+        follow-up work."""
+        whitelist = {
+            'solvers/omega.py',
+            'solvers/simplex.py',
+            'solvers/simplex_strict.py',
+            'solvers/proofrec.py',
+        }
+        offenders = []
+        for path in py_files_under('solvers'):
+            rel = os.path.relpath(path, ROOT).replace(os.sep, '/')
+            if '/tests/' in rel + '/' or rel in whitelist:
+                continue
+            mods = imports_of(path)
+            bad = [m for m in mods
+                   if m == 'theories' or m.startswith('theories.')]
+            if bad:
+                offenders.append("%s: %s" % (rel, bad))
+        self.assertEqual(offenders, [])
+
 
 if __name__ == "__main__":
     unittest.main()

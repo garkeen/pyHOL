@@ -24,8 +24,7 @@ from core import basic, matcher
 from core import context
 from tactic.goal import Goal
 from core.logic import apply_theorem
-from theories.logic.logic import imp_disj_iff, disj_norm, resolution
-from theories.logic.macro import imp_conj_macro
+from theories.logic.logic import imp_disj_iff, disj_norm, resolution, conj_norm
 from tactic.steps import rewrite_goal_with_prev
 from core.conv import rewr_conv, try_conv, top_conv, top_sweep_conv, bottom_conv, arg_conv, ConvException, Conv, arg1_conv, binop_conv, replace_conv
 from core import auto
@@ -179,7 +178,7 @@ def translate_type(sort):
         raise NotImplementedError
 
 def solve_cnf(F):
-    encode_pt = tseitin.encode(Not(F))
+    encode_pt = tseitin.encode(Not(F), conj_norm)
     cnf = tseitin.convert_cnf(encode_pt.prop)
     res, proof = sat.solve_cnf(cnf)
     assert res == 'unsatisfiable', 'solve_cnf: statement is not provable'

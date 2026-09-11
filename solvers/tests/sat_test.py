@@ -6,6 +6,7 @@ from core import logic
 from core import basic
 from syntax import parser
 from core import context
+from theories.logic.logic import conj_norm
 from solvers import tseitin
 from solvers import sat
 
@@ -61,7 +62,7 @@ class SATTest(unittest.TestCase):
         for problem in f_data:
             context.set_context('sat', vars=problem['vars'])
             prop = context.parse_term(problem['prop'])
-            cnf = tseitin.convert_cnf(tseitin.encode(Not(prop)).prop)
+            cnf = tseitin.convert_cnf(tseitin.encode(Not(prop), conj_norm).prop)
             res, cert = sat.solve_cnf(cnf)
             self.assertEqual(res, 'unsatisfiable')
 
