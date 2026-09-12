@@ -169,12 +169,12 @@ div_div, div_mod, div_exp`。
 再补证：`mult_eq_1(4)`、`nat_minus_suc(4)`、`bit0_neq_one`、`bit1_neq_one`
 （后者解锁 `nat_const_ineq` 方法）、`nat_norm_test1`。
 
-**新暴露的 STEP_FAILED**：`sub_eq_0`（`x - y = 0 <-> x <= y`）。它此前是
-DEP_FAILED（依赖未证的 `nat_minus_suc`），`nat_minus_suc` 证好后回放其存量
-证明，发现证明不完整：最后一步 `rewrite nat_minus_suc` 后剩
-`y - x = 0 <-> Suc y <= Suc x` 未关。需要补：把 `Suc y <= Suc x` 用
-`less_Suc_lesseq`/`lesseq_Suc_less` 化成 `y <= x`，并接上内层归纳假设
-（`#21 Suc y - x = 0 <-> Suc y <= x`）——存量证明的归纳结构本身要重排。
+**已修复**：`sub_eq_0`（`x - y = 0 <-> x <= y`）。它此前是 DEP_FAILED
+（依赖未证的 `nat_minus_suc`），`nat_minus_suc` 证好后回放存量证明发现其
+证明不完整。已重写：反向 `x<=y -> x-y=0` 用 `less_eq_exist` 取见证后对见证
+归纳证 `x-(x+p)=0`；正向用 `cases "x<=y"` + `not_le`/`less_exist` 取
+`x = y + Suc d`，借 `nat_plus_minus_2` 得 `Suc d = 0` 造矛盾。
+`add_subr2` / `add_subr` / `sub_add` 随之 VALID。
 
 **跨分支别名（重要）**：`StableProofState` 按命题值去重分配 sid，而
 `apply_method` 用 `ItemID.can_depend_on` 限制事实必须与目标同分支且在前，
