@@ -1403,16 +1403,117 @@ theorem le_antisym
   fixes m :: nat, n :: nat
   prop m <= n & n <= m <--> m = n
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] m <= n & n <= m --> m = n
+    #[2] m = n --> m <= n & n <= m
+  ← intro goal=1
+    #[3] m <= n & n <= m
+    #[4] m = n
+  → forward conjD1 goal=4 facts=[3]
+    #[5] m <= n
+  → forward conjD2 goal=4 facts=[3]
+    #[6] n <= m
+  → rewrite less_eq_exist sym=false target=fact goal=4 facts=[5]
+    #[7] ?p. n = m + p
+  elim p goal=4 facts=[7]
+    #[8] _VAR p
+    #[9] n = m + p
+    #[10] m = n
+  → rewrite less_eq_exist sym=false target=fact goal=10 facts=[6]
+    #[11] ?p. m = n + p
+  elim q goal=10 facts=[11]
+    #[12] _VAR q
+    #[13] m = n + q
+    #[14] m = n
+  → rewrite source=prev target=fact goal=14 facts=[9,13]
+    #[15] m = m + p + q
+  → rewrite add_assoc sym=false target=fact goal=14 facts=[15]
+    #[16] m = m + (p + q)
+  → rewrite eq_sym_eq sym=false target=fact goal=14 facts=[16]
+    #[17] m + (p + q) = m
+  → forward add_right_eq_zero goal=14 facts=[17]
+    #[18] p + q = 0
+  → forward add_is_zero goal=14 facts=[18]
+    #[19] p = 0 & q = 0
+  → forward conjD1 goal=14 facts=[19]
+    #[20] p = 0
+  ← rewrite source=prev goal=14 facts=[9]
+    #[21] m = m + p
+  ← rewrite source=prev goal=21 facts=[20]
+    #[22] m = m + 0
+  ← rewrite add_0_right sym=false goal=22
+    #[23] m = m + 0
+  ← intro goal=2
+    #[24] m = n
+    #[25] m <= n & n <= m
+  ← rule conjI goal=25
+    #[26] m <= n
+    #[27] n <= m
+  ← rewrite source=prev goal=26 facts=[24]
+    #[28] n <= n
+  ← rule less_eq_refl goal=28
+    #[29] n <= n
+  ← rewrite source=prev goal=27 facts=[24]
+qed
 
 theorem lt_antisym
   fixes m :: nat, n :: nat
   prop ~(m < n & n < m)
   [hint_backward]
+proof
+  ← rule negI goal=0
+    #[1] m < n & n < m --> false
+  ← intro goal=1
+    #[2] m < n & n < m
+    #[3] false
+  → forward conjD1 goal=3 facts=[2]
+    #[4] m < n
+  → forward conjD2 goal=3 facts=[2]
+    #[5] n < m
+  → forward lt_imp_le goal=3 facts=[4]
+    #[6] m <= n
+  → forward lt_imp_le goal=3 facts=[5]
+    #[7] n <= m
+  → forward conjI goal=3 facts=[6,7]
+    #[8] m <= n & n <= m
+  → rewrite le_antisym sym=false target=fact goal=3 facts=[8]
+    #[9] m = n
+  → rewrite less_lesseq sym=false target=fact goal=3 facts=[4]
+    #[10] m <= n & ~(m = n)
+  → forward conjD2 goal=3 facts=[10]
+    #[11] ~(m = n)
+  ← rule negE_gen goal=3 facts=[11,9]
+qed
 
 theorem let_antisym
   fixes m :: nat, n :: nat
   prop ~(m <= n & n < m)
   [hint_backward]
+proof
+  ← rule negI goal=0
+    #[1] m <= n & n < m --> false
+  ← intro goal=1
+    #[2] m <= n & n < m
+    #[3] false
+  → forward conjD1 goal=3 facts=[2]
+    #[4] m <= n
+  → forward conjD2 goal=3 facts=[2]
+    #[5] n < m
+  → forward lt_imp_le goal=3 facts=[5]
+    #[6] n <= m
+  → forward conjI goal=3 facts=[4,6]
+    #[7] m <= n & n <= m
+  → rewrite le_antisym sym=false target=fact goal=3 facts=[7]
+    #[8] m = n
+  → rewrite less_lesseq sym=false target=fact goal=3 facts=[5]
+    #[9] n <= m & ~(n = m)
+  → forward conjD2 goal=3 facts=[9]
+    #[10] ~(n = m)
+  → rewrite eq_sym_eq sym=false target=fact goal=3 facts=[8]
+    #[11] n = m
+  ← rule negE_gen goal=3 facts=[10,11]
+qed
 
 theorem Pre_inj
   fixes m :: nat, n :: nat

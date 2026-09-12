@@ -19,6 +19,7 @@ Commands
     methods [SUBSTR]       list methods usable in the current theory
     theorems [-v] [SUBSTR] list theorems in scope (with -v, their props)
     thm NAME               show one theorem's statement + schematic vars
+    reset                  clear declared variables and the active goal
     <step line>            apply one .pyhol step, e.g.
                              <- rule iffI goal=0
                              -> forward conjD1 goal=4 facts=[3]
@@ -225,6 +226,23 @@ class Repl:
         print('undone; %d step(s) remain' % len(self.history))
         self.show_goals()
 
+    def cmd_reset(self):
+        """Clear declared variables and the active goal.
+
+        `var` declarations live for the whole session, so a variable
+        from an earlier goal can collide with a witness name in a later
+        one (`elim: duplicate name p`).  `reset` returns to a clean slate
+        without reloading the theory.
+        """
+        self.vars = {}
+        self.sps = None
+        self.goal_prop = None
+        self.history = []
+        self.failed = False
+        if self.theory:
+            context.set_context(self.theory, vars={})
+        print('session reset (variables and goal cleared)')
+
     def cmd_export(self):
         if not self.history:
             print('no steps to export')
@@ -362,6 +380,9 @@ class Repl:
             return True
         if stripped == 'undo':
             self.cmd_undo()
+            return True
+        if stripped == 'reset':
+            self.cmd_reset()
             return True
         if stripped == 'export':
             self.cmd_export()

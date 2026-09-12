@@ -129,6 +129,18 @@ class ReplTest(unittest.TestCase):
         rp, out = self.run_session(['theory nat', 'thm no_such_thm_xyz'])
         self.assertIn('no such theorem', out)
 
+    def testResetClearsVarsAndGoal(self):
+        # Stale `var` declarations otherwise collide with witness names
+        # in a later goal (`elim: duplicate name p`).
+        rp, out = self.run_session([
+            'theory nat', 'var x nat',
+            'goal x = x',
+            'reset',
+        ])
+        self.assertIn('session reset', out)
+        self.assertEqual(rp.vars, {})
+        self.assertIsNone(rp.sps)
+
     def testResidentRequestReusesLoadedTheory(self):
         # The resident server executes requests through handle_request;
         # two requests share one Repl, so the theory loads once.
