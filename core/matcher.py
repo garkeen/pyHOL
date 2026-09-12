@@ -73,7 +73,13 @@ def first_order_match(pat, t, inst=None):
 
     inst : optional Inst
         Existing instantiation. Default to empty instantiation.
-        
+
+    Both pat and t may contain schematic variables: the auto engine
+    matches theorem schemas against schematic subgoals, so t is
+    deliberately not required to be ground.  (An earlier note here
+    suggested asserting that t has no svars; that precondition does not
+    hold -- enabling it breaks auto's TacticException failure contract.)
+
     Return the new instantiation or throws MatchException. The input
     instantiation is guaranteed to be not modified.
 
@@ -84,9 +90,6 @@ def first_order_match(pat, t, inst=None):
         inst = copy(inst)  # do not modify input
 
     typecheck.checkinstance('first_order_match', pat, Term, t, Term, inst, Inst)
-
-    # TODO: open this again when checking whether a term is pattern is more efficient.
-    # assert len(t.get_svars()) == 0, "first_order_match: t should not contain patterns."
 
     # Trace of pattern and term, for debugging
     trace = []
