@@ -1781,6 +1781,97 @@ theorem not_le
   fixes m :: nat, n :: nat
   prop ~(m <= n) <--> n < m
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] ~(m <= n) --> n < m
+    #[2] n < m --> ~(m <= n)
+  ← induct n nat_induct goal=1
+    #[3] ~(m <= 0) --> 0 < m
+    #[4] !n. (~(m <= n) --> n < m) --> ~(m <= Suc n) --> Suc n < m
+  ← rewrite nat_less_eq_def_1 sym=false goal=3
+    #[5] ~(m = 0) --> 0 < m
+  ← intro goal=5
+    #[6] ~(m = 0)
+    #[7] 0 < m
+  ← rule le_1_1 goal=7 facts=[6]
+  ← type_cases m goal=4
+    #[8] !n. (~(0 <= n) --> n < 0) --> ~(0 <= Suc n) --> Suc n < 0
+    #[9] !n. !n1. (~(Suc n <= n1) --> n1 < Suc n) --> ~(Suc n <= Suc n1) --> Suc n1 < Suc n
+  ← intro k goal=8
+    #[10] _VAR k
+    #[11] ~(0 <= k) --> k < 0
+    #[12] ~(0 <= Suc k)
+    #[13] Suc k < 0
+  ← rewrite nat_less_def_1 sym=false goal=13
+    #[14] false
+  → forward le_0 param_n=k goal=14
+    #[15] 0 <= k
+  → forward le_0 param_n="Suc k" goal=14
+    #[16] 0 <= Suc k
+  ← rule negE_gen goal=14 facts=[12,16]
+    #[17] false
+  ← intro u,v goal=9
+    #[18] _VAR u
+    #[19] _VAR v
+    #[20] ~(Suc u <= v) --> v < Suc u
+    #[21] ~(Suc u <= Suc v)
+    #[22] Suc v < Suc u
+  ← rewrite less_Suc_lesseq sym=false goal=22
+    #[23] Suc v <= u
+  ← rewrite lesseq_Suc_less sym=false goal=23
+    #[24] v < u
+  → rewrite nat_less_eq_def_2 sym=false target=fact goal=24 facts=[21]
+    #[25] ~(Suc u = Suc v | Suc u <= v)
+  → rewrite de_morgan_thm2 sym=false target=fact goal=24 facts=[25]
+    #[26] ~(Suc u = Suc v) & ~(Suc u <= v)
+  → forward conjD2 goal=24 facts=[26]
+    #[27] ~(Suc u <= v)
+  → forward goal=24 facts=[20,27]
+    #[28] v < Suc u
+  → rewrite less_Suc_lesseq sym=false target=fact goal=24 facts=[28]
+    #[29] v <= u
+  → forward conjD1 goal=24 facts=[26]
+    #[30] ~(Suc u = Suc v)
+  ← cases "v = u" goal=24
+    #[31] v = u --> v < u
+    #[32] ~(v = u) --> v < u
+  ← intro goal=31
+    #[33] v = u
+    #[34] v < u
+  ← rewrite source=prev goal=34 facts=[33]
+    #[35] u < u
+  → rewrite source=prev target=fact goal=35 facts=[33,21]
+    #[36] ~(Suc u <= Suc u)
+  → forward less_eq_refl param_n="Suc u" goal=35
+    #[37] Suc u <= Suc u
+  ← rule negE_gen goal=35 facts=[36,37]
+    #[38] u < u
+  ← intro goal=32
+    #[39] ~(v = u)
+    #[40] v < u
+  ← rule less_lesseqI goal=40 facts=[29,39]
+  ← intro goal=2
+    #[41] n < m
+    #[42] ~(m <= n)
+  ← rule negI goal=42
+    #[43] m <= n --> false
+  ← intro goal=43
+    #[44] m <= n
+    #[45] false
+  → forward lt_imp_le goal=45 facts=[41]
+    #[46] n <= m
+  → forward conjI goal=45 facts=[44,46]
+    #[47] m <= n & n <= m
+  → rewrite le_antisym sym=false target=fact goal=45 facts=[47]
+    #[48] m = n
+  → rewrite less_lesseq sym=false target=fact goal=45 facts=[41]
+    #[49] n <= m & ~(n = m)
+  → forward conjD2 goal=45 facts=[49]
+    #[50] ~(n = m)
+  → rewrite eq_sym_eq sym=false target=fact goal=45 facts=[48]
+    #[51] n = m
+  ← rule negE_gen goal=45 facts=[50,51]
+qed
 
 theorem not_lt
   fixes m :: nat, n :: nat
