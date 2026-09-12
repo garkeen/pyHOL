@@ -703,10 +703,71 @@ theorem bit0_bit1_neq
 theorem bit0_neq_one
   fixes m :: nat
   prop ~(bit0 m = 1)
+proof
+  ← rule negI goal=0
+    #[1] bit0 m = 1 --> false
+  ← rewrite bit0_def sym=false goal=1
+    #[2] m + m = 1 --> false
+  ← type_cases m goal=2
+    #[3] (0::nat) + 0 = 1 --> false
+    #[4] !n. Suc n + Suc n = 1 --> false
+  ← rewrite nat_plus_def_1 sym=false goal=3
+    #[5] (0::nat) = 1 --> false
+  ← intro goal=5
+    #[6] (0::nat) = 1
+    #[7] false
+  → rewrite eq_sym_eq sym=false target=fact goal=7 facts=[6]
+    #[8] (1::nat) = 0
+  → forward one_nonzero goal=7
+    #[9] ~((1::nat) = 0)
+  ← rule negE_gen goal=7 facts=[9,8]
+  ← rewrite nat_plus_def_2 sym=false goal=4
+    #[10] !n. Suc (n + Suc n) = 1 --> false
+  ← rewrite nat_one_def sym=false goal=10
+    #[11] !n. Suc (n + Suc n) = Suc 0 --> false
+  ← intro a goal=11
+    #[12] _VAR a
+    #[13] Suc (a + Suc a) = Suc 0
+    #[14] false
+  → forward nat_zero_Suc_neq param_n=a goal=13
+    #[15] ~(0 = Suc a)
+  → forward nat_Suc_inject goal=14 facts=[13]
+    #[16] a + Suc a = 0
+  → forward add_is_zero goal=14 facts=[16]
+    #[17] a = 0 & Suc a = 0
+  → forward conjD2 goal=14 facts=[17]
+    #[18] Suc a = 0
+  → rewrite eq_sym_eq sym=false target=fact goal=14 facts=[18]
+    #[19] 0 = Suc a
+  ← rule negE_gen goal=14 facts=[15,19]
+qed
 
 theorem bit1_neq_one
   fixes m :: nat
   prop ~(m = 0) --> ~(bit1 m = 1)
+proof
+  ← intro goal=0
+    #[1] ~(m = 0)
+    #[2] ~(bit1 m = 1)
+  ← rule negI goal=2
+    #[3] bit1 m = 1 --> false
+  ← intro goal=3
+    #[4] bit1 m = 1
+    #[5] false
+  → rewrite bit1_def sym=false target=fact goal=5 facts=[4]
+    #[6] m + m + 1 = 1
+  → rewrite add_1_right sym=false target=fact goal=5 facts=[6]
+    #[7] Suc (m + m) = 1
+  → rewrite nat_one_def sym=false target=fact goal=5 facts=[7]
+    #[8] Suc (m + m) = Suc 0
+  → forward nat_Suc_inject goal=5 facts=[8]
+    #[9] m + m = 0
+  → forward add_is_zero goal=5 facts=[9]
+    #[10] m = 0 & m = 0
+  → forward conjD1 goal=5 facts=[10]
+    #[11] m = 0
+  ← rule negE_gen goal=5 facts=[1,11]
+qed
 
 header "Test of macros"
 
