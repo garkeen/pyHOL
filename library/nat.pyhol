@@ -2846,6 +2846,23 @@ theorem nat_minus_suc
   fixes x :: nat, y :: nat
   prop Suc x - Suc y = x - y
   [hint_rewrite]
+proof
+  ← induct y nat_induct goal=0
+    #[1] Suc x - Suc 0 = x - 0
+    #[2] !n. Suc x - Suc n = x - n --> Suc x - Suc (Suc n) = x - Suc n
+  ← rewrite nat_minus_def_2 sym=false goal=1
+    #[3] Pre (Suc x - 0) = x - 0
+  ← rewrite nat_minus_def_1 sym=false goal=3
+    #[4] Pre (Suc x) = x
+  ← rewrite Pre_def_2 sym=false goal=4
+  ← intro y goal=2
+    #[5] _VAR y
+    #[6] Suc x - Suc y = x - y
+    #[7] Suc x - Suc (Suc y) = x - Suc y
+  ← rewrite nat_minus_def_2 sym=false goal=7
+    #[8] Pre (Suc x - Suc y) = Pre (x - y)
+  ← rewrite source=prev goal=8 facts=[6]
+qed
 
 theorem nat_minus_refl
   fixes x :: nat
