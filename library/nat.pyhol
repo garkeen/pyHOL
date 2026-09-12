@@ -992,36 +992,39 @@ theorem le_1_1
   [hint_backward,hint_forward]
 proof
   ← induct n nat_induct goal=0
-    #[1] ¬((0::nat) = 0) ⟶ (0::nat) < 0
-    #[2] ∀n. (¬(n = 0) ⟶ 0 < n) ⟶ ¬(Suc n = 0) ⟶ 0 < Suc n
+    #[1] ~((0::nat) = 0) --> (0::nat) < 0
+    #[2] !n. (~(n = 0) --> 0 < n) --> ~(Suc n = 0) --> 0 < Suc n
   ← intro goal=1
-    #[3] ¬((0::nat) = 0)
+    #[3] ~((0::nat) = 0)
     #[4] (0::nat) < 0
   ← rule negE_gen goal=4 facts=[3]
     #[5] (0::nat) = 0
   ← rule eq_refl goal=5
+    #[6] (0::nat) = 0
   ← intro n goal=2
-    #[6] _VAR n
-    #[7] ¬(n = 0) ⟶ 0 < n
-    #[8] ¬(Suc n = 0)
-    #[9] 0 < Suc n
-  ← rewrite less_Suc_lesseq sym=false goal=9
-    #[10] 0 ≤ n
-  ← cases "n = 0" goal=10
-    #[11] n = 0 ⟶ 0 ≤ n
-    #[12] ¬(n = 0) ⟶ 0 ≤ n
-  ← intro goal=11
-    #[13] n = 0
-    #[14] 0 ≤ n
-  ← rewrite source=prev goal=14 facts=[13]
-    #[15] (0::nat) ≤ 0
-  ← rewrite nat_less_eq_def_1 sym=false goal=15
-    #[16] (0::nat) ≤ 0
+    #[7] _VAR n
+    #[8] ~(n = 0) --> 0 < n
+    #[9] ~(Suc n = 0)
+    #[10] 0 < Suc n
+  ← rewrite less_Suc_lesseq sym=false goal=10
+    #[11] 0 <= n
+  ← cases "n = 0" goal=11
+    #[12] n = 0 --> 0 <= n
+    #[13] ~(n = 0) --> 0 <= n
   ← intro goal=12
-    #[17] 0 ≤ n
-  ← rule lt_imp_le goal=17
-    #[18] 0 < n
-  ← apply_prev goal=18 facts=[7]
+    #[14] n = 0
+    #[15] 0 <= n
+  ← rewrite source=prev goal=15 facts=[14]
+    #[16] (0::nat) <= 0
+  ← rewrite nat_less_eq_def_1 sym=false goal=16
+    #[17] (0::nat) <= 0
+  ← intro goal=13
+    #[18] ~(n = 0)
+    #[19] 0 <= n
+  ← rule lt_imp_le goal=19
+    #[20] 0 < n
+  ← apply_prev goal=20 facts=[8,18]
+    #[21] 0 < n
 qed
 
 theorem le_1_2
