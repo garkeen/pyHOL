@@ -248,10 +248,17 @@ STEP FAILED: AssertionError: rewrite: unable to apply theorem.
 
 1. **`facts=[a, b]` 不能有空格**（`[a, b]` 会被按空白切成 `[a,` 与 `b]`，
    报 `fact sid '[' not found`）。写成 `facts=[a,b]`。
-2. **goal 的假设不能当事实引用**：`intro` 引入的假设是 goal 的 hyps，
-   `assumption` 只在命题本身等于某个 hyp 时可用；不能把它当 `facts=` 传给
-   `negE_gen` 等（报 `illegal dependence` / `prop does not appear in hyps`）。
-   需要时应改变结构，让假设留在 goal 内被 `induct`/`type_cases` 泛化。
+2. **跨分支的“同命题事实”不能互相引用（stable-ID 别名）**：
+   `apply_method` 用 `ItemID.can_depend_on`（`kernel/proof.py:71`）检查
+   `facts=` 必须与目标在**同一分支**且位置在前；而 `StableProofState` 按
+   **命题值**去重分配 sid，于是两个兄弟分支里出现的同一命题（典型：两个分支
+   都引入 `0 = 1` 这类假设）会共用 sid，第二个分支引用它时报
+   `apply_method: illegal dependence`。这是 stable-ID 回放层的别名问题，
+   不是 HOL 语义（LCF 里每个分支各有自己的 hyps/context）。
+   **绕过办法**：把多个分支都要用的事实提到分支点**之上**
+   （如 `→ forward one_nonzero goal=F` 再 `type_cases …`），让它成为所有
+   分支的共同祖先；并让各分支导出的矛盾命题保持**字面不同**（一支推 `1=0`，
+   另一支推 `0=1`）。
 3. **声明顺序是硬约束**：`validate_theory` 按文件顺序装配理论，证明不能引用
    声明在其后的定理（报 `Theorem X not found`）。REPL 里整理论已加载，
    **不会**报这个错——所以 REPL 通过后仍要

@@ -133,7 +133,7 @@ real 下游：metric←misc←(floor,card)；integral←(real,metric)；transcen
 ## 5. 进度与遗留（2026-09-12，nat 专项）
 
 nat 现状（`python .cache/validate_one.py nat`，trust=LIBRARY_ORACLES）：
-**VALID 146 / 226，UNPROVED 13，DEP_FAILED 66，STEP_FAILED 0**（开工基线
+**VALID 156 / 226，UNPROVED 9，DEP_FAILED 59，STEP_FAILED 1**（开工基线
 VALID 55 / UNPROVED 34 / DEP_FAILED 132 / STEP_FAILED 1）。
 
 已解 blocker（全部手工，无 z3）：`mult_Suc_right`、二进制位加乘 8 条、
@@ -163,3 +163,28 @@ div_div, div_mod, div_exp`。
 `negE_gen` 造矛盾，而当前管线不把 goal 的 hyp 暴露为可引用事实
 （见 `repl-client.md` §8.2）；可改结构（例如先用 `mult_nonzero` 反向证
 `m≠0`/`n≠0` 再用 `Pre`）绕开。
+
+### 5.1 第二轮补充（2026-09-12）
+
+再补证：`mult_eq_1(4)`、`nat_minus_suc(4)`、`bit0_neq_one`、`bit1_neq_one`
+（后者解锁 `nat_const_ineq` 方法）、`nat_norm_test1`。
+
+**新暴露的 STEP_FAILED**：`sub_eq_0`（`x - y = 0 <-> x <= y`）。它此前是
+DEP_FAILED（依赖未证的 `nat_minus_suc`），`nat_minus_suc` 证好后回放其存量
+证明，发现证明不完整：最后一步 `rewrite nat_minus_suc` 后剩
+`y - x = 0 <-> Suc y <= Suc x` 未关。需要补：把 `Suc y <= Suc x` 用
+`less_Suc_lesseq`/`lesseq_Suc_less` 化成 `y <= x`，并接上内层归纳假设
+（`#21 Suc y - x = 0 <-> Suc y <= x`）——存量证明的归纳结构本身要重排。
+
+**跨分支别名（重要）**：`StableProofState` 按命题值去重分配 sid，而
+`apply_method` 用 `ItemID.can_depend_on` 限制事实必须与目标同分支且在前，
+所以两个兄弟分支里字面相同的命题不能互相引用（报
+`apply_method: illegal dependence`）。`mult_eq_1` 的解法是把共享的
+`~(1=0)` 在 `type_cases` 之前 `forward` 出来当共同祖先，并让两支导出的
+矛盾命题字面不同（一支 `1=0`、一支 `0=1`）。详见 `repl-client.md` §8.2。
+
+**剩余 UNPROVED（9）**：`bit0_neq`、`bit1_neq`、`bit0_bit1_neq`（0 引用，
+可用 `eq_mult_lcancel` + `mult_2` + `2!=0` 证；注意它们声明在
+`eq_mult_lcancel` 之后需先整体后移）、`even_exists_lemma(2)`、
+`exp_mono_lt_imp(1)`、`nat_MAX(1)`、`divmod_uniq_lemma`、`div_le`、
+`div_mult_add4`。**剩余 z3：27 条**（同上轮清单）。
