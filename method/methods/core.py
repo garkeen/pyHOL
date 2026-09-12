@@ -27,6 +27,7 @@ from tactic.goal import Goal
 from syntax import parser, printer, pprint
 from syntax.numeral import NatType, RealType, IntType
 from syntax.settings import settings, global_setting
+from syntax.logicops import is_exists
 
 
 def _can_prove_match(fact_th, target_th):
@@ -1010,7 +1011,7 @@ class elim(Method):
     def search(self, state: ProofState, id, prevs):
         if len(prevs) == 1:
             prev_th = state.get_proof_item(prevs[0]).th
-            if prev_th.prop.is_exists():
+            if is_exists(prev_th.prop):
                 return [{}]
 
         return []
@@ -1030,7 +1031,7 @@ class elim(Method):
 
         exists_item = state.get_proof_item(prevs[0])
         exists_prop = exists_item.th.prop
-        assert exists_prop.is_exists(), "elim"
+        assert is_exists(exists_prop), "elim"
 
         vars, body = logic.strip_exists(exists_prop, names)
 
@@ -1140,7 +1141,7 @@ class inst_exists_impl(Method):
             return []
 
         cur_th = state.get_proof_item(id).th
-        if cur_th.prop.is_exists():
+        if is_exists(cur_th.prop):
             return [{}]
         else:
             return []

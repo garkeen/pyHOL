@@ -184,7 +184,7 @@ def solve_cnf(F):
     assert res == 'unsatisfiable', 'solve_cnf: statement is not provable'
     
     # Perform the resolution steps
-    clause_pts = [ProofTerm.assume(clause) for clause in encode_pt.prop.strip_conj()]
+    clause_pts = [ProofTerm.assume(clause) for clause in strip_conj(encode_pt.prop)]
     for new_id in sorted(proof.keys()):
         steps = proof[new_id]
         pt = clause_pts[steps[0]]
@@ -197,7 +197,7 @@ def solve_cnf(F):
     
     # Show contradiction from ~F and definitions of new variables
     pt1, pt2 = encode_pt, contra_pt
-    while pt1.prop.is_conj():
+    while is_conj(pt1.prop):
         pt_left = apply_theorem('conjD1', pt1)
         pt2 = pt2.implies_intr(pt_left.prop).implies_elim(pt_left)  # remove one clause from assumption
         pt1 = apply_theorem('conjD2', pt1)
@@ -364,7 +364,7 @@ def and_elim(arg1, concl):
             return value    
 
     pt = arg1
-    while pt.prop.is_conj():
+    while is_conj(pt.prop):
         left, right = pt.prop.arg1, pt.prop.arg
         pt_l, pt_r = apply_theorem('conjD1', pt), apply_theorem('conjD2', pt)
         conj_expr[arg1.prop].update({left: pt_l, right: pt_r})
@@ -450,7 +450,7 @@ def monotonicity(pts, concl):
 
     # First get f, g.
     f_expr, g_expr = concl.lhs, concl.rhs
-    if not f_expr.is_disj() and not f_expr.is_conj():
+    if not is_disj(f_expr) and not is_conj(f_expr):
         f, g = f_expr.head, g_expr.head
 
         # Next collect arguments: x1...xn/y1...yn
@@ -492,9 +492,9 @@ def monotonicity(pts, concl):
         assert eq_prop.lhs.head == eq_prop.rhs.head
         head = eq_prop.lhs.head
         if head.name == "disj":
-            head_arity = len(concl.lhs.strip_disj())
+            head_arity = len(strip_disj(concl.lhs))
         elif head.name == "conj":
-            head_arity = len(concl.lhs.strip_conj())
+            head_arity = len(strip_conj(concl.lhs))
         # collect xi ~ yi
         lhs_param, rhs_param = [], []
         eq_assms_lhs = [p.prop.lhs for p in eq_hyps]
@@ -607,8 +607,8 @@ class flat_left_assoc_conj_conv(Conv):
     """convert the left-associative conjunction to right-associative conjunction."""
     def get_proof_term(self, t):
         pt = refl(t)
-        if t.is_conj():
-            if t.arg1.is_conj():
+        if is_conj(t):
+            if is_conj(t.arg1):
                 return pt.on_rhs(
                     rewr_conv('conj_assoc', sym=True),
                     self
@@ -622,8 +622,8 @@ class flat_left_assoc_disj_conv(Conv):
     """convert the left-associative disjunction to right-associative disjunction."""
     def get_proof_term(self, t):
         pt = refl(t)
-        if t.is_disj():
-            if t.arg1.is_disj():
+        if is_disj(t):
+            if is_disj(t.arg1):
                 return pt.on_rhs(
                     rewr_conv('disj_assoc_eq', sym=True),
                     self
@@ -732,21 +732,21 @@ def rewrite_int(tm, has_bool=False):
         res = try_tran_pt(pt1, pt2.symmetric())
         if res.rule != 'sorry':
             return res
-    elif tm.lhs.is_not() and tm.rhs.is_not() and tm.lhs.arg.is_equals() and tm.rhs.arg.is_equals():
+    elif is_not(tm.lhs) and is_not(tm.rhs) and tm.lhs.arg.is_equals() and tm.rhs.arg.is_equals():
         pt_internal = compare_lhs_rhs(Eq(tm.lhs.arg, tm.rhs.arg), [integer.int_norm_eq()])
         if pt_internal.rule != 'sorry':
             return refl(neg).combination(compare_lhs_rhs(Eq(tm.lhs.arg, tm.rhs.arg), [integer.int_norm_eq()]))        
-    elif tm.lhs.is_equals() and tm.rhs.is_conj() and tm.rhs.arg1.is_less_eq() and tm.rhs.arg.is_greater_eq():
+    elif tm.lhs.is_equals() and is_conj(tm.rhs) and tm.rhs.arg1.is_less_eq() and tm.rhs.arg.is_greater_eq():
         pt = refl(tm.lhs).on_rhs(rewr_conv('int_eq_leq_geq'))
         if pt.rhs == tm.rhs:
             return pt
         else:
             return Goal(tm).sorry()
-    elif tm.lhs.is_compares() and tm.rhs.is_not() and tm.rhs.arg.is_compares():
+    elif tm.lhs.is_compares() and is_not(tm.rhs) and tm.rhs.arg.is_compares():
         pt_elim_neg_sym = refl(tm.rhs).on_rhs(integer.int_norm_neg_compares(), integer.omega_form_conv()).symmetric()
         pt_eq = integer_macro.int_eq_comparison_macro().get_proof_term(Eq(tm.lhs, pt_elim_neg_sym.lhs))
         return try_tran_pt(pt_eq, pt_elim_neg_sym)
-    elif tm.lhs.is_not() and tm.lhs.arg.is_compares() and tm.rhs.is_not() and tm.rhs.arg.is_compares():
+    elif is_not(tm.lhs) and tm.lhs.arg.is_compares() and is_not(tm.rhs) and tm.rhs.arg.is_compares():
         """
         Two cases:
         1. normalize the comparisons can prove they are equal.
@@ -1036,7 +1036,7 @@ def _norm_bool_side(side):
     """Normalize a negated boolean literal / negated comparison to a form
     the atom nets understand.  Returns (proof of ⊢ side = atom, atom);
     (None, side) when no normalization applies."""
-    if not side.is_not():
+    if not is_not(side):
         return None, side
     if side.arg == true:
         return refl(side).on_rhs(rewr_conv('not_true')), false
@@ -1065,7 +1065,7 @@ def _atom_bool_net(tm):
     close these because it treats arithmetic atoms opaquely."""
     if not tm.is_equals():
         return None
-    if tm.lhs.is_not() and tm.rhs.is_not():
+    if is_not(tm.lhs) and is_not(tm.rhs):
         # Z3 rewrites atoms inside a negation context, emitting steps
         # like ¬atom ⟷ ¬true: close the inner equality and lift it
         # through the Not congruence (Not = Not combined with the inner
@@ -1087,7 +1087,7 @@ def _atom_bool_net(tm):
     rhs_pt, rhs_a = _norm_bool_side(tm.rhs)
 
     def _core(a1, a2):
-        if a1.is_not() and (a1.arg.is_equals() or a1.arg.is_compares()):
+        if is_not(a1) and (a1.arg.is_equals() or a1.arg.is_compares()):
             # Negated atom: ⟷ true means the atom is refutable,
             # ⟷ false means the atom is provable.
             inner = a1.arg
@@ -1398,10 +1398,10 @@ def not_or_elim(arg1, arg2):
             # print("!!!")
             return value        
 
-    disj = arg2.arg if arg2.is_not() else Not(arg2)
+    disj = arg2.arg if is_not(arg2) else Not(arg2)
 
     pt = arg1
-    while pt.prop.arg.is_disj():
+    while is_disj(pt.prop.arg):
         disj1, disj2 = pt.prop.arg.arg1, pt.prop.arg.arg
         pt_l, pt_r = apply_theorem('not_or_elim1', pt).on_prop(try_conv(rewr_conv('double_neg'))),\
             apply_theorem('not_or_elim2', pt).on_prop(try_conv(rewr_conv('double_neg')))
@@ -1509,7 +1509,7 @@ def intro_def(concl):
     n = e ⊢ concl. 
     """
     case = ""
-    if concl.is_conj(): # a), b) cases
+    if is_conj(concl): # a), b) cases
         if concl.arg1.arg.is_equals():
             n = concl.arg1.arg.lhs
             case = "b"
@@ -1680,7 +1680,7 @@ def sk(concl):
     orig_concl = concl
     try:
         is_neg = False
-        if concl.lhs.is_not() and concl.lhs.arg.is_forall() and concl.rhs.is_not():
+        if is_not(concl.lhs) and concl.lhs.arg.is_forall() and is_not(concl.rhs):
             is_neg = True
             pt_not_all = refl(concl.lhs).on_rhs(rewr_conv('not_all'))
             # After not_all: lhs becomes ∃x. ¬(P x), an exists-shape formula.
@@ -1688,7 +1688,7 @@ def sk(concl):
             rhs = concl.rhs
         else:
             lhs, rhs = concl.lhs, concl.rhs
-        if not lhs.is_exists() or not rhs.is_comb() or (is_neg and not rhs.arg.is_comb()):
+        if not is_exists(lhs) or not rhs.is_comb() or (is_neg and not rhs.arg.is_comb()):
             return Goal(orig_concl).sorry()
         P_body = lhs.arg            # λx. P x  (λx. ¬(P x) in the ¬∀ case)
         # the application P c: rhs itself, or rhs.arg under the negation
@@ -1718,7 +1718,7 @@ def sk(concl):
 def real_th_lemma(args):
     """handle real th-lemma."""
     def traverse_A(pt):
-        if pt.prop.is_conj():
+        if is_conj(pt.prop):
             return traverse_A(apply_theorem('conjD1', pt)) + traverse_A(apply_theorem('conjD2', pt))
         else:
             return [pt]
@@ -1737,7 +1737,7 @@ def real_th_lemma(args):
         # Second step, send the inequalies in conjunction to simplex, get
         # |- x_4 <= 0 --> x_4 >= 60 --> false
         # pt_norm_prop = pt1.on_prop(bottom_conv(rewr_conv('real_mul_lid', sym=True)), bottom_conv(real_eval_conv()))
-        conjs = pt1.prop.strip_conj()
+        conjs = strip_conj(pt1.prop)
         if any(conj.is_greater() or conj.is_less() for conj in conjs):
             pt2 = simplex_strict.StrictSimplexMacro().get_proof_term(args=conjs)
         else:
@@ -1781,7 +1781,7 @@ def real_th_lemma(args):
         norm_pts = []
         input_ineq = []
         for pt in args[:-1]:
-            if pt.prop.is_not():
+            if is_not(pt.prop):
                 norm_pt = refl(pt.prop).on_rhs(norm_neg_real_ineq_conv()).symmetric()
                 norm_pts.append(norm_pt)
                 input_ineq.append(norm_pt.lhs)
@@ -1807,7 +1807,7 @@ def real_th_lemma(args):
 
 def int_th_lemma_1_omega(tm):
     def traverse_A(pt):
-            if pt.prop.is_conj():
+            if is_conj(pt.prop):
                 return traverse_A(apply_theorem('conjD1', pt)) + traverse_A(apply_theorem('conjD2', pt))
             else:
                 return [pt]
@@ -1817,7 +1817,7 @@ def int_th_lemma_1_omega(tm):
         top_conv(integer.int_norm_neg_compares()), top_conv(integer.omega_form_conv()),
         top_conv(integer.omega_form_conv())
     )
-    conjs = pt_norm.rhs.strip_conj()
+    conjs = strip_conj(pt_norm.rhs)
     solver = omega.OmegaHOL(conjs)
 
     pt = solver.solve()
@@ -1857,7 +1857,7 @@ def int_th_lemma_n_omega(tms):
 
 def int_th_lemma_1_simplex(tm):
     def traverse_A(pt):
-            if pt.prop.is_conj():
+            if is_conj(pt.prop):
                 return traverse_A(apply_theorem('conjD1', pt)) + traverse_A(apply_theorem('conjD2', pt))
             else:
                 return [pt]
@@ -1868,7 +1868,7 @@ def int_th_lemma_1_simplex(tm):
         top_conv(integer.int_norm_neg_compares()),
         top_conv(integer.int_simplex_form())
     )
-    conjs = pt_norm.rhs.strip_conj()
+    conjs = strip_conj(pt_norm.rhs)
     # pt = simplex.unsat_integer_simplex(conjs)
     pt = simplex.IntegerSimplexMacro().get_proof_term(args=conjs)
     # pt = solver.solve()
@@ -2001,12 +2001,12 @@ def th_lemma(args):
         t1 = args[0]
         if not isinstance(t1, ProofTerm):
             t2 = t1.arg1
-            if t2.is_not():
+            if is_not(t2):
                 T = t2.arg.arg.get_type()
             else:
                 T = t2.arg.get_type()
         else:
-            if t1.prop.is_not():
+            if is_not(t1.prop):
                 T = t1.prop.arg.arg.get_type()
             else:
                 T = t1.prop.arg.get_type()
@@ -2054,7 +2054,7 @@ def nnf_pos(pts, concl, z3terms):
     if concl.lhs.is_forall():
         pt_forall = ProofTerm.reflexive(forall(concl.lhs.arg.var_T))
         return ProofTerm.combination(pt_forall, pts[0])
-    elif concl.lhs.is_exists():
+    elif is_exists(concl.lhs):
         pt_exists = ProofTerm.reflexive(exists(concl.lhs.arg.var_T))
         return ProofTerm.combination(pt_exists, pts[0])
     # Remaining cases (imp/iff elimination) are purely propositional.
@@ -2237,11 +2237,11 @@ def handle_assertion(ast):
 
     def traverse(pt):
         """Note that we assume pt is right-associative"""
-        while pt.prop.is_conj():
+        while is_conj(pt.prop):
             lhs, rhs = pt.prop.arg1, pt.prop.arg
-            if not lhs.is_conj():
+            if not is_conj(lhs):
                 d[lhs] = apply_theorem('conjD1', pt)
-            if not rhs.is_conj():
+            if not is_conj(rhs):
                 d[rhs] = apply_theorem('conjD2', pt)
                 break
             else:
@@ -2262,7 +2262,7 @@ def handle_assertion(ast):
     rounds = 0
     while rounds < 20:
         rounds += 1
-        if not pt_ast.prop.is_conj():
+        if not is_conj(pt_ast.prop):
             break
         new_conv = []
         d = dict()
@@ -2272,7 +2272,7 @@ def handle_assertion(ast):
                 atoms[key] = value.on_prop(rewr_conv('eq_true'))
                 new_conv.append(atoms[key])
                 flag = True
-            elif key.is_not() and (key.arg not in atoms or value != atoms[key.arg]):
+            elif is_not(key) and (key.arg not in atoms or value != atoms[key.arg]):
                 atoms[key.arg] = value.on_prop(rewr_conv('eq_false'))    
                 flag = True
                 new_conv.append(atoms[key.arg])

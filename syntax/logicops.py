@@ -3,9 +3,10 @@
 # The constants true/false/neg/conj/disj/exists are declared in the
 # library theory logic_base. The kernel itself knows only the pure
 # primitives equals/implies/all. This module provides the Python-side
-# constructors and recognition methods (installed on Term) used by the
-# parser, printer, and logic automation. Importing it installs the
-# sugar; nothing here is part of the trusted kernel.
+# constructors and recognition predicates used by the parser, printer,
+# and logic automation. The predicates are plain functions taking a
+# Term (same idiom as core.logic.is_if / is_xor); nothing here is part
+# of the trusted kernel.
 
 from kernel.type import TFun, BoolType
 from kernel.term import Term, Var, Const, Lambda, TermException
@@ -65,50 +66,53 @@ def Exists(*args):
 
 
 # ============================================================
-# Recognition methods on Term for the base logical constants.
+# Recognition predicates for the base logical constants.
+#
+# These are plain functions rather than methods installed on Term:
+# the constants are library-declared, so the kernel's Term must not
+# know them. Callers import the predicates explicitly, which makes the
+# dependency a construction-level fact instead of an import-order
+# side effect.
 # ============================================================
 
-def _term_is_not(self):
-    """Whether self is of form ~A."""
-    return self.is_comb('neg', 1)
+def is_not(t):
+    """Whether t is of form ~A."""
+    return t.is_comb('neg', 1)
 
-def _term_is_conj(self):
+def is_conj(t):
     """Whether t is of the form A & B."""
-    return self.is_comb('conj', 2)
+    return t.is_comb('conj', 2)
 
-def _term_strip_conj(self):
+def strip_conj(t):
     """Given s1 & ... & sn, return [s1, ..., sn]."""
-    t = self
     res = []
-    while t.is_conj():
+    while is_conj(t):
         res.append(t.arg1)
         t = t.arg
     res.append(t)
     return res
 
-def _term_is_disj(self):
+def is_disj(t):
     """Whether t is of the form A | B."""
-    return self.is_comb('disj', 2)
+    return t.is_comb('disj', 2)
 
-def _term_strip_disj(self):
+def strip_disj(t):
     """Given s1 | ... | sn, return [s1, ..., sn]."""
-    t = self
     res = []
-    while t.is_disj():
+    while is_disj(t):
         res.append(t.arg1)
         t = t.arg
     res.append(t)
     return res
 
-def _term_is_exists(self):
-    """Whether self is of the form ?x. P x."""
-    return self.is_comb('exists', 1)
+def is_exists(t):
+    """Whether t is of the form ?x. P x."""
+    return t.is_comb('exists', 1)
 
-def _term_strip_exists(self, *, num=None):
+def strip_exists(t, *, num=None):
     """Given ?x1 x2 ... xn. body, return ([x1, x2, ..., xn], body)"""
     args = []
-    t = self
-    while t.is_exists() and (num is None or num > 0):
+    while is_exists(t) and (num is None or num > 0):
         body = t.arg
         v = Var(body.var_name, body.var_T)
         args.append(v)
@@ -116,12 +120,3 @@ def _term_strip_exists(self, *, num=None):
         if num is not None:
             num -= 1
     return args, t
-
-
-Term.is_not = _term_is_not
-Term.is_conj = _term_is_conj
-Term.strip_conj = _term_strip_conj
-Term.is_disj = _term_is_disj
-Term.strip_disj = _term_strip_disj
-Term.is_exists = _term_is_exists
-Term.strip_exists = _term_strip_exists

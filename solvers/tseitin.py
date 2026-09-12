@@ -4,7 +4,7 @@ Tseitin encoding from formulae in holpy to CNF.
 
 from kernel.type import BoolType
 from kernel.term import Term, Var, Implies, Eq
-from syntax.logicops import And, Or, Not
+from syntax.logicops import And, Or, Not, is_not, is_conj, strip_conj, is_disj, strip_disj
 from kernel.thm import Thm
 from kernel import term_ord
 from kernel.proofterm import ProofTerm
@@ -13,14 +13,14 @@ from core.conv import rewr_conv, every_conv, top_conv
 
 
 def is_logical(t):
-    return t.is_implies() or t.is_equals() or t.is_conj() or t.is_disj() or t.is_not()
+    return t.is_implies() or t.is_equals() or is_conj(t) or is_disj(t) or is_not(t)
 
 def logic_subterms(t):
     """Returns the list of logical subterms for a term t."""
     def rec(t):
         if not is_logical(t):
             return [t]
-        elif t.is_not():
+        elif is_not(t):
             return rec(t.arg) + [t]
         else:
             return rec(t.arg1) + rec(t.arg) + [t]
@@ -59,7 +59,7 @@ def encode(t, norm_conj):
         r = subterm_dict[subt]
         if not is_logical(subt):
             eqs.append(Eq(r, subt))
-        elif subt.is_not():
+        elif is_not(subt):
             r1 = subterm_dict[subt.arg]
             eqs.append(Eq(r, Not(r1)))
         else:
@@ -88,12 +88,12 @@ def encode(t, norm_conj):
 def convert_cnf(t):
     """Convert a term to CNF form (as a list of lists of literals)."""
     def convert_literal(lit):
-        if lit.is_not():
+        if is_not(lit):
             return (lit.arg.name, False)
         else:
             return (lit.name, True)
         
     def convert_clause(clause):
-        return [convert_literal(lit) for lit in clause.strip_disj()]
+        return [convert_literal(lit) for lit in strip_disj(clause)]
 
-    return [convert_clause(clause) for clause in t.strip_conj()]
+    return [convert_clause(clause) for clause in strip_conj(t)]

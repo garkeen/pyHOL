@@ -16,6 +16,7 @@ from core.logic import apply_theorem
 from core import matcher
 from core.conv import Conv, ConvException, eta_conv, top_conv
 from util import name
+from syntax.logicops import is_not, is_conj, is_disj
 
 
 """Setup for generic automation.
@@ -102,12 +103,12 @@ def solve(goal, pts=None, depth=0):
     # Next, consider the situation where one of the assumptions is
     # a conjunction or a disjunction.
     for i, pt in enumerate(pts):
-        if pt.prop.is_conj():
+        if is_conj(pt.prop):
             pt1 = apply_theorem('conjD1', pt)
             pt2 = apply_theorem('conjD2', pt)
             return solve(goal, [pt1, pt2] + pts[:i] + pts[i+1:], depth=depth)
 
-        if pt.prop.is_disj():
+        if is_disj(pt.prop):
             a1, a2 = pt.prop.args
             assume_pt1 = ProofTerm.assume(a1)
             assume_pt2 = ProofTerm.assume(a2)
@@ -118,13 +119,13 @@ def solve(goal, pts=None, depth=0):
             return apply_theorem('disjE', pt, pt1, pt2)
 
     # Handle various logical connectives.
-    if goal.is_conj():
+    if is_conj(goal):
         a1, a2 = goal.args
         pt1 = solve(a1, pts, depth=depth)
         pt2 = solve(a2, pts, depth=depth)
         return apply_theorem('conjI', pt1, pt2)
 
-    if goal.is_disj():
+    if is_disj(goal):
         a1, a2 = goal.args
         try:
             pt1 = solve(a1, pts, depth=depth)
@@ -149,7 +150,7 @@ def solve(goal, pts=None, depth=0):
     eq_pt = norm(goal, pts)
     goal = eq_pt.rhs
 
-    if goal.is_conj():
+    if is_conj(goal):
         pt = solve(goal, pts, depth=depth)
         return eq_pt.symmetric().equal_elim(pt)
 
@@ -162,7 +163,7 @@ def solve(goal, pts=None, depth=0):
             res_pt = solve_record[key]
 
     # Call registered functions (skipped when the cache hit settled it)
-    if res_pt is None and goal.is_not() and goal.arg.head in global_autos_neg:
+    if res_pt is None and is_not(goal) and goal.arg.head in global_autos_neg:
         for f in global_autos_neg[goal.arg.head]:
             try:
                 res_pt = f(goal, pts)

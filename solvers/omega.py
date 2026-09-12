@@ -19,6 +19,7 @@ from kernel import proofterm
 from theories.integer import conv as integer
 from core import logic, basic
 from core import conv
+from syntax.logicops import is_not
 
 basic.load_theory('int')
 
@@ -905,7 +906,7 @@ def _flip_negated(pt):
     p = pt.prop
     if is_integer_ineq(p):
         return pt
-    if p.is_not() and is_integer_ineq(p.arg):
+    if is_not(p) and is_integer_ineq(p.arg):
         ineq = p.arg
         if ineq.is_less():
             flip = _FLIP_THEOREMS['less']
@@ -933,7 +934,7 @@ def omega_solve(goal, pts):
 
     try:
         pos_pts = [_flip_negated(pt) for pt in pts]
-        if goal.is_not() and is_integer_ineq(goal.arg):
+        if is_not(goal) and is_integer_ineq(goal.arg):
             neg_goal, neg_orig = goal.arg, goal
         elif is_integer_ineq(goal):
             neg_goal, neg_orig = _flip_negated(
@@ -958,7 +959,7 @@ def omega_solve(goal, pts):
     # Full bridge from the original negated goal to its normal form:
     # when goal is itself a negation, neg_goal is already positive and
     # norm_neg starts from it; otherwise flip neg_orig to neg_goal first.
-    if goal.is_not() and is_integer_ineq(goal.arg):
+    if is_not(goal) and is_integer_ineq(goal.arg):
         neg_bridge = norm_neg
     else:
         flip_bridge = _flip_negated(proofterm.ProofTerm.assume(neg_orig))
@@ -970,7 +971,7 @@ def omega_solve(goal, pts):
     for npt in norm_pts:
         chain = chain.implies_elim(npt)
     chain = chain.implies_elim(neg_bridge)
-    if goal.is_not() and is_integer_ineq(goal.arg):
+    if is_not(goal) and is_integer_ineq(goal.arg):
         return logic.apply_theorem(
             'negI', chain.implies_intr(goal.arg), concl=goal)
     branch_neg = logic.apply_theorem(

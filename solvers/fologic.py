@@ -7,7 +7,7 @@ Chapter 3, Handbook of Practical Logic and Automated Reasoning.
 from kernel.type import TFun
 from kernel import term
 from kernel.term import Var, Abs, Forall
-from syntax.logicops import And, Or, Not, false, true, exists
+from syntax.logicops import And, Or, Not, false, true, exists, is_not, is_conj, is_disj, is_exists
 from util import name
 
 def has_bound0(fm):
@@ -30,16 +30,16 @@ def has_bound0(fm):
 
 def simplify1(fm):
     """Simplify formula for one step."""
-    if fm.is_not():
+    if is_not(fm):
         if fm.arg == false:
             return true
         elif fm.arg == true:
             return false
-        elif fm.arg.is_not():
+        elif is_not(fm.arg):
             return fm.arg.arg
         else:
             return fm
-    elif fm.is_conj():
+    elif is_conj(fm):
         if fm.arg1 == false or fm.arg == false:
             return false
         elif fm.arg1 == true:
@@ -48,7 +48,7 @@ def simplify1(fm):
             return fm.arg1
         else:
             return fm
-    elif fm.is_disj():
+    elif is_disj(fm):
         if fm.arg1 == true or fm.arg == true:
             return true
         elif fm.arg1 == false:
@@ -77,7 +77,7 @@ def simplify1(fm):
             return Not(fm.arg1)
         else:
             return fm
-    elif fm.is_forall() or fm.is_exists():
+    elif fm.is_forall() or is_exists(fm):
         if has_bound0(fm.arg.body):
             return fm
         else:
@@ -91,11 +91,11 @@ def simplify(fm):
     Remove true, false, and vacuous forall/exists quantification.
 
     """
-    if fm.is_not():
+    if is_not(fm):
         return simplify1(Not(simplify(fm.arg)))
-    elif fm.is_conj() or fm.is_disj() or fm.is_implies() or fm.is_equals():
+    elif is_conj(fm) or is_disj(fm) or fm.is_implies() or fm.is_equals():
         return simplify1(fm.head(simplify(fm.arg1), simplify(fm.arg)))
-    elif fm.is_forall() or fm.is_exists():
+    elif fm.is_forall() or is_exists(fm):
         assert fm.arg.is_abs()
         return simplify1(fm.fun(Abs(fm.arg.var_name, fm.arg.var_T, simplify(fm.arg.body))))
     else:
@@ -103,22 +103,22 @@ def simplify(fm):
 
 def nnf(fm):
     """Negation normal form of a formula."""
-    if fm.is_conj():
+    if is_conj(fm):
         return And(nnf(fm.arg1), nnf(fm.arg))
-    elif fm.is_disj():
+    elif is_disj(fm):
         return Or(nnf(fm.arg1), nnf(fm.arg))
     elif fm.is_implies():
         return Or(nnf(Not(fm.arg1)), nnf(fm.arg))
     elif fm.is_equals():
         return Or(And(nnf(fm.arg1), nnf(fm.arg)),
                   And(nnf(Not(fm.arg1)), nnf(Not(fm.arg))))
-    elif fm.is_not():
+    elif is_not(fm):
         p = fm.arg
-        if p.is_not():
+        if is_not(p):
             return nnf(p.arg)
-        elif p.is_conj():
+        elif is_conj(p):
             return Or(nnf(Not(p.arg1)), nnf(Not(p.arg)))
-        elif p.is_disj():
+        elif is_disj(p):
             return And(nnf(Not(p.arg1)), nnf(Not(p.arg)))
         elif p.is_implies():
             return And(nnf(p.arg1), nnf(Not(p.arg)))
@@ -128,12 +128,12 @@ def nnf(fm):
         elif p.is_forall():
             assert p.arg.is_abs()
             return exists(p.arg.var_T)(Abs(p.arg.var_name, p.arg.var_T, nnf(Not(p.arg.body))))
-        elif p.is_exists():
+        elif is_exists(p):
             assert p.arg.is_abs()
             return term.forall(p.arg.var_T)(Abs(p.arg.var_name, p.arg.var_T, nnf(Not(p.arg.body))))
         else:
             return fm
-    elif fm.is_forall() or fm.is_exists():
+    elif fm.is_forall() or is_exists(fm):
         assert fm.arg.is_abs()
         return fm.fun(Abs(fm.arg.var_name, fm.arg.var_T, nnf(fm.arg.body)))
     else:
@@ -144,7 +144,7 @@ def skolem(fm):
     var_names = [v.name for v in fm.get_vars()]
 
     def rec(t,bd_var:list):
-        if t.is_exists():
+        if is_exists(t):
             # Obtain the list of variables that t depends on, not
             # counting functions (including skolem functions).
             xs1 = [v for v in t.arg.body.get_vars() if not v.T.is_fun() and v in bd_var]
@@ -165,7 +165,7 @@ def skolem(fm):
             body = t.arg.subst_bound(v)
             bd_var.append(v)
             return Forall(v, rec(body, bd_var.copy()))
-        elif t.is_conj() or t.is_disj():
+        elif is_conj(t) or is_disj(t):
             t1 = rec(t.arg1,bd_var.copy())
             t2 = rec(t.arg,bd_var.copy())
             return t.head(t1, t2)

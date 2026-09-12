@@ -20,6 +20,7 @@ from core import matcher
 from core.conv import rewr_conv, binop_conv, arg1_conv, arg_conv, try_conv, Conv, ConvException
 from kernel.proofterm import refl, ProofTerm
 from theories import poly
+from syntax.logicops import is_not
 
 # Basic definitions
 
@@ -782,7 +783,7 @@ class norm_neg_real_ineq_conv(Conv):
     4) Not(a ≥ b) <==> a < b
     """
     def get_proof_term(self, tm):
-        if not tm.is_not() or not is_real_ineq(tm.arg):
+        if not is_not(tm) or not is_real_ineq(tm.arg):
             raise ConvException("Invalid term: %s" % str(tm))
         pt = refl(tm)
         if tm.arg.is_less():

@@ -5,7 +5,7 @@ from syntax.numeral import NatType
 from kernel import term
 from kernel.term import Term, Const, Eq, Inst
 from syntax.numeral import Binary, Nat
-from syntax.logicops import Not
+from syntax.logicops import Not, is_not
 from kernel.thm import oracle_thm
 from kernel import theory
 from kernel.theory import register_macro
@@ -131,7 +131,7 @@ def ineq_proof_term(m, n):
 def is_nat_const_ineq(goal):
     """Shape check for nat_const_ineq_macro: goal is ~(m = n) with
     distinct number literals m, n."""
-    if not (goal.is_not() and goal.arg.is_equals()):
+    if not (is_not(goal) and goal.arg.is_equals()):
         return False
 
     m, n = goal.arg.args

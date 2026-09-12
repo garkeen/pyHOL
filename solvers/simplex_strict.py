@@ -7,7 +7,7 @@ Bruno Dutertre and Leonardo de Moura. A Fast Linear-Arithmetic Solver for DPLL(T
 
 from kernel.term import Term, Var, Inst, Eq, Const, TFun
 from syntax.numeral import Int, greater_eq, Real, less_eq, minus, greater, less, of_int
-from syntax.logicops import And
+from syntax.logicops import And, is_conj, strip_conj
 from syntax.numeral import RealType, IntType
 from kernel.proofterm import ProofTerm, refl, eval_macro
 from kernel.theory import register_macro, Thm, get_theorem
@@ -1307,7 +1307,7 @@ class StrictSimplexMacro(Macro):
 
     def get_proof_term(self, args, prevs=None):
         def traverse_A(pt):
-            if pt.prop.is_conj():
+            if is_conj(pt.prop):
                 return traverse_A(apply_theorem('conjD1', pt)) + traverse_A(apply_theorem('conjD2', pt))
             else:
                 return [pt]
@@ -1337,7 +1337,7 @@ class StrictSimplexMacro(Macro):
         _, exists_tm = pt_conj_exists.prop.strip_implies()
         
         var = Var("δ", RealType)
-        ordered_comparisons = [tm for tm in exists_tm.args[-1].subst_bound(var).arg.strip_conj()]
+        ordered_comparisons = [tm for tm in strip_conj(exists_tm.args[-1].subst_bound(var).arg)]
         pt_assume_slack_tms = [ProofTerm.assume(tm).on_prop(try_conv(arg_conv(rewr_conv('real_poly_neg2')))) for tm in ordered_comparisons]
         # ⊢ A --> B --> ... --> false
         pt_implies_hyps_result = functools.reduce(lambda x, y: x.implies_intr(y), reversed(ordered_comparisons), result)

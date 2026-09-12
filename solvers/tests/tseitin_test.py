@@ -2,7 +2,7 @@ import unittest
 
 from kernel.type import BoolType
 from kernel.term import Term, Var, Implies
-from syntax.logicops import And, Or
+from syntax.logicops import And, Or, strip_conj
 from kernel import report
 from kernel import theory
 from core import basic
@@ -34,7 +34,7 @@ class TseitinTest(unittest.TestCase):
         t = Or(Implies(a,And(c,d)),Implies(b,And(c,e)))
         pt = tseitin.encode(t, conj_norm)
         self.assertEqual(len(pt.hyps), 11)
-        self.assertEqual(len(pt.prop.strip_conj()), 16)
+        self.assertEqual(len(strip_conj(pt.prop)), 16)
         
         rpt = report.ProofReport()
         prf = pt.export()

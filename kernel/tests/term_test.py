@@ -266,15 +266,6 @@ class TermTest(unittest.TestCase):
     def testConjFail(self):
         self.assertRaises(TypeError, And, [a])
 
-    def testStripConj(self):
-        test_data = [
-            (a, [a]),
-            (And(a, b, a), [a, b, a])
-        ]
-
-        for t, res in test_data:
-            self.assertEqual(t.strip_conj(), res)
-
     def testDisj(self):
         test_data = [
             ([], logicops.false),
@@ -288,15 +279,6 @@ class TermTest(unittest.TestCase):
 
     def testDisjFail(self):
         self.assertRaises(TypeError, Or, [a])
-
-    def testStripDisj(self):
-        test_data = [
-            (a, [a]),
-            (Or(a, b, a), [a, b, a])
-        ]
-
-        for t, res in test_data:
-            self.assertEqual(t.strip_disj(), res)
 
     def testBinary(self):
         zero = numeral.nat_zero

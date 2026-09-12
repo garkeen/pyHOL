@@ -9,7 +9,7 @@ from copy import copy
 from kernel.type import TyInst, TConst
 from kernel import term
 from kernel.term import Term, Implies, Lambda, Inst, Eq
-from syntax.logicops import Not, false
+from syntax.logicops import Not, false, is_not, is_exists
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import theory
 from kernel.proofterm import ProofTerm, TacticException, eval_macro
@@ -158,7 +158,7 @@ class resolve(Tactic):
         th_name = args
         th = theory.get_theorem(th_name)
 
-        assert (th.prop.is_not() or
+        assert (is_not(th.prop) or
                 (th.prop.is_implies() and th.prop.arg == false) or
                 (th.prop.is_equals() and th.prop.rhs == false)), \
             "resolve: theorem %s is not a negation " \
@@ -463,7 +463,7 @@ class inst_exists_goal(Tactic):
             exists_intro_thm = 'exI'
 
         C = goal.prop
-        assert C.is_exists(), "inst_exists_goal: goal is not exists statement"
+        assert is_exists(C), "inst_exists_goal: goal is not exists statement"
         argT = witness.get_type()
         assert C.arg.var_T == argT, "inst_exists_goal: incorrect type: expect %s, given %s" % (
             str(C.arg.var_T), str(argT)

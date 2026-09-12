@@ -2,7 +2,7 @@
 
 import queue
 
-from syntax.logicops import Not
+from syntax.logicops import Not, is_not, is_conj, is_disj, strip_disj
 from kernel.proofterm import ProofTerm
 from kernel import theory
 from core import logic
@@ -70,7 +70,7 @@ class DisjItem(Item):
             self.pt = self.pt.forall_elim(new_var)
 
         self.prop = self.pt.prop
-        self.disjuncts = self.prop.strip_disj()
+        self.disjuncts = strip_disj(self.prop)
 
     def size(self):
         return self.pt.prop.size()
@@ -98,7 +98,7 @@ class ConjNormalizer(Normalizer):
             return None
 
         prop = item.prop
-        if not prop.is_conj():
+        if not is_conj(prop):
             return None
         else:
             return [FactItem(logic.apply_theorem('conjD1', item.pt)),
@@ -111,7 +111,7 @@ class DisjNormalizer(Normalizer):
             return None
 
         prop = item.prop
-        if not (prop.is_forall() or prop.is_implies() or prop.is_disj()):
+        if not (prop.is_forall() or prop.is_implies() or is_disj(prop)):
             return None
         else:
             return [DisjItem(item.pt)]
@@ -191,7 +191,7 @@ class TermProofStep(ProofStep):
         t = args[0].prop
         
         # Add subterms of the proposition. Ignore negation symbol.
-        if t.is_not():
+        if is_not(t):
             t = t.arg
 
         return list(TermItem(subt) for subt in get_all_subterms(t))
@@ -364,7 +364,7 @@ def init_proof(prop):
     """Initialize proof for proposition."""
     vars = prop.get_vars()
     assms, concl = prop.strip_implies()
-    assms.append(concl.arg if concl.is_not() else Not(concl))
+    assms.append(concl.arg if is_not(concl) else Not(concl))
     return ProofState(vars, assms)
 
 def init_proof_theorem(th_name):

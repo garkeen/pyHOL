@@ -444,9 +444,9 @@ replay(prf) -> (Thm, holes)
 
 ### 任务 F：核心审查（2026-09-11）——已知简化清单
 
-核心（kernel/ + core/）审查发现的行为性简化与特判，记录为已知而非未决债务：
+核心（kernel/ + core/）审查发现的行为性简化与特判，记录为已知而非未决债务（C2 已于 2026-09-12 修复，见下）：
 
-- **C2：Term 谓词半在 kernel 半在 syntax（import 副作用注入）**。`is_conj`/`is_disj`/`strip_conj`/`strip_disj`/`is_not`/`is_exists`/`strip_exists` 不在 `kernel/term.py` 定义，由 `syntax/logicops.py:121-127` **import 时猴子补丁到 kernel.Term**（kernel 原生只有 is_implies/is_forall/is_equals/is_VAR 等）。任何用 `t.is_conj()` 的模块都依赖"装载顺序上先有人 import 了 logicops"——core 必经 registry/logic 的 logicops 导入保副作用，行为正确；但这是**靠装载顺序而不是构造约束**维持的设计简化。未动：改动面 = 谓词收进 kernel 或反转依赖，属结构重构，单独立项。
+- **C2（已修复 2026-09-12）**：`is_conj`/`is_disj`/`strip_conj`/`strip_disj`/`is_not`/`is_exists`/`strip_exists` 原由 `syntax/logicops.py` **import 时猴子补丁到 kernel.Term**，任何 `t.is_conj()` 调用都依赖"装载顺序上先有人 import 了 logicops"——靠装载顺序而非构造约束维持。**修复**：7 谓词改为 `syntax/logicops.py` 的普通函数（`is_conj(t)` 等，同 `core.logic` 的 `is_if`/`is_xor` 既有惯用法），删除 Term 挂载；全库 158 处调用点经 AST 偏移式 codemod 改为函数形式并显式 import（25 文件；`solvers/proofrec.py` 走星号导入无需补行，`core/auto.py` 补显式 import）。**两处同名但不同来源的调用按名区分**：(1) `solvers/proofrec.py` 的 `translate` 做 z3→holpy，其中 `term.is_exists()` 是 **z3 QuantifierRef 方法**，保留不动（同名却根本不是 Term 谓词）；(2) `core/logic.py` 与 `theories/logic/macro.py` 各有**语义不同的递归版** `strip_conj`/`strip_disj`，logicops 的浅版以 `_strip_conj_shallow`/`_strip_disj_shallow` 别名导入，避免后导入覆盖。kernel 生产代码本就零使用，kernel 侧零改动。**守卫**：新增 `syntax/tests/logicops_test.py` 8 例——7 谓词直接覆盖 + `testNoMethodInstallation` 断住"logicops 不得再向 Term 装方法"；`strip_conj`/`strip_disj` 两用例从 `kernel/tests/term_test.py` 随模块迁入。验证：kernel+core+tactic+util+syntax 310P、theories+method+imperative 186P、solvers+imperative+imp_validate 88P 全绿。
 - **D1：`core/basic.py:307` `if filename == 'hoare'` 硬编码理论名**激活 imperative 包（"not a theories/ package"）。有注释说明，是已拍板的设计特例，记录即可。
 - **C3（风格）**：`core/verify.py` 函数内 `import json`；`Thm.__init__` 的 hyps 去重四分支（Term 或 tuple 双形态历史接口）。不动。
 - **C1（已修复，见下）：auto 缓存跨理论存活**。

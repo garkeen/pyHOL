@@ -12,7 +12,7 @@ from kernel.macro import Macro
 from kernel.theory import register_macro
 from kernel.proofterm import refl, ProofTerm, eval_macro
 from syntax.numeral import RealType, Real
-from syntax.logicops import true, false, Not, Exists
+from syntax.logicops import true, false, Not, Exists, is_not
 from core import matcher
 from core import logic
 from core import auto
@@ -135,7 +135,7 @@ class real_const_ineq_macro(Macro):
     def eval(self, goal, prevs):
         assert len(prevs) == 0, "int_const_ineq: no conditions expected"
 
-        if goal.is_not():
+        if is_not(goal):
             goal = goal.arg
 
         assert (goal.is_compares() or goal.is_equals()) and goal.arg1.is_constant() and goal.arg.is_constant()\

@@ -25,6 +25,7 @@ from core import method as core_method
 from tactic import steps as tactic
 from core import context
 from tactic.goal import Goal
+from syntax.logicops import strip_exists
 
 # Items with these rules carry no new goal/fact content: they only
 # reference already-registered lines. They get a positional ItemID for
@@ -368,7 +369,7 @@ class StableProofState:
             # frames and stay hidden.
             if item.rule == 'intros' and item.prevs and item.args:
                 exists_prop = item.args[0]
-                exists_vars, exists_body = exists_prop.strip_exists()
+                exists_vars, exists_body = strip_exists(exists_prop)
                 exists_fact = None
                 for prev_id in item.prevs:
                     try:

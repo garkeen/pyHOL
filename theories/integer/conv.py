@@ -3,7 +3,7 @@ from syntax.numeral import IntType
 from kernel.term import Var, Term, equals, Const
 from syntax.numeral import Eq  # Eq with Python-number sugar (int_eval results)
 from syntax.numeral import Int, Sum, Prod, less, less_eq, greater, greater_eq, int_power, Nat
-from syntax.logicops import Not
+from syntax.logicops import Not, is_not
 from kernel import term_ord
 from kernel import theory
 from kernel.proofterm import ProofTerm, refl, eval_macro
@@ -535,7 +535,7 @@ class int_norm_eq(Conv):
 class int_norm_neg_compares(Conv):
     """Convert a negative comparison term to a normal comparison term."""
     def get_proof_term(self, t):
-        if not (t.is_not() and t.arg.is_compares()):
+        if not (is_not(t) and t.arg.is_compares()):
             raise ConvException("%s is not a negative comparison term." % str(t))
         pt = refl(t)
         ineq = t.arg

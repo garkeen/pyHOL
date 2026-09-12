@@ -2,7 +2,7 @@
 # Domain-dependent: hardcodes logic.pyhol theorem names
 
 from kernel.term import Term, BoolType, Var
-from syntax.logicops import Not, true, false, And
+from syntax.logicops import Not, true, false, And, is_not, is_conj, is_disj
 from core.conv import Conv, rewr_conv, arg1_conv, arg_conv, binop_conv, try_conv, top_conv, bottom_conv, top_sweep_conv
 from kernel.proofterm import refl, ProofTerm
 from core.conv import inst_theorem
@@ -18,22 +18,22 @@ class nnf_conv(Conv):
     """
     def get_proof_term(self, t):
         pt = refl(t)
-        if t.is_not():
+        if is_not(t):
             if t.arg == true:
                 return pt.on_rhs(rewr_conv('not_true'))
             elif t.arg == false:
                 return pt.on_rhs(rewr_conv('not_false'))
-            elif t.arg.is_not():
+            elif is_not(t.arg):
                 return pt.on_rhs(rewr_conv('double_neg'), self)
-            elif t.arg.is_conj():
+            elif is_conj(t.arg):
                 return pt.on_rhs(rewr_conv('de_morgan_thm1'), arg1_conv(self), arg_conv(self))
-            elif t.arg.is_disj():
+            elif is_disj(t.arg):
                 return pt.on_rhs(rewr_conv('de_morgan_thm2'), arg1_conv(self), arg_conv(self))
             elif t.arg.is_equals() and t.arg.lhs.get_type() == BoolType:
                 return pt.on_rhs(rewr_conv('neg_iff'), binop_conv(self))
             else:
                 return pt
-        elif t.is_disj() or t.is_conj() or t.is_equals():
+        elif is_disj(t) or is_conj(t) or t.is_equals():
             return pt.on_rhs(arg1_conv(self), arg_conv(self))
         else:
             return pt
@@ -43,7 +43,7 @@ class swap_conj_r(Conv):
     is an atom, rewrite A1 /\ A2 to A2 /\ A1."""
     def get_proof_term(self, t):
         pt = refl(t)
-        if t.arg.is_conj():
+        if is_conj(t.arg):
             return pt.on_rhs(rewr_conv('conj_assoc'),
                             arg1_conv(rewr_conv('conj_comm')),
                             rewr_conv('conj_assoc', sym=True))
@@ -62,7 +62,7 @@ class norm_conj_atom(Conv):
             return pt.on_rhs(rewr_conv('conj_false_right'))
         elif t.arg == false:
             return pt.on_rhs(rewr_conv('conj_false_left'))
-        elif t.arg.is_conj():
+        elif is_conj(t.arg):
             if t.arg1 == Not(t.arg.arg1): # A /\ (A_1 /\ ... /\ A_n) 
                 return pt.on_rhs(rewr_conv('conj_assoc'), 
                                 arg1_conv(rewr_conv('conj_neg_pos')),
@@ -97,7 +97,7 @@ class norm_conj_conjunction(Conv):
     """Normalize term like (A_1 /\ ... /\ A_m) /\ (B_1 /\ ... /\ B_n) """
     def get_proof_term(self, t):
         pt = refl(t)
-        if t.arg1.is_conj():
+        if is_conj(t.arg1):
             return pt.on_rhs(
                 rewr_conv('conj_assoc', sym=True),
                 arg_conv(self),
@@ -111,7 +111,7 @@ class swap_disj_r(Conv):
     is an atom, rewrite A1 \/ A2 to A2 \/ A1."""
     def get_proof_term(self, t):
         pt = refl(t)
-        if t.arg.is_disj():
+        if is_disj(t.arg):
             return pt.on_rhs(rewr_conv('disj_assoc_eq'),
                             arg1_conv(rewr_conv('disj_comm')),
                             rewr_conv('disj_assoc_eq', sym=True))
@@ -130,7 +130,7 @@ class norm_disj_atom(Conv):
             return pt.on_rhs(rewr_conv('disj_false_left'))
         elif t.arg == false:
             return pt.on_rhs(rewr_conv('disj_false_right'))
-        elif t.arg.is_disj():
+        elif is_disj(t.arg):
             if t.arg1 == Not(t.arg.arg1): # A \/ (A_1 \/ ... \/ A_n) 
                 return pt.on_rhs(rewr_conv('disj_assoc_eq'), 
                                 arg1_conv(rewr_conv('disj_neg_pos')),
@@ -161,7 +161,7 @@ class norm_disj_disjunction(Conv):
     """Normalize term like (A_1 \/ ... \/ A_m) \/ (B_1 \/ ... \/ B_n) """
     def get_proof_term(self, t):
         pt = refl(t)
-        if t.arg1.is_disj():
+        if is_disj(t.arg1):
             return pt.on_rhs(
                 rewr_conv('disj_assoc_eq', sym=True),
                 arg_conv(self),
@@ -175,9 +175,9 @@ class norm_full(Conv):
     """Normalize the full propostional formula."""
     def get_proof_term(self, t):
         pt = refl(t)
-        if t.is_conj():
+        if is_conj(t):
             return pt.on_rhs(binop_conv(self), norm_conj_conjunction())
-        elif t.is_disj():
+        elif is_disj(t):
             return pt.on_rhs(binop_conv(self), norm_disj_disjunction())
         elif t.is_equals():
             lhs, rhs = t.lhs, t.rhs
@@ -193,9 +193,9 @@ class norm_full(Conv):
                 return pt.on_rhs(rewr_conv('eq_false', sym=True))
             else:
                 return pt.on_rhs(binop_conv(self))
-        elif t.is_not() and (t.arg.is_conj() or t.arg.is_disj() or t.arg.is_not() or t.arg == true or t.arg == false):
+        elif is_not(t) and (is_conj(t.arg) or is_disj(t.arg) or is_not(t.arg) or t.arg == true or t.arg == false):
             return pt.on_rhs(nnf_conv(), self)
-        elif t.is_not() and t.arg.is_equals():
+        elif is_not(t) and t.arg.is_equals():
             return pt.on_rhs(nnf_conv())
         else:
             return pt
@@ -204,7 +204,7 @@ class sort_conj(Conv):
     """Given a conjunction, return its normal form"""
     def get_proof_term(self, t):
         
-        if not t.is_conj():
+        if not is_conj(t):
             return refl(t)
 
         d_pos = dict()
@@ -213,7 +213,7 @@ class sort_conj(Conv):
         # collect each conjunct's proof term in conjuntion
         while qu:
             pt = qu.popleft()
-            if pt.prop.is_conj():
+            if is_conj(pt.prop):
                 conj1, conj2 = pt.prop.arg1, pt.prop.arg
                 pt_conj1, pt_conj2 = inst_theorem('conjD1', pt), inst_theorem('conjD2', pt)
                 if conj1 == false:
@@ -226,22 +226,22 @@ class sort_conj(Conv):
                     inst = matcher.first_order_match(th.prop.arg, t)
                     pt_false_implies_conj = th.substitution(inst)
                     return ProofTerm.equal_intr(pt_conj2.implies_intr(t), pt_false_implies_conj)
-                if conj1.is_conj():
+                if is_conj(conj1):
                     qu.appendleft(pt_conj1)
                 else:
-                    if conj1.is_not():
+                    if is_not(conj1):
                         d_neg[conj1] = pt_conj1
                     else:
                         d_pos[conj1] = pt_conj1
-                if conj2.is_conj():
+                if is_conj(conj2):
                     qu.appendleft(pt_conj2)
                 else:
-                    if conj2.is_not():
+                    if is_not(conj2):
                         d_neg[conj2] = pt_conj2
                     else:
                         d_pos[conj2] = pt_conj2
             else:
-                if pt.prop.is_not():
+                if is_not(pt.prop):
                     d_neg[pt.prop] = pt
                 else:
                     d_pos[pt.prop] = pt
@@ -288,7 +288,7 @@ class sort_conj(Conv):
                 dd[k] = norm_conj_pt
 
         def traverse(t):
-            if not t.is_conj():
+            if not is_conj(t):
                 return dd[t]
             else:
                 return inst_theorem('conjI', traverse(t.arg1), traverse(t.arg))
@@ -304,7 +304,7 @@ class sort_conj(Conv):
 class sort_disj(Conv):
     """Given a conjunction, return its normal form"""
     def get_proof_term(self, t):
-        if not t.is_disj():
+        if not is_disj(t):
             return refl(t)
 
         nnf_pt = nnf_conv().get_proof_term(Not(t))

@@ -4,7 +4,7 @@
 from typing import List, Tuple
 
 from kernel.term import Term, Inst, Lambda
-from syntax.logicops import Not, And, Or, true, false  # noqa: F401  (re-export; installs Term methods)
+from syntax.logicops import Not, And, Or, true, false, is_not, is_exists  # noqa: F401  (re-export)
 from kernel.thm import InvalidDerivationException
 from kernel import theory
 from kernel.macro import Macro
@@ -38,7 +38,7 @@ class intros_macro(Macro):
             if intro.th.prop.is_VAR():  # variable case
                 pt = pt.forall_intr(intro.prop.arg)
             elif len(args) > 0 and intro.th.prop == args[0]:  # exists case
-                assert intro.prop.is_exists(), "intros_macro"
+                assert is_exists(intro.prop), "intros_macro"
                 pt = apply_theorem('exE', intro, pt)
                 args = args[1:]
             else:  # assume case
@@ -62,7 +62,7 @@ class resolve_theorem_macro(Macro):
         assert len(pts) == 1, "resolve_theorem_macro"
 
         # Shape normalization (C4): derive |- ~A from related shapes.
-        if pt.prop.is_not():
+        if is_not(pt.prop):
             neg_pt = pt
         elif pt.prop.is_implies() and pt.prop.arg == false:
             # |- A --> false, combined with negI: |- (A --> false) --> ~A

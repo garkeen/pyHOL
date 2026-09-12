@@ -20,6 +20,7 @@ from kernel.proofterm import ProofTerm, TacticException, eval_macro
 from syntax import set_tools as hol_set
 from core import auto
 from core import logic
+from syntax.logicops import is_not
 
 # The real constant pi, inlined here (same encoding as
 # theories/real/conv.py) so that this module depends only on
@@ -102,7 +103,7 @@ def convert(t):
 
 def solve_goal(goal):
     """Attempt to solve goal using sympy."""
-    if goal.is_not() and goal.arg.is_equals():
+    if is_not(goal) and goal.arg.is_equals():
         try:
             lhs, rhs = convert(goal.arg.lhs), convert(goal.arg.rhs)
         except SymPyException:
@@ -145,7 +146,7 @@ def solve_with_interval(goal, cond):
     var = convert(cond.arg1)
     interval = convert(cond.arg)
     
-    if goal.is_not() and goal.arg.is_equals():
+    if is_not(goal) and goal.arg.is_equals():
         try:
             sympy_goal = convert(goal.arg.arg1) - convert(goal.arg.arg)
         except SymPyException:

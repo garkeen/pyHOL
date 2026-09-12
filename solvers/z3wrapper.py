@@ -17,7 +17,7 @@ from kernel.type import TFun, BoolType
 from syntax.numeral import NatType, IntType, RealType
 from kernel import term
 from kernel.term import Term, Var, Comb, Abs, Inst, BoolType, Implies
-from syntax.logicops import true, false
+from syntax.logicops import true, false, is_not, is_conj, is_disj, is_exists
 from kernel.thm import Thm
 from kernel.proofterm import ProofTerm, eval_macro
 from kernel import theory
@@ -216,7 +216,7 @@ def convert(t, var_names, assms, to_real, ctx):
             v = Var(nm, t.arg.var_T)
             z3_v = convert_const(nm, t.arg.var_T, ctx)
             return z3.ForAll(z3_v, rec(t.arg.subst_bound(v)))
-        elif t.is_exists():
+        elif is_exists(t):
             nm = name.get_variant_name(t.arg.var_name, var_names)
             var_names.append(nm)
             v = Var(nm, t.arg.var_T)
@@ -237,9 +237,9 @@ def convert(t, var_names, assms, to_real, ctx):
             return z3.Implies(rec(t.arg1), rec(t.arg))
         elif t.is_equals():
             return rec(t.arg1) == rec(t.arg)
-        elif t.is_conj():
+        elif is_conj(t):
             return z3.And(rec(t.arg1), rec(t.arg)) if ctx is None else z3.And(rec(t.arg1), rec(t.arg), ctx)
-        elif t.is_disj():
+        elif is_disj(t):
             return z3.Or(rec(t.arg1), rec(t.arg)) if ctx is None else z3.Or(rec(t.arg1), rec(t.arg), ctx)
         elif logic.is_if(t):
             b, t1, t2 = t.args
@@ -247,7 +247,7 @@ def convert(t, var_names, assms, to_real, ctx):
         elif logic.is_xor(t):
             t1, t2 = t.args
             return z3.Or(z3.And(rec(t1), z3.Not(rec(t2))), z3.And(z3.Not(rec(t1)), rec(t2)), ctx)
-        elif t.is_not():
+        elif is_not(t):
             return z3.Not(rec(t.arg), ctx)
         elif t.is_plus():
             return rec(t.arg1) + rec(t.arg)

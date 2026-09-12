@@ -10,7 +10,7 @@ from kernel.macro import Macro
 from kernel.theory import register_macro, get_theorem
 from kernel.proofterm import ProofTerm, refl, eval_macro
 from syntax.numeral import IntType, Int, greater, less
-from syntax.logicops import Not
+from syntax.logicops import Not, is_not
 from core import matcher
 from core.conv import rewr_conv, ConvException
 from core.logic import apply_theorem
@@ -187,7 +187,7 @@ class int_const_ineq_macro(Macro):
     def eval(self, goal, prevs):
         assert len(prevs) == 0, "int_const_ineq: no conditions expected"
 
-        if goal.is_not():
+        if is_not(goal):
             goal = goal.arg
 
         assert (goal.is_compares() or goal.is_equals()) and goal.arg1.is_constant() and goal.arg.is_constant()\

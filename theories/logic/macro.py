@@ -5,7 +5,8 @@ from typing import List, Tuple
 from kernel.type import TVar, TFun, TyInst, BoolType
 from kernel import term
 from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, Eq
-from syntax.logicops import Not, And, Or, true, false
+from syntax.logicops import Not, And, Or, true, false, is_conj, is_disj, \
+    strip_conj as _strip_conj_shallow
 from kernel.thm import InvalidDerivationException
 from kernel import theory
 from kernel.theory import register_macro
@@ -30,9 +31,9 @@ def imp_conj_proof(goal, pts):
     def traverse_A(pt):
         # Given proof term showing a conjunction, put proof terms
         # showing atoms of the conjunction in dct.
-        if pt.prop.is_conj():
+        if is_conj(pt.prop):
             cur_pt = pt
-            while cur_pt.prop.is_conj():
+            while is_conj(cur_pt.prop):
                 pt1 = apply_theorem('conjD1', cur_pt)
                 traverse_A(pt1)
                 cur_pt = apply_theorem('conjD2', cur_pt)
@@ -44,8 +45,8 @@ def imp_conj_proof(goal, pts):
 
     def traverse_C(t):
         # Return proof term with conclusion t
-        if t.is_conj():
-            ts = t.strip_conj()
+        if is_conj(t):
+            ts = _strip_conj_shallow(t)
             pt = traverse_C(ts[-1])
             for sub_t in reversed(ts[:-1]):
                 pt = apply_theorem('conjI', traverse_C(sub_t), pt)
@@ -82,7 +83,7 @@ def imp_disj_proof(goal, pts):
 
     # Fills up pts_B.
     def traverse_C(pt):
-        if pt.prop.arg1.is_disj():
+        if is_disj(pt.prop.arg1):
             pt1 = apply_theorem('disjI1_syllogism', pt)
             pt2 = apply_theorem('disjI2_syllogism', pt)
             traverse_C(pt1)
@@ -92,7 +93,7 @@ def imp_disj_proof(goal, pts):
 
     # Use pts_B to prove the implication
     def traverse_A(t):
-        if t.is_disj():
+        if is_disj(t):
             pt1 = traverse_A(t.arg1)
             pt2 = traverse_A(t.arg)
             return apply_theorem('disjE2', pt1, pt2)

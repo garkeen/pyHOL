@@ -7,7 +7,9 @@ from kernel.term import Term, SVar, Var, Const, Inst, Lambda
 from kernel.proofterm import ProofTerm, eval_macro
 from core import matcher
 from syntax.logicops import true, false, neg, conj, disj, Not, And, Or, \
-    exists, Exists  # noqa: F401  (re-export; also installs Term methods)
+    exists, Exists, is_conj, is_disj, is_exists, \
+    strip_conj as _strip_conj_shallow, \
+    strip_disj as _strip_disj_shallow  # noqa: F401  (re-export)
 from util import name
 from util import typecheck
 
@@ -116,7 +118,7 @@ def strip_exists(t, names):
     input term, with bound variables substituted for v_1, ..., v_k.
 
     """
-    if t.is_exists() and len(names) > 0:
+    if is_exists(t) and len(names) > 0:
         assert isinstance(names[0], str), "strip_exists: names must be strings."
         v = Var(names[0], t.arg.var_T)
         vars, body = strip_exists(t.arg.subst_bound(v), names[1:])
@@ -152,9 +154,8 @@ def apply_theorem(th_name: str, *pts: ProofTerm, concl=None, inst=None) -> Proof
 def strip_disj(t):
     res = []
     def helper(t):
-        if t.is_disj():
-            ts = t.strip_disj()
-            for sub_t in ts:
+        if is_disj(t):
+            for sub_t in _strip_disj_shallow(t):
                 helper(sub_t)
         else:
             res.append(t)
@@ -164,9 +165,8 @@ def strip_disj(t):
 def strip_conj(t):
     res = []
     def helper(t):
-        if t.is_conj():
-            ts = t.strip_conj()
-            for sub_t in ts:
+        if is_conj(t):
+            for sub_t in _strip_conj_shallow(t):
                 helper(sub_t)
         else:
             res.append(t)

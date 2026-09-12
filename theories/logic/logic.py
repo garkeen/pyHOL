@@ -6,7 +6,7 @@ from typing import List, Tuple
 from kernel.type import TVar, TFun, TyInst, BoolType
 from kernel import term
 from kernel.term import Term, SVar, Var, Const, Abs, Inst, Implies, Lambda, Eq
-from syntax.logicops import Not, And, Or, true, false
+from syntax.logicops import Not, And, Or, true, false, is_not, is_conj
 from kernel.thm import Thm, InvalidDerivationException
 from kernel import term_ord
 from kernel import theory
@@ -24,7 +24,7 @@ from util import typecheck
 class norm_bool_expr(Conv):
     """Normalize a boolean expression."""
     def get_proof_term(self, t):
-        if t.is_not():
+        if is_not(t):
             if t.arg == true:
                 return rewr_conv("not_true").get_proof_term(t)
             elif t.arg == false:
@@ -37,7 +37,7 @@ class norm_bool_expr(Conv):
 class norm_conj_assoc_clauses(Conv):
     """Normalize (A_1 & ... & A_n) & (B_1 & ... & B_n)."""
     def get_proof_term(self, t):
-        if t.arg1.is_conj():
+        if is_conj(t.arg1):
             return then_conv(
                 rewr_conv("conj_assoc", sym=True),
                 arg_conv(norm_conj_assoc_clauses())
@@ -48,7 +48,7 @@ class norm_conj_assoc_clauses(Conv):
 class norm_conj_assoc(Conv):
     """Normalize conjunction with respect to associativity."""
     def get_proof_term(self, t):
-        if t.is_conj():
+        if is_conj(t):
             return then_conv(
                 binop_conv(norm_conj_assoc()),
                 norm_conj_assoc_clauses()
