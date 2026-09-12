@@ -545,8 +545,13 @@ def parse_pyhol(text):
             i += 1
             continue
 
+        start = i
         item, i = _parse_item(lines, i)
         if item:
+            # Half-open source line range [start, i), used by the
+            # incremental verifier to hash an item's exact source text
+            # (so editing one item does not invalidate the whole file).
+            item['_src'] = (start, i)
             result['content'].append(item)
 
     return result

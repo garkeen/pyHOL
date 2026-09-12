@@ -19,6 +19,7 @@ Commands
     methods [SUBSTR]       list methods usable in the current theory
     theorems [-v] [SUBSTR] list theorems in scope (with -v, their props)
     thm NAME               show one theorem's statement + schematic vars
+    validate [THEORY]      incrementally re-validate (cache-aware)
     reset                  clear declared variables and the active goal
     <step line>            apply one .pyhol step, e.g.
                              <- rule iffI goal=0
@@ -337,6 +338,36 @@ class Repl:
             print('  schematic vars (rule/forward named args): %s'
                   % ', '.join('param_%s' % v for v in svars))
 
+    def cmd_validate(self, arg):
+        """Incrementally re-validate a theory from inside the session.
+
+        Only the affected part is replayed: a file whose source and
+        imports are unchanged comes from cache; a locally edited file
+        replays from its first changed item; importers of a changed file
+        are re-validated.  The resident process therefore keeps its
+        parsed theories warm instead of reloading the library.
+
+        Uses the session trust set, so oracle proofs need `trust +...`.
+        """
+        name = arg.strip() or self.theory
+        if not name:
+            print('usage: validate [THEORY]')
+            return
+        from core import incremental
+        lines = []
+
+        def report(f, reused, start, changed):
+            if f == '__done__':
+                return
+            if reused:
+                lines.append('  %-16s cached' % f)
+            else:
+                lines.append('  %-16s replayed from item %d%s'
+                             % (f, start, '   (verdict changed)' if changed else ''))
+
+        incremental.validate_incremental([name], trust=self.trust, report=report)
+        print('\n'.join(lines) if lines else 'nothing to validate')
+
     def handle_request(self, req):
         """Run one server request; return the reply dict.
 
@@ -400,6 +431,7 @@ class Repl:
                             ('var ', self.cmd_var), ('goal ', self.cmd_goal),
                             ('methods', self.cmd_methods),
                             ('theorems', self.cmd_theorems), ('thm ', self.cmd_thm),
+                            ('validate', self.cmd_validate),
                             ('trust ', lambda a: self._set_trust(a))):
                 if stripped.startswith(cmd):
                     fn(stripped[len(cmd):])

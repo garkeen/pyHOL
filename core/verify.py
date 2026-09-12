@@ -438,9 +438,17 @@ def _import_statuses(filename, seen=None):
 def validate_theory(filename, *, force=False, trust=frozenset()):
     """Validate all theorems in a theory file.
 
-    Uses the .json cache: if the .pyhol file has not changed, returns
-    cached statuses without re-validating.  If force=True, ignores the
-    cache and re-validates everything.
+    Caching (see validate_theory_info for the precise rules):
+    - a file whose source and whose imported theories are unchanged is
+      returned from the .json cache without replay;
+    - a file whose source changed re-plays only from its FIRST changed
+      item onward (later items may depend on the edit, earlier ones are
+      reused verbatim);
+    - a file any of whose imports changed is re-validated in full;
+    - theorems deleted from the source have their verdicts dropped from
+      the in-memory tables at once.
+    force=True ignores all of that and replays everything.
+
     trust -- names of computation-oracle macros admitted while
     replaying proofs (audit §7.1).  Empty default rejects every
     oracle; library validation passes the explicit set of the legacy
@@ -452,29 +460,84 @@ def validate_theory(filename, *, force=False, trust=frozenset()):
     to a message.  (The cross-theory tables in core.basic accumulate
     for /api/theory-status; they are not the return value.)
     """
-    basic.load_theory(filename)
+    statuses, errors, _ = validate_theory_info(filename, force=force,
+                                               trust=trust)
+    return statuses, errors
 
-    if not force and basic.is_cache_valid(filename):
-        with open(basic.status_cache_file(filename), encoding='utf-8') as f:
-            data = json.load(f)
-        statuses = dict(data.get('theorems', {}))
-        errors = {name: None for name in statuses}
-        # Reflect the cached statuses into the cross-theory tables.
-        for name, st in statuses.items():
+
+def validate_theory_info(filename, *, force=False, trust=frozenset()):
+    """Incremental core of validate_theory.
+
+    Returns (statuses, errors, info) where info is
+    {'reused': bool, 'start': int} -- 'reused' is True when the whole
+    file came from cache, 'start' is the index of the first item
+    actually replayed.
+    """
+    basic.load_theory(filename)
+    cache = basic.theory_cache[filename]
+    content = cache['content']
+    names_now = _theorem_names(content)
+    cached = basic.load_status_data(filename)
+    meta = cached.get('meta', {})
+    cached_thms = cached.get('theorems', {})
+
+    # A theorem deleted from the source must lose its verdict right
+    # away -- in memory as well as on disk.
+    for name in set(cached_thms) - names_now:
+        basic.drop_status(name)
+
+    from core import incremental
+    imports_epoch = incremental.imports_epoch(filename)
+    same_source = meta.get('source_hash') == cache.get('source_hash')
+    same_imports = meta.get('imports_epoch') == imports_epoch
+
+    if not force and same_source and same_imports and cached_thms:
+        for name, st in cached_thms.items():
             basic.set_status(name, st)
             basic.set_error(name, None)
-        return statuses, errors
+        return (dict(cached_thms), {n: None for n in cached_thms},
+                {'reused': True, 'start': len(content)})
 
+    if not force and same_imports:
+        # Same imports: everything before the first changed item still
+        # holds, so replay only the suffix.
+        start = incremental.first_diff_index(meta.get('item_hashes'),
+                                             cache.get('item_hashes'))
+    else:
+        start = 0
+
+    seed_names = _theorem_names(content[:start])
+    seed_statuses = {n: cached_thms[n] for n in seed_names if n in cached_thms}
+    seed_errors = {n: None for n in seed_statuses}
+    statuses, errors = _validate_items(
+        filename, trust=trust, start=start,
+        seed_statuses=seed_statuses, seed_errors=seed_errors,
+        imports_epoch=imports_epoch)
+    return statuses, errors, {'reused': False, 'start': start}
+
+
+def _theorem_names(content):
+    """Names of the theorem entries (theorem/axiom) in a content list."""
+    return {item.name for item in content if item.ty in ('thm', 'thm.ax')}
+
+
+def _validate_items(filename, *, trust=frozenset(), start=0,
+                    seed_statuses=None, seed_errors=None,
+                    imports_epoch=None):
+    """Replay this file's items from index `start` onward.
+
+    seed_statuses/seed_errors reuse the verdicts of items before
+    `start`; they are trusted because the incremental verifier only
+    calls this with a seed whose source hashes are unchanged and whose
+    imported theories have not changed.  Returns (statuses, errors)
+    for every theorem in the file.
+    """
     content = basic.theory_cache[filename]['content']
-    statuses = {}
-    errors = {}
-
-    # Cross-file dependency status: cached states of imported theories
-    # (fixes the monitor-era deviation where imported failures were
-    # never checked -- audit §7.4 deviation 2).
+    statuses = dict(seed_statuses) if seed_statuses else {}
+    errors = dict(seed_errors) if seed_errors else {}
     imported = _import_statuses(filename)
 
-    for item in content:
+    for item in content[start:]:
         name = item.name
 
         if item.ty == 'thm.ax':
@@ -533,5 +596,5 @@ def validate_theory(filename, *, force=False, trust=frozenset()):
         basic.set_status(name, statuses[name])
         basic.set_error(name, errors[name])
 
-    basic.save_status(filename, statuses)
+    basic.save_status(filename, statuses, imports_epoch=imports_epoch)
     return statuses, errors

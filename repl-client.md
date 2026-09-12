@@ -74,6 +74,7 @@ python -m repl.client --port 5599 --stdin < batch.txt
 | `methods [SUBSTR]` | 列出当前理论可用方法（受 `limit` 约束）；列出的名字就是步骤能用的名字 |
 | `theorems [-v] [SUBSTR]` | 列出作用域内定理名；`-v` 附命题 |
 | `thm NAME` | 显示一条定理的命题、假设、schematic 变量（→ `param_x=`） |
+| `validate [THEORY]` | 增量重验（命中缓存即跳过；只重放受影响的文件与文件内后缀） |
 | `<步骤行>` | 直接粘贴 `.pyhol` 步骤，如 `← rule iffI goal=0` |
 | `undo` | 撤销最后一步（从头重放重建，坏步骤不留痕） |
 | `export` | 输出 `.pyhol` proof 块（**自动重新生成 `#[N]` 注解**） |
@@ -275,3 +276,23 @@ STEP FAILED: AssertionError: rewrite: unable to apply theorem.
    需 `bit1_neq_one`、`nat_norm` 需 `nat_nat_power_def_1`）。
 7. **`rewrite` 可自动关门**：goal 被重写成与某个已有事实相同/自反时，
    这一步本身就关闭 goal（导出里不会多出 `apply_prev`），回放可复现。
+
+
+---
+
+## 9. 增量验证（缓存机制）
+
+`validate_theory` / `validate_incremental`（`core/incremental.py`）现在是**带依赖链的增量验证**，
+全库跑也走缓存，**不需要 `--force`**：
+
+- **文件粒度**：每个 `.pyhol` 在 `.cache/<name>.json` 的 `meta` 里存 `source_hash`（整文件内容 sha1）、
+  `item_hashes`（每个 item 的**源码块** sha1）、`imports_epoch`（其 imports 的传递指纹）。三者都匹配才整体复用。
+- **文件内后缀**：文件被编辑（own hash 变）但 imports 未变时，用 `first_diff_index` 找到**第一个变化的 item**，
+  只重放它及其之后；之前的 item 状态原样复用（后面 item 可能依赖它，所以不能更细）。
+- **跨文件级联**：任何上游文件变化都会改变下游的 `imports_epoch`，于是下游缓存自动失效并重验；
+  `validate_incremental` 还会把「判定变化」的文件的下游推入队列，保证邻居不残留旧状态。
+- **删除定理**：被删定理的判定**立刻**从内存表（`basic.drop_status`）与 json 中消失；
+  `load_status` 也会跳过当前源码里不存在的名字，防止陈旧 json 在重放过程中把它复活。
+- 数据结构就是「按 item 顺序的哈希列表 + 反向 imports 邻接表」，都是 O(n) 的轻量结构；
+  定理级细粒度依赖图不需要，反而更慢且容易漏失效。
+- 客户端里用 `validate [THEORY]` 触发；常驻进程因此不用重启就能复用已解析的理论。

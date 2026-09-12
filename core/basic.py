@@ -1,6 +1,7 @@
 # Author: Bohua Zhan
 import os
 import json
+import hashlib
 import importlib
 
 from kernel import theory
@@ -114,8 +115,19 @@ def set_status(name, status):
     statuses[name] = status
 
 def set_error(name, error):
-    """Record the error message for a theorem (or None to clear it)."""
+    """Set the error message for a theorem (or None to clear it)."""
     errors[name] = error
+
+def drop_status(name):
+    """Remove a theorem's status and error entirely.
+
+    Used when a theorem is deleted from its source: its cached verdict
+    must disappear from the in-memory tables at once, not linger as a
+    stale entry until the process restarts.
+    """
+    statuses.pop(name, None)
+    errors.pop(name, None)
+
 
 def clear_statuses():
     """Clear the proof-status tables.
@@ -140,32 +152,85 @@ def status_cache_file(filename):
     return os.path.join(_status_cache_dir(), filename + '.json')
 
 def load_status(filename):
-    """Load proof status from .json cache into the status table."""
+    """Load proof status from .json cache into the status table.
+
+    Entries for theorems that no longer exist in the current source are
+    skipped: a deleted theorem must not be resurrected in memory by a
+    stale cache file (the status tables accumulate across loads, so a
+    name once dropped would otherwise come back on the next load).
+    """
     path = status_cache_file(filename)
     if not os.path.exists(path):
         return
     with open(path, encoding='utf-8') as f:
         data = json.load(f)
+    cache = theory_cache.get(filename)
+    if cache is not None:
+        valid = {item.name for item in cache['content']
+                 if item.ty in ('thm', 'thm.ax')}
+    else:
+        valid = None
     for name, status in data.get('theorems', {}).items():
+        if valid is not None and name not in valid:
+            continue
         set_status(name, status)
 
-def save_status(filename, status_dict):
-    """Save proof status to .json cache."""
+def save_status(filename, status_dict, *, item_hashes=None, source_hash=None,
+                imports_epoch=None):
+    """Save proof status to .json cache.
+
+    item_hashes/source_hash record the source fingerprint the statuses
+    were computed from, so a later run can tell which items changed
+    (defaults are taken from theory_cache when available).
+    imports_epoch fingerprints the imported theories' epochs at
+    validation time, so a change anywhere upstream invalidates this
+    file's cache even when its own source is untouched.
+    """
     path = status_cache_file(filename)
     os.makedirs(_status_cache_dir(), exist_ok=True)
-    source_mtime = os.path.getmtime(user_file(filename))
+    cache = theory_cache.get(filename, {})
+    if item_hashes is None:
+        item_hashes = cache.get('item_hashes')
+    if source_hash is None:
+        source_hash = cache.get('source_hash')
+    meta = {'theory': filename,
+            'source_mtime': os.path.getmtime(user_file(filename))}
+    if source_hash is not None:
+        meta['source_hash'] = source_hash
+    if item_hashes is not None:
+        meta['item_hashes'] = item_hashes
+    if imports_epoch is not None:
+        meta['imports_epoch'] = imports_epoch
     with open(path, 'w', encoding='utf-8') as f:
-        json.dump({'meta': {'theory': filename, 'source_mtime': source_mtime},
-                   'theorems': status_dict}, f, indent=2, ensure_ascii=False)
+        json.dump({'meta': meta, 'theorems': status_dict}, f,
+                  indent=2, ensure_ascii=False)
+
+
+def load_status_data(filename):
+    """Return the raw .json status cache dict ({} if absent)."""
+    path = status_cache_file(filename)
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding='utf-8') as f:
+        return json.load(f)
+
 
 def is_cache_valid(filename):
-    """Check if the .json cache is up-to-date with the .pyhol source."""
+    """Check if the .json cache is up-to-date with the .pyhol source.
+
+    Uses the recorded source content hash when present (so touching a
+    file without editing it does not invalidate the cache), falling
+    back to mtime for caches written by older versions.
+    """
     path = status_cache_file(filename)
     if not os.path.exists(path):
         return False
-    with open(path, encoding='utf-8') as f:
-        data = json.load(f)
-    return data.get('meta', {}).get('source_mtime') == os.path.getmtime(user_file(filename))
+    data = load_status_data(filename)
+    meta = data.get('meta', {})
+    if 'source_hash' in meta:
+        cache = theory_cache.get(filename)
+        return cache is not None and meta['source_hash'] == cache.get('source_hash')
+    return meta.get('source_mtime') == os.path.getmtime(user_file(filename))
 
 def load_pyhol_data(filename):
     """Load pyhol data for the given theory name."""
@@ -316,8 +381,24 @@ def load_theory_cache(filename):
         # Use this theory to parse the content of current theory
         cache['timestamp'] = timestamp
         data = load_pyhol_data(filename)
+        with open(user_file(filename), encoding='utf-8') as f:
+            source_text = f.read()
+        source_lines = source_text.split('\n')
+        cache['source_hash'] = hashlib.sha1(
+            source_text.encode('utf-8')).hexdigest()
+        cache['item_hashes'] = []
         cache['content'] = []
         for index, item in enumerate(data['content']):
+            # Hash the item's exact source block (see syntax.pyhol
+            # `_src`), so the incremental verifier can tell which items
+            # changed instead of invalidating the whole file.
+            src = item.get('_src')
+            if src is not None:
+                block = '\n'.join(source_lines[src[0]:src[1]])
+            else:
+                block = json.dumps(item, sort_keys=True, default=str)
+            cache['item_hashes'].append(
+                hashlib.sha1(block.encode('utf-8')).hexdigest())
             item = items.parse_item(item)
             cache['content'].append(item)
             if item.error is None:
