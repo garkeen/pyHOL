@@ -200,18 +200,37 @@ theorem d012
 theorem d013
   fixes p :: bool, q :: bool
   prop ~p & ~q | p | q
+proof
+  ← rewrite de_morgan_thm2 sym=true goal=0
+  ← rewrite disj_comm sym=true goal=1
+  ← rule classical goal=2
+qed
 
 theorem d014
   fixes p :: bool, q :: bool
   prop ~p & q | p | ~q
+proof
+  ← rewrite double_neg sym=true goal=0 loc=1.0.1
+  ← rewrite de_morgan_thm1 sym=true goal=1 loc=1
+  ← rule classical goal=2
+qed
 
 theorem d015
   fixes p :: bool, q :: bool
   prop p & ~q | ~p | q
+proof
+  ← rewrite double_neg sym=true goal=0 loc=1.1
+  ← rewrite de_morgan_thm1 sym=true goal=1 loc=1
+  ← rule classical goal=2
+qed
 
 theorem d016
   fixes p :: bool, q :: bool
   prop p & q | ~p | ~q
+proof
+  ← rewrite de_morgan_thm1 sym=true goal=0
+  ← rule classical goal=1
+qed
 
 theorem r013
   fixes p :: bool, q :: bool
