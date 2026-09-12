@@ -210,6 +210,24 @@ theorem mult_Suc_right
   fixes x :: nat, y :: nat
   prop x * Suc y = x + x * y
   [hint_rewrite]
+proof
+  ← induct x nat_induct goal=0
+    #[1] 0 * Suc y = 0 + 0 * y
+    #[2] !n. n * Suc y = n + n * y --> Suc n * Suc y = Suc n + Suc n * y
+  ← rewrite nat_times_def_1 goal=1
+    #[3] (0::nat) = 0 + 0
+  ← rewrite nat_plus_def_1 goal=3
+  ← intro n goal=2
+    #[4] _VAR n
+    #[5] n * Suc y = n + n * y
+    #[6] Suc n * Suc y = Suc n + Suc n * y
+  ← rewrite nat_times_def_2 sym=false goal=6
+    #[7] Suc y + n * Suc y = Suc n + (y + n * y)
+  ← rewrite source=prev goal=7 facts=[5]
+    #[8] Suc y + (n + n * y) = Suc n + (y + n * y)
+  nat_norm goal=8
+    #[9] Suc y + (n + n * y) = Suc n + (y + n * y)
+qed
 
 theorem distrib_l
   fixes x :: nat, y :: nat, z :: nat
@@ -567,18 +585,44 @@ qed
 theorem bit0_bit0_add
   fixes m :: nat, n :: nat
   prop bit0 m + bit0 n = bit0 (m + n)
+proof
+  ← rewrite bit0_def sym=false goal=0
+    #[1] m + m + (n + n) = m + n + (m + n)
+  nat_norm goal=1
+qed
 
 theorem bit0_bit1_add
   fixes m :: nat, n :: nat
   prop bit0 m + bit1 n = bit1 (m + n)
+proof
+  ← rewrite bit0_def sym=false goal=0
+    #[1] m + m + bit1 n = bit1 (m + n)
+  ← rewrite bit1_def sym=false goal=1
+    #[2] m + m + (n + n + 1) = m + n + (m + n) + 1
+  nat_norm goal=2
+qed
 
 theorem bit1_bit0_add
   fixes m :: nat, n :: nat
   prop bit1 m + bit0 n = bit1 (m + n)
+proof
+  ← rewrite bit1_def sym=false goal=0
+    #[1] m + m + 1 + bit0 n = m + n + (m + n) + 1
+  ← rewrite bit0_def sym=false goal=1
+    #[2] m + m + 1 + (n + n) = m + n + (m + n) + 1
+  nat_norm goal=2
+qed
 
 theorem bit1_bit1_add
   fixes m :: nat, n :: nat
   prop bit1 m + bit1 n = bit0 (Suc (m + n))
+proof
+  ← rewrite bit1_def sym=false goal=0
+    #[1] m + m + 1 + (n + n + 1) = bit0 (Suc (m + n))
+  ← rewrite bit0_def sym=false goal=1
+    #[2] m + m + 1 + (n + n + 1) = Suc (m + n) + Suc (m + n)
+  nat_norm goal=2
+qed
 
 theorem bit0_bit0_mult
   fixes m :: nat, n :: nat
@@ -594,14 +638,35 @@ qed
 theorem bit0_bit1_mult
   fixes m :: nat, n :: nat
   prop bit0 m * bit1 n = bit0 (m * bit1 n)
+proof
+  ← rewrite bit0_def sym=false goal=0
+    #[1] (m + m) * bit1 n = m * bit1 n + m * bit1 n
+  ← rewrite bit1_def sym=false goal=1
+    #[2] (m + m) * (n + n + 1) = m * (n + n + 1) + m * (n + n + 1)
+  nat_norm goal=2
+qed
 
 theorem bit1_bit0_mult
   fixes m :: nat, n :: nat
   prop bit1 m * bit0 n = bit0 (bit1 m * n)
+proof
+  ← rewrite bit0_def sym=false goal=0
+    #[1] bit1 m * (n + n) = bit1 m * n + bit1 m * n
+  ← rewrite bit1_def sym=false goal=1
+    #[2] (m + m + 1) * (n + n) = (m + m + 1) * n + (m + m + 1) * n
+  nat_norm goal=2
+qed
 
 theorem bit1_bit1_mult
   fixes m :: nat, n :: nat
   prop bit1 m * bit1 n = bit1 (m + n + bit0 (m * n))
+proof
+  ← rewrite bit1_def sym=false goal=0
+    #[1] (m + m + 1) * (n + n + 1) = m + n + bit0 (m * n) + (m + n + bit0 (m * n)) + 1
+  ← rewrite bit0_def sym=false goal=1
+    #[2] (m + m + 1) * (n + n + 1) = m + n + (m * n + m * n) + (m + n + (m * n + m * n)) + 1
+  nat_norm goal=2
+qed
 
 theorem bit0_nonzero
   fixes m :: nat
