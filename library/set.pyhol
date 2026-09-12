@@ -30,7 +30,7 @@ def Inter :: 'a set set ⇒ 'a set = Inter A = (λx. ∀S. A S ⟶ S x)
 
 def comp_fun :: ('a ⇒ 'b) ⇒ ('b ⇒ 'c) ⇒ 'a ⇒ 'c = f ∘ g = (λx. g (f x)) [hint_rewrite]
 
-const finite :: 'a set ⇒ bool
+def finite :: 'a set ⇒ bool = finite A ⟷ (∀P::'a set ⇒ bool. P ({}::'a set) ∧ (∀x::'a. ∀B::'a set. P B ⟶ P (insert x B)) ⟶ P A)
 
 def delete :: 'a set ⇒ 'a ⇒ 'a set = delete A a = (λx. A x ∧ ¬(x = a))
 
@@ -300,6 +300,11 @@ theorem finite_empty
   fixes A :: 'a set
   prop finite ({}::'a set)
   [hint_backward]
+proof
+  ← rewrite finite_def sym=false goal=0
+  ← intro P goal=1
+  → forward conjD1 goal=4 facts=[3]
+qed
 
 theorem finite_insert
   fixes A :: 'a set, a :: 'a
