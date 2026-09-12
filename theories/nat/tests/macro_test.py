@@ -10,6 +10,7 @@
 import unittest
 
 from theories.logic.tests.logic_test import test_macro
+from core.method import has_method
 
 
 class NatMacroTest(unittest.TestCase):
@@ -40,6 +41,19 @@ class NatMacroTest(unittest.TestCase):
         # m > n: out of scope, must fail.
         test_macro(self, 'nat', 'nat_const_less', args='(5::nat) < 2',
                    res='(5::nat) < 2', failed=AssertionError)
+
+    def testNatConstComparisonsAsMethods(self):
+        """The two constant-comparison macros are also exposed as
+        interactive methods (theories/nat/method.py), so a .pyhol step
+        can close a constant nat comparison in one line.  Before that
+        registration they were reachable only as macros.
+        """
+        # test_macro loads the nat theory, which registers the domain
+        # methods as a side effect of importing theories/nat/method.py.
+        test_macro(self, 'nat', 'nat_const_less', args='(2::nat) < 5',
+                   res='(2::nat) < 5')
+        self.assertTrue(has_method('nat_const_less'))
+        self.assertTrue(has_method('nat_const_less_eq'))
 
 
 if __name__ == "__main__":

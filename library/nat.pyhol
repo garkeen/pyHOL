@@ -2725,12 +2725,99 @@ proof
     #[16] (m + a) * (p + b) = m * p + (a * p + m * b + a * b)
 qed
 
+theorem le_mult_lcancel
+  fixes m :: nat, n :: nat, p :: nat
+  prop m * n <= m * p <--> m = 0 | n <= p
+  [hint_rewrite]
+proof
+  ← rule iffI goal=0
+  ← type_cases m goal=1
+  ← intro goal=3
+  ← rule disjI1 goal=6
+  ← refl goal=7
+  ← intro k goal=4
+  ← cases "n <= p" goal=11
+  ← intro goal=12
+  ← rule disjI2 goal=15
+  ← intro goal=13
+  → rewrite not_le sym=false target=fact goal=17 facts=[16]
+  → rewrite less_exist sym=false target=fact goal=17 facts=[18]
+  elim d goal=17 facts=[19]
+  → rewrite less_eq_exist sym=false target=fact goal=22 facts=[10]
+  elim e goal=22 facts=[23]
+  → rewrite source=prev target=fact goal=26 facts=[21,25]
+  → rewrite distrib_l sym=false target=fact goal=26 facts=[27]
+  → rewrite add_assoc sym=false target=fact goal=26 facts=[28]
+  → rewrite target=fact eq_sym_eq sym=false goal=26 facts=[29]
+  → forward add_right_eq_zero goal=26 facts=[30]
+  → forward add_is_zero goal=26 facts=[31]
+  → forward conjD1 goal=26 facts=[32]
+  → rewrite mult_eq_0 sym=false target=fact goal=26 facts=[33]
+  ← rule disjE goal=26 facts=[34]
+  ← intro goal=35
+  ← rule disjI1 goal=38
+  ← intro goal=36
+  → rewrite eq_sym_eq sym=false target=fact goal=40 facts=[39]
+  → forward nat_zero_Suc_neq param_n=d goal=40
+  ← rule negE_gen goal=40 facts=[42,41]
+  ← intro goal=2
+  ← rule disjE goal=45 facts=[44]
+  ← intro goal=46
+  ← rewrite source=prev goal=49 facts=[48]
+  ← rewrite nat_times_def_1 sym=false goal=50
+  ← rule less_eq_refl goal=51
+  ← intro goal=47
+  ← rule le_mult2 goal=53
+  ← rule less_eq_refl goal=54
+qed
+
 theorem le_mult_rcancel
   fixes m :: nat, n :: nat, p :: nat
   prop m * p <= n * p <--> m <= n | p = 0
   [hint_rewrite]
 proof
-  ← z3 goal=0
+  ← rewrite mult_comm sym=false goal=0
+    #[1] p * m ≤ p * n ⟷ m ≤ n ∨ p = 0
+  ← rewrite le_mult_lcancel sym=false goal=1
+    #[2] p = 0 ∨ m ≤ n ⟷ m ≤ n ∨ p = 0
+  ← rewrite disj_comm sym=false goal=2 loc=1
+qed
+
+theorem lt_mult_lcancel
+  fixes m :: nat, n :: nat, p :: nat
+  prop m * n < m * p <--> ~(m = 0) & n < p
+  [hint_rewrite]
+proof
+  ← rule iffI goal=0
+  ← intro goal=1
+  → rewrite less_lesseq sym=false target=fact goal=4 facts=[3]
+  → forward conjD1 goal=4 facts=[5]
+  → forward conjD2 goal=4 facts=[5]
+  → rewrite le_mult_lcancel sym=false target=fact goal=4 facts=[6]
+  → rewrite eq_mult_lcancel sym=false target=fact goal=4 facts=[7]
+  → rewrite de_morgan_thm2 sym=false target=fact goal=4 facts=[9]
+  → forward conjD1 goal=4 facts=[10]
+  → forward conjD2 goal=4 facts=[10]
+  ← rule conjI goal=4
+  cut "n <= p" goal=13
+  ← rule disjE goal=14 facts=[8]
+  ← intro goal=15
+  ← rule negE_gen goal=18 facts=[11,17]
+  ← rule less_lesseqI goal=13
+  ← intro goal=2
+  → forward conjD1 goal=20 facts=[19]
+  → forward conjD2 goal=20 facts=[19]
+  → forward lt_imp_le goal=20 facts=[22]
+  cut "m = 0 | n <= p" goal=20
+  ← rule disjI2 goal=24
+  → rewrite le_mult_lcancel sym=true target=fact goal=20 facts=[24]
+  → rewrite less_lesseq sym=false target=fact goal=20 facts=[22]
+  → forward conjD2 goal=20 facts=[26]
+  cut "~(m = 0) & ~(n = p)" goal=20
+  ← rule conjI goal=28
+  → rewrite de_morgan_thm2 sym=true target=fact goal=20 facts=[28]
+  → rewrite eq_mult_lcancel sym=true target=fact goal=20 facts=[29]
+  ← rule less_lesseqI goal=20
 qed
 
 theorem lt_mult_rcancel
@@ -2738,7 +2825,11 @@ theorem lt_mult_rcancel
   prop m * p < n * p <--> m < n & ~(p = 0)
   [hint_rewrite]
 proof
-  ← z3 goal=0
+  ← rewrite mult_comm sym=false goal=0
+    #[1] p * m < p * n ⟷ m < n ∧ ¬(p = 0)
+  ← rewrite lt_mult_lcancel sym=false goal=1
+    #[2] ¬(p = 0) ∧ m < n ⟷ m < n ∧ ¬(p = 0)
+  ← rewrite conj_comm sym=false goal=2 loc=1
 qed
 
 theorem lt_mult2
@@ -3037,8 +3128,26 @@ proof
   ← intro goal=5
     #[6] n - p = 0
     #[7] m * n - m * p = m * (n - p)
-  ← z3 goal=7
-  ← z3 goal=4
+  → rewrite sub_eq_0 sym=false target=fact goal=7 facts=[6]
+    #[8] n ≤ p
+  ← rewrite source=prev goal=7 facts=[6]
+    #[9] m * n - m * p = m * 0
+  ← rewrite mult_0_right sym=false goal=9
+    #[10] m * n - m * p = 0
+  ← rewrite sub_eq_0 sym=false goal=10
+    #[11] m * n ≤ m * p
+  ← rule le_mult2 param_m=m param_n=m param_p=n param_q=p goal=11
+    #[12] m ≤ m
+    #[13] n ≤ p
+  ← rule less_eq_refl goal=12
+  ← intro goal=4
+  cut "n - p + p = n" goal=15
+  ← rule sub_add goal=16 facts=[14]
+  → rewrite target=fact add_comm sym=false goal=15 facts=[16]
+  → rewrite target=fact eq_sym_eq sym=false goal=15 facts=[17]
+  ← rewrite source=prev goal=15 facts=[18]
+  ← rewrite distrib_l sym=false goal=19
+  ← rewrite nat_plus_minus_2 sym=false goal=20
 qed
 
 theorem suc_sub1
@@ -3298,6 +3407,130 @@ proof
   ← rewrite neg_eq_pos sym=false goal=51
 qed
 
+theorem not_iff_self_or
+  prop !p::bool. !q. p --> ~q --> ~(q <--> q | p)
+proof
+  ← intro p,q goal=0
+  ← rule negI goal=5
+  ← intro goal=6
+  cut "q | p" goal=8
+  ← rule disjI2 goal=9
+  → rewrite target=fact eq_sym_eq sym=false goal=8 facts=[7]
+  → forward eq_implies1 goal=8 facts=[10,9]
+  ← rule negE_gen goal=8 facts=[4,11]
+qed
+
+theorem iff_mp
+  prop !A::bool. !B. A ⟷ B ⟶ A ⟶ B
+proof
+  ← intro A,B goal=0
+  → forward eq_implies1 goal=5 facts=[3,4]
+qed
+
+theorem add_rearrange1
+  prop !a::nat. !b. !c. !d. a + b + (c + d) = c + a + (d + b)
+proof
+  ← intro a,b,c,d goal=0
+  nat_norm goal=5
+qed
+
+theorem add_rearrange2
+  prop !a::nat. !b. !c. !d. a + b + c + d = a + c + (b + d)
+proof
+  ← intro a,b,c,d goal=0
+  nat_norm goal=5
+qed
+
+theorem add_congr
+  prop !x::nat. !y. !z. !w. x = y ⟶ z = w ⟶ x + z = y + w
+proof
+  ← intro x,y,z,w goal=0
+  → rewrite source=prev goal=7 facts=[5]
+  → rewrite source=prev goal=8 facts=[6]
+qed
+
+theorem false_iff_and_not
+  prop !p::bool. !q. q ⟶ ¬true ⟷ p ∧ ¬q
+proof
+  ← intro p,q goal=0
+  ← rewrite not_true sym=false goal=4
+  cut "~q <--> false" goal=5
+  ← rule iffI goal=6
+  ← intro goal=7
+  ← rule negE_gen goal=10 facts=[9,3]
+  ← intro goal=8
+  → rewrite source=prev goal=5 facts=[6]
+  ← rule falseE goal=12
+  ← rewrite conj_false_left sym=false goal=13
+qed
+
+theorem or_neg_imp
+  fixes A :: bool, B :: bool
+  prop (B ∨ ¬A) ⟷ (A ⟶ B)
+proof
+  ← rewrite disj_comm sym=false goal=0
+  ← rewrite imp_disj_eq sym=true goal=1
+qed
+
+theorem lt_2
+  fixes n :: nat
+  prop n < 2 ⟷ n = 0 ∨ n = 1
+proof
+  cut "2 = Suc 1" goal=0
+  ← rewrite add_1_right sym=true goal=1
+  ← rewrite mult_2 sym=true goal=2
+  ← rewrite mult_1_right sym=false goal=3
+  ← rewrite source=prev goal=0 facts=[1]
+  ← rewrite less_Suc_lesseq sym=false goal=4
+  ← rewrite nat_one_def sym=false goal=5
+  ← rewrite nat_less_eq_def_2 sym=false goal=6
+  ← rewrite nat_less_eq_def_1 sym=false goal=7
+  ← rewrite disj_comm sym=false goal=8 loc=1
+qed
+
+theorem lt_neq
+  prop !m::nat. !n. m < n ⟶ ¬(m = n)
+proof
+  ← intro m,n goal=0
+  → rewrite less_lesseq sym=false target=fact goal=4 facts=[3]
+    #[5] m ≤ n ∧ ¬(m = n)
+  → forward conjD2 goal=4 facts=[5]
+qed
+
+theorem one_lt_two
+  prop (1::nat) < 2
+proof
+  nat_const_less goal=0
+qed
+
+theorem not_two_le_zero
+  prop ~((2::nat) <= 0)
+proof
+  ← rewrite not_le sym=false goal=0
+  nat_const_less goal=1
+qed
+
+theorem two_le_zero_contra
+  fixes x :: nat
+  prop 2 ≤ x ⟶ x = 0 ⟶ false
+proof
+  ← intro goal=0
+  → rewrite target=fact source=prev goal=3 facts=[2,1]
+  → forward not_two_le_zero goal=3
+  ← rule negE_gen goal=3 facts=[5,4]
+qed
+
+theorem two_le_conj_contra
+  fixes x :: nat, P :: bool
+  prop 2 ≤ x ⟶ (x = 0 ∧ P) ⟶ false
+proof
+  ← intro goal=0
+  → forward conjD1 goal=3 facts=[2]
+  → rewrite target=fact source=prev goal=3 facts=[4,1]
+  → forward not_two_le_zero goal=3
+  ← rule negE_gen goal=3 facts=[6,5]
+qed
+
 theorem even_mult
   fixes m :: nat, n :: nat
   prop even (m * n) <--> even m | even n
@@ -3317,9 +3550,9 @@ proof
   ← rule disjI2 goal=7
   ← rewrite even_def_1 sym=false goal=5
     #[8] even m ∨ true ⟶ true
-  cut "∀p. (p ∨ true) ⟷ true" goal=8
-    #[9] ∀p. p ∨ true ⟷ true
-  ← z3 goal=9
+  cut "even m ∨ true ⟷ true" goal=8
+    #[9] even m ∨ true ⟷ true
+  ← rule disj_true_right goal=9
   ← rewrite source=prev goal=8 facts=[9]
     #[10] true ⟶ true
   ← intro n goal=2
@@ -3365,7 +3598,7 @@ proof
     #[34] ¬(even m)
   cut "!p. !q. p --> ~q --> ~(q <--> q | p)" goal=33
     #[35] ∀p. ∀q. p ⟶ ¬q ⟶ ¬(q ⟷ q ∨ p)
-  ← z3 goal=35
+  ← rule not_iff_self_or goal=35
     #[36] ∀p. ∀q. p ⟶ ¬q ⟶ ¬(q ⟷ q ∨ p)
   ← apply_prev goal=33 facts=[36]
   ← intro goal=19
@@ -3411,7 +3644,7 @@ proof
     #[6] ¬true ⟷ even m ∧ ¬((0::nat) = 0)
   cut "∀p. ∀q. q ⟶ ¬true ⟷ p ∧ ~q" goal=6
     #[7] ∀p. ∀q. q ⟶ ¬true ⟷ p ∧ ¬q
-  ← z3 goal=7
+  ← rule false_iff_and_not goal=7
   ← apply_prev goal=6 facts=[7]
     #[8] (0::nat) = 0
   ← rule eq_refl goal=8
@@ -4182,8 +4415,8 @@ proof
     #[47] (0::nat) ^ m < 0 ^ n
   → forward conjD1 goal=47 facts=[46]
     #[48] (2::nat) ≤ 0
-  ← z3 goal=47 facts=[48]
-    #[49] (0::nat) ^ m < 0 ^ n
+  → forward not_two_le_zero goal=47
+  ← rule negE_gen goal=47 facts=[49,48]
   ← intro goal=45
     #[50] (0::nat) = 0 ∧ ¬(m = 0) ∧ n = 0
     #[51] (0::nat) ^ m < 0 ^ n
@@ -4241,9 +4474,8 @@ proof
     #[80] x < 2
   cut "x = 0 | x =1" goal=79 facts=[80]
     #[81] x = 0 ∨ x = 1
-  ← z3 goal=81 facts=[80]
-    #[82] x = 0 ∨ x = 1
-  ← rule disjE goal=79 facts=[82]
+  → rewrite target=fact lt_2 sym=false goal=81 facts=[80]
+  ← rule disjE goal=79 facts=[83]
     #[83] x = 0 ⟶ x ^ n ≤ x ^ m
     #[84] x = 1 ⟶ x ^ n ≤ x ^ m
   ← intro goal=83
@@ -4255,8 +4487,7 @@ proof
   ← rule disjE goal=87 facts=[75]
     #[88] ¬(x = 0) ⟶ (if n = 0 then (1::nat) else 0) ≤ (if m = 0 then 1 else 0)
     #[89] m = 0 ∨ ¬(n = 0) ⟶ (if n = 0 then (1::nat) else 0) ≤ (if m = 0 then 1 else 0)
-  ← z3 goal=88 facts=[3]
-    #[90] ¬(x = 0) ⟶ (if n = 0 then (1::nat) else 0) ≤ (if m = 0 then 1 else 0)
+  ← rule negE_gen goal=88 facts=[60,3]
   ← intro goal=89
     #[91] m = 0 ∨ ¬(n = 0)
     #[92] (if n = 0 then (1::nat) else 0) ≤ (if m = 0 then 1 else 0)
@@ -4372,8 +4603,8 @@ proof
   ← rule conjI goal=153
     #[154] 1 < x
     #[155] ¬(x ^ m = 0)
-  ← z3 goal=154 facts=[138]
-    #[156] 1 < x
+  → forward one_lt_two goal=154
+  ← rule lte_trans goal=154 facts=[157,138]
   ← rule negI goal=155
     #[157] x ^ m = 0 ⟶ false
   ← rewrite exp_eq_0 sym=false goal=157
@@ -4381,8 +4612,7 @@ proof
   ← intro goal=158
     #[159] x = 0 ∧ ¬(m = 0)
     #[160] false
-  ← z3 goal=160 facts=[159,138]
-    #[161] false
+  ← rule two_le_conj_contra goal=160 facts=[138,159]
   ← intro p goal=145
     #[162] x ^ m < x ^ (m + Suc p)
     #[163] x ^ m < x ^ (m + Suc (Suc p))
@@ -4407,8 +4637,7 @@ proof
     #[173] false
   → forward conjD1 goal=173 facts=[172]
     #[174] x = 0
-  ← z3 goal=173 facts=[174,138]
-    #[175] false
+  ← rule two_le_zero_contra goal=173 facts=[138,174]
   ← intro goal=135
     #[176] x = 0 ∧ ¬(m = 0) ∧ n = 0
     #[177] x ^ m < x ^ n
@@ -4506,8 +4735,9 @@ proof
     #[39] ¬(2 ≤ x)
   ← rewrite source=prev goal=39 facts=[5]
     #[40] ¬((2::nat) ≤ 0)
-  ← z3 goal=40
-    #[41] ¬((2::nat) ≤ 0)
+  ← rewrite nat_less_eq_def_1 sym=false goal=40
+    #[41] ¬((2::nat) = 0)
+  nat_const_ineq goal=41
   ← rewrite de_morgan_thm1 sym=false goal=37
     #[42] ¬(x = 0) ∨ ¬(¬(n = 0) ∧ m = 0)
   ← rule disjI2 goal=42
@@ -4516,8 +4746,7 @@ proof
     #[44] ¬¬(n = 0) ∨ ¬(m = 0)
   ← rewrite double_neg sym=false goal=44
     #[45] n = 0 ∨ ¬(m = 0)
-  ← z3 goal=45 facts=[33]
-    #[46] n = 0 ∨ ¬(m = 0)
+  ← rewrite or_neg_imp sym=false goal=45
   ← intro goal=4
     #[47] ¬(2 ≤ x ∧ n < m ∨ x = 0 ∧ ¬(n = 0) ∧ m = 0) ⟷ (if x = 0 then m = 0 ⟶ n = 0 else x = 1 ∨ ¬(n < m))
   ← rewrite if_not_P sym=false goal=47 facts=[21]
@@ -4538,8 +4767,11 @@ proof
     #[55] x = 1 ∨ ¬(n < m)
   ← rule disjI1 goal=55
     #[56] x = 1
-  ← z3 goal=56 facts=[21,54]
-    #[57] x = 1
+  → rewrite not_le sym=false target=fact goal=56 facts=[54]
+  → rewrite lt_2 sym=false target=fact goal=56 facts=[57]
+  → rewrite target=fact eq_false sym=false goal=56 facts=[21]
+  → rewrite target=fact source=prev goal=56 facts=[59,58]
+  → rewrite target=fact disj_false_left sym=false goal=56 facts=[60]
   ← intro goal=53
     #[58] ¬(n < m)
     #[59] x = 1 ∨ ¬(n < m)
@@ -4564,8 +4796,9 @@ proof
     #[70] ¬(2 ≤ x)
   ← rewrite source=prev goal=70 facts=[68]
     #[71] ¬((2::nat) ≤ 1)
-  ← z3 goal=71
-    #[72] ¬((2::nat) ≤ 1)
+  ← rewrite not_le sym=false goal=71
+    #[72] (1::nat) < 2
+  nat_const_less goal=72
   ← intro goal=67
     #[73] ¬(2 ≤ x) ∨ ¬(n < m)
   ← rule disjI2 goal=73
@@ -4978,7 +5211,7 @@ proof
     #[3] (∃n1. ∃q. m = q * n + n1) ⟷ (∃n1. (∃q. m = q * n + n1) ∧ (∀m1. m1 < n1 ⟶ ¬(∃q. m = q * n + m1)))
   cut "!A. !B. (A<-->B)-->(A-->B)" goal=2
     #[4] ∀A. ∀B. A ⟷ B ⟶ A ⟶ B
-  ← z3 goal=4
+  ← rule iff_mp goal=4
     #[5] ∀A. ∀B. A ⟷ B ⟶ A ⟶ B
   → forward goal=2 facts=[5,3]
     #[6] (∃n1. ∃q. m = q * n + n1) ⟶ (∃n1. (∃q. m = q * n + n1) ∧ (∀m1. m1 < n1 ⟶ ¬(∃q. m = q * n + m1)))
@@ -5036,8 +5269,10 @@ proof
   ← rule conjI goal=35
     #[36] d < r
     #[37] ¬¬(∃q. m = q * n + d)
-  ← z3 goal=36 facts=[1,31]
-    #[38] d < r
+  ← rewrite source=prev goal=36 facts=[31]
+  ← rewrite add_comm sym=false goal=38
+  ← rewrite lt_add sym=false goal=39
+  ← rule le_1_1 goal=40
   ← rewrite double_neg sym=false goal=37
     #[39] ∃q. m = q * n + d
   ← inst q+1 goal=39
@@ -5520,10 +5755,17 @@ proof
     #[12] n - p < p
   ← rewrite mult_1_left sym=false goal=11
     #[13] n = p + (n - p)
-  ← z3 goal=13 facts=[8]
-    #[14] n = p + (n - p)
-  ← z3 goal=12 facts=[1]
-    #[15] n - p < p
+  → rewrite not_lt sym=false target=fact goal=13 facts=[8]
+    #[14] p ≤ n
+  → forward sub_add goal=13 facts=[14]
+    #[15] n - p + p = n
+  → rewrite target=fact add_comm sym=false goal=13 facts=[15]
+    #[16] p + (n - p) = n
+  → rewrite target=fact eq_sym_eq sym=false goal=13 facts=[16]
+    #[17] n = p + (n - p)
+  → rewrite target=fact source=prev goal=12 facts=[17,1]
+  → rewrite target=fact mult_2 sym=false goal=12 facts=[18]
+  → rewrite target=fact lt_add_lcancel sym=false goal=12 facts=[19]
 qed
 
 theorem mod_add_cases
@@ -5682,8 +5924,14 @@ proof
   ← rewrite eq_sym_eq sym=false goal=27
     #[28] n - m + m = n
   ← rule sub_add goal=28
-  ← z3 goal=25 facts=[13]
-    #[29] n - m < m
+  → rewrite not_le sym=false target=fact goal=25 facts=[13]
+    #[29] n < 2 * m
+  → rewrite target=fact source=prev goal=25 facts=[26,29]
+    #[30] m + (n - m) < 2 * m
+  → rewrite target=fact mult_2 sym=false goal=25 facts=[30]
+    #[31] m + (n - m) < m + m
+  → rewrite target=fact lt_add_lcancel sym=false goal=25 facts=[31]
+    #[32] n - m < m
   ← rewrite source=prev goal=22 facts=[23]
     #[30] n - m + m ≤ n
   → forward sub_add goal=30 facts=[2]
@@ -5958,41 +6206,42 @@ proof
     #[6] (∃q. m = 0 * q) ⟷ m = 0
   ← rewrite nat_times_def_1 sym=false goal=6
     #[7] (∃q::nat. m = 0) ⟷ m = 0
-  ← z3 goal=7
-    #[8] (∃q::nat. m = 0) ⟷ m = 0
+  ← rule iffI goal=7
+    #[8] (∃q::nat. m = 0) ⟶ m = 0
+    #[9] m = 0 ⟶ (∃q::nat. m = 0)
+  ← intro goal=8
+    #[10] ∃q::nat. m = 0
+    #[11] m = 0
+  elim q goal=11 facts=[10]
+    #[12] _VAR q
+    #[13] m = 0
+    #[14] m = 0
+  ← apply_prev goal=14 facts=[13]
+  ← intro goal=9
+  ← rule exI param_a="(0::nat)" goal=15
   ← intro goal=2
-    #[9] ¬(n = 0)
-    #[10] (∃q. m = n * q) ⟷ (if n = 0 then m = 0 else m MOD n = 0)
-  ← rewrite if_not_P sym=false goal=10 facts=[9]
-    #[11] (∃q. m = n * q) ⟷ m MOD n = 0
-  ← rule iffI goal=11
-    #[12] (∃q. m = n * q) ⟶ m MOD n = 0
-    #[13] m MOD n = 0 ⟶ (∃q. m = n * q)
-  ← intro goal=12
-    #[14] ∃q. m = n * q
-    #[15] m MOD n = 0
-  elim q goal=15 facts=[14]
-    #[16] _VAR q
-    #[17] m = n * q
-    #[18] m MOD n = 0
-  ← rewrite source=prev goal=18 facts=[17]
-    #[19] n * q MOD n = 0
-  ← rewrite mod_mult sym=false goal=19
-    #[20] n * q MOD n = 0
-  ← intro goal=13
-    #[21] m MOD n = 0
-    #[22] ∃q. m = n * q
-  ← inst "m DIV n" goal=22
-    #[23] m = n * (m DIV n)
-  cut "m = (m DIV n) * n + m MOD n" goal=23
-    #[24] m = m DIV n * n + m MOD n
-  ← rewrite division_simp1 sym=false goal=24
-    #[25] m = m DIV n * n + m MOD n
-  → rewrite target=fact source=prev goal=23 facts=[21,25]
-    #[26] m = m DIV n * n + 0
-  → rewrite target=fact add_0_right sym=false goal=23 facts=[26]
-    #[27] m = m DIV n * n
-  ← rewrite mult_comm sym=false goal=23
+    #[18] ¬(n = 0)
+    #[19] (∃q. m = n * q) ⟷ (if n = 0 then m = 0 else m MOD n = 0)
+  ← rewrite if_not_P sym=false goal=19 facts=[18]
+    #[20] (∃q. m = n * q) ⟷ m MOD n = 0
+  ← rule iffI goal=20
+    #[21] (∃q. m = n * q) ⟶ m MOD n = 0
+    #[22] m MOD n = 0 ⟶ (∃q. m = n * q)
+  ← intro goal=21
+    #[23] ∃q. m = n * q
+    #[24] m MOD n = 0
+  elim q goal=24 facts=[23]
+    #[25] _VAR q
+    #[26] m = n * q
+  ← rewrite source=prev goal=26 facts=[25]
+  ← rewrite mod_mult sym=false goal=27
+  ← intro goal=22
+  ← inst "m DIV n" goal=30
+  cut "m = (m DIV n) * n + m MOD n" goal=31
+  ← rewrite division_simp1 sym=false goal=32
+  → rewrite target=fact source=prev goal=31 facts=[29,33]
+  → rewrite target=fact add_0_right sym=false goal=31 facts=[34]
+  ← rewrite mult_comm sym=false goal=31
 qed
 
 theorem le_rdiv_eq
@@ -6135,6 +6384,52 @@ proof
   ← rule le_1_1 goal=9
 qed
 
+header "Order extensionality (used by the division lemmas)"
+
+theorem le_ext
+  prop !a::nat. !b. (!k. k <= a --> k <= b) --> a <= b
+proof
+  ← intro a,b goal=0
+    #[1] _VAR a
+    #[2] _VAR b
+    #[3] ∀k. k ≤ a ⟶ k ≤ b
+    #[4] a ≤ b
+  → inst target=fact a goal=4 facts=[3]
+    #[5] a ≤ a ⟶ a ≤ b
+  ← apply_prev goal=4 facts=[5]
+    #[6] a ≤ a
+  ← rule less_eq_refl goal=6
+    #[7] a ≤ a
+qed
+
+theorem eq_ext
+  prop !m::nat. !n. (!k. k <= m <--> k <= n) --> m = n
+proof
+  ← intro m,n goal=0
+  ← rewrite le_antisym sym=true goal=4
+  ← rule conjI goal=5
+  → inst target=fact m goal=6 facts=[3]
+  cut "m <= m" goal=6
+  ← rule less_eq_refl goal=9
+  → forward eq_implies1 goal=6 facts=[8,10]
+  → inst target=fact n goal=7 facts=[3]
+  → rewrite target=fact eq_sym_eq sym=false goal=7 facts=[11]
+  cut "n <= n" goal=7
+  ← rule less_eq_refl goal=13
+  → forward eq_implies1 goal=7 facts=[12,14]
+qed
+
+theorem lt_ext
+  prop !a::nat. !b. (!k. k <= a --> k + 1 <= b) --> a < b
+proof
+  ← intro a,b goal=0
+  → inst target=fact a goal=4 facts=[3]
+  ← rewrite lesseq_Suc_less sym=true goal=4
+  ← rewrite add_1_right sym=true goal=6
+  ← apply_prev goal=7 facts=[5]
+  ← rule less_eq_refl goal=8
+qed
+
 theorem div_mono
   fixes m :: nat, n :: nat, p :: nat
   prop m <= n --> m DIV p <= n DIV p
@@ -6160,7 +6455,7 @@ proof
     #[11] m DIV p ≤ n DIV p
   cut "!a::nat. !b. (!k. k <= a --> k <= b) --> a <= b " goal=11
     #[12] ∀a::nat. ∀b. (∀k. k ≤ a ⟶ k ≤ b) ⟶ a ≤ b
-  ← z3 goal=12
+  ← rule le_ext goal=12
     #[13] ∀a::nat. ∀b. (∀k. k ≤ a ⟶ k ≤ b) ⟶ a ≤ b
   ← apply_prev goal=11 facts=[13]
     #[14] ∀k. k ≤ m DIV p ⟶ k ≤ n DIV p
@@ -6190,7 +6485,7 @@ proof
     #[3] m DIV p < n DIV p
   cut "!a. !b. (!k::nat. k <= a --> k + 1 <= b) --> a < b" goal=3
     #[4] ∀a::nat. ∀b. (∀k. k ≤ a ⟶ k + 1 ≤ b) ⟶ a < b
-  ← z3 goal=4
+  ← rule lt_ext goal=4
     #[5] ∀a::nat. ∀b. (∀k. k ≤ a ⟶ k + 1 ≤ b) ⟶ a < b
   ← apply_prev goal=3 facts=[5]
     #[6] ∀k. k ≤ m DIV p ⟶ k + 1 ≤ n DIV p
@@ -6279,8 +6574,8 @@ proof
     #[11] ∃q::nat. 0 = q * 0
   ← rewrite mult_0_right sym=false goal=11
     #[12] ∃q::nat. (0::nat) = 0
-  ← z3 goal=12
-    #[13] ∃q::nat. (0::nat) = 0
+  ← rule exI param_a="(0::nat)" goal=12
+  ← refl goal=13
   ← intro goal=7
     #[14] ∃q. m = q * 0
     #[15] m MOD 0 = 0
@@ -6398,13 +6693,21 @@ proof
     #[41] m = 0 ∨ (0::nat) = 1
   → rewrite target=fact div_zero sym=false goal=41 facts=[40]
     #[42] 0 = m
-  ← z3 goal=41 facts=[42,14]
-    #[43] m = 0 ∨ (0::nat) = 1
+  → rewrite target=fact eq_sym_eq sym=false goal=41 facts=[42]
+    #[43] m = 0
+  ← rule negE_gen goal=41 facts=[14,43]
   ← intro goal=39
     #[44] m = 0 ∨ (0::nat) = 1
     #[45] m DIV 0 = m
-  ← z3 goal=45 facts=[44,14]
-    #[46] m DIV 0 = m
+  → rewrite target=fact eq_false sym=false goal=45 facts=[14]
+    #[46] (m = 0) ⟷ false
+  → rewrite target=fact source=prev goal=45 facts=[46,44]
+    #[47] false ∨ (0::nat) = 1
+  → rewrite target=fact disj_false_left sym=false goal=45 facts=[47]
+    #[48] (0::nat) = 1
+  cut "~((0::nat) = 1)" goal=45
+  nat_const_ineq goal=50
+  ← rule negE_gen goal=45 facts=[51,48]
   ← intro goal=34
     #[47] ¬(n = 0)
     #[48] m DIV n = m ⟷ m = 0 ∨ n = 1
@@ -6421,7 +6724,7 @@ proof
     #[55] ¬(m DIV n = m)
   cut "!m. !n::nat. m < n --> ~(m = n)" goal=55
     #[56] ∀m::nat. ∀n. m < n ⟶ ¬(m = n)
-  ← z3 goal=56
+  ← rule lt_neq goal=56
     #[57] ∀m::nat. ∀n. m < n ⟶ ¬(m = n)
   ← apply_prev goal=55 facts=[57]
     #[58] m DIV n < m
@@ -6435,8 +6738,23 @@ proof
     #[62] ¬(n = 1)
   → forward conjD1 goal=60 facts=[61]
     #[63] ¬(m = 0)
-  ← z3 goal=60 facts=[47,62,63]
-    #[64] m < n * m
+  ← rewrite mult_comm sym=false goal=60 loc=1
+    #[64] m < m * n
+  ← rewrite mult_1_right sym=true goal=64 loc=0.1
+    #[65] m * 1 < m * n
+  ← rewrite lt_mult_lcancel sym=false goal=65
+    #[66] ¬(m = 0) ∧ 1 < n
+  ← rule conjI goal=66
+    #[67] 1 < n
+  → forward le_1_1 goal=67 facts=[47]
+    #[68] (0::nat) < n
+  → rewrite target=fact lesseq_Suc_less sym=true goal=67 facts=[68]
+    #[69] Suc 0 ≤ n
+  → rewrite target=fact nat_one_def sym=true goal=67 facts=[69]
+    #[70] (1::nat) ≤ n
+  → forward ineq_sym goal=67 facts=[62]
+    #[71] ¬((1::nat) = n)
+  ← rule less_lesseqI goal=67
   ← intro goal=50
     #[65] m = 0 ∨ n = 1
     #[66] m DIV n = m
@@ -6521,9 +6839,9 @@ proof
   ← rewrite mod_lt_eq sym=false goal=3
     #[4] ¬((2::nat) = 0)
   nat_const_ineq goal=4
-  cut "∀n::nat. n < 2 ⟷ n = 0 ∨ n = 1" goal=2
-    #[5] ∀n::nat. n < 2 ⟷ n = 0 ∨ n = 1
-  ← z3 goal=5
+  cut "n MOD 2 < 2 ⟷ n MOD 2 = 0 ∨ n MOD 2 = 1" goal=2
+    #[5] n MOD 2 < 2 ⟷ n MOD 2 = 0 ∨ n MOD 2 = 1
+  ← rule lt_2 goal=5
   → rewrite target=fact source=prev goal=2 facts=[5,3]
     #[6] n MOD 2 = 0 ∨ n MOD 2 = 1
   ← rule disjE goal=2 facts=[6]
@@ -6544,7 +6862,9 @@ proof
     #[16] ¬(n MOD 2 = 0)
   → rewrite target=fact source=prev goal=16 facts=[15,9]
     #[17] (1::nat) = 0
-  ← z3 goal=16 facts=[17]
+  cut "~((1::nat) = 0)" goal=16
+  nat_const_ineq goal=18
+  ← rule negE_gen goal=16 facts=[19,17]
   ← intro goal=8
     #[18] ¬(n MOD 2 = 0) ⟷ n MOD 2 = 1
   ← rule iffI goal=18
@@ -6857,7 +7177,7 @@ proof
     #[12] a + b = a MOD n + b MOD n + (a DIV n * n + b DIV n * n)
   cut "!a. !b. !c. !d::nat. (a + b) + (c + d) = (c + a) + (d + b)" goal=12
     #[13] ∀a::nat. ∀b. ∀c. ∀d. a + b + (c + d) = c + a + (d + b)
-  ← z3 goal=13
+  ← rule add_rearrange1 goal=13
     #[14] ∀a::nat. ∀b. ∀c. ∀d. a + b + (c + d) = c + a + (d + b)
   ← rewrite source=prev goal=12 facts=[14]
     #[15] a + b = a DIV n * n + a MOD n + (b DIV n * n + b MOD n)
@@ -6887,7 +7207,7 @@ proof
     #[8] b = b DIV n * n + b MOD n
   cut "!x::nat. !y. !z. !w. x = y --> z= w --> x +z = y + w" goal=2
     #[9] ∀x::nat. ∀y. ∀z. ∀w. x = y ⟶ z = w ⟶ x + z = y + w
-  ← z3 goal=9
+  ← rule add_congr goal=9
     #[10] ∀x::nat. ∀y. ∀z. ∀w. x = y ⟶ z = w ⟶ x + z = y + w
   → forward goal=2 facts=[10,7,8]
     #[11] a + b = a DIV n * n + a MOD n + (b DIV n * n + b MOD n)
@@ -6895,7 +7215,7 @@ proof
     #[12] (a + b) DIV n * n + (a + b) MOD n = a DIV n * n + a MOD n + (b DIV n * n + b MOD n)
   cut "!a::nat. !b::nat. !c. !d. (a + b) + c + d = (a + c) + (b + d)" goal=2
     #[13] ∀a::nat. ∀b. ∀c. ∀d. a + b + c + d = a + c + (b + d)
-  ← z3 goal=13
+  ← rule add_rearrange2 goal=13
     #[14] ∀a::nat. ∀b. ∀c. ∀d. a + b + c + d = a + c + (b + d)
   → rewrite target=fact eq_sym_eq sym=false goal=2 facts=[14]
     #[15] ∀a::nat. ∀b. ∀c. ∀d. a + c + (b + d) = a + b + c + d
@@ -7038,7 +7358,7 @@ proof
     #[12] c DIV d ≤ a DIV b
   cut "!a. !b. (!k::nat. k <= a --> k <= b) --> a <= b" goal=12
     #[13] ∀a::nat. ∀b. (∀k. k ≤ a ⟶ k ≤ b) ⟶ a ≤ b
-  ← z3 goal=13
+  ← rule le_ext goal=13
     #[14] ∀a::nat. ∀b. (∀k. k ≤ a ⟶ k ≤ b) ⟶ a ≤ b
   ← apply_prev goal=12 facts=[14]
     #[15] ∀k. k ≤ c DIV d ⟶ k ≤ a DIV b
@@ -7268,7 +7588,7 @@ proof
     #[19] m DIV n DIV p = m DIV (n * p)
   cut "!m::nat. !n. (!k. k <= m <--> k <= n) --> m = n" goal=19
     #[20] ∀m::nat. ∀n. (∀k. k ≤ m ⟷ k ≤ n) ⟶ m = n
-  ← z3 goal=20
+  ← rule eq_ext goal=20
     #[21] ∀m::nat. ∀n. (∀k. k ≤ m ⟷ k ≤ n) ⟶ m = n
   ← apply_prev goal=19 facts=[21]
     #[22] ∀k. k ≤ m DIV n DIV p ⟷ k ≤ m DIV (n * p)
@@ -7335,7 +7655,7 @@ proof
     #[18] m DIV n MOD p = m MOD (n * p) DIV n
   cut "∀m::nat. ∀n. (∀k. k ≤ m ⟷ k ≤ n) ⟶ m = n" goal=18
     #[19] ∀m::nat. ∀n. (∀k. k ≤ m ⟷ k ≤ n) ⟶ m = n
-  ← z3 goal=19
+  ← rule eq_ext goal=19
     #[20] ∀m::nat. ∀n. (∀k. k ≤ m ⟷ k ≤ n) ⟶ m = n
   ← apply_prev goal=18 facts=[20]
     #[21] ∀k. k ≤ m DIV n MOD p ⟷ k ≤ m MOD (n * p) DIV n
@@ -7660,8 +7980,15 @@ proof
   ← rule conjI goal=31
     #[32] 2 ≤ m
     #[33] n < p
-  ← z3 goal=32 facts=[26,1]
-    #[34] 2 ≤ m
+  cut "2 = Suc 1" goal=32
+  ← rewrite add_1_right sym=true goal=34
+  ← rewrite mult_2 sym=true goal=35
+  ← rewrite mult_1_right sym=false goal=36
+  ← rewrite source=prev goal=32 facts=[34]
+  ← rewrite lesseq_Suc_less sym=false goal=38
+  → forward le_1_2 goal=39 facts=[1]
+  → forward ineq_sym goal=39 facts=[26]
+  ← rule less_lesseqI goal=39
   → rewrite target=fact not_le sym=false goal=33 facts=[15]
     #[35] n < p
 qed
