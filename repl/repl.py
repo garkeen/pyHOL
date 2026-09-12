@@ -16,6 +16,9 @@ Commands
     goal PROP              start a proof of PROP (stable id #0)
     goals  (or g)          show open goals
     all                    show every stable-ID item (facts and goals)
+    methods [SUBSTR]       list methods usable in the current theory
+    theorems [-v] [SUBSTR] list theorems in scope (with -v, their props)
+    thm NAME               show one theorem's statement + schematic vars
     <step line>            apply one .pyhol step, e.g.
                              <- rule iffI goal=0
                              -> forward conjD1 goal=4 facts=[3]
@@ -39,6 +42,7 @@ import argparse
 import contextlib
 import io
 import os
+import re
 import sys
 import traceback
 
@@ -54,6 +58,11 @@ import method.stable_state as ss
 
 def _short(name):
     return name
+
+
+# Schematic variables print as `?name`; `rule`/`forward` take them as
+# `param_name=...` named arguments.
+_SVAR_RE = re.compile(r"\?([A-Za-z_][A-Za-z0-9_']*)")
 
 
 def _prop_str(th):
@@ -238,6 +247,78 @@ class Repl:
         gaps = self.sps.num_gaps
         print('VALID' if gaps == 0 else 'open goals: %d' % gaps)
 
+    def cmd_methods(self, arg):
+        """List methods usable in the current theory (optional filter).
+
+        The registry is the same one the checked channel `apply_method`
+        uses, so this is exactly what a step line may name -- and it
+        already respects each method's `limit` (a theory dependency).
+        """
+        from core import method as _method
+        pat = arg.strip()
+        names = sorted(_method.get_all_methods())
+        hit = [n for n in names if not pat or pat in n]
+        for name in hit:
+            m = _method.global_methods[name]
+            params = ', '.join(getattr(m, 'sig', None) or []) or '-'
+            limit = getattr(m, 'limit', None)
+            print('  %-13s params: %-22s%s'
+                  % (name, params, '' if limit is None else '[needs %s]' % limit))
+        print('(%d of %d method(s)%s)'
+              % (len(hit), len(names), '' if not pat else " matching %r" % pat))
+
+    def cmd_theorems(self, arg):
+        """List theorems in scope, optionally filtered by substring.
+
+        With `-v`, print each theorem's proposition.  Read the library
+        through this (or `thm NAME`) instead of guessing names.
+        """
+        from kernel import theory as _theory
+        parts = arg.split()
+        verbose = '-v' in parts
+        pat = ' '.join(p for p in parts if p != '-v')
+        if _theory.thy is None:
+            print('load a theory first (theory NAME)')
+            return
+        names = sorted(_theory.thy.get_data('theorems'))
+        hit = [n for n in names if not pat or pat in n]
+        for name in hit:
+            if not verbose:
+                print('  %s' % name)
+                continue
+            try:
+                th = _theory.thy.get_theorem(name)
+                print('  %-28s %s' % (name, _prop_str(th)))
+            except Exception as e:
+                print('  %-28s <%s>' % (name, _exc_str(e)))
+        print('(%d of %d theorem(s)%s)'
+              % (len(hit), len(names), '' if not pat else " matching %r" % pat))
+
+    def cmd_thm(self, arg):
+        """Show one theorem's statement, hypotheses, and schematic vars."""
+        from kernel import theory as _theory
+        name = arg.strip()
+        if not name:
+            print('usage: thm NAME   (list names with: theorems [SUBSTR])')
+            return
+        if _theory.thy is None:
+            print('load a theory first (theory NAME)')
+            return
+        try:
+            th = _theory.thy.get_theorem(name)
+        except Exception as e:
+            print('no such theorem: %s' % _exc_str(e))
+            return
+        print('%s:' % name)
+        with global_setting(unicode=False):
+            print('  prop: %s' % _prop_str(th))
+            for h in getattr(th, 'hyps', None) or []:
+                print('  hyp:  %s' % h)
+            svars = sorted(set(_SVAR_RE.findall(_prop_str(th))))
+        if svars:
+            print('  schematic vars (rule/forward named args): %s'
+                  % ', '.join('param_%s' % v for v in svars))
+
     def handle_request(self, req):
         """Run one server request; return the reply dict.
 
@@ -296,6 +377,8 @@ class Repl:
         if not is_step:
             for cmd, fn in (('theory ', self.cmd_theory), ('load ', self.cmd_theory),
                             ('var ', self.cmd_var), ('goal ', self.cmd_goal),
+                            ('methods', self.cmd_methods),
+                            ('theorems', self.cmd_theorems), ('thm ', self.cmd_thm),
                             ('trust ', lambda a: self._set_trust(a))):
                 if stripped.startswith(cmd):
                     fn(stripped[len(cmd):])

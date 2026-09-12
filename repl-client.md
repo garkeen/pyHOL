@@ -71,6 +71,9 @@ python -m repl.client --port 5599 --stdin < batch.txt
 | `goal PROP` | 以 `PROP` 开始证明，稳定 id `#0` |
 | `goals` / `g` | 显示 open goals |
 | `all` | 显示全部 `#[N]` 项（fact 与 goal） |
+| `methods [SUBSTR]` | 列出当前理论可用方法（受 `limit` 约束）；列出的名字就是步骤能用的名字 |
+| `theorems [-v] [SUBSTR]` | 列出作用域内定理名；`-v` 附命题 |
+| `thm NAME` | 显示一条定理的命题、假设、schematic 变量（→ `param_x=`） |
 | `<步骤行>` | 直接粘贴 `.pyhol` 步骤，如 `← rule iffI goal=0` |
 | `undo` | 撤销最后一步（从头重放重建，坏步骤不留痕） |
 | `export` | 输出 `.pyhol` proof 块（**自动重新生成 `#[N]` 注解**） |
@@ -131,7 +134,84 @@ sid 按 **命题值（prop + hyps）去重**：不同分支里相同的命题会
 
 ---
 
-## 5. 失败诊断
+## 5. 方法与证明管线（写证明前必读）
+
+### 5.0 先查，不要猜
+
+证明要用到依赖库的定理。**先查再写**：
+
+```
+methods rewrite              # 这个方法是否可用、参数是什么
+theorems less_eq             # 作用域内有哪些名字含 less_eq
+theorems -v less_exist       # 连命题一起看
+thm less_exist               # 完整命题 + schematic 变量（param_m/param_n/param_d）
+```
+
+`theorems`/`thm` 查的是**当前理论闭包**里 `theory.thy` 真正登记的定理
+（kernel 的定理表），即 `rule`/`forward`/`rewrite ... theorem=` 能引用的全集；
+`methods` 查的是受检注册表，且已按每个方法的 `limit` 过滤掉当前理论还用不了的。
+两者都是**能用什么**的真值来源，不要凭记忆拼名字或参数。
+
+### 5.1 方法表（`.pyhol` 步骤能用的名字）
+
+`params` 是步骤行的具名参数；`schematic vars` 用 `param_<名字>=...` 传入。
+
+| 方法 | params | 语义 |
+|---|---|---|
+| `rule` | theorem | 逆向应用定理（结论与目标合一，前提生成子目标） |
+| `forward` | theorem | 前向推理：新增一条事实行（省略 theorem 则用已有事实作用） |
+| `resolve` | theorem | 由 `~A` 与事实 `A` 得 `false` |
+| `accept` | theorem | 用定理直接关门（结论合一、前提匹配假设，无子目标） |
+| `apply_prev` | - | 用之前的蕴含/forall 事实作用到目标 |
+| `intro` | - | 一次引入所有嵌套蕴含的假设与 forall 变量 |
+| `elim` | names | 消去 exists 事实，得到见证与实例 |
+| `induct` | theorem, var | 归纳（`nat_induct` 等）；可带假设存在时使用 |
+| `var` | name, type | 新建上下文变量 |
+| `cases` | case | 分情况（case 为命题或结构） |
+| `type_cases` | case | 归纳数据类型上的分情况 |
+| `cut` | cut_goal | 插入中间命题；它**同时**是新目标和可引用事实 |
+| `rewrite` | theorem, sym | 重写目标或事实；无 theorem 时用等式事实（`source=prev`） |
+| `inst` | s | 有 facts 时实例化 forall 事实；否则给 exists 目标提供见证 |
+| `assumption` | - | 目标命题就是自身假设之一时关门 |
+| `refl` / `eq_intro` / `trans` | (-) / (-) / s | 自反 / 双向证等式 / 中间项 |
+| `unfold` | theorem, sym | 展开（`sym=true` 折叠）定义 |
+| `norm` | - | 用该类型注册的归一化器归一化等式目标 |
+| `nat_norm` | - | nat 等式归一化（`level=10` 领域计算，**确定性**，非 oracle） |
+| `nat_const_ineq` | - | nat 常量不等式判定（`limit=bit1_neq_one`） |
+| `simp` | - | 用本理论 `hint_rewrite` 迭代重写（基础库禁用） |
+| `auto` | - | 通用自动化（基础库禁用） |
+| `z3` | - | level-0 oracle，需 trust（基础库禁用） |
+
+### 5.2 tactic 与 method 的关系
+
+- **method**（`method/methods/core.py`）是 `.pyhol` 步骤调用的一层，也是受检通道。
+- **tactic**（`tactic/steps.py`、`tactic/goal.py`）是更底层的 L2 逆向翻译层：
+  每个 Tactic 把 goal 形状翻译成「宏名 + 参数（+ 子目标）」，本身不含推导逻辑。
+  写库证明**不需要**直接碰 tactic；它不出现在 `.pyhol` 里。
+- 再往下是 kernel 的 15 原语与宏（level 0/1/10）。方法 → 宏/原语 → `ProofTerm`。
+
+### 5.3 证明管线（从文件到 VALID）
+
+1. **解析**：`syntax/pyhol` 把 `.pyhol` 解析成条目的 `steps`（方法名 + `goal`/`facts`/参数），
+   存入 `basic.theory_cache[name]['content']`（条目有 name/prop/vars/attributes/steps）。
+2. **装配理论**：`basic.load_theory` / `context.set_context` 把该理论（含 import 闭包）的
+   定理装进 kernel 的 `theory.thy`；`theorems`/`thm` 查的就是它。
+3. **回放**：`core/verify.validate_theory` 对每条定理建 `StableProofState`
+   （`method/stable_state.py`），逐条 `apply_method_dict(step)`。
+   回放经 `apply_method`（受检通道）：查注册表（`core/method.has_method`，受 `limit` 约束）
+   → `Method.apply` → kernel 原语/宏 → `ProofTerm`。
+   回放**默认吞异常**返回 `False`（`strict=True` 才抛出真实异常，REPL 用后者）。
+4. **稳定 id**：`StableProofState` 按**命题值去重**分配 sid；`goal=`/`facts=` 用 sid；
+   `#[N]` 注解回放时成为 `new_ids`，可强推 sid（见 §3.2/§3.3）。
+5. **信任**：level-0 oracle 宏需名字在 `trust` 集；`verify(trust=...)` 默认空集，
+   由 shell/验证器显式传入（内核不按需加载）。库验证用 `validate_library.py` 的
+   `LIBRARY_ORACLES`。
+6. **四态**：VALID / STEP_FAILED / DEP_FAILED / UNPROVED；依赖检查只看
+   `step['theorem']`。
+
+---
+
+## 6. 失败诊断
 
 步骤失败会打印：真实异常、出错行、实时 sid 列表、当前目标。示例：
 
@@ -147,7 +227,7 @@ STEP FAILED: AssertionError: rewrite: unable to apply theorem.
 
 ---
 
-## 6. 已修复的痛点（历史，供参考）
+## 7. 已修复的痛点（历史，供参考）
 
 1. `apply_method_dict` 吞异常 → 新增 `strict=True` 可选参数（默认行为不变）。
 2. 无目标态视图 → `goals` / `all`，每步后列出新增 `#[N]`。

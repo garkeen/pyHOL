@@ -106,6 +106,29 @@ class ReplTest(unittest.TestCase):
         self.assertIn('_VAR a', out)
         self.assertNotIn('usage: var NAME TYPE', out)
 
+    def testMethodsCommandListsUsableMethods(self):
+        # `methods` reflects the checked registry, so a listed name is a
+        # name a step line may use.
+        rp, out = self.run_session(['theory nat', 'methods rewrite'])
+        self.assertIn('rewrite', out)
+        self.assertIn('params: theorem, sym', out)
+        # Unavailable filters out entirely.
+        rp, out = self.run_session(['theory nat', 'methods zzz'])
+        self.assertIn('0 of', out)
+
+    def testTheoremsAndThmCommands(self):
+        # Theorems in scope come from the loaded theory closure, not a guess.
+        rp, out = self.run_session(['theory nat', 'theorems less_eq_exist'])
+        self.assertIn('less_eq_exist', out)
+        self.assertIn('1 of', out)
+        # `thm` shows the statement and the rule/forward named arguments.
+        rp, out = self.run_session(['theory nat', 'thm less_exist'])
+        self.assertIn('?m < ?n', out)
+        self.assertIn('param_m', out)
+        # A missing name is diagnosed, not fatal.
+        rp, out = self.run_session(['theory nat', 'thm no_such_thm_xyz'])
+        self.assertIn('no such theorem', out)
+
     def testResidentRequestReusesLoadedTheory(self):
         # The resident server executes requests through handle_request;
         # two requests share one Repl, so the theory loads once.
