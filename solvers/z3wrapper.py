@@ -469,34 +469,6 @@ def solve_core(s, t, debug=False):
 
 Z3_TIMEOUT = 5000  # milliseconds
 
-def solve_and_reconstruct(t, debug=False):
-    """Prove the holpy statement t with z3 and reconstruct a kernel
-    proof of t ITSELF (the raw reconstruction only yields ⊢ false under
-    the stripped sequent's hypotheses).  Returns the ProofTerm of t up
-    to the statement level: close_sequent proves the stripped sequent
-    A1 ⟹ … ⟹ An ⟹ C, which is then bridged back to t's own shape
-    (norm_term may normalize the statement) through their canonical
-    forms."""
-    import solvers.proofrec as proofrec
-    proof, assertions = solve_and_proof(t, debug)
-    pt_false = proofrec.proofrec(proof, assertions=assertions)
-    t_norm = norm_term(t)
-    names = logic.get_forall_names(t_norm, svar=False)
-    _, As, C = logic.strip_all_implies(t_norm, names, svar=False)
-    pt = proofrec.close_sequent(pt_false, As, C)
-    if pt is pt_false or pt.prop == t:
-        return pt
-    try:
-        convs = proofrec._canon_conv()
-        pt_A = proofrec.refl(pt.prop).on_rhs(*convs)
-        pt_B = proofrec.refl(t).on_rhs(*convs)
-        if pt_A.rhs != pt_B.rhs:
-            return pt
-        iff = pt_A.transitive(pt_B.symmetric())      # ⊢ pt.prop ⟷ t
-        return iff.equal_elim(pt)                    # ⊢ t
-    except Exception:
-        return pt
-
 def solve(t, debug=False):
     """Solve the given goal using Z3. Returns True if unsatisfiable (goal proved)."""
     s = z3.Solver()

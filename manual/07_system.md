@@ -113,13 +113,14 @@ sympy（实数/自然数比较，oracle level 0）8 + 2，omega（整数比较�
 
 | 模块 | 职责 |
 |---|---|
-| `solvers/omega.py` | 自然数线性算术（Omega Test 决策过程） |
-| `solvers/simplex.py` / `simplex_strict.py` | Simplex 算法（实数/整数） |
+| `solvers/omega.py` | 整数线性算术（Omega Test）纯算法核（factoid/求解矩阵） |
+| `theories/integer/omega.py` | omega 的证明装配与 auto 注册（内容层） |
+| `theories/real/simplex.py` / `simplex_strict.py` | Simplex 算法与证明装配（实数/整数） |
 | `solvers/tseitin.py` | Tseitin 编码（命题公式 -> CNF） |
 | `solvers/sat.py` | DPLL SAT 求解（单文件） |
 | `solvers/congc.py` | 同余闭包（congruence closure）算法 |
 | `solvers/sympywrapper.py` | 用 sympy solveset 判定区间上的实数不等式 |
-| `solvers/proofrec.py` | Z3 proof reconstruction |
+| `theories/z3rec.py` | Z3 proof reconstruction（实验链，跨域） |
 | `solvers/fologic.py` | 一阶逻辑简化 |
 
 > `sat/` 与 `smt/`（veriT 集成）已移除；自动证明的 best-first 搜索在 `core/auto.py`（见 §4.1）。

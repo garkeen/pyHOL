@@ -1,6 +1,6 @@
 import unittest
 from core import context
-from solvers import simplex_strict
+from theories.real import simplex_strict
 from syntax.logicops import false
 
 class StrictSimplexTest(unittest.TestCase):

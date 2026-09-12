@@ -457,6 +457,19 @@ def _term_gt(self, other):
     return greater(T)(self, other)
 
 
+def strip_plus(t):
+    """Given t1 + ... + tn, return [t1, ..., tn].
+
+    Plain term-shape helper over the "+" sugar (not a Term method).
+    Single definition point shared by the integer domain convs and the
+    omega solver core.
+    """
+    if t.is_plus():
+        return strip_plus(t.arg1) + [t.arg]
+    else:
+        return [t]
+
+
 # ============================================================
 # Install the sugar on Term.
 # ============================================================

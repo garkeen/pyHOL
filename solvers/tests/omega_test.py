@@ -3,7 +3,6 @@ from syntax import logicops
 import unittest
 from kernel import term
 from syntax.numeral import IntType
-from core import context
 # from solvers.omega import Factoid, negate_key, combine_real_factoid, combine_dark_factoid, factoid_gcd,\
 #     dest_plus, dest_times, term_to_factoid, database
 from solvers.omega import *
@@ -197,44 +196,6 @@ class OmegaTest(unittest.TestCase):
         for f in test_data:
             status, _ = solve_matrix(f)
             assert status == "UNSAT"
-
-    def testHOLRealCombine(self):
-        test_data = [
-            ([2, 1, -5], [-3, -1, 6], 1, 1, [-1, 0, 1]),
-            ([1, -5, 0, 0, 0, 3, 4, 0, -7, -7, 1], [0, 0, 0, 0, 0, 5, -3, 6, 0, 2, 0], 
-                        3, 4, [3, -15, 0, 0, 0, 29, 0, 24, -21, -13, 3])
-        ]
-
-        context.set_context('int')
-        vars = numeral.IntVars('x0 x1 x2 x3 x4 x5 x6 x7 x8 x9')
-        hol = OmegaHOL([])
-        for first, second, m1, m2, res in test_data:
-            hol = OmegaHOL([])
-            len_fact = len(first)
-            first, second = factoid_to_term(vars[:len_fact-1], first), factoid_to_term(vars[:len_fact - 1], second)
-            after_combine = hol.real_combine_pt(proofterm.ProofTerm.assume(first), proofterm.ProofTerm.assume(second), m1, m2)
-            after_combine_fact = term_to_factoid(vars[:len_fact-1], after_combine.prop)
-            self.assertEqual(res, list(after_combine_fact.coeff))
-
-
-    def testHOLGCD(self):
-        test_data = [
-            ([5, 0, -8], [1, 0, -2]),
-            ([5, 0, 8], [1, 0, 1]),
-            ([2, 4, 6, 5], [1, 2, 3, 2]),
-            ([2, 4, 6, -5], [1, 2, 3, -3]),
-            ([7, 0], [1, 0]),
-            ([3, 6, -3], [1, 2, -1])
-        ]
-
-        context.set_context('int')
-        vars = numeral.IntVars('x0 x1 x2')
-        hol = OmegaHOL([])
-        for r, res in test_data:
-            len_fact = len(r)
-            r, res = factoid_to_term(vars[:len_fact-1], r), factoid_to_term(vars[:len_fact-1], res)
-            after_gcd = hol.gcd_pt(vars[:len_fact-1], proofterm.ProofTerm.assume(r))
-            self.assertEqual(res, after_gcd.prop)
 
     # def testHOLRecProof(self):
     #     test_data = [

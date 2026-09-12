@@ -11,10 +11,10 @@ The runner prints a per-goal table and exits non-zero when any goal is
 not PASS, so it can gate commits.
 
 Usage:
-    python solvers/tests/proofrec_corpus.py                # all categories
-    python solvers/tests/proofrec_corpus.py divmod power   # subset
-    python solvers/tests/proofrec_corpus.py --one div1     # single goal
-    PROOFREC_TIMEOUT=60 python solvers/tests/proofrec_corpus.py
+    python theories/tests/z3rec_corpus.py                # all categories
+    python theories/tests/z3rec_corpus.py divmod power   # subset
+    python theories/tests/z3rec_corpus.py --one div1     # single goal
+    PROOFREC_TIMEOUT=60 python theories/tests/z3rec_corpus.py
 """
 
 import os
@@ -123,7 +123,8 @@ def goal_result(entry):
         from core import basic, context
         from core import verify as core_verify
         from syntax.parser import parse_term
-        from solvers import z3wrapper, proofrec
+        from solvers import z3wrapper
+        from theories import z3rec as proofrec
         basic.load_theory('smt')
         _, _, vars_, goal = entry[:4]
         context.set_context('smt', vars=vars_)

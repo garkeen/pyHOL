@@ -1,7 +1,7 @@
 # 证明重建参考纪要（from sat/ and smt/veriT/）
 
 > 本文件总结了已删除的 `sat/`（zChaff）与 `smt/veriT/`（veriT）两套
-> 证明重建实现中的精华，供继续开发 Z3 证明重建（`solvers/proofrec.py`）参考。
+> 证明重建实现中的精华，供继续开发 Z3 证明重建（`theories/z3rec.py`）参考。
 >
 > 三套重建对比：
 >
@@ -9,7 +9,7 @@
 > |---|---|---|
 > | veriT（已删） | 完整链路 | 证明**每条 step 带规则名**，HOL 侧一规则一宏（level 1 可展开校验） |
 > | zChaff（已删） | 完整链路 | Tseitin 编码携带等价证明 + 消解/蕴含/冲突证据全部重建 |
-> | Z3（`solvers/proofrec.py`） | 半成品 | `rewrite` 规则是黑盒，无法逐规则重建；9 处 NotImplementedError |
+> | Z3（`theories/z3rec.py`） | 半成品 | `rewrite` 规则是黑盒，无法逐规则重建；9 处 NotImplementedError |
 
 ## 1. veriT 重建架构（规则名驱动）
 

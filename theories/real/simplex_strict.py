@@ -17,7 +17,6 @@ from core import basic, matcher
 from core import auto
 from theories.real import conv as real
 from theories.real import macro as real_macro
-from theories.integer import conv as integer
 from core.conv import Conv, ConvException, rewr_conv, top_conv, arg_conv, arg1_conv, bottom_conv, try_conv
 from collections import namedtuple
 from collections import deque

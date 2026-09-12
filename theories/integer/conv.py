@@ -2,7 +2,7 @@ from kernel.type import TFun
 from syntax.numeral import IntType
 from kernel.term import Var, Term, equals, Const
 from syntax.numeral import Eq  # Eq with Python-number sugar (int_eval results)
-from syntax.numeral import Int, Sum, Prod, less, less_eq, greater, greater_eq, int_power, Nat
+from syntax.numeral import Int, Sum, Prod, less, less_eq, greater, greater_eq, int_power, Nat, strip_plus
 from syntax.logicops import Not, is_not
 from kernel import term_ord
 from kernel import theory
@@ -20,13 +20,6 @@ from core import matcher
 from theories import poly
 import functools
 
-
-def strip_plus(t):
-    """Given t1 + ... + tn, return [t1, ..., tn]."""
-    if t.is_plus():
-        return strip_plus(t.arg1) + [t.arg]
-    else:
-        return [t]
 
 def strip_plus_full(t):
     """Given t1 + ... + tn, return [t1, ..., tn]."""

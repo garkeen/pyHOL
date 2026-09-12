@@ -16,22 +16,24 @@ from kernel.term import *
 from syntax.numeral import *  # noqa: F401,F403  (numeral sugar moved out of kernel)
 from syntax.logicops import *  # noqa: F401,F403  (logic sugar moved out of kernel)
 from kernel.proofterm import ProofTerm, refl, eval_macro
+from kernel.thm import Thm
 from kernel.macro import Macro
 from kernel.theory import verify, register_macro
 from kernel import theory
 from kernel.report import ProofReport
 from core import basic, matcher
 from core import context
-from tactic.goal import Goal
 from core.logic import apply_theorem
-from theories.logic.logic import imp_disj_iff, disj_norm, resolution, conj_norm
-from tactic.steps import rewrite_goal_with_prev
+from theories.logic.logic import imp_disj_iff, resolution, conj_norm
 from core.conv import rewr_conv, try_conv, top_conv, top_sweep_conv, bottom_conv, arg_conv, ConvException, Conv, arg1_conv, binop_conv, replace_conv
 from core import auto
-from solvers import sat, tseitin, simplex, simplex_strict
+from core import logic
+from solvers import sat, tseitin
+from solvers.z3wrapper import norm_term, solve_and_proof
+from theories.real import simplex, simplex_strict
 from syntax.settings import settings
 from syntax import parser
-from solvers import omega
+from theories.integer import omega
 from collections import deque
 import functools
 import operator
@@ -45,6 +47,17 @@ z3.set_param(proof=True)
 sys.setrecursionlimit(10000000)
 
 basic.load_theory('smt')
+
+def sorry_pt(prop, *hyps):
+    """An anonymous sorry hole for a target the reconstruction gives up on.
+
+    Solvers sit below the tactic layer (audit iron law 2: the goal concept
+    exists only in tactic/), so tactic.goal is not importable here.  The
+    hole is minted from the kernel's two constructors directly -- exactly
+    what Goal(...).sorry does.
+
+    """
+    return ProofTerm.sorry(Thm.sorry(prop, *hyps))
 
 def mk_int_const_ineq_pt(value):
     """Proof term for the sign fact of an integer constant, via the
@@ -597,7 +610,7 @@ def schematic_rules_rewr(thms, lhs, rhs):
             # MatchException is the expected failure; TheoryException
             # (theorem not in the current theory) must not abort the sweep.
             continue
-    return Goal(Eq(lhs, rhs)).sorry()
+    return sorry_pt(Eq(lhs, rhs))
 
 def is_ineq(t):
     """determine whether t is an inequality"""
@@ -650,7 +663,7 @@ def compare_lhs_rhs(tm, cvs):
         if norm_rhs_pt.rhs == norm_lhs_pt.rhs:
             return norm_lhs_pt.transitive(norm_rhs_pt.symmetric())
         
-    return Goal(tm).sorry()
+    return sorry_pt(tm)
 
 def match_pattern(pat, tm):
     """If the schematic pattern can match with term tm, return true, else false"""
@@ -667,7 +680,7 @@ def try_tran_pt(pt1, pt2):
     if pt1.rhs == pt2.lhs:
         return pt1.transitive(pt2)
     else:
-        return Goal(Eq(pt1.lhs, pt2.rhs)).sorry()
+        return sorry_pt(Eq(pt1.lhs, pt2.rhs))
 
 def analyze_type(tm):
     """
@@ -741,7 +754,7 @@ def rewrite_int(tm, has_bool=False):
         if pt.rhs == tm.rhs:
             return pt
         else:
-            return Goal(tm).sorry()
+            return sorry_pt(tm)
     elif tm.lhs.is_compares() and is_not(tm.rhs) and tm.rhs.arg.is_compares():
         pt_elim_neg_sym = refl(tm.rhs).on_rhs(integer.int_norm_neg_compares(), integer.omega_form_conv()).symmetric()
         pt_eq = integer_macro.int_eq_comparison_macro().get_proof_term(Eq(tm.lhs, pt_elim_neg_sym.lhs))
@@ -824,7 +837,7 @@ def rewrite_int_second_level(tm):
         if pt.rule != 'sorry':
             return pt_norm_full.symmetric().equal_elim(pt)
 
-    return Goal(tm).sorry()
+    return sorry_pt(tm)
 
 def rewrite_by_assertion(tm):
     """
@@ -907,7 +920,7 @@ def rewrite_real_second_level(tm):
         pt = compare_lhs_rhs(tm, arm)
         if pt.rule != 'sorry':
             return pt
-    return Goal(tm).sorry()
+    return sorry_pt(tm)
 
 # Cache of theorem names in library/smt.pyhol, keyed by prefix ('r' for
 # rewrite schematic rules, 'd' for def-axiom schematic rules).  A Z3 proof
@@ -1230,7 +1243,7 @@ def schematic_rules_rewr_cond(thms, lhs, rhs):
             return pt
         except Exception:
             continue
-    return Goal(Eq(lhs, rhs)).sorry()
+    return sorry_pt(Eq(lhs, rhs))
 
 def _rewrite(tm):
     th_name = _smt_theorem_names('r')
@@ -1248,7 +1261,7 @@ def _rewrite(tm):
         heuristic = rewrite_bool
         heuristic_name = 'bool'
     else:
-        return Goal(tm).sorry()
+        return sorry_pt(tm)
 
     args1 = (tm, True) if (BoolType in Ts and heuristic_name != 'bool') else (tm,)
     pt1 = _guarded(heuristic, *args1)
@@ -1292,7 +1305,7 @@ def rewrite(t):
     try:
         return _rewrite(t)
     except ConvException:
-        return Goal(t).sorry()
+        return sorry_pt(t)
 
 def quant_inst(p):
     """
@@ -1361,7 +1374,7 @@ def mp(arg1, arg2):
     try:
         pt = ProofTerm.equal_elim(arg2, arg1)
     except:
-        pt = Goal(arg2.prop, arg2.th.hyps, arg1.th.hyps).sorry()
+        pt = sorry_pt(arg2.prop, arg2.th.hyps, arg1.th.hyps)
     return pt
 
 def iff_true(arg1, arg2):
@@ -1490,7 +1503,7 @@ def def_axiom(arg1):
     try:
         return solve_cnf(arg1)
     except:
-        return Goal(arg1).sorry()
+        return sorry_pt(arg1)
 
 def intro_def(concl):
     """
@@ -1689,7 +1702,7 @@ def sk(concl):
         else:
             lhs, rhs = concl.lhs, concl.rhs
         if not is_exists(lhs) or not rhs.is_comb() or (is_neg and not rhs.arg.is_comb()):
-            return Goal(orig_concl).sorry()
+            return sorry_pt(orig_concl)
         P_body = lhs.arg            # λx. P x  (λx. ¬(P x) in the ¬∀ case)
         # the application P c: rhs itself, or rhs.arg under the negation
         pt_app_target = rhs.arg if is_neg else rhs
@@ -1712,7 +1725,7 @@ def sk(concl):
         redundant.append(pt_assume.prop)
         return pt_chain
     except Exception:
-        return Goal(orig_concl).sorry()
+        return sorry_pt(orig_concl)
 
 
 def real_th_lemma(args):
@@ -2017,7 +2030,7 @@ def th_lemma(args):
         else:
             raise NotImplementedError
     except Exception:
-        return Goal(concl).sorry()
+        return sorry_pt(concl)
 
 def hypothesis(prop):
     """
@@ -2061,7 +2074,7 @@ def nnf_pos(pts, concl, z3terms):
     pt = rewrite_decision_net(concl)
     if pt is not None and pt.rule != 'sorry':
         return pt
-    return Goal(concl).sorry()
+    return sorry_pt(concl)
 
 def nnf_neg(pts, concl, z3terms):
     """nnf-neg: NNF transformation with flipped polarity.  The conclusion
@@ -2079,7 +2092,7 @@ def nnf_neg(pts, concl, z3terms):
             ])
         except Exception:
             pass
-    return Goal(concl).sorry()
+    return sorry_pt(concl)
 
 def elim_unused(eq):
     """
@@ -2121,7 +2134,7 @@ def convert_method(term, *args, subterms=None, assertions=[]):
             # monotonicity's argument collection has known blind spots
             # (polyadic connectives, newly supported operators); a gap
             # beats aborting the whole reconstruction.
-            return Goal(concl).sorry()
+            return sorry_pt(concl)
     elif name in ('trans', 'trans*'):
         return trans(args)
     elif name in ('mp', 'mp~'):
@@ -2463,3 +2476,36 @@ def proofrec(proof, bounds=deque(), trace=False, debug=False, assertions=None):
     # print(rpt)
     # print(r[0].export())
     return conclusion
+
+
+def solve_and_reconstruct(t, debug=False):
+    """Prove the holpy statement t with z3 and reconstruct a kernel
+    proof of t ITSELF (the raw reconstruction only yields ⊢ false under
+    the stripped sequent's hypotheses).  Returns the ProofTerm of t up
+    to the statement level: close_sequent proves the stripped sequent
+    A1 ⟹ … ⟹ An ⟹ C, which is then bridged back to t's own shape
+    (norm_term may normalize the statement) through their canonical
+    forms.
+
+    Moved here from solvers/z3wrapper.py: it needs the reconstruction
+    engine (this module), so it lives in the content layer (audit 3
+    dependency law: solvers must not import theories).
+    """
+    proof, assertions = solve_and_proof(t, debug)
+    pt_false = proofrec(proof, assertions=assertions)
+    t_norm = norm_term(t)
+    names = logic.get_forall_names(t_norm, svar=False)
+    _, As, C = logic.strip_all_implies(t_norm, names, svar=False)
+    pt = close_sequent(pt_false, As, C)
+    if pt is pt_false or pt.prop == t:
+        return pt
+    try:
+        convs = _canon_conv()
+        pt_A = refl(pt.prop).on_rhs(*convs)
+        pt_B = refl(t).on_rhs(*convs)
+        if pt_A.rhs != pt_B.rhs:
+            return pt
+        iff = pt_A.transitive(pt_B.symmetric())      # ⊢ pt.prop ⟷ t
+        return iff.equal_elim(pt)                    # ⊢ t
+    except Exception:
+        return pt

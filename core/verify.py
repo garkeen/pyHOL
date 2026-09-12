@@ -21,7 +21,17 @@ method layer).  The cache format (.cache/<theory>.json keyed on source
 mtime) is unchanged from the monitor-era implementation.
 """
 
+import json
+import os
+
 from kernel import theory
+from kernel.thm import Thm, InvalidDerivationException
+from kernel.term import Var, Inst
+from kernel.proof import Proof, ProofItem
+from kernel.theory import (CheckProofException, TypeCheckException,
+                           has_macro, get_macro, primitive_deriv)
+from kernel.replay import ReplayException
+from kernel import replay as replay_mod
 from core import basic
 from core import context
 from core import matcher
@@ -95,14 +105,6 @@ def verify(prf, rpt=None, *, no_gaps=False, trust=frozenset(), axioms=None,
         re-derived and checked), only the final independent replay over
         the flattened stream is skipped. Full verify() runs that replay.
     """
-    from kernel.thm import Thm, InvalidDerivationException
-    from kernel.term import Var, Inst
-    from kernel.proof import Proof, ProofItem
-    from kernel.theory import (CheckProofException, TypeCheckException,
-                               has_macro, get_macro, primitive_deriv)
-    from kernel.replay import ReplayException
-    from kernel import replay as replay_mod
-
     if axioms is None:
         axioms = _current_axioms()
 
@@ -407,8 +409,6 @@ def _import_statuses(filename, seen=None):
     will still record their failures once they are validated
     themselves).
     """
-    import json
-    import os
     statuses = {}
     if seen is None:
         seen = {filename}
@@ -456,7 +456,6 @@ def validate_theory(filename, *, force=False, trust=frozenset()):
 
     if not force and basic.is_cache_valid(filename):
         with open(basic.status_cache_file(filename), encoding='utf-8') as f:
-            import json
             data = json.load(f)
         statuses = dict(data.get('theorems', {}))
         errors = {name: None for name in statuses}

@@ -405,7 +405,7 @@ replay(prf) -> (Thm, holes)
 - `core/tests/{goal_test,tactic_test}.py` → `tactic/tests/`（测试跟模块走）
 - `core/__init__.py` 注释更新（去掉"Tactic base class"占位）
 
-**消费方改 import（8 文件）**：`imperative/imp.py`、`method/{init,methods/core,stable_state}.py`、`method/tests/init_test.py`、`solvers/{congc,proofrec}.py`。项目内已有 `from method import methods as method` 的同款别名先例，故统一用 `from tactic import steps as tactic` 保持 `tactic.xxx()` 调用零改动；Goal 用 `from tactic.goal import Goal`。
+**消费方改 import（8 文件）**：`imperative/imp.py`、`method/{init,methods/core,stable_state}.py`、`method/tests/init_test.py`、`solvers/{congc,proofrec}.py`。项目内已有 `from method import methods as method` 的同款别名先例，故统一用 `from tactic import steps as tactic` 保持 `tactic.xxx()` 调用零改动；Goal 用 `from tactic.goal import Goal`。**（2026-09-12 任务 G 收口：其中 `solvers/{congc,proofrec}.py` 的 `Goal` import 已移除，solver 改走 kernel 洞构造器，不再依赖 tactic。）**
 
 **lint 同步**（`core/tests/test_import_direction.py`）：`testTacticDoesNotImportAuto` 路径改 `tactic/steps.py`；`testMacroLayerDoesNotImportTactic` 改断 `core/macro/` 不 import `tactic`（原来 core.tactic）；`testGoalConsumptionFace` 白名单 `core/{goal,tactic}.py` → `tactic/{goal,steps}.py`，扫描目录加 `tactic/`。顺带把 `core/macro/simp.py:6`、`kernel/tests/thm_priv_test.py:6`、`syntax/parser.py:381` 的旧路径注释改掉。
 
@@ -423,7 +423,7 @@ replay(prf) -> (Thm, holes)
 - **util 双向依赖（§9.4）落地**：poly→`theories/poly.py`，function/list/set/string→`syntax/*_tools.py`（审计原判"全下沉 theories"对后 4 个错，真身是 syntax 语法糖项构造器，详见 §9.4 落地记录）；util 剩 name/typecheck/unionfind，lint `util/tests/test_util_pure.py` 锁死双向依赖。
 - **kernel→settings 线（§9.5）落地**：删 `kernel/thm.py` 的 syntax.settings import，`Thm.__str__` 纯 ASCII；unicode 渲染归 `syntax/printer.print_thm`。**遗留 pyhol.py 搬家**。
 - **lint 白名单过期销账**：`imp_compile_test.py` 的 method 装配 import 上移顶层 `test_imp_validate.py`（按 AGENTS"跨模块的才放顶层"，顺手补 `trust=LIBRARY_ORACLES` 修 ide.py 同款缺陷）；`testTheoriesDoNotImportServer` 白名单清空。
-- **铁律 2 lint 落地**：`testGoalConsumptionFace` 断住 Goal 消费面——合法面 `core/goal.py`+`core/tactic.py`+`method/`+`imperative/`，白名单仅 `solvers/proofrec.py`+`solvers/congc.py`（solver 胶水债，任务 E 收尾时缩短）。§8 末"lint 同时断住两条铁律"至此为真。
+- **铁律 2 lint 落地**：`testGoalConsumptionFace` 断住 Goal 消费面——合法面 `tactic/goal.py`+`tactic/steps.py`+`method/`+`imperative/`；白名单原为 `solvers/proofrec.py`+`solvers/congc.py`（solver 胶水债），**已由任务 G 清空（2026-09-12，见下）**。§8 末"lint 同时断住两条铁律"至此为真。
 - **core/macro 与 core/macros 双目录合并**：`git mv core/macros/{registry,z3}.py core/macro/`，删 `core/macros/`；6 处 import + `test_macro_invariant` MACRO_FILES 路径改写；core/macro/__init__.py 注释更新。目录名=类别名（§5.7）兑现。
 - 验证：kernel 132P、syntax 70P、kernel+theories+solvers+method+imperative 377P、util 3P、import lint 7 条全绿；z3 注入链双向冒烟（先宏后 solver / 先 solver 后宏均绑定）。库全量验证按用户约束跳过。
 
@@ -448,10 +448,39 @@ replay(prf) -> (Thm, holes)
 
 - **C2（已修复 2026-09-12）**：`is_conj`/`is_disj`/`strip_conj`/`strip_disj`/`is_not`/`is_exists`/`strip_exists` 原由 `syntax/logicops.py` **import 时猴子补丁到 kernel.Term**，任何 `t.is_conj()` 调用都依赖"装载顺序上先有人 import 了 logicops"——靠装载顺序而非构造约束维持。**修复**：7 谓词改为 `syntax/logicops.py` 的普通函数（`is_conj(t)` 等，同 `core.logic` 的 `is_if`/`is_xor` 既有惯用法），删除 Term 挂载；全库 158 处调用点经 AST 偏移式 codemod 改为函数形式并显式 import（25 文件；`solvers/proofrec.py` 走星号导入无需补行，`core/auto.py` 补显式 import）。**两处同名但不同来源的调用按名区分**：(1) `solvers/proofrec.py` 的 `translate` 做 z3→holpy，其中 `term.is_exists()` 是 **z3 QuantifierRef 方法**，保留不动（同名却根本不是 Term 谓词）；(2) `core/logic.py` 与 `theories/logic/macro.py` 各有**语义不同的递归版** `strip_conj`/`strip_disj`，logicops 的浅版以 `_strip_conj_shallow`/`_strip_disj_shallow` 别名导入，避免后导入覆盖。kernel 生产代码本就零使用，kernel 侧零改动。**守卫**：新增 `syntax/tests/logicops_test.py` 8 例——7 谓词直接覆盖 + `testNoMethodInstallation` 断住"logicops 不得再向 Term 装方法"；`strip_conj`/`strip_disj` 两用例从 `kernel/tests/term_test.py` 随模块迁入。验证：kernel+core+tactic+util+syntax 310P、theories+method+imperative 186P、solvers+imperative+imp_validate 88P 全绿。
 - **D1：`core/basic.py:307` `if filename == 'hoare'` 硬编码理论名**激活 imperative 包（"not a theories/ package"）。有注释说明，是已拍板的设计特例，记录即可。
-- **C3（风格）**：`core/verify.py` 函数内 `import json`；`Thm.__init__` 的 hyps 去重四分支（Term 或 tuple 双形态历史接口）。不动。
+- **C3**：`Thm.__init__` 的 hyps 去重四分支（Term 或 tuple 双形态）**记录为设计 feature，不动**——它是 TCB 热路径（每条原语推导都构造 Thm）上按原语规则的**真实调用形态**裁出的优化：单 Term（`Thm(A, A)`）、整 tuple 进空累加器免检（`Thm(Eq(y, x), th.hyps)`）、两 tuple 合并做跨 tuple 去重（`Thm(B, th1.hyps, th2.hyps)`，implies_elim/trans/comb 的标准写法）、原地早退（`hyp == self.hyps`）。hyps 是**保序** tuple 且参与 Term 判等与重放校验，统一成 set 会给最常见的 `Thm(prop, th.hyps)` 路径凭空加开销并可能改变顺序，故分支是约束下的务实最优解。前提约束：传 tuple 时由调用方保证 tuple 内部已去重（docstring 载明），构造函数只做跨 tuple 去重——将来新增原语规则传自带重复的 tuple 会破坏该不变式，构造函数不拦。**（原 C3 的另一半"`core/verify.py` 函数内 `import json`"已于 2026-09-12 修复：`json`/`os` 提到模块顶部，与同层 `core/basic.py` 的写法一致。）**
 - **C1（已修复，见下）：auto 缓存跨理论存活**。
 
 **C1 修复（2026-09-11）**：`core/auto.py` 的 `norm_record`/`solve_record` 是模块级全局字典、键只有项、缓存的是**构造完成的 ProofTerm**（其 theorem 行已按构造时理论解析）。`clear_cache` 原本零调用 → 进程内跨 `load_theory` 换理论时，同结构目标可能**复用上一理论的证明项**（引用的定理名按旧理论语境解析）。修复：缓存键改为 `(id(theory.thy), t)`——同一理论内 `load_theory` 只替换不原地修改全局 theory 对象，键稳定；跨理论永不共享条目。附 `_cache_key` docstring 说明。
+
+### 任务 G：solver 胶水收口——Goal 消费债闭合（2026-09-12）
+
+`testGoalConsumptionFace` 的最后一个白名单（`solvers/proofrec.py`、`solvers/congc.py`）闭合。这两处是步骤 0 Thm 私有化时把 sorry 洞经由 `Goal(...).sorry()` 铸造留下的（§8 步骤 0 记录"solvers proofrec/congc 18 处"），也是 solvers→tactic 的向上依赖。
+
+**修法**（`thm_priv_test.py` 头注已有先例：tactic 之下的层不 import `tactic.goal`，直接走 kernel 构造器）：`Goal(prop, *hyps).sorry()` 等价于 `ProofTerm.sorry(Thm.sorry(prop, *hyps))`。proofrec 17 处 + congc 1 处改用该等价形式；proofrec 加模块级助手 `sorry_pt(prop, *hyps)`（17 处复用，不重复两段式），congc 单点直接内联（不引入跨 solver 助手）。proofrec 顺带删死 import `from tactic.steps import rewrite_goal_with_prev`（全库零使用，实测 grep 仅此一行）——**solvers 与 tactic 的依赖至此归零**。
+
+**落锁**：`testGoalConsumptionFace` 白名单清空（并纠正过期的合法面描述 `core/{goal,tactic}.py` → `tactic/{goal,steps}.py`）；新增 lint `testSolversDoNotImportTactic`（AST 扫描 solvers/ 生产代码，tests 豁免，白名单空）——solver 反向 import tactic 从此构造上不可能。`thm_priv_test` 仍空白名单：`Thm.sorry` 是 Attribute 调用，不是被禁的裸 `Thm(`。
+
+**顺带（用户要求不留无意义冗余）**：`core/verify.py` 的 `verify()` 函数内 kernel import 组（`kernel.thm/term/proof/theory/replay`，步骤 8 遗留）提到模块顶部——其中 thm/term/theory 顶层已加载、`kernel.proof` 已随 `core.items` 间接加载，只有 `kernel.replay` 原为惰性；核对无循环依赖（kernel 全树零 import core）后一并置顶，纯位置移动零行为变化。
+
+**性质**：本任务只闭合 Goal 消费债；solver 仍 import theories 的 4 文件（omega/simplex/simplex_strict/proofrec）是另一份白名单（`testSolversDoNotImportTheories`），属任务 E 已定性的"算法与证明装配熔合 / 实验链"，不在本任务范围。
+
+**验证**：solvers 62P；import lint + thm_priv 10P；单进程全量 **561P** 全绿。
+
+### 任务 H：solver 胶水收口——theories import 债闭合（2026-09-12）
+
+`testSolversDoNotImportTheories` 白名单清空。任务 E 定性的 4 文件（omega 熔合 / simplex*·proofrec 实验链）按用户拍板走"熔合拆分 / 按域拆进 theories"，不采用注入——注入需领域包 eager import 它们，会让每次整数/实数理论装载都拉起 z3 与 smt 理论、并注入 simplex 的 5 个宏（行为漂移）；且它们没有可插入 wire 的上层生产消费者。
+
+**落地**：
+- `solvers/omega.py` **真拆分**：只留 factoid / 求解矩阵 / derivation 树的纯算法核（732 行，零 theories import）；`OmegaHOL` 证明装配、`_flip_negated`/`omega_solve` 与 8 条 auto 注册迁 `theories/integer/omega.py`（287 行），由 `theories/integer/__init__.py` 装载（core/basic 原先的 eager `from solvers import omega` 随之删除——它已不再注册任何东西，注册改由 integer 域装载触发）。算法半边原先借用的两个 integer 助手：`dest_times` 就地内联为 `(t.arg1, t.arg)`，`strip_plus` 归一到 `syntax/numeral.py` **单一定义**（顺带消除 `integer/conv.py` 与 `integer/util_integer.py` 的两份重复），两个 integer 模块改为 re-import。
+- `solvers/simplex.py`、`solvers/simplex_strict.py` → `theories/real/`：其"算法"本身就是实/整数线性算术的证明构造，没有可留在 solvers 的域无关核；作为 real 域的证明引擎随内容层归位（不加入 `theories/real/__init__.py`，装载行为不变：仍只被 z3rec 拉取，宏注册时机不变）。
+- `solvers/proofrec.py` → `theories/z3rec.py`：2474 行的 Z3 证明重建引擎**跨 integer/real/logic 三域**，按域切分会把单一引擎撕成互相依赖的碎片，故整体进内容层（theories/ 已有 `poly.py` 这类非域模块先例）。
+- **z3wrapper 拆分**：`solve`/`solve_core`/`solve_and_proof` 是纯 z3（hoare 生产路径用 `solve`），留 `solvers/z3wrapper.py`；唯一依赖 proofrec 的实验桥 `solve_and_reconstruct` 迁入 `theories/z3rec.py`。`solvers/z3wrapper.py` 从此零 proofrec 引用。
+- **测试随模块走**：`solvers/tests/proofrec_{smoke,unit,corpus,real_theorems}.py` → `theories/tests/z3rec_*.py`；`simplex_strict_test.py` → `theories/real/tests/`；omega 的两个 HOL 用例（用 `OmegaHOL`）→ `theories/integer/tests/omega_test.py`（算法用例留原处）。文档 `solvers/proofrec{,_spec}.md` → `theories/z3rec{,_spec}.md`（路径改写）。
+
+**偏离说明**：用户选项写"按域拆进 theories/integer|real|logic，纯算法核留 solvers/"。omega 兑现了真拆分；simplex*/proofrec 改为整体迁入内容层，原因是它们的算法即域内容（无域无关核可留）或跨域不可切。功能与代码全保留，仅位置与依赖方向变更。
+
+**验证**：lint 11P、solvers+theories 108P、单进程全量 **561P** 全绿。
 
 每步加 import 方向 lint（AST 扫描），白名单逐步缩短——这就是 `AGENTS.md` 第 4 条"新增引用先查 import 方向"的自动化。
 lint 同时断住两条铁律：kernel 外无裸 `Thm(` 构造（白名单见 §7.3）、kernel 外不出现 Goal 类型（铁律 2 的镜像，`testGoalConsumptionFace` 落地）。

@@ -130,21 +130,18 @@ class ImportDirectionTest(unittest.TestCase):
           - tactic/steps.py   (the L2 tactic layer)
           - method/**        (L3 proof language: ProofState opens goals)
           - imperative/**    (hoare-domain tactic content)
-        The solver-glue files (solvers/proofrec.py, solvers/congc.py)
-        mint goals while building proofs and are the documented deferred
-        debt (audit §8 step 6 supplement: "solver 胶水 6 文件"). They are
-        the only whitelist entries; shrinking them is part of that task.
-        New leaks (a fresh solver file, a conv file, a theories/conv)
-        are caught here."""
-        whitelist = {'solvers/proofrec.py', 'solvers/congc.py'}
+        The solver-glue files used to mint goals while building proofs
+        (documented debt, audit §8 step 6).  They now leave a gap through
+        the kernel's Thm.sorry + ProofTerm.sorry instead, so the
+        whitelist is empty: solvers never import tactic at all (locked by
+        testSolversDoNotImportTactic).  New leaks are caught here."""
         offenders = []
         for path in py_files_under('core', 'tactic', 'method', 'imperative',
                                    'theories', 'solvers', 'backend', 'syntax'):
             rel = os.path.relpath(path, ROOT).replace('\\', '/')
             if rel.endswith('/tests/') or '/tests/' in rel + '/' \
                     or rel == 'tactic/goal.py' or rel == 'tactic/steps.py' \
-                    or rel.startswith('method/') or rel.startswith('imperative/') \
-                    or rel in whitelist:
+                    or rel.startswith('method/') or rel.startswith('imperative/'):
                 continue
             mods = imports_of(path)
             bad = [m for m in mods
@@ -153,31 +150,44 @@ class ImportDirectionTest(unittest.TestCase):
                 offenders.append("%s: %s" % (rel, bad))
         self.assertEqual(offenders, [])
 
+    def testSolversDoNotImportTactic(self):
+        """solvers/ (excluding tests) must not import tactic.* (audit §3
+        dependency law: tactics sit above the content layer that consumes
+        solvers, so a solver importing tactic is an upward reference).
+        This locks the closed goal-consumption debt: a solver that needs
+        to leave a gap mints the hole from the kernel's Thm.sorry +
+        ProofTerm.sorry, never from Goal."""
+        offenders = []
+        for path in py_files_under('solvers'):
+            rel = os.path.relpath(path, ROOT).replace(os.sep, '/')
+            if '/tests/' in rel + '/':
+                continue
+            mods = imports_of(path)
+            bad = [m for m in mods if m == 'tactic' or m.startswith('tactic.')]
+            if bad:
+                offenders.append("%s: %s" % (rel, bad))
+        self.assertEqual(offenders, [])
+
     def testSolversDoNotImportTheories(self):
         """solvers/ (excluding tests) must not import theories.*
         (audit §3 dependency law: solvers are a bypass pure-algorithm
         service consumed by theories/*/macro.py, they never import a
-        domain).  Task E evaluation (2026-09-11) settled the six glue
-        files:
-          - solvers/sympywrapper.py, solvers/tseitin.py -- glue
-            dissolved (pi inlined; conj_norm injected by callers);
-          - solvers/omega.py, solvers/simplex.py,
-            solvers/simplex_strict.py, solvers/proofrec.py -- algorithm
-            and proof assembly are fused (omega) or experimental-only
-            consumers (simplex*/proofrec: z3 chain, user-decided to
-            keep); they stay on the whitelist as documented debt.
-        New leaks are caught here; shrinking the whitelist is the
-        follow-up work."""
-        whitelist = {
-            'solvers/omega.py',
-            'solvers/simplex.py',
-            'solvers/simplex_strict.py',
-            'solvers/proofrec.py',
-        }
+        domain).
+
+        The whitelist is empty.  Task E (2026-09-11) dissolved the two
+        thin glue files; task H (2026-09-12) finished the rest:
+          - solvers/omega.py -- split: the factoid/solver core stays
+            here, proof assembly + registration moved to
+            theories/integer/omega.py;
+          - solvers/simplex.py, solvers/simplex_strict.py,
+            solvers/proofrec.py -- moved into the content layer
+            (theories/real/, theories/z3rec.py) because their algorithm
+            IS domain proof construction.
+        New leaks are caught here; the whitelist must stay empty."""
         offenders = []
         for path in py_files_under('solvers'):
             rel = os.path.relpath(path, ROOT).replace(os.sep, '/')
-            if '/tests/' in rel + '/' or rel in whitelist:
+            if '/tests/' in rel + '/':
                 continue
             mods = imports_of(path)
             bad = [m for m in mods

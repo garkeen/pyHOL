@@ -58,10 +58,11 @@ def theorem_result(name):
         from core import verify as core_verify
         from kernel.theory import get_theorem
         from solvers import z3wrapper
+        from theories import z3rec
         basic.load_theory('smt')
 
         thm = get_theorem(name, svar=False)
-        pt = z3wrapper.solve_and_reconstruct(thm.prop)
+        pt = z3rec.solve_and_reconstruct(thm.prop)
         if pt.rule == 'sorry' or len(pt.gaps) != 0:
             return 'GAP', 'rule=%s gaps=%d' % (pt.rule, len(pt.gaps))
         if pt.prop != thm.prop:

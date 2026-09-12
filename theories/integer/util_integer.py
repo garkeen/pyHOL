@@ -5,7 +5,7 @@ from fractions import Fraction
 from kernel.type import TFun, BoolType
 from syntax.numeral import NatType, IntType
 from kernel.term import Term, Const, Eq, Inst
-from syntax.numeral import Binary, Nat, greater_eq, less_eq, greater, less
+from syntax.numeral import Binary, Nat, greater_eq, less_eq, greater, less, strip_plus
 from kernel.thm import Thm
 from kernel import term
 from kernel.proofterm import ProofTerm
@@ -31,13 +31,6 @@ of_nat = numeral.of_nat(IntType)
 
 int_of_nat = Const("int_of_nat", TFun(NatType, IntType))
 
-
-def strip_plus(t):
-    """Strip top-level additions, returning a list of terms."""
-    if t.is_plus():
-        return strip_plus(t.arg1) + [t.arg]
-    else:
-        return [t]
 
 def strip_plus_full(t):
     """Strip all additions including subtraction (a + (-b))."""
