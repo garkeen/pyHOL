@@ -775,7 +775,54 @@ theorem not_all
   prop ¬(∀x. P x) ⟷ (∃x. ¬(P x))
   [hint_rewrite]
 proof
-  ← z3 goal=0
+  ← rule iffI goal=0
+    #[1] ¬(∀x. P x) ⟶ (∃x. ¬(P x))
+    #[2] (∃x. ¬(P x)) ⟶ ¬(∀x. P x)
+  ← intro goal=1
+    #[3] ¬(∀x. P x)
+    #[4] ∃x. ¬(P x)
+  ← cases "∃x. ¬(P x)" goal=4
+    #[5] (∃x. ¬(P x)) ⟶ (∃x. ¬(P x))
+    #[6] ¬(∃x. ¬(P x)) ⟶ (∃x. ¬(P x))
+  ← intro goal=6
+    #[7] ¬(∃x. ¬(P x))
+    #[8] ∃x. ¬(P x)
+  cut "∀x. P x" goal=8
+    #[9] ∀x. P x
+  ← intro x goal=9
+    #[10] _VAR x
+    #[11] P x
+  ← cases "P x" goal=11
+    #[12] P x ⟶ P x
+    #[13] ¬(P x) ⟶ P x
+  ← intro goal=13
+    #[14] ¬(P x)
+    #[15] P x
+  → forward exI param_a=x goal=15 facts=[14]
+    #[16] ∃a1. ¬(P a1)
+  → forward negE goal=15 facts=[7,16]
+    #[17] false
+  ← rule falseE goal=15 facts=[17]
+    #[18] P x
+  → forward negE goal=8 facts=[3,9]
+    #[19] false
+  ← rule falseE goal=8 facts=[19]
+  ← intro goal=2
+    #[20] ∃x. ¬(P x)
+    #[21] ¬(∀x. P x)
+  elim k goal=21 facts=[20]
+    #[22] _VAR k
+    #[23] ¬(P k)
+    #[24] ¬(∀x. P x)
+  ← rule negI goal=24
+    #[25] (∀x. P x) ⟶ false
+  ← intro goal=25
+    #[26] ∀x. P x
+    #[27] false
+  ← inst k goal=27 facts=[26]
+    #[28] P k
+  → forward negE goal=27 facts=[23,28]
+    #[29] false
 qed
 
 theorem not_exists
@@ -783,7 +830,36 @@ theorem not_exists
   prop ¬(∃x. P x) ⟷ (∀x. ¬(P x))
   [hint_rewrite]
 proof
-  ← z3 goal=0
+  ← rule iffI goal=0
+    #[1] ¬(∃x. P x) ⟶ (∀x. ¬(P x))
+    #[2] (∀x. ¬(P x)) ⟶ ¬(∃x. P x)
+  ← intro goal=1
+    #[3] ¬(∃x. P x)
+    #[4] ∀x. ¬(P x)
+  ← intro x goal=4
+    #[5] _VAR x
+    #[6] ¬(P x)
+  ← rule negI goal=6
+    #[7] P x ⟶ false
+  ← intro goal=7
+    #[8] P x
+    #[9] false
+  → forward exI param_a=x goal=9 facts=[8]
+    #[10] ∃x. P x
+  → forward negE goal=9 facts=[3,10]
+  ← intro goal=2
+    #[11] ∀x. ¬(P x)
+    #[12] ¬(∃x. P x)
+  ← rule negI goal=12
+    #[13] (∃x. P x) ⟶ false
+  ← intro goal=13
+    #[14] ∃x. P x
+    #[15] false
+  elim x goal=15 facts=[14]
+    #[16] P x
+    #[17] false
+  → inst x goal=16 facts=[11]
+  → forward negE goal=16 facts=[17,8]
 qed
 
 theorem right_or_exists_thm
@@ -842,7 +918,37 @@ theorem left_exists_and_thm
   prop (∃x. P x ∧ Q) ⟷ (∃x1. P x1) ∧ Q
   [hint_rewrite,hint_rewrite_sym]
 proof
-  ← z3 goal=0
+  ← rule iffI goal=0
+    #[1] (∃x. P x ∧ Q) ⟶ (∃x1. P x1) ∧ Q
+    #[2] (∃x1. P x1) ∧ Q ⟶ (∃x. P x ∧ Q)
+  ← intro goal=1
+    #[3] ∃x. P x ∧ Q
+    #[4] (∃x1. P x1) ∧ Q
+  elim x goal=4 facts=[3]
+    #[5] _VAR x
+    #[6] P x ∧ Q
+    #[7] (∃x1. P x1) ∧ Q
+  → forward conjD1 goal=7 facts=[6]
+    #[8] P x
+  → forward conjD2 goal=7 facts=[6]
+    #[9] Q
+  → forward exI param_a=x goal=7 facts=[8]
+    #[10] ∃a1. P a1
+  ← rule conjI goal=7 facts=[10,9]
+  ← intro goal=2
+    #[12] (∃x1. P x1) ∧ Q
+    #[13] ∃x. P x ∧ Q
+  → forward conjD1 goal=13 facts=[12]
+    #[14] ∃x1. P x1
+  → forward conjD2 goal=13 facts=[12]
+    #[15] Q
+  elim z goal=13 facts=[14]
+    #[16] _VAR z
+    #[17] P z
+    #[18] ∃x. P x ∧ Q
+  → forward conjI goal=18 facts=[17,15]
+    #[19] P z ∧ Q
+  ← rule exI param_a=z goal=18 facts=[19]
 qed
 
 theorem left_imp_exists_thm
@@ -877,16 +983,29 @@ theorem left_imp_forall_thm
   prop ((∀x. P x) ⟶ Q) ⟷ (∃x. P x ⟶ Q)
   [hint_rewrite]
 proof
-  cut "!A. !B. (A <--> B) <--> (~A <--> ~B)" goal=0
-    #[1] ∀A. ∀B. (A ⟷ B) ⟷ ¬A ⟷ ¬B
-  ← z3 goal=1
-  ← rewrite source=prev goal=0 facts=[1]
-    #[2] ¬((∀x. P x) ⟶ Q) ⟷ ¬(∃x. P x ⟶ Q)
-  ← rewrite not_exists sym=false goal=2
-    #[3] ¬((∀x. P x) ⟶ Q) ⟷ (∀x. ¬(P x ⟶ Q))
-  ← rewrite not_imp sym=false goal=3
-    #[4] (∀x. P x) ∧ ¬Q ⟷ (∀x. P x ∧ ¬Q)
-  ← z3 goal=4
+  ← rule iffI goal=0
+  ← intro goal=1
+  ← cases "Q" goal=4
+  ← intro goal=5
+  var a 'a goal=8
+  ← rule exI param_a=a goal=8
+  ← intro goal=10
+  ← intro goal=6
+  cut "¬(∀x. P x)" goal=13
+  ← rule negI goal=14
+  ← intro goal=15
+  → forward goal=17 facts=[3,16]
+  → forward negE goal=17 facts=[12,18]
+  → rewrite target=fact not_all goal=13 facts=[14]
+  elim j goal=13 facts=[19]
+  ← rule exI param_a=j goal=22
+  ← intro goal=23
+  → forward negE goal=25 facts=[21,24]
+  ← rule falseE goal=25 facts=[26]
+  ← intro goal=2
+  elim k goal=29 facts=[28]
+  → inst k goal=32 facts=[16]
+  ← apply_prev goal=32 facts=[31,33]
 qed
 
 theorem left_exists_imp_thm
@@ -902,7 +1021,24 @@ theorem right_imp_exists_thm
   prop (P ⟶ (∃x. Q x)) ⟷ (∃x. P ⟶ Q x)
   [hint_rewrite]
 proof
-  ← z3 goal=0
+  ← rule iffI goal=0
+  ← intro goal=1
+  ← cases "P" goal=4
+  ← intro goal=5
+  → forward goal=8 facts=[3,7]
+  elim k goal=8 facts=[9]
+  ← rule exI param_a=k goal=12
+  ← intro goal=13
+  ← intro goal=6
+  var a 'a goal=15
+  ← rule exI param_a=a goal=15
+  ← intro goal=17
+  → forward negE goal=18 facts=[14,7]
+  ← rule falseE goal=18 facts=[19]
+  ← intro goal=2
+  elim k goal=22 facts=[21]
+  → forward goal=24 facts=[23,7]
+  ← rule exI param_a=k goal=24 facts=[25]
 qed
 
 theorem right_exists_imp_thm
@@ -1406,102 +1542,382 @@ qed
 theorem conj_neg_pos
   fixes P :: bool
   prop ¬P ∧ P ⟷ false
+proof
+  ← rewrite conj_comm goal=0
+    #[1] P ∧ ¬P ⟷ false
+  ← rewrite conj_pos_neg goal=1
+qed
 
 theorem conj_same_atom
   fixes P :: bool
   prop P ∧ P ⟷ P
+proof
+  ← rule iffI goal=0
+    #[1] P ∧ P ⟶ P
+    #[2] P ⟶ P ∧ P
+  ← intro goal=1
+    #[3] P ∧ P
+    #[4] P
+  ← rule conjD1 goal=4 facts=[3]
+  ← intro goal=2
+    #[5] P
+    #[6] P ∧ P
+  ← rule conjI goal=6
+qed
 
 theorem disj_pos_neg
   fixes P :: bool
   prop P ∨ ¬P ⟷ true
+proof
+  ← rule iffI goal=0
+    #[1] P ∨ ¬P ⟶ true
+    #[2] true ⟶ P ∨ ¬P
+  ← intro goal=1
+    #[3] P ∨ ¬P
+    #[4] true
+  ← rule trueI goal=4
+  ← intro goal=2
+    #[5] true
+    #[6] P ∨ ¬P
+  ← rule classical goal=6
+qed
 
 theorem disj_neg_pos
   fixes P :: bool
   prop ¬P ∨ P ⟷ true
+proof
+  ← rule iffI goal=0
+    #[1] ¬P ∨ P ⟶ true
+    #[2] true ⟶ ¬P ∨ P
+  ← intro goal=1
+    #[3] ¬P ∨ P
+    #[4] true
+  ← rule trueI goal=4
+  ← intro goal=2
+    #[5] true
+    #[6] ¬P ∨ P
+  ← rewrite disj_comm sym=true goal=6
+    #[7] P ∨ ¬P
+  ← rule classical goal=7
+qed
 
 theorem disj_same_atom
   fixes P :: bool
   prop P ∨ P ⟷ P
+proof
+  ← rule iffI goal=0
+    #[1] P ∨ P ⟶ P
+    #[2] P ⟶ P ∨ P
+  ← intro goal=1
+    #[3] P ∨ P
+    #[4] P
+  ← rule disjE goal=4 facts=[3]
+  ← intro goal=2
+    #[5] P
+    #[6] P ∨ P
+  ← rule disjI1 goal=6 facts=[5]
+qed
 
 theorem neg_iff
   fixes P :: bool, Q :: bool
   prop ¬(P ⟷ Q) ⟷ ¬P ⟷ Q
+proof
+  ← rewrite iff_conv_conj_disj loc="0.1.1" goal=0
+  ← rewrite iff_conv_conj_disj loc="1" goal=1
+  ← rewrite de_morgan_thm1 goal=2
+  ← rewrite de_morgan_thm2 goal=3
+  ← rewrite double_neg goal=4
+  ← rewrite conj_disj_distribL1 loc="1" goal=5
+  ← rewrite conj_comm loc="1.0.1" goal=6
+  ← rewrite conj_comm loc="1.1" goal=7
+  ← rewrite conj_disj_distribL1 goal=8
+  ← rewrite conj_pos_neg goal=9
+  ← rewrite disj_false_left goal=10
+  ← rewrite disj_false_right goal=11
+  ← rewrite conj_comm loc="1.1" goal=12
+  ← rewrite disj_comm loc="1" goal=13
+qed
 
 theorem neg_disj_pos_conj_other
   fixes P :: bool, Q :: bool
   prop ¬P ∨ Q ∧ P ⟷ ¬P ∨ Q
+proof
+  ← rewrite disj_conj_distribL1 loc="0.1" goal=0
+    #[1] (¬P ∨ Q) ∧ (¬P ∨ P) ⟷ ¬P ∨ Q
+  ← rewrite disj_neg_pos goal=1
+    #[2] (¬P ∨ Q) ∧ true ⟷ ¬P ∨ Q
+  ← rewrite conj_true_right goal=2
+qed
 
 theorem neg_iff_both_sides
   fixes P :: bool, Q :: bool
   prop (P ⟷ Q) ⟷ ¬P ⟷ ¬Q
+proof
+  ← rewrite iff_conv_conj_disj loc="0.1" goal=0
+    #[1] (P ∨ ¬Q) ∧ (¬P ∨ Q) ⟷ ¬P ⟷ ¬Q
+  ← rewrite iff_conv_conj_disj loc="1" goal=1
+    #[2] (P ∨ ¬Q) ∧ (¬P ∨ Q) ⟷ (¬P ∨ ¬¬Q) ∧ (¬¬P ∨ ¬Q)
+  ← rewrite double_neg goal=2
+    #[3] (P ∨ ¬Q) ∧ (¬P ∨ Q) ⟷ (¬P ∨ Q) ∧ (P ∨ ¬Q)
+  ← rewrite conj_comm loc="0.1" goal=3
+qed
 
 theorem pos_eq_neg
   fixes P :: bool
   prop (P ⟷ ¬P) ⟷ false
+proof
+  ← rewrite iff_conv_conj_disj loc="0.1" goal=0
+    #[1] (P ∨ ¬¬P) ∧ (¬P ∨ ¬P) ⟷ false
+  ← rewrite double_neg goal=1
+    #[2] (P ∨ P) ∧ (¬P ∨ ¬P) ⟷ false
+  ← rewrite disj_same_atom goal=2
+    #[3] P ∧ ¬P ⟷ false
+  ← rewrite conj_pos_neg goal=3
+qed
 
 theorem neg_eq_pos
   fixes P :: bool
   prop (¬P ⟷ P) ⟷ false
+proof
+  ← rewrite iff_conv_conj_disj loc="0.1" goal=0
+    #[1] (¬P ∨ ¬¬P) ∧ (¬¬P ∨ P) ⟷ false
+  ← rewrite double_neg goal=1
+    #[2] (¬P ∨ P) ∧ (P ∨ P) ⟷ false
+  ← rewrite disj_same_atom goal=2
+    #[3] ¬P ∧ P ⟷ false
+  ← rewrite conj_neg_pos goal=3
+qed
 
 theorem ite_to_disj
   fixes P :: bool, Q :: bool, R :: bool
   prop (if P then Q else R) ⟷ P ∧ Q ∨ ¬P ∧ R
+proof
+  ← rule iffI goal=0
+  ← intro goal=1
+  ← cases "P" goal=4
+  ← intro goal=5
+  → rewrite target=fact if_P goal=8 facts=[3,7]
+  ← rule disjI1 goal=8
+  ← rule conjI goal=10
+  ← intro goal=6
+  → rewrite target=fact if_not_P goal=12 facts=[3,11]
+  ← rule disjI2 goal=12
+  ← rule conjI goal=14
+  ← intro goal=2
+  ← rule disjE goal=16 facts=[15]
+  ← intro goal=17
+  → forward conjD1 goal=20 facts=[19]
+  ← rewrite if_P goal=20 facts=[21]
+  → forward conjD2 goal=22 facts=[19]
+  ← intro goal=18
+  → forward conjD1 goal=25 facts=[24]
+  ← rewrite if_not_P goal=25 facts=[26]
+  → forward conjD2 goal=27 facts=[24]
+qed
 
 theorem ite_eq_value
   fixes P :: bool, x :: 'a, y :: 'a, z :: 'a
   prop (if P then x else y) = z ⟷ P ∧ x = z ∨ ¬P ∧ y = z
+proof
+  ← rule iffI goal=0
+  ← intro goal=1
+  ← cases "P" goal=4
+  ← intro goal=5
+  → rewrite target=fact if_P goal=8 facts=[3,7]
+  ← rule disjI1 goal=8
+  ← rule conjI goal=10
+  ← intro goal=6
+  → rewrite target=fact if_not_P goal=12 facts=[3,11]
+  ← rule disjI2 goal=12
+  ← rule conjI goal=14
+  ← intro goal=2
+  ← rule disjE goal=16 facts=[15]
+  ← intro goal=17
+  → forward conjD1 goal=20 facts=[19]
+  ← rewrite if_P goal=20 facts=[21]
+  → forward conjD2 goal=22 facts=[19]
+  ← intro goal=18
+  → forward conjD1 goal=25 facts=[24]
+  ← rewrite if_not_P goal=25 facts=[26]
+  → forward conjD2 goal=27 facts=[24]
+qed
 
 theorem ite_cond_disj_to_conj
   fixes P :: bool, Q :: bool, x :: 'a, y :: 'a
   prop (if P ∨ Q then x else y) = (if ¬P ∧ ¬Q then y else x)
-
-theorem norm_neg_equality
-  fixes P :: bool, Q :: bool
-  prop (¬P ⟷ Q) ⟷ P ⟷ ¬Q
+proof
+  ← cases "P ∨ Q" goal=0
+  ← intro goal=1
+  ← rewrite if_P goal=4 facts=[3]
+  cut "¬(¬P ∧ ¬Q)" goal=5
+  ← rule negI goal=6
+  ← intro goal=7
+  → forward conjD1 goal=9 facts=[8]
+  → forward conjD2 goal=9 facts=[8]
+  → forward force_disj_true1 goal=9 facts=[3,11]
+  → forward negE goal=9 facts=[10,12]
+  ← rewrite target=goal if_not_P goal=5 facts=[6]
+  ← intro goal=2
+  ← rewrite if_not_P goal=14 facts=[13]
+  → rewrite target=fact de_morgan_thm2 goal=15 facts=[13]
+  ← rewrite if_P goal=15 facts=[16]
+qed
 
 theorem ite_elim_else_if
   fixes P :: bool, Q :: bool, x :: 'a, y :: 'a
   prop (if P then x else if Q then x else y) = (if P ∨ Q then x else y)
+proof
+  ← cases "P" goal=0
+  ← intro goal=1
+  → forward disjI1 param_B=Q goal=4 facts=[3]
+  ← rewrite if_P goal=4 facts=[3]
+  ← rewrite if_P goal=6 facts=[5]
+  ← intro goal=2
+  ← rewrite if_not_P goal=8 facts=[7]
+  ← cases "Q" goal=9
+  ← intro goal=10
+  ← rewrite if_P goal=13 facts=[12]
+  → forward disjI2 param_A=P goal=14 facts=[12]
+  ← rewrite if_P goal=14 facts=[15]
+  ← intro goal=11
+  ← rewrite if_not_P goal=18 facts=[17]
+  cut "¬(P ∨ Q)" goal=19
+  ← rule negI goal=20
+  ← intro goal=21
+  ← rule disjE goal=23 facts=[22]
+  ← intro goal=24
+  → forward negE goal=26 facts=[7,3]
+  ← intro goal=25
+  → forward negE goal=28 facts=[17,12]
+  ← rewrite target=goal if_not_P goal=19 facts=[20]
+qed
 
 theorem conj_extend_exists
   fixes P :: bool, Q :: 'a ⇒ bool, R :: 'a ⇒ bool, t :: 'a
   prop P ⟶ (∃t. Q t ∧ R t) ⟶ (∃t. Q t ∧ P ∧ R t)
+proof
+  ← intro goal=0
+  elim k goal=3 facts=[2]
+  → forward conjD1 goal=6 facts=[5]
+  → forward conjD2 goal=6 facts=[5]
+  ← rule exI param_a=k goal=6
+  ← rule conjI goal=9
+  ← rule conjI goal=10
+qed
 
 theorem exists_forall
   fixes P :: 'a ⇒ bool, a :: 'a
   prop (∃a. P a) ⟷ ¬(∀a. ¬(P a))
+proof
+  ← rewrite not_all loc="1" goal=0
+    #[1] (∃a. P a) ⟷ (∃a. ¬¬(P a))
+  ← rewrite double_neg goal=1
+qed
 
 theorem veriT_not_implies1
   fixes P :: bool, Q :: bool
   prop ¬(P ⟶ Q) ⟶ P
+proof
+  ← intro goal=0
+    #[1] ¬(P ⟶ Q)
+    #[2] P
+  → rewrite target=fact not_imp goal=2 facts=[1]
+    #[3] P ∧ ¬Q
+  ← rule conjD1 goal=2 facts=[3]
+qed
 
 theorem veriT_not_implies2
   fixes P :: bool, Q :: bool
   prop ¬(P ⟶ Q) ⟶ ¬Q
+proof
+  ← intro goal=0
+    #[1] ¬(P ⟶ Q)
+    #[2] ¬Q
+  → rewrite target=fact not_imp goal=2 facts=[1]
+    #[3] P ∧ ¬Q
+  ← rule conjD2 goal=2 facts=[3]
+qed
 
 theorem conj_extend_exists1
   fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, R :: bool
   prop R ⟶ (∃t. Q t ⟶ P t) ⟶ (∃t. Q t ⟶ R ∧ P t)
+proof
+  ← intro goal=0
+  elim k goal=3 facts=[2]
+  ← rule exI param_a=k goal=6
+  ← intro goal=7
+  → forward goal=9 facts=[5,8]
+  ← rule conjI goal=9
+qed
 
 theorem implies_or_assm
   fixes A :: bool, B :: bool
   prop (A ⟶ B) ∨ A
+proof
+  ← cases "A" goal=0
+    #[1] A ⟶ (A ⟶ B) ∨ A
+    #[2] ¬A ⟶ (A ⟶ B) ∨ A
+  ← intro goal=1
+    #[3] A
+    #[4] (A ⟶ B) ∨ A
+  ← rule disjI2 goal=4 facts=[3]
+  ← intro goal=2
+    #[5] ¬A
+    #[6] (A ⟶ B) ∨ A
+  ← rule disjI1 goal=6
+    #[7] A ⟶ B
+  ← intro goal=7
+    #[8] B
+  → forward negE goal=8 facts=[5,3]
+    #[9] false
+  ← rule falseE goal=8 facts=[9]
+qed
 
 theorem implies_or_neg_concl
   fixes A :: bool, B :: bool
   prop (A ⟶ B) ∨ ¬B
+proof
+  ← cases "B" goal=0
+    #[1] B ⟶ (A ⟶ B) ∨ ¬B
+    #[2] ¬B ⟶ (A ⟶ B) ∨ ¬B
+  ← intro goal=1
+    #[3] B
+    #[4] (A ⟶ B) ∨ ¬B
+  ← rule disjI1 goal=4
+    #[5] A ⟶ B
+  ← intro goal=5
+  ← intro goal=2
+    #[7] ¬B
+    #[8] (A ⟶ B) ∨ ¬B
+  ← rule disjI2 goal=8 facts=[7]
+qed
 
 theorem forall_exists
   fixes P :: 'a ⇒ bool, t :: 'a
   prop (∀t. P t) ⟷ ¬(∃t1. ¬(P t1))
+proof
+  ← rewrite not_exists loc="1" goal=0
+    #[1] (∀t. P t) ⟷ (∀t1. ¬¬(P t1))
+  ← rewrite double_neg goal=1
+qed
 
 theorem imp_disj_eq
   fixes A :: bool, B :: bool
   prop (A ⟶ B) ⟷ ¬A ∨ B
+proof
+  ← rewrite disj_conv_imp goal=0
+qed
 
 theorem eq_implies1
   fixes A :: bool, B :: bool
   prop A ⟷ B ⟶ A ⟶ B
+proof
+  ← intro goal=0
+    #[1] A ⟷ B
+    #[2] A
+    #[3] B
+  → rewrite target=fact goal=3 facts=[1,2]
+qed
 
 def Let :: 'a ⇒ ('a ⇒ 'b) ⇒ 'b = Let s f = f s
 
@@ -1510,10 +1926,28 @@ def xor :: bool ⇒ bool ⇒ bool = xor A B ⟷ A ∧ ¬B ∨ ¬A ∧ B
 theorem disjI1_syllogism
   fixes P :: bool, Q :: bool, R :: bool
   prop (P ∨ Q ⟶ R) ⟶ P ⟶ R
+proof
+  ← intro goal=0
+    #[1] P ∨ Q ⟶ R
+    #[2] P
+    #[3] R
+  ← apply_prev goal=3 facts=[1]
+    #[4] P ∨ Q
+  ← rule disjI1 goal=4 facts=[2]
+qed
 
 theorem disjI2_syllogism
   fixes P :: bool, Q :: bool, R :: bool
   prop (P ∨ Q ⟶ R) ⟶ Q ⟶ R
+proof
+  ← intro goal=0
+    #[1] P ∨ Q ⟶ R
+    #[2] Q
+    #[3] R
+  ← apply_prev goal=3 facts=[1]
+    #[4] P ∨ Q
+  ← rule disjI2 goal=4 facts=[2]
+qed
 
 header "Boolean simplification rules"
 
@@ -1521,58 +1955,334 @@ theorem imp_false_iff
   fixes P :: bool
   prop (P ⟶ false) ⟷ ¬P
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] (P ⟶ false) ⟶ ¬P
+    #[2] ¬P ⟶ (P ⟶ false)
+  ← intro goal=1
+    #[3] P ⟶ false
+    #[4] ¬P
+  ← rule negI goal=4
+  ← intro goal=2
+    #[5] ¬P
+    #[6] P
+    #[7] false
+  ← rule negE goal=7 facts=[5,6]
+qed
 
 theorem exists_false
   fixes A :: 'a
   prop (∃x::'a. false) ⟷ false
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] (∃x. false) ⟶ false
+    #[2] false ⟶ (∃x. false)
+  ← intro goal=1
+    #[3] ∃x. false
+    #[4] false
+  elim x goal=4 facts=[3]
+    #[5] _VAR x
+    #[6] false
+    #[7] false
+  ← assumption goal=7
+  ← accept falseE goal=2
+qed
 
 theorem exists_true
   fixes A :: 'a
   prop (∃x::'a. true) ⟷ true
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] (∃x. true) ⟶ true
+    #[2] true ⟶ (∃x. true)
+  ← intro goal=1
+    #[3] ∃x. true
+    #[4] true
+  ← rule trueI goal=4
+  ← intro goal=2
+    #[5] true
+    #[6] ∃x. true
+  ← rule exI param_a=A goal=6 facts=[5]
+qed
 
 theorem forall_true
   fixes A :: 'a
   prop (∀x::'a. true) ⟷ true
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] (∀x. true) ⟶ true
+    #[2] true ⟶ (∀x. true)
+  ← intro goal=1
+    #[3] ∀x. true
+    #[4] true
+  ← rule trueI goal=4
+  ← intro goal=2
+    #[5] true
+    #[6] ∀x. true
+  ← intro x goal=6
+qed
 
 theorem forall_false
   fixes A :: 'a
   prop (∀x::'a. false) ⟷ false
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] (∀x. false) ⟶ false
+    #[2] false ⟶ (∀x. false)
+  ← intro goal=1
+    #[3] ∀x. false
+    #[4] false
+  ← rule forall_elim param_a=A goal=4 facts=[3]
+  ← accept falseE goal=2
+qed
 
 theorem conj_iff_left
   fixes P :: bool, Q :: bool
   prop (P ∧ Q ⟷ P) ⟷ (P ⟶ Q)
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] (P ∧ Q ⟷ P) ⟶ (P ⟶ Q)
+    #[2] (P ⟶ Q) ⟶ (P ∧ Q ⟷ P)
+  ← intro goal=1
+    #[3] P ∧ Q ⟷ P
+    #[4] P
+    #[5] Q
+  → rewrite target=fact eq_sym_eq goal=5 facts=[3]
+    #[6] P ⟷ P ∧ Q
+  → forward eq_implies1 goal=5 facts=[6]
+    #[7] P ⟶ P ∧ Q
+  → forward goal=5 facts=[7,4]
+    #[8] P ∧ Q
+  ← rule conjD2 goal=5 facts=[8]
+  ← intro goal=2
+    #[9] P ⟶ Q
+    #[10] P ∧ Q ⟷ P
+  ← rule iffI goal=10
+    #[11] P ∧ Q ⟶ P
+    #[12] P ⟶ P ∧ Q
+  ← intro goal=11
+    #[13] P ∧ Q
+    #[14] P
+  ← rule conjD1 goal=14 facts=[13]
+  ← intro goal=12
+    #[15] P
+    #[16] P ∧ Q
+  ← rule conjI goal=16
+    #[17] P
+    #[18] Q
+  ← apply_prev goal=17 facts=[9]
+qed
 
 theorem disj_iff_left
   fixes P :: bool, Q :: bool
   prop (P ∨ Q ⟷ P) ⟷ (Q ⟶ P)
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] (P ∨ Q ⟷ P) ⟶ (Q ⟶ P)
+    #[2] (Q ⟶ P) ⟶ (P ∨ Q ⟷ P)
+  ← intro goal=1
+    #[3] P ∨ Q ⟷ P
+    #[4] Q
+    #[5] P
+  → forward disjI2 param_A=P goal=5 facts=[4]
+    #[6] P ∨ Q
+  → rewrite target=fact goal=5 facts=[3,6]
+  ← intro goal=2
+    #[8] Q ⟶ P
+    #[9] P ∨ Q ⟷ P
+  ← rule iffI goal=9
+    #[10] P ∨ Q ⟶ P
+    #[11] P ⟶ P ∨ Q
+  ← intro goal=10
+    #[12] P ∨ Q
+    #[13] P
+  ← rule disjE goal=13 facts=[12]
+  ← intro goal=11
+    #[14] P
+    #[15] P ∨ Q
+  ← rule disjI1 goal=15 facts=[14]
+qed
 
 theorem exists_eq
   fixes P :: 'a ⇒ bool, x :: 'a
   prop (∃y. P y ∧ x = y) ⟷ P x
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] (∃y. P y ∧ x = y) ⟶ P x
+    #[2] P x ⟶ (∃y. P y ∧ x = y)
+  ← intro goal=1
+    #[3] ∃y. P y ∧ x = y
+    #[4] P x
+  elim y goal=4 facts=[3]
+    #[5] _VAR y
+    #[6] P y ∧ x = y
+    #[7] P x
+  → forward conjD1 goal=7 facts=[6]
+    #[8] P y
+  → forward conjD2 goal=7 facts=[6]
+    #[9] x = y
+  ← rewrite source=prev goal=7 facts=[9]
+  ← intro goal=2
+    #[10] P x
+    #[11] ∃y. P y ∧ x = y
+  → forward eq_refl param_x=x goal=11 facts=[]
+    #[12] x = x
+  → forward conjI goal=11 facts=[10,12]
+    #[13] P x ∧ x = x
+  ← rule exI param_a=x goal=11 facts=[13]
+qed
 
 theorem exists_disj_distrib
   fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool
   prop (∃x. P x ∨ Q x) ⟷ (∃x. P x) ∨ (∃x. Q x)
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] (∃x. P x ∨ Q x) ⟶ (∃x. P x) ∨ (∃x. Q x)
+    #[2] (∃x. P x) ∨ (∃x. Q x) ⟶ (∃x. P x ∨ Q x)
+  ← intro goal=1
+    #[3] ∃x. P x ∨ Q x
+    #[4] (∃x. P x) ∨ (∃x. Q x)
+  elim x goal=4 facts=[3]
+    #[5] _VAR x
+    #[6] P x ∨ Q x
+    #[7] (∃x. P x) ∨ (∃x. Q x)
+  ← rule disjE goal=7 facts=[6]
+    #[8] P x ⟶ (∃x. P x) ∨ (∃x. Q x)
+    #[9] Q x ⟶ (∃x. P x) ∨ (∃x. Q x)
+  ← intro goal=8
+    #[10] P x
+    #[11] (∃x. P x) ∨ (∃x. Q x)
+  ← rule disjI1 goal=11
+    #[12] ∃x. P x
+  ← rule exI param_a=x goal=12
+  ← intro goal=9
+    #[13] Q x
+    #[14] (∃x. P x) ∨ (∃x. Q x)
+  ← rule disjI2 goal=14
+    #[15] ∃x. Q x
+  ← rule exI param_a=x goal=15
+  ← intro goal=2
+    #[16] (∃x. P x) ∨ (∃x. Q x)
+    #[17] ∃x. P x ∨ Q x
+  ← rule disjE goal=17 facts=[16]
+    #[18] ∃x. P x ⟶ ∃x. P x ∨ Q x
+    #[19] ∃x. Q x ⟶ ∃x. P x ∨ Q x
+  ← intro goal=18
+    #[20] ∃x. P x
+    #[21] ∃x. P x ∨ Q x
+  elim x goal=21 facts=[20]
+    #[22] ∃x. P x ∨ Q x
+  ← rule exI param_a=x goal=22
+    #[23] P x ∨ Q x
+  ← rule disjI1 goal=23 facts=[10]
+  ← intro goal=19
+    #[24] ∃x. Q x
+    #[25] ∃x. P x ∨ Q x
+  elim x goal=25 facts=[24]
+    #[26] ∃x. P x ∨ Q x
+  ← rule exI param_a=x goal=26
+    #[27] P x ∨ Q x
+  ← rule disjI2 goal=27 facts=[13]
+qed
 
 theorem exists_eq_left
   fixes P :: 'a ⇒ bool, a :: 'a
   prop (∃y. y = a ∧ P y) ⟷ P a
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] (∃y. y = a ∧ P y) ⟶ P a
+    #[2] P a ⟶ (∃y. y = a ∧ P y)
+  ← intro goal=1
+    #[3] ∃y. y = a ∧ P y
+    #[4] P a
+  elim y goal=4 facts=[3]
+    #[5] _VAR y
+    #[6] y = a ∧ P y
+    #[7] P a
+  → forward conjD1 goal=7 facts=[6]
+    #[8] y = a
+  → forward conjD2 goal=7 facts=[6]
+    #[9] P y
+  → rewrite target=fact goal=7 facts=[8,9]
+  ← intro goal=2
+    #[11] P a
+    #[12] ∃y. y = a ∧ P y
+  → forward eq_refl param_x=a goal=12 facts=[]
+    #[13] a = a
+  → forward conjI goal=12 facts=[13,11]
+    #[14] a = a ∧ P a
+  ← rule exI param_a=a goal=12 facts=[14]
+qed
 
 theorem exists_disj_conj_distrib
   fixes P :: 'a ⇒ bool, Q :: 'a ⇒ bool, R :: 'a ⇒ bool
   prop (∃y. (P y ∨ Q y) ∧ R y) ⟷ (∃y. P y ∧ R y) ∨ (∃y. Q y ∧ R y)
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+  ← intro goal=1
+  elim y goal=4 facts=[3]
+  → forward conjD1 goal=7 facts=[6]
+  → forward conjD2 goal=7 facts=[6]
+  ← rule disjE goal=7 facts=[8]
+  ← intro goal=10
+  ← rule disjI1 goal=13
+  ← rule exI param_a=y goal=14
+  ← rule conjI goal=15
+  ← intro goal=11
+  ← rule disjI2 goal=17
+  ← rule exI param_a=y goal=18
+  ← rule conjI goal=19
+  ← intro goal=2
+  ← rule disjE goal=21 facts=[20]
+  ← intro goal=22
+  elim z goal=25 facts=[24]
+  → forward conjD1 goal=28 facts=[27]
+  → forward conjD2 goal=28 facts=[27]
+  ← rule exI param_a=z goal=28
+  ← rule conjI goal=31
+  ← rule disjI1 goal=32
+  ← intro goal=23
+  elim z goal=34 facts=[33]
+  → forward conjD1 goal=36 facts=[35]
+  → forward conjD2 goal=36 facts=[35]
+  ← rule exI param_a=z goal=36
+  ← rule conjI goal=39
+  ← rule disjI2 goal=40
+qed
 
 theorem exists_flatten
   fixes P :: 'a ⇒ bool, Q :: 'a ⇒ 'b, R :: 'b ⇒ bool
   prop (∃y. (∃z. P z ∧ y = Q z) ∧ R y) ⟷ (∃z. P z ∧ R (Q z))
   [hint_rewrite]
+proof
+  ← rule iffI goal=0
+  ← intro goal=1
+  elim y goal=4 facts=[3]
+  → forward conjD1 goal=7 facts=[6]
+  → forward conjD2 goal=7 facts=[6]
+  elim z goal=7 facts=[8]
+  → forward conjD1 goal=12 facts=[11]
+  → forward conjD2 goal=12 facts=[11]
+  → rewrite target=fact goal=12 facts=[14,9]
+  ← rule exI param_a=z goal=12
+  ← rule conjI goal=16
+  ← intro goal=2
+  elim z goal=18 facts=[17]
+  → forward conjD1 goal=20 facts=[19]
+  → forward conjD2 goal=20 facts=[19]
+  ← rule exI param_a="Q z" goal=20
+  ← rule conjI goal=23
+  ← rule exI param_a=z goal=24
+  ← rule conjI goal=25
+  ← refl goal=26
+qed
