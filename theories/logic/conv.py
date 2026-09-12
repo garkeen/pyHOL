@@ -39,7 +39,7 @@ class nnf_conv(Conv):
             return pt
 
 class swap_conj_r(Conv):
-    """Rewrite A1 /\ (A2 /\ A3) to A2 /\ (A1 /\ A3), or if the left argument
+    r"""Rewrite A1 /\ (A2 /\ A3) to A2 /\ (A1 /\ A3), or if the left argument
     is an atom, rewrite A1 /\ A2 to A2 /\ A1."""
     def get_proof_term(self, t):
         pt = refl(t)
@@ -51,7 +51,7 @@ class swap_conj_r(Conv):
             return pt.on_rhs(rewr_conv('conj_comm'))
 
 class norm_conj_atom(Conv):
-    """Normalize conjunction A /\ (A_1 /\ ... /\ A_n). """
+    r"""Normalize conjunction A /\ (A_1 /\ ... /\ A_n). """
     def get_proof_term(self, t):
         pt = refl(t)
         if t.arg1 == true:
@@ -94,7 +94,7 @@ class norm_conj_atom(Conv):
                 return pt
 
 class norm_conj_conjunction(Conv):
-    """Normalize term like (A_1 /\ ... /\ A_m) /\ (B_1 /\ ... /\ B_n) """
+    r"""Normalize term like (A_1 /\ ... /\ A_m) /\ (B_1 /\ ... /\ B_n) """
     def get_proof_term(self, t):
         pt = refl(t)
         if is_conj(t.arg1):
@@ -107,7 +107,7 @@ class norm_conj_conjunction(Conv):
             return pt.on_rhs(norm_conj_atom())
 
 class swap_disj_r(Conv):
-    """Rewrite A1 \/ (A2 \/ A3) to A2 \/ (A1 \/ A3), or if the left argument
+    r"""Rewrite A1 \/ (A2 \/ A3) to A2 \/ (A1 \/ A3), or if the left argument
     is an atom, rewrite A1 \/ A2 to A2 \/ A1."""
     def get_proof_term(self, t):
         pt = refl(t)
@@ -119,7 +119,7 @@ class swap_disj_r(Conv):
             return pt.on_rhs(rewr_conv('disj_comm'))
 
 class norm_disj_atom(Conv):
-    """Normalize disjunction A \/ (A_1 \/ ... \/ A_n). """
+    r"""Normalize disjunction A \/ (A_1 \/ ... \/ A_n). """
     def get_proof_term(self, t):
         pt = refl(t)
         if t.arg1 == true:
@@ -158,7 +158,7 @@ class norm_disj_atom(Conv):
                 return pt
 
 class norm_disj_disjunction(Conv):
-    """Normalize term like (A_1 \/ ... \/ A_m) \/ (B_1 \/ ... \/ B_n) """
+    r"""Normalize term like (A_1 \/ ... \/ A_m) \/ (B_1 \/ ... \/ B_n) """
     def get_proof_term(self, t):
         pt = refl(t)
         if is_disj(t.arg1):
