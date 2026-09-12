@@ -1,0 +1,414 @@
+"""Interactive REPL for holpy proof development.
+
+Self-contained: depends only on kernel / core / method / syntax.  It does
+not import the HTTP backend or the frontend.
+
+Usage
+=====
+    python -m repl.repl                        # interactive
+    python -m repl.repl --script FILE          # run a command file
+    python -m repl.repl --theory nat --goal "0 + n = n"
+
+Commands
+========
+    theory NAME            load a theory and set the parsing context
+    var NAME TYPE          declare a context variable (before `goal`)
+    goal PROP              start a proof of PROP (stable id #0)
+    goals  (or g)          show open goals
+    all                    show every stable-ID item (facts and goals)
+    <step line>            apply one .pyhol step, e.g.
+                             <- rule iffI goal=0
+                             -> forward conjD1 goal=4 facts=[3]
+                           (paste lines straight out of a .pyhol file)
+    undo                   drop the last step
+    export                 print the current proof as a .pyhol block
+    check                  report the verification status
+    trust NAME,...         admit computation-oracle macros (default: none)
+    help / quit
+
+Design notes (the pain points this REPL exists to fix)
+------------------------------------------------------
+* Every failure prints the real exception plus the failing step, goals,
+  and live stable IDs -- the replay pipeline reports only "replay failed".
+* After each step the newly created `#[N]` items are listed, so stable-ID
+  bookkeeping is not guesswork.
+* `undo` rebuilds from the recorded steps; a bad step leaves no trace.
+"""
+
+import argparse
+import contextlib
+import io
+import os
+import sys
+import traceback
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from core import basic, context
+from syntax.settings import global_setting
+from syntax import pyhol
+import method.stable_state as ss
+
+
+def _short(name):
+    return name
+
+
+def _prop_str(th):
+    """Print a theorem's proposition, never raising.
+
+    Printing runs type inference; a malformed/ambiguous term must not be
+    able to kill the session (or a resident server).
+    """
+    try:
+        with global_setting(unicode=False):
+            return str(th.prop)
+    except Exception:
+        return repr(th.prop)
+
+
+def _exc_str(e):
+    """Format an exception, never raising.
+
+    Some prover exceptions build a lazily-printed mismatch trace whose
+    str() can itself raise on ambiguous types.
+    """
+    try:
+        return '%s: %s' % (type(e).__name__, e)
+    except Exception:
+        return type(e).__name__
+
+
+class Repl:
+    def __init__(self, trust=frozenset()):
+        self.theory = None
+        self.vars = {}
+        self.sps = None
+        self.goal_prop = None
+        self.history = []      # list of (step_dict, [(sid, prop, is_goal), ...])
+        self.trust = frozenset(trust)
+        self.failed = False    # a step failed (drives the exit code)
+
+    # -- state helpers ----------------------------------------------------
+
+    def _items_of(self, sps):
+        """All trackable items as (sid, prop, is_goal), deduped by sid."""
+        pos2sid = sps._build_pos2sid()
+        seen = {}
+        for item in ss._traverse(sps.state.prf):
+            if not ss._trackable(item):
+                continue
+            sid = pos2sid.get(str(item.id))
+            if sid is None or sid in seen:
+                continue
+            seen[sid] = item
+        with global_setting(unicode=False):
+            return [(sid, _prop_str(item.th), item.rule == 'sorry')
+                    for sid, item in sorted(seen.items())]
+
+    def _items(self):
+        return self._items_of(self.sps)
+
+    def _new_items_of(self, sps, before):
+        return [(sid, prop, is_goal) for sid, prop, is_goal in self._items_of(sps)
+                if sid not in before]
+
+    def show_goals(self):
+        goals = [(sid, _prop_str(th)) for sid, th in self.sps.get_open_goals()]
+        if not goals:
+            print('no open goals -- proof complete')
+        for sid, prop in goals:
+            print('  #[%d] %s' % (sid, prop))
+
+    def show_all(self):
+        for sid, prop, is_goal in self._items():
+            print('  #[%d]%s %s' % (sid, ' GOAL' if is_goal else '     ', prop))
+
+    # -- commands ---------------------------------------------------------
+
+    def cmd_theory(self, arg):
+        name = arg.strip()
+        context.set_context(name, vars=dict(self.vars))
+        self.theory = name
+        print('theory %s loaded' % name)
+
+    def cmd_var(self, arg):
+        # Split on the first run of whitespace only: type strings contain
+        # spaces (e.g. `'a => bool`).
+        parts = arg.strip().split(None, 1)
+        if len(parts) != 2:
+            print('usage: var NAME TYPE')
+            return
+        name, typ = parts
+        self.vars[name] = typ
+        if self.theory:
+            context.set_context(self.theory, vars=dict(self.vars))
+        print('variable %s :: %s' % (name, typ))
+
+    def cmd_goal(self, arg):
+        if not self.theory:
+            print('load a theory first (theory NAME)')
+            return
+        context.set_context(self.theory, vars=dict(self.vars))
+        self.goal_prop = arg.strip()
+        try:
+            self.sps = ss.StableProofState.create(self.goal_prop, dict(self.vars),
+                                                  trust=self.trust)
+        except Exception as e:
+            print('cannot parse goal: %s' % _exc_str(e))
+            self.sps = None
+            return
+        self.history = []
+        print('goal accepted:')
+        self.show_goals()
+
+    def _rebuild(self, upto):
+        """Recreate the proof state by replaying the first `upto` steps."""
+        context.set_context(self.theory, vars=dict(self.vars))
+        sps = ss.StableProofState.create(self.goal_prop, dict(self.vars),
+                                         trust=self.trust)
+        new_hist = []
+        for step, _ in self.history[:upto]:
+            before = {sid for sid, _, _ in self._items_of(sps)}
+            sps.apply_method_dict(step, strict=True)
+            new_hist.append((step, self._new_items_of(sps, before)))
+        self.sps = sps
+        self.history = new_hist
+
+    def cmd_step(self, line):
+        if self.sps is None:
+            print('no active goal (use: goal PROP)')
+            return False
+        step = pyhol._parse_step_line(line.strip())
+        if step is None:
+            print('cannot parse step: %r' % line)
+            return False
+        before = {sid for sid, _, _ in self._items()}
+        try:
+            self.sps.apply_method_dict(step, strict=True)
+        except Exception as e:
+            self.failed = True
+            print('STEP FAILED: %s' % _exc_str(e))
+            if os.environ.get('HOLPY_REPL_TRACE'):
+                traceback.print_exc()
+            print('  failing line: %s' % line.strip())
+            print('  live stable ids: %s'
+                  % sorted({sid for sid, _, _ in self._items()}))
+            self.show_goals()
+            return False
+        new = self._new_items_of(self.sps, before)
+        for sid, prop, is_goal in new:
+            print('  + #[%d]%s %s' % (sid, ' GOAL' if is_goal else '     ', prop))
+        if not new:
+            print('  (no new items; goal closed or rewritten in place)')
+        self.history.append((step, new))
+        self.show_goals()
+        return True
+
+    def cmd_undo(self):
+        if not self.history:
+            print('nothing to undo')
+            return
+        self.history.pop()
+        self._rebuild(len(self.history))
+        print('undone; %d step(s) remain' % len(self.history))
+        self.show_goals()
+
+    def cmd_export(self):
+        if not self.history:
+            print('no steps to export')
+            return
+        lines = ['proof']
+        for step, new in self.history:
+            step = dict(step)
+            step['new_items'] = [{'sid': sid, 'prop': prop}
+                                 for sid, prop, _ in new]
+            lines.append('  %s' % pyhol._export_step(step))
+            for ann in pyhol._export_anns(step):
+                lines.append('    %s' % ann)
+        lines.append('qed')
+        print('\n'.join(lines))
+
+    def cmd_check(self):
+        if self.sps is None:
+            print('no active goal')
+            return
+        gaps = self.sps.num_gaps
+        print('VALID' if gaps == 0 else 'open goals: %d' % gaps)
+
+    def handle_request(self, req):
+        """Run one server request; return the reply dict.
+
+        Kept socket-free so it is testable, and so the resident server
+        (and any other embedding) share one execution path.
+        """
+        out = io.StringIO()
+        self.failed = False
+        with contextlib.redirect_stdout(out):
+            try:
+                for cmd in req.get('cmds', []):
+                    if not self.run_line(cmd):
+                        break
+            except Exception as e:
+                # A request must never kill the resident server.
+                self.failed = True
+                out.write('REPL INTERNAL ERROR: %s\n' % _exc_str(e))
+        return {
+            'out': out.getvalue(),
+            'gaps': self.sps.num_gaps if self.sps is not None else None,
+            'failed': self.failed,
+        }
+
+    # -- dispatch ---------------------------------------------------------
+
+    def run_line(self, line):
+        line = line.rstrip('\n')
+        stripped = line.strip()
+        if not stripped or stripped.startswith('--'):
+            return True
+        if stripped in ('quit', 'exit', 'q'):
+            return False
+        if stripped in ('help', '?'):
+            print(__doc__.split('Commands', 1)[1].split('Design notes')[0])
+            return True
+        if stripped in ('goals', 'g'):
+            self.show_goals() if self.sps else print('no active goal')
+            return True
+        if stripped == 'all':
+            self.show_all() if self.sps else print('no active goal')
+            return True
+        if stripped == 'undo':
+            self.cmd_undo()
+            return True
+        if stripped == 'export':
+            self.cmd_export()
+            return True
+        if stripped == 'check':
+            self.cmd_check()
+            return True
+        # A step line may begin with a name that is also a command
+        # (`var a :: 'a goal=3`).  Step lines carry `goal=`/`facts=` or a
+        # direction arrow; give those priority over command prefixes.
+        is_step = (stripped.startswith(('←', '→'))
+                   or ' goal=' in stripped or ' facts=' in stripped)
+        if not is_step:
+            for cmd, fn in (('theory ', self.cmd_theory), ('load ', self.cmd_theory),
+                            ('var ', self.cmd_var), ('goal ', self.cmd_goal),
+                            ('trust ', lambda a: self._set_trust(a))):
+                if stripped.startswith(cmd):
+                    fn(stripped[len(cmd):])
+                    return True
+        self.cmd_step(line)
+        return True
+
+    def _set_trust(self, arg):
+        """Set or extend the session trust set.
+
+        Trust is always passed explicitly by this shell into the proof
+        state; the kernel never loads it on its own.  Explicitly applying
+        a level-0 oracle method (e.g. `z3`) authorizes that name for the
+        session through the checked macro channel, so `trust` is only
+        needed when replaying stored oracle lines.
+        """
+        arg = arg.strip()
+        if not arg:
+            print('trust set: %s' % (sorted(self.trust) or 'empty (no oracles)'))
+            return
+        if arg.startswith('+'):
+            names = [x.strip() for x in arg[1:].split(',') if x.strip()]
+            self.trust = self.trust | frozenset(names)
+        elif arg.startswith('-'):
+            names = {x.strip() for x in arg[1:].split(',') if x.strip()}
+            self.trust = self.trust - names
+        else:
+            self.trust = frozenset(x.strip() for x in arg.split(',') if x.strip())
+        if self.sps is not None:
+            self.sps.set_trust(self.trust)
+        print('trust set: %s' % (sorted(self.trust) or 'empty (no oracles)'))
+
+
+def main():
+    ap = argparse.ArgumentParser(description='holpy REPL')
+    ap.add_argument('--script', help='run commands from a file, then exit')
+    ap.add_argument('--theory', help='load this theory at startup')
+    ap.add_argument('--goal', help='start a goal at startup')
+    ap.add_argument('--trust', default='', help='comma-separated oracle names')
+    ap.add_argument('--serve', action='store_true',
+                    help='run as a resident server (see repl.client)')
+    ap.add_argument('--port', type=int, default=5599,
+                    help='server port (with --serve)')
+    args = ap.parse_args()
+
+    basic.load_metadata()
+    if args.serve:
+        serve(args.port, args.theory, [x for x in args.trust.split(',') if x])
+        return
+    rp = Repl(trust=[x for x in args.trust.split(',') if x])
+    if args.theory:
+        rp.run_line('theory %s' % args.theory)
+    if args.goal:
+        rp.run_line('goal %s' % args.goal)
+
+    if args.script:
+        with open(args.script, encoding='utf-8') as f:
+            for line in f:
+                if not rp.run_line(line):
+                    break
+        sys.exit(1 if rp.failed or (rp.sps is not None and rp.sps.num_gaps) else 0)
+
+    if not sys.stdin.isatty():
+        for line in sys.stdin:
+            if not rp.run_line(line):
+                break
+        sys.exit(1 if rp.failed or (rp.sps is not None and rp.sps.num_gaps) else 0)
+
+    print('holpy REPL -- type help, quit to exit')
+    while True:
+        try:
+            line = input('holpy> ')
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        if not rp.run_line(line):
+            break
+
+
+def serve(port, theory, trust):
+    """Resident REPL: theory stays loaded across client requests.
+
+    Protocol (one JSON request per line, one JSON reply per line):
+        request  {"cmds": ["theory nat", "← induct x nat_induct goal=0", ...]}
+        reply    {"out": "<captured stdout>", "gaps": int|null,
+                  "failed": bool}
+    Binds 127.0.0.1 only.  The client is repl/client.py.
+    """
+    import json
+    import socket
+
+    rp = Repl(trust=trust)
+    if theory:
+        rp.run_line('theory %s' % theory)
+
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind(('127.0.0.1', port))
+    srv.listen(1)
+    print('repl server on 127.0.0.1:%d (theory=%s)' % (port, theory or '-'),
+          flush=True)
+    while True:
+        conn, _ = srv.accept()
+        f = conn.makefile('rwb', buffering=0)
+        for raw in f:
+            try:
+                req = json.loads(raw.decode('utf-8'))
+            except ValueError:
+                break
+            resp = rp.handle_request(req)
+            conn.sendall((json.dumps(resp) + '\n').encode('utf-8'))
+        conn.close()
+
+
+if __name__ == '__main__':
+    main()

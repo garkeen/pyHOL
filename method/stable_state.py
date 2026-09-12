@@ -209,11 +209,15 @@ class StableProofState:
 
         return True
 
-    def apply_method_dict(self, step: dict) -> bool:
+    def apply_method_dict(self, step: dict, *, strict: bool = False) -> bool:
         """Apply a method from a plain dict with stable IDs.
 
         step keys: method_name, args (dict), goal (int), facts (list[int]),
                    new_ids (list[int], optional, for replay)
+        strict -- on failure, raise the underlying exception instead of
+                  returning False.  Replay uses the default (False) to
+                  report a terse "replay failed"; the REPL passes True so
+                  the caller sees which step failed and why.
         """
         pos2sid = self._build_pos2sid()
         sid2pos = {v: k for k, v in pos2sid.items()}
@@ -224,15 +228,26 @@ class StableProofState:
             # that can depend on all facts.
             goal = self._find_insertion_point(step.get('facts', []))
             if goal is None:
+                if strict:
+                    raise ProofStateException(
+                        'no insertion point for facts %s' % step.get('facts'))
                 return False
         goal_pos = sid2pos.get(goal)
         if goal_pos is None:
+            if strict:
+                raise ProofStateException(
+                    'goal sid %r not found; live sids=%s'
+                    % (goal, sorted(sid2pos)))
             return False
 
         fact_pos = []
         for f in step.get('facts', []):
             fp = sid2pos.get(f)
             if fp is None:
+                if strict:
+                    raise ProofStateException(
+                        'fact sid %r not found; live sids=%s'
+                        % (f, sorted(sid2pos)))
                 return False
             fact_pos.append(fp)
 
@@ -252,6 +267,8 @@ class StableProofState:
             apply_method(self.state, step_dict)
             self.state.verify(compute_only=True)
         except Exception:
+            if strict:
+                raise
             return False
 
         new_items = self._find_new_items(old_ths)
