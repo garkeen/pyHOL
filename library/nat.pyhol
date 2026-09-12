@@ -3111,7 +3111,7 @@ proof
     #[3] ¬true ⟷ odd 0
   ← rewrite odd_def_1 sym=false goal=3
     #[4] ¬true ⟷ false
-  ← z3 goal=4
+  ← rewrite not_true sym=false goal=4
   ← intro n goal=2
     #[5] _VAR n
     #[6] ¬(even n) ⟷ odd n
@@ -3135,7 +3135,7 @@ proof
     #[3] ¬false ⟷ even 0
   ← rewrite even_def_1 sym=false goal=3
     #[4] ¬false ⟷ true
-  ← z3 goal=4
+  ← rewrite not_false sym=false goal=4
   ← intro n goal=2
     #[5] _VAR n
     #[6] ¬(odd n) ⟷ even n
@@ -3293,12 +3293,9 @@ proof
     #[49] ¬(even m ⟷ even n)
   ← rewrite source=prev goal=49 facts=[48]
     #[50] ¬(¬(even n) ⟷ even n)
-  cut "!p. ~(~p <--> p)" goal=50
-    #[51] ∀p. ¬(¬p ⟷ p)
-  ← z3 goal=51
-    #[52] ∀p. ¬(¬p ⟷ p)
-  ← apply_prev goal=50 facts=[52]
-    #[53] ¬(¬(even n) ⟷ even n)
+  ← rewrite eq_false sym=false goal=50
+    #[51] (¬(even n) ⟷ even n) ⟷ false
+  ← rewrite neg_eq_pos sym=false goal=51
 qed
 
 theorem even_mult
@@ -3466,12 +3463,7 @@ proof
     #[1] ¬(even (m + n)) ⟷ ¬(¬(even m) ⟷ ¬(even n))
   ← rewrite even_add sym=false goal=1
     #[2] ¬(even m ⟷ even n) ⟷ ¬(¬(even m) ⟷ ¬(even n))
-  cut "∀p. ∀q. (¬p ⟷ ¬q) ⟷ p ⟷ q" goal=2
-    #[3] ∀p. ∀q. (¬p ⟷ ¬q) ⟷ p ⟷ q
-  ← z3 goal=3
-  ← rewrite source=prev goal=2 facts=[3]
-    #[4] (even m ⟷ even n) ⟷ ¬(even m) ⟷ ¬(even n)
-  ← rewrite source=prev goal=4 facts=[3]
+  ← rewrite neg_iff_both_sides loc=1.1 sym=true goal=2
 qed
 
 theorem odd_mult
@@ -5305,8 +5297,15 @@ proof
     #[6] m = m DIV n * n + m MOD n
   ← rewrite mod_lt_eq sym=false goal=5
     #[7] ¬(n = 0)
-  ← z3 goal=7 facts=[2]
-    #[8] ¬(n = 0)
+  ← rule negI goal=7
+    #[8] n = 0 --> false
+  ← intro goal=8
+    #[9] n = 0
+    #[10] false
+  → rewrite source=prev target=fact goal=10 facts=[9,2]
+    #[11] r < 0
+  → rewrite nat_less_def_1 sym=false target=fact goal=10 facts=[11]
+    #[12] false
 qed
 
 theorem mod_uniq
