@@ -25,11 +25,14 @@ import time
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Level-0 computation oracles used by reconstructed arithmetic proofs in
-# the smt corpus (numeral evaluation and real comparison constants;
-# declared explicitly, audit §7.1 default is empty).
+# the smt corpus (numeral evaluation, integer constant signs, and real
+# comparison constants; declared explicitly, audit §7.1 default is empty).
+# int_const_ineq signs an integer constant: z3rec emits it through
+# mk_int_const_ineq_pt for facts like 1 <> 0, which array/fun_upd goals
+# need to discharge a fun_upd side condition.
 ORACLES = frozenset(
-    {'int_eval', 'real_eval', 'real_compare', 'real_eq_comparison',
-     'real_const_eq'})
+    {'int_eval', 'int_const_ineq', 'real_eval', 'real_compare',
+     'real_eq_comparison', 'real_const_eq'})
 
 
 # (name, category, context vars, goal[, xfail reason])
@@ -122,13 +125,15 @@ def goal_result(entry):
             return 'SKIPPED', 'z3 not installed'
         from core import basic, context
         from core import verify as core_verify
-        from syntax.parser import parse_term
         from solvers import z3wrapper
         from theories import z3rec as proofrec
         basic.load_theory('smt')
         _, _, vars_, goal = entry[:4]
+        # context.parse_term, not the raw syntax.parser entry: syntax is
+        # pure data-in since the §9.5 inversion and only this wrapper binds
+        # the ambient context, so vars_ reaches type inference through it.
         context.set_context('smt', vars=vars_)
-        t = parse_term(goal)
+        t = context.parse_term(goal)
         proof, assertions = z3wrapper.solve_and_proof(t)
         pt = proofrec.proofrec(proof, assertions=assertions)
         if pt.rule == 'sorry':
