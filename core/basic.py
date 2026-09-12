@@ -7,6 +7,7 @@ import importlib
 from kernel import theory
 from kernel.theory import TheoryException
 from core import items
+from syntax import parser
 from syntax import pyhol
 
 import sys
@@ -431,6 +432,25 @@ def query_item_index(filename, ext_ty, name):
     else:
         return None
 
+def _apply_item(item):
+    """Extend the theory with a parsed item, and re-register the
+    parser-side state that does not live in the theory.
+
+    Type abbreviations (`typeabbrev`) are parser state rather than
+    theory extensions, so replaying a theory has to restore them
+    alongside the extensions; see syntax.parser.clear_type_abbrevs.
+
+    """
+    if item.error is not None:
+        return
+    try:
+        theory.thy.unchecked_extend(item.get_extension())
+    except TheoryException:
+        pass  # Skip duplicates
+    if item.ty == 'type.abbrev':
+        parser.add_type_abbrev(item.name, item.args, item.defn)
+
+
 def load_theory(filename: str, *, limit=None):
     """Load the theory with the given theory name.
     
@@ -446,14 +466,11 @@ def load_theory(filename: str, *, limit=None):
     depend_list = get_import_order(cache['imports'])
 
     theory.thy = theory.EmptyTheory()
+    parser.clear_type_abbrevs()
     for prev_name in depend_list:
         prev_cache = load_theory_cache(prev_name)
         for item in prev_cache['content']:
-            if item.error is None:
-                try:
-                    theory.thy.unchecked_extend(item.get_extension())
-                except TheoryException:
-                    pass  # Skip duplicates
+            _apply_item(item)
 
     if limit == 'start':
         return None
@@ -467,10 +484,7 @@ def load_theory(filename: str, *, limit=None):
             break
 
         if item.error is None:
-            try:
-                theory.thy.unchecked_extend(item.get_extension())
-            except TheoryException:
-                pass  # Skip duplicates
+            _apply_item(item)
 
     if limit and not found_limit:
         raise TheoryException("load_theory: limit %s not found" % str(limit))

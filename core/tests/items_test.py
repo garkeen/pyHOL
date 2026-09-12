@@ -5,6 +5,7 @@ import unittest
 from kernel import theory
 from core import basic
 from core import items
+from syntax import parser
 from syntax import printer
 from syntax.settings import global_setting
 
@@ -143,6 +144,87 @@ class ItemsTest(unittest.TestCase):
 
         with global_setting(unicode=False):
             self.assertEqual(printer.print_extensions(ext), '\n'.join(ext_output))
+
+
+    def testQuotient(self):
+        basic.load_theory('logic_base')
+        nat_item = items.parse_item({
+            "args": [],
+            "constrs": [
+                {"args": [], "name": "zero", "type": "nat"},
+                {"args": ["n"], "name": "Suc", "type": "nat => nat"}
+            ],
+            "name": "nat",
+            "ty": "type.ind"
+        })
+        theory.thy.unchecked_extend(nat_item.get_extension())
+        rel_item = items.parse_item({
+            "name": "myrel", "type": "nat => nat => bool", "ty": "def.ax"})
+        theory.thy.unchecked_extend(rel_item.get_extension())
+
+        quot_item = items.parse_item({
+            "name": "myq", "abs": "mk_myq", "rep": "dest_myq",
+            "rel": "myrel", "ty": "type.quot"})
+        self.assertIsNone(quot_item.error)
+        self.assertEqual(quot_item.args, [])
+        ext = quot_item.get_extension()
+        theory.thy.unchecked_extend(ext)
+        ext_output = [
+            "Type myq 0",
+            "Constant mk_myq :: (nat => bool) => myq",
+            "Constant dest_myq :: myq => nat => bool",
+            "Theorem myq_abs_rep: !a. mk_myq (dest_myq a) = a",
+            "Theorem myq_rep_abs: !s. (?x. s = myrel x) <--> dest_myq (mk_myq s) = s"
+        ]
+
+        with global_setting(unicode=False):
+            self.assertEqual(printer.print_extensions(ext), '\n'.join(ext_output))
+
+    def testQuotientBadRelation(self):
+        basic.load_theory('logic_base')
+        nat_item = items.parse_item({
+            "args": [],
+            "constrs": [
+                {"args": [], "name": "zero", "type": "nat"},
+                {"args": ["n"], "name": "Suc", "type": "nat => nat"}
+            ],
+            "name": "nat",
+            "ty": "type.ind"
+        })
+        theory.thy.unchecked_extend(nat_item.get_extension())
+        # Not a relation: nat => nat, not nat => nat => bool.
+        bad_rel = items.parse_item({
+            "name": "badrel", "type": "nat => nat", "ty": "def.ax"})
+        theory.thy.unchecked_extend(bad_rel.get_extension())
+
+        bad_item = items.parse_item({
+            "name": "badq", "abs": "mk_bad", "rep": "dest_bad",
+            "rel": "badrel", "ty": "type.quot"})
+        self.assertIsNotNone(bad_item.error)
+        self.assertIn("A => A => bool", str(bad_item.error))
+
+
+    def testTypeAbbrev(self):
+        basic.load_theory('logic_base')
+        ab_item = items.parse_item({
+            "name": "set", "args": ["a"], "def": "'a => bool",
+            "ty": "type.abbrev"})
+        self.assertIsNone(ab_item.error)
+        self.assertEqual(ab_item.defn, parser.parse_type("'a => bool"))
+        # No theory extension: abbreviations are parser state only, so
+        # no type constant and no axiom enters the theory.
+        self.assertEqual(ab_item.get_extension(), [])
+        # Uses are expanded away, in postfix type syntax.
+        self.assertEqual(parser.parse_type("bool set"),
+                         parser.parse_type("bool => bool"))
+
+    def testTypeAbbrevBadVar(self):
+        basic.load_theory('logic_base')
+        bad_item = items.parse_item({
+            "name": "foo", "args": ["a"], "def": "'a => 'b",
+            "ty": "type.abbrev"})
+        self.assertIsNotNone(bad_item.error)
+        self.assertIn("not parameters", str(bad_item.error))
 
 
 class StructRecursionTest(unittest.TestCase):

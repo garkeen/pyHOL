@@ -270,7 +270,7 @@ class PrinterTest(unittest.TestCase):
         P = Var("P", TFun(Ta, BoolType))
         S = Var("S", set.setT(set.setT(Ta)))
         test_data = [
-            (set.empty_set(Ta), "({}::'a set)", "(∅::'a set)"),
+            (set.empty_set(Ta), "({}::'a => bool)", "(∅::'a ⇒ bool)"),
             (set.mk_mem(x, A), "x Mem A", "x ∈ A"),
             (set.mk_subset(A, B), "A Sub B", "A ⊆ B"),
             (set.mk_inter(A, B), "A Int B", "A ∩ B"),

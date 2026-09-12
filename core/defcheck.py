@@ -27,7 +27,7 @@ import itertools
 
 from kernel.type import TVar, TConst, TFun, BoolType
 from kernel.term import Var, Const, Implies, Eq, Forall
-from syntax.logicops import And, Not
+from syntax.logicops import And, Not, Exists
 from kernel.thm import Thm
 from kernel import extension
 from util.name import get_variant_names
@@ -360,6 +360,50 @@ def datatype_axioms(name, args, constrs):
     res.append(extension.Theorem(th_name, mk_axiom(Implies(*(case_assums + [case_concl])))))
 
     return res
+
+
+def quotient_axioms(name, args, rel, abs_name, rep_name):
+    """Axiom extensions for a quotient type.
+
+    Follows HOL Light's define_quotient_type (quot.ml:26-35): the new
+    type is the quotient of the relation's domain by the relation,
+    realised as the subtype `\\s. ?x. s = rel x` of the predicate type
+    `A => bool`.  The two laws are the resulting type bijections:
+
+      |- !a. abs (rep a) = a
+      |- !s. (?x. s = rel x) <=> (rep (abs s) = s)
+
+    They hold for *any* relation rel, so the extension is consistent
+    without requiring rel to be an equivalence relation; that is needed
+    only to lift operations, and is the user's obligation.
+
+    name -- name of the quotient type.
+    args -- list of type-argument names.
+    rel -- relation term, of type A => A => bool.
+    abs_name, rep_name -- names of the abstraction and representation
+      constants.  Both map between the predicate type A => bool and the
+      quotient type.
+
+    """
+    tvars = [TVar(targ) for targ in args]
+    T = TConst(name, *tvars)
+    A = rel.get_type().domain_type()
+    P = TFun(A, BoolType)
+
+    abs = Const(abs_name, TFun(P, T))
+    rep = Const(rep_name, TFun(T, P))
+
+    a = Var('a', T)
+    law1 = Forall(a, Eq(abs(rep(a)), a))
+
+    s = Var('s', P)
+    x = Var('x', A)
+    law2 = Forall(s, Eq(Exists(x, Eq(s, rel(x))), Eq(rep(abs(s)), s)))
+
+    return [
+        extension.Theorem(name + "_abs_rep", mk_axiom(law1)),
+        extension.Theorem(name + "_rep_abs", mk_axiom(law2)),
+    ]
 
 
 def inductive_case_induct_axioms(name, type, cname, rules):

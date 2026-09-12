@@ -7,7 +7,10 @@ from kernel.term import Term, Const, Lambda
 """Utility functions for sets."""
 
 def setT(T):
-    return TConst("set", T)
+    # `set` is a type abbreviation for `T => bool` (see library/set.pyhol),
+    # so a set type is a predicate type.  Keeping the expanded form here
+    # means the parser never produces a type constant named "set".
+    return TFun(T, BoolType)
 
 def empty_set(T):
     if T is None:

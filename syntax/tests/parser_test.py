@@ -311,7 +311,7 @@ class ParserTest(unittest.TestCase):
 
     def testParseSet(self):
         test_data = [
-            ("({}::'a set)", "(∅::'a set)", "'a set"),
+            ("({}::'a => bool)", "(∅::'a ⇒ bool)", "'a => bool"),
             ("x Mem A", "x ∈ A", "bool"),
             ("A Sub B", "A ⊆ B", "bool"),
             ("A Int B", "A ∩ B", "'a set"),

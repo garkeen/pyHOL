@@ -12,6 +12,8 @@ Format specification:
     const <name> :: <type> [overloaded]
     datatype <name> [<args>] =\n  | <constr> ...
     type <name> [<args>]
+    typeabbrev <name> [<args>] = <type>
+    quotient <name> (<abs>, <rep>) <relation>
     def <name> :: <type> = <prop> [attrs]
     fun <name> :: <type>\n  | <rule> ...
     inductive <name> :: <type>\n  | <rule_name>: <prop> ...
@@ -101,6 +103,10 @@ def _export_item(item):
         return _export_datatype(item)
     elif ty == 'type.ax':
         return _export_type(item)
+    elif ty == 'type.abbrev':
+        return _export_typeabbrev(item)
+    elif ty == 'type.quot':
+        return _export_quotient(item)
     elif ty == 'def':
         return _export_def(item)
     elif ty == 'def.ind':
@@ -234,6 +240,19 @@ def _export_type(item):
         return ['type %s %s' % (name, ' '.join("'%s" % a for a in args))]
     else:
         return ['type %s' % name]
+
+
+def _export_typeabbrev(item):
+    name = item['name']
+    args = item.get('args', [])
+    if args:
+        name = '%s %s' % (name, ' '.join("'%s" % a for a in args))
+    return ['typeabbrev %s = %s' % (name, item.get('def', ''))]
+
+
+def _export_quotient(item):
+    return ['quotient %s (%s, %s) %s' % (
+        item['name'], item['abs'], item['rep'], item.get('rel', ''))]
 
 
 def _export_def(item):
@@ -570,6 +589,10 @@ def _parse_item(lines, i):
         return _parse_const(lines, i)
     elif line.startswith('datatype '):
         return _parse_datatype(lines, i)
+    elif line.startswith('quotient '):
+        return _parse_quotient(lines, i)
+    elif line.startswith('typeabbrev '):
+        return _parse_typeabbrev(lines, i)
     elif line.startswith('type '):
         return _parse_type(lines, i)
     elif line.startswith('def '):
@@ -778,6 +801,30 @@ def _parse_type(lines, i):
     args_str = m.group(2).strip()
     args = _parse_type_args(args_str)
     return {'ty': 'type.ax', 'name': name, 'args': args}, i + 1
+
+
+def _parse_quotient(lines, i):
+    line = lines[i].rstrip()
+    # quotient name (abs, rep) relation
+    m = re.match(
+        r'^quotient\s+(\S+)\s*\(\s*([^,()]+?)\s*,\s*([^,()]+?)\s*\)\s*(.+)$',
+        line)
+    if not m:
+        return None, i + 1
+    return {'ty': 'type.quot', 'name': m.group(1),
+            'abs': m.group(2).strip(), 'rep': m.group(3).strip(),
+            'rel': _norm_arrows(m.group(4).strip())}, i + 1
+
+
+def _parse_typeabbrev(lines, i):
+    line = lines[i].rstrip()
+    # typeabbrev name [args] = definition
+    m = re.match(r'^typeabbrev\s+(\S+)\s*(.*?)\s*=\s*(.+)$', line)
+    if not m:
+        return None, i + 1
+    args = _parse_type_args(m.group(2).strip())
+    return {'ty': 'type.abbrev', 'name': m.group(1), 'args': args,
+            'def': _norm_arrows(m.group(3).strip())}, i + 1
 
 
 def _parse_def(lines, i):

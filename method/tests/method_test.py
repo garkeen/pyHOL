@@ -384,7 +384,7 @@ class MethodTest(unittest.TestCase):
             vars={'f': "nat => nat", 'S': "nat set", 'T': "nat set"},
             concl='image f (image f S) = T',
             method_name='rewrite',
-            res=['image_combine', 'member_ext', 'set_equal_iff'],
+            res=['image_combine', 'set_equal_iff'],
             mode='goal_thm'
         )
 
@@ -474,7 +474,7 @@ class MethodTest(unittest.TestCase):
             concl='false',
             method_name='rewrite',
             prevs=[0],
-            res=['image_combine', 'member_ext', 'set_equal_iff'],
+            res=['image_combine', 'set_equal_iff'],
             mode='fact_thm'
         )
 

@@ -170,7 +170,10 @@ class HOLTransformer(Transformer):
         return STVar(str(s))
 
     def type(self, *args):
-        return TConst(str(args[-1]), *args[:-1])
+        # A type written in a term (the `::` annotation) goes through the
+        # same abbreviation expansion as parser.parse_type, so an
+        # abbreviated type name never reaches the kernel.
+        return expand_type_abbrevs(TConst(str(args[-1]), *args[:-1]))
 
     def funtype(self, t1, t2):
         return TFun(t1, t2)
@@ -373,7 +376,12 @@ class HOLTransformer(Transformer):
 
     def nat_interval(self, m, n):
         from kernel.type import TFun
-        return Const("nat_interval", TFun(NatType, NatType, TConst("set", NatType)))(m, n)
+        # `{m..n}` is notation for the library constant `nat_interval`,
+        # whose third argument is a set, i.e. a predicate (see
+        # syntax/set_tools.setT).
+        return Const("nat_interval",
+                     TFun(NatType, NatType,
+                          TFun(NatType, BoolType)))(m, n)
 
     def thm(self, *args):
         # Script front door: the user states a goal (assums ..., concl).
@@ -437,12 +445,62 @@ def _bind_ctxt(ctxt):
     """Point the shared transformer at ctxt for the next parse."""
     _shared_transformer.ctxt = ctxt if ctxt is not None else infertype.EMPTY_CTXT
 
+# ---------------------------------------------------------------------------
+# Type abbreviations (type synonyms).
+#
+# The table is scoped to the currently loaded theory: `typeabbrev` items
+# register their definition here, and core.basic clears it whenever the
+# theory is reset.  parse_type expands abbreviations, so the kernel never
+# sees an abbreviated type constant.
+# ---------------------------------------------------------------------------
+
+type_abbrevs = {}
+
+
+def add_type_abbrev(name, args, body):
+    """Register a type abbreviation.
+
+    name -- name of the abbreviated type constant.
+    args -- parameter type variable names.
+    body -- definition, with any earlier abbreviations already expanded.
+
+    """
+    type_abbrevs[name] = {'args': list(args), 'body': body}
+
+
+def clear_type_abbrevs():
+    """Drop all abbreviations.  Called when the theory is reset."""
+    type_abbrevs.clear()
+
+
+def _subst_type(T, subst):
+    """Substitute type variables by name (both TVar and STVar), so that an
+    abbreviation's parameters can be replaced by the actual arguments."""
+    if T.is_stvar() or T.is_tvar():
+        return subst.get(T.name, T)
+    if T.is_tconst():
+        return TConst(T.name, *(_subst_type(arg, subst) for arg in T.args))
+    return T
+
+
+def expand_type_abbrevs(T):
+    """Recursively expand type abbreviations in T."""
+    if not T.is_tconst():
+        return T
+    args = [expand_type_abbrevs(arg) for arg in T.args]
+    ab = type_abbrevs.get(T.name)
+    if ab is not None and len(args) == len(ab['args']):
+        return _subst_type(ab['body'], dict(zip(ab['args'], args)))
+    return TConst(T.name, *args)
+
+
 def parse_type(s: str, *, check_type: bool = True) -> Type:
-    """Parse a type."""
+    """Parse a type, expanding type abbreviations."""
     try:
         T = type_parser.parse(s)
     except exceptions.UnexpectedToken as e:
         raise translate_lark_error(type_parser, s, e)
+    T = expand_type_abbrevs(T)
     if check_type:
         theory.thy.check_type(T)
     return T

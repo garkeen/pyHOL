@@ -2,7 +2,7 @@
 
 import traceback
 
-from kernel.type import TVar, TConst, TFun
+from kernel.type import TVar, TConst, TFun, BoolType
 from kernel.term import Const
 from kernel import theory
 from kernel import extension
@@ -760,6 +760,182 @@ class Datatype(Item):
             'constrs': constrs
         }
 
+def _has_schematic_tvar(T):
+    """Whether the type contains an undetermined (schematic) type
+    variable.  Used by quotient items, whose arity is read off the
+    relation's type variables: a schematic variable would leave the
+    arity undetermined."""
+    if T.is_stvar():
+        return True
+    if T.is_tconst():
+        return any(_has_schematic_tvar(arg) for arg in T.args)
+    return False
+
+
+class Quotient(Item):
+    """Quotient types.
+
+    A quotient type is specified by its name, the names of its
+    abstraction and representation constants, and the relation being
+    quotiented by.  The relation, of type A => A => bool, fixes the
+    representation type (its domain A) and the arity of the new type
+    (its type variables), and therefore the types of the two constants:
+    both map between the quotient type and the predicate type
+    A => bool.
+
+    For example, the real numbers as a quotient of the sequences of
+    integers, using the relation treal_eq:
+
+    quotient real (mk_real, dest_real) treal_eq
+
+    """
+    def __init__(self):
+        self.ty = 'type.quot'
+        self.name = None
+        self.args = list()
+        self.abs_name = None
+        self.rep_name = None
+        self.rel = None
+        self.error = None
+
+    def __eq__(self, other):
+        return self.ty == other.ty and self.name == other.name and \
+            self.args == other.args and self.abs_name == other.abs_name and \
+            self.rep_name == other.rep_name and self.rel == other.rel and \
+            self.error == other.error
+
+    def parse(self, data):
+        self.name = data['name']
+        self.abs_name = data['abs']
+        self.rep_name = data['rep']
+
+        try:
+            self.rel = context.parse_term(data['rel'])
+            rel_T = self.rel.get_type()
+            if not (rel_T.is_fun() and rel_T.range_type().is_fun() and
+                    rel_T.domain_type() == rel_T.range_type().domain_type() and
+                    rel_T.range_type().range_type() == BoolType):
+                raise ItemException(
+                    "Quotient %s: relation must have type A => A => bool, "
+                    "got %s" % (self.name, printer.print_type(rel_T)))
+            # The arity is the relation's type variables, as in HOL Light's
+            # define_quotient_type and HOL Zero's new_tyconst_definition.
+            if _has_schematic_tvar(rel_T):
+                raise ItemException(
+                    "Quotient %s: the relation's type has undetermined "
+                    "variables; annotate it, e.g. (rel :: 'a => 'a => bool)"
+                    % self.name)
+            self.args = sorted(T.name for T in rel_T.get_tvars())
+            theory.thy.add_type_sig(self.name, len(self.args))
+        except Exception as error:
+            self.error = error
+            self.trace = traceback.format_exc()
+
+    def get_extension(self):
+        assert self.error is None, "get_extension"
+        res = []
+        res.append(extension.TConst(self.name, len(self.args)))
+
+        T = TConst(self.name, *[TVar(arg) for arg in self.args])
+        A = self.rel.get_type().domain_type()
+        P = TFun(A, BoolType)
+        res.append(extension.Constant(self.abs_name, TFun(P, T)))
+        res.append(extension.Constant(self.rep_name, TFun(T, P)))
+        res.extend(defcheck.quotient_axioms(
+            self.name, self.args, self.rel, self.abs_name, self.rep_name))
+        return res
+
+    def get_display(self):
+        Targs = [TVar(arg) for arg in self.args]
+        T = TConst(self.name, *Targs)
+        res = {
+            'ty': 'type.quot',
+            'type': printer.print_type(T),
+            'abs': self.abs_name,
+            'rep': self.rep_name
+        }
+        if self.rel is not None:
+            res['rel'] = display_term(self.rel)
+        return res
+
+    def parse_edit(self, edit_data):
+        self.parse(edit_data)
+
+    def export_json(self):
+        return {
+            'ty': 'type.quot',
+            'name': self.name,
+            'args': self.args,
+            'abs': self.abs_name,
+            'rep': self.rep_name,
+            'rel': self.rel if self.error else export_term(self.rel)
+        }
+
+class TypeAbbrev(Item):
+    """Type abbreviations (type synonyms).
+
+    An abbreviation names an existing type expression, so unlike `type`
+    (an axiomatic type constant) it introduces no new type and no
+    axioms: the kernel never sees the abbreviated name, and parse_type
+    expands it away.
+
+    For example, sets as predicates:
+
+    typeabbrev set 'a = 'a => bool
+
+    """
+    def __init__(self):
+        self.ty = 'type.abbrev'
+        self.name = None
+        self.args = list()
+        self.defn = None
+        self.error = None
+
+    def __eq__(self, other):
+        return self.ty == other.ty and self.name == other.name and \
+            self.args == other.args and self.defn == other.defn and \
+            self.error == other.error
+
+    def parse(self, data):
+        self.name = data['name']
+        self.args = data['args']
+
+        try:
+            self.defn = parser.parse_type(data['def'])
+            extra = set(T.name for T in self.defn.get_tvars()) - set(self.args)
+            if extra:
+                raise ItemException(
+                    "Type abbreviation %s: type variables %s are not "
+                    "parameters" % (self.name, ", ".join(sorted(extra))))
+            parser.add_type_abbrev(self.name, self.args, self.defn)
+        except Exception as error:
+            self.error = error
+            self.trace = traceback.format_exc()
+
+    def get_extension(self):
+        # Parser-side state, not a theory extension: see
+        # core.basic._apply_item, which re-registers it on replay.
+        return []
+
+    def get_display(self):
+        return {
+            'ty': 'type.abbrev',
+            'name': self.name,
+            'args': self.args,
+            'def': self.defn if self.error else printer.print_type(self.defn)
+        }
+
+    def parse_edit(self, edit_data):
+        self.parse(edit_data)
+
+    def export_json(self):
+        return {
+            'ty': 'type.abbrev',
+            'name': self.name,
+            'args': self.args,
+            'def': self.defn if self.error else printer.print_type(self.defn)
+        }
+
 class Header(Item):
     """Header"""
     def __init__(self):
@@ -805,7 +981,9 @@ item_table = {
     'def.ind': Fun,
     'def.pred': Inductive,
     'type.ax': AxType,
+    'type.abbrev': TypeAbbrev,
     'type.ind': Datatype,
+    'type.quot': Quotient,
     'header': Header
 }
 

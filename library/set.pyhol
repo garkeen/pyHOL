@@ -4,66 +4,70 @@ description "Set theory"
 
 header "Set type and basic operations"
 
-type set 'a
+typeabbrev set 'a = 'a ⇒ bool
 
-const member :: 'a ⇒ 'a set ⇒ bool
+def member :: 'a ⇒ 'a set ⇒ bool = member x A ⟷ A x
 
-const empty_set :: 'a set
+def empty_set :: 'a set = empty_set = (λx. false)
 
-const insert :: 'a ⇒ 'a set ⇒ 'a set
+def insert :: 'a ⇒ 'a set ⇒ 'a set = insert y A = (λx. x = y ∨ A x)
 
-const subset :: 'a set ⇒ 'a set ⇒ bool
+def subset :: 'a set ⇒ 'a set ⇒ bool = subset A B ⟷ (∀x. member x A ⟶ member x B)
 
-const inter :: 'a set ⇒ 'a set ⇒ 'a set
+def inter :: 'a set ⇒ 'a set ⇒ 'a set = inter A B = (λx. A x ∧ B x)
 
-const union :: 'a set ⇒ 'a set ⇒ 'a set
+def union :: 'a set ⇒ 'a set ⇒ 'a set = union A B = (λx. A x ∨ B x)
 
-const diff :: 'a set ⇒ 'a set ⇒ 'a set
+def diff :: 'a set ⇒ 'a set ⇒ 'a set = diff A B = (λx. A x ∧ ¬ B x)
 
-const collect :: ('a ⇒ bool) ⇒ 'a set
+def collect :: ('a ⇒ bool) ⇒ 'a set = collect P = (λx. P x)
 
 const countable :: 'a set ⇒ bool
 
-const Union :: 'a set set ⇒ 'a set
+def Union :: 'a set set ⇒ 'a set = Union A = (λx. ∃S. A S ∧ S x)
 
-const Inter :: 'a set set ⇒ 'a set
+def Inter :: 'a set set ⇒ 'a set = Inter A = (λx. ∀S. A S ⟶ S x)
 
 def comp_fun :: ('a ⇒ 'b) ⇒ ('b ⇒ 'c) ⇒ 'a ⇒ 'c = f ∘ g = (λx. g (f x)) [hint_rewrite]
 
 const finite :: 'a set ⇒ bool
 
-const delete :: 'a set ⇒ 'a ⇒ 'a set
+def delete :: 'a set ⇒ 'a ⇒ 'a set = delete A a = (λx. A x ∧ ¬(x = a))
 
-const image :: ('a ⇒ 'b) ⇒ 'a set ⇒ 'b set
+def image :: ('a ⇒ 'b) ⇒ 'a set ⇒ 'b set = image f A = (λy. ∃x. A x ∧ y = f x)
 
-const disjoint :: 'a set ⇒ 'a set ⇒ bool
+def disjoint :: 'a set ⇒ 'a set ⇒ bool = disjoint A B ⟷ inter A B = empty_set
 
-const from :: nat ⇒ nat set
+def from :: nat ⇒ nat set = from n = (λm. n ≤ m)
 
-const univ :: 'a set
+def univ :: 'a set = univ = (λx. true)
 
 const card :: 'a set ⇒ nat
 
-const has_size :: 'a set ⇒ nat ⇒ bool
+def has_size :: 'a set ⇒ nat ⇒ bool = has_size A n ⟷ finite A ∧ card A = n
 
-const infinite :: 'a set ⇒ bool
+def infinite :: 'a set ⇒ bool = infinite A ⟷ ¬ finite A
 
-axiom member_empty_simp
+theorem member_empty_simp
   fixes x :: 'a
   prop x ∈ ∅ ⟷ false
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite empty_set_def sym=false goal=1
+qed
 
-axiom member_insert
+theorem member_insert
   fixes x :: 'a, y :: 'a, A :: 'a set
   prop x ∈ insert y A ⟷ x = y ∨ x ∈ A
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite insert_def sym=false goal=1
+qed
 
 header "Membership and definitions"
 
-axiom subset_def
-  fixes A :: 'a set, B :: 'a set
-  prop A ⊆ B ⟷ (∀x. x ∈ A ⟶ x ∈ B)
-  [hint_rewrite]
 
 theorem member_empty
   fixes x :: 'a
@@ -85,95 +89,99 @@ proof
   ← rewrite disj_false_right sym=false goal=2
 qed
 
-axiom member_univ
+theorem member_univ
   fixes x :: 'a
   prop x ∈ univ ⟷ true
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite univ_def sym=false goal=1
+qed
 
-axiom member_inter_iff
+theorem member_inter_iff
   fixes x :: 'a, A :: 'a set, B :: 'a set
   prop x ∈ A ∩ B ⟷ x ∈ A ∧ x ∈ B
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite inter_def sym=false goal=1
+qed
 
-axiom inter_def
-  fixes x :: 'a, A :: 'a set, B :: 'a set
-  prop x ∈ A ∩ B ⟷ x ∈ A ∧ x ∈ B
-  [hint_rewrite]
 
-axiom member_union_iff
+theorem member_union_iff
   fixes x :: 'a, A :: 'a set, B :: 'a set
   prop x ∈ A ∪ B ⟷ x ∈ A ∨ x ∈ B
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite union_def sym=false goal=1
+qed
 
-axiom member_diff
+theorem member_diff
   fixes x :: 'a, A :: 'a set, B :: 'a set
   prop x ∈ diff A B ⟷ x ∈ A ∧ ¬(x ∈ B)
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite diff_def sym=false goal=1
+qed
 
-axiom diff_def
-  fixes x :: 'a, A :: 'a set, B :: 'a set
-  prop x ∈ diff A B ⟷ x ∈ A ∧ ¬(x ∈ B)
-  [hint_rewrite]
 
-axiom member_delete
+theorem member_delete
   fixes x :: 'a, A :: 'a set, a :: 'a
   prop x ∈ delete A a ⟷ x ∈ A ∧ ¬(x = a)
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite delete_def sym=false goal=1
+qed
 
-axiom delete_def
-  fixes x :: 'a, A :: 'a set, a :: 'a
-  prop x ∈ delete A a ⟷ x ∈ A ∧ ¬(x = a)
-  [hint_rewrite]
 
-axiom member_collect
+theorem member_collect
   fixes x :: 'a, P :: 'a ⇒ bool
   prop x ∈ collect P ⟷ P x
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite collect_def sym=false goal=1
+qed
 
-axiom member_Union
+theorem member_Union
   fixes x :: 'a, A :: 'a set set
   prop x ∈ ⋃A ⟷ (∃S. S ∈ A ∧ x ∈ S)
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite Union_def sym=false goal=1
+qed
 
-axiom member_Inter
+theorem member_Inter
   fixes x :: 'a, A :: 'a set set
   prop x ∈ ⋂A ⟷ (∀S. S ∈ A ⟶ x ∈ S)
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite Inter_def sym=false goal=1
+qed
 
-axiom in_image
+theorem in_image
   fixes y :: 'b, f :: 'a ⇒ 'b, A :: 'a set
   prop y ∈ image f A ⟷ (∃x. x ∈ A ∧ y = f x)
   [hint_rewrite]
+proof
+  ← rewrite member_def sym=false goal=0
+  ← rewrite image_def sym=false goal=1
+qed
 
-axiom image_def
-  fixes y :: 'b, f :: 'a ⇒ 'b, A :: 'a set
-  prop y ∈ image f A ⟷ (∃x. x ∈ A ∧ y = f x)
-  [hint_rewrite]
 
-axiom disjoint_def
-  fixes A :: 'a set, B :: 'a set
-  prop disjoint A B ⟷ A ∩ B = ∅
-  [hint_rewrite]
 
-axiom infinite_def
-  fixes A :: 'a set
-  prop infinite A ⟷ ¬(finite A)
-  [hint_rewrite]
 
-axiom has_size_def
-  fixes A :: 'a set, n :: nat
-  prop has_size A n ⟷ finite A ∧ card A = n
-  [hint_rewrite]
 
 axiom set_equal_iff
   fixes A :: 'a set, B :: 'a set
   prop A = B ⟷ (∀x. x ∈ A ⟷ x ∈ B)
   [hint_rewrite]
 
-axiom member_ext
-  fixes A :: 'a set, B :: 'a set
-  prop A = B ⟷ (∀x. x ∈ A ⟷ x ∈ B)
-  [hint_rewrite]
 
 header "Subset"
 
