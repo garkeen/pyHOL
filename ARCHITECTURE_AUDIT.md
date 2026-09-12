@@ -143,6 +143,16 @@ holpy/
   (2) 目录名=类别名；(3) 一个抽象层一个职责，lint 能断的交给 lint，断不住的靠三重对齐让人一眼看出异常。
 - **5.8 两个表面。** 程序员表面（conv/macro/tactic + kernel，供扩展者）；证明语言表面（method，供写证明者）。
   tactic 属程序员表面。REPL 是证明语言表面的交互终端。
+- **5.9 增量校验要求宏是纯函数（memo 契约）。** `core/verify.py` 的
+  `verify(..., compute_only=True, memo=...)` 在一条定理的回放内缓存宏展开：仅当一次宏调用的**全部
+  输入**与上次相同时才复用（键 = `rule` + `args` + 各前提定理 + 该行自己的声明命题 `seq.th` +
+  全局理论对象 `theory.thy`；后三者按对象身份比较，条目内钉住这些对象）。因此宏的 `get_proof_term`
+  **不得**依赖这些之外的任何可变全局状态，特别是：(1) `context.ctxt` / `context.ctxt.vars`（回放中随
+  `intro`/`elim` 增减）；(2) 模块级可变容器、计数器、缓存（除非它只是**加速**，且不缓存时结果逐位
+  相同）；(3) 随机数 / 时间 / 环境变量；(4) `self` 上构造后写入的字段。理论对象身份已在键内
+  （见 §7.4 的 z3rec 条目），宏作者无需自行处理；前四类是宏作者的责任。审计（2026-09-12）：58 个
+  注册宏全部满足该契约。审计模式 `--selfcheck` 会重推并复核每个命中，恢复"每行每次都重推"的属性
+  （代价回到记忆化之前）；常规开发默认关。
 
 ---
 
@@ -228,6 +238,10 @@ DEP_FAILED 的瀑布正是"依赖失败"状态的正常传播。
 - `theories/z3rec.py` 是内容层里的**跨域非域模块**（先例：`theories/poly.py`）。它和
   `theories/real/simplex*.py` 一起构成 z3 实验链，生产消费者为零；整体放在内容层是因为其"算法"
   本身就是领域证明构造，或跨域不可按域分文件。
+- **`theories/z3rec.py::def_axiom` 会在回放中途替换全局理论**：它在 z3 证明重建里调用
+  `basic.load_theory('sat'/'smt')`（对照 `theories/integer/omega.py` 的同类调用在模块级、导入期执行，
+  无害）。所以增量校验缓存的键必须含理论对象身份（`core/verify.py::_memo_key`，与
+  `core/auto.py::_cache_key` 同理）；理论一旦被换掉，旧条目自动全部失效并重推。
 - **omega 的 auto 注册由 `theories/integer/__init__.py` 触发**（core/basic 不再 eager import 它）。
   依据：全库只有 `library/int.pyhol` 使用 omega，且它声明 `domains integer`。将来若有理论用 omega
   却不声明 integer 域，这个假设会被破坏。

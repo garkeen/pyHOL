@@ -112,6 +112,11 @@ class ProofState():
         # 'manual' (apply_prev closure), 'fact' (forward line),
         # 'case' (list of Terms, the case-branch label).
         self.line_meta = {}
+        # Incremental-verify cache for compute_only passes (one per
+        # proof state, so the theory is fixed for its lifetime).  Keys
+        # are content-based, so an edited line or a changed premise
+        # misses; see core.verify._memo_key.
+        self._verify_memo = {}
 
     def get_vars(self, id):
         """Obtain the context at the given id."""
@@ -178,7 +183,8 @@ class ProofState():
         return core_verify.verify(self.prf, self.rpt, no_gaps=no_gaps,
                                   trust=self.trust if trust is None else trust,
                                   axioms=core_verify.axioms(),
-                                  compute_only=compute_only)
+                                  compute_only=compute_only,
+                                  memo=self._verify_memo if compute_only else None)
 
     def bulk_edit(self):
         """Context manager: suppress per-line verify during a

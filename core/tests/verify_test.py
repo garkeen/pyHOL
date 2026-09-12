@@ -15,7 +15,7 @@ import unittest
 from kernel.type import TVar, TFun, BoolType
 from kernel.term import SVar, Var, Eq, Implies, Inst
 from kernel.thm import Thm
-from kernel.proof import Proof
+from kernel.proof import Proof, ProofItem
 from kernel import theory
 from kernel.theory import CheckProofException
 from kernel.report import ProofReport
@@ -200,6 +200,140 @@ class VerifyTest(unittest.TestCase):
         rpt = ProofReport()
         self.assertEqual(core_verify.verify(prf, rpt),
                          Thm(Implies(A, B), (Implies(A, B),)))
+
+
+class VerifyMemoTest(unittest.TestCase):
+    """Incremental-verify memo (`memo=` on core_verify.verify).
+
+    The memo is consulted for closable macros in compute_only mode.  It
+    must always agree with a fresh derivation, and any change to a
+    line's inputs -- its arguments, its premises, or its own stated
+    theorem -- must invalidate the entry instead of reusing a result.
+    """
+
+    def setUp(self):
+        theory.thy = theory.EmptyTheory()
+        theory.thy.add_theorem("t1", Thm(Implies(A, A)))
+        theory.thy.add_theorem("t2", Thm(Implies(B, B)))
+        theory.thy.add_theorem("trivial", Thm(Implies(A, A)))
+
+    @staticmethod
+    def _thm_prf(th_name):
+        prf = Proof()
+        prf.add_item(0, "apply_theorem", args=th_name)
+        return prf
+
+    def testMemoMatchesFreshDerivation(self):
+        import core.macro.registry  # noqa: F401
+        fresh = core_verify.verify(self._thm_prf("t1"))
+        memo = {}
+        self.assertEqual(
+            core_verify.verify(self._thm_prf("t1"), compute_only=True, memo=memo),
+            fresh)
+        self.assertTrue(memo, "macro expansion should have been cached")
+
+    def testMemoIsReusedAcrossCalls(self):
+        import core.macro.registry  # noqa: F401
+        prf = self._thm_prf("t1")
+        memo = {}
+        first = core_verify.verify(prf, compute_only=True, memo=memo)
+        for _ in range(3):
+            self.assertEqual(
+                core_verify.verify(prf, compute_only=True, memo=memo), first)
+
+    def testEditedArgsInvalidateMemo(self):
+        """Same proof object with changed arguments re-derives."""
+        import core.macro.registry  # noqa: F401
+        prf = self._thm_prf("t1")
+        memo = {}
+        self.assertEqual(
+            core_verify.verify(prf, compute_only=True, memo=memo),
+            core_verify.verify(self._thm_prf("t1")))
+        prf.items[0] = ProofItem(0, "apply_theorem", args="t2")
+        self.assertEqual(
+            core_verify.verify(prf, compute_only=True, memo=memo),
+            core_verify.verify(self._thm_prf("t2")))
+
+    def testChangedStatementIsRederived(self):
+        """A changed stated theorem must be re-checked, never served from
+        the cache (the soundness property the memo has to preserve)."""
+        import core.macro.registry  # noqa: F401
+        C = Var("C", BoolType)
+        prf = self._thm_prf("t1")
+        memo = {}
+        core_verify.verify(prf, compute_only=True, memo=memo)
+        self.assertTrue(memo)
+        prf.items[0].th = Thm(C)            # not derivable from t1
+        self.assertRaisesRegex(
+            CheckProofException, "output does not match",
+            core_verify.verify, prf, compute_only=True, memo=memo)
+
+    def testChangedPremiseInvalidatesMemo(self):
+        """Replacing a premise item re-derives from the new premise."""
+        import core.macro.registry  # noqa: F401
+        prf = Proof()
+        prf.add_item(0, "assume", args=A)
+        prf.add_item(1, "intros", args=[], prevs=[0])
+        memo = {}
+        core_verify.verify(prf, compute_only=True, memo=memo)
+        self.assertTrue(memo)
+        # A fresh premise (and a fresh consumer line, since the old one
+        # still carries the previous statement) must re-derive.
+        prf.items[0] = ProofItem(0, "assume", args=B)
+        prf.items[1] = ProofItem(1, "intros", args=[], prevs=[0])
+        self.assertEqual(
+            core_verify.verify(prf, compute_only=True, memo=memo),
+            Thm(B, (B,)))
+
+
+    def testReplacedTheoryInvalidatesMemo(self):
+        """The global theory is not always fixed for a whole replay
+        (z3 proof reconstruction replaces it mid-replay), so an entry
+        from the old theory must not be reused."""
+        import core.macro.registry  # noqa: F401
+        prf = self._thm_prf("t1")
+        memo = {}
+        first = core_verify.verify(prf, compute_only=True, memo=memo)
+        self.assertTrue(memo)
+        theory.thy = theory.EmptyTheory()
+        theory.thy.add_theorem("t1", Thm(Eq(A, A)))
+        prf.items[0] = ProofItem(0, "apply_theorem", args="t1")
+        expected = core_verify.verify(self._thm_prf("t1"))
+        self.assertNotEqual(expected, first)
+        self.assertEqual(
+            core_verify.verify(prf, compute_only=True, memo=memo), expected)
+
+
+    def testSelfcheckConfirmsCache(self):
+        """In self-check mode a hit is confirmed by re-derivation and
+        still agrees with a fresh verification."""
+        import core.macro.registry  # noqa: F401
+        prf = self._thm_prf("t1")
+        memo = {}
+        core_verify.verify(prf, compute_only=True, memo=memo)
+        self.addCleanup(setattr, core_verify, 'memo_selfcheck', False)
+        core_verify.memo_selfcheck = True
+        self.assertEqual(
+            core_verify.verify(prf, compute_only=True, memo=memo),
+            core_verify.verify(self._thm_prf("t1")))
+
+    def testSelfcheckDetectsTamperedCache(self):
+        """In self-check mode a corrupted cache entry is caught by the
+        fresh re-derivation -- this is the audit property (no line's
+        theorem is accepted without a derivation in that pass)."""
+        import core.macro.registry  # noqa: F401
+        C = Var("C", BoolType)
+        prf = self._thm_prf("t1")
+        memo = {}
+        core_verify.verify(prf, compute_only=True, memo=memo)
+        self.assertTrue(memo)
+        self.addCleanup(setattr, core_verify, 'memo_selfcheck', False)
+        core_verify.memo_selfcheck = True
+        for k, v in list(memo.items()):      # key stays valid, result does not
+            memo[k] = (v[0], v[1], v[2], Thm(C))
+        self.assertRaisesRegex(
+            CheckProofException, "self-check",
+            core_verify.verify, prf, compute_only=True, memo=memo)
 
 
 if __name__ == "__main__":

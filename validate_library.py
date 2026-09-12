@@ -24,6 +24,13 @@ def main():
     # instead of returning stale cached results.
     force = '--force' in sys.argv
 
+    # --selfcheck: confirm every incremental-cache hit by re-deriving the
+    # line and comparing.  Restores the "every line re-derived on every
+    # pass" audit property at the pre-memo replay cost; use it for an
+    # audit run, not for normal development.
+    from core import verify as _verify_mod
+    _verify_mod.memo_selfcheck = '--selfcheck' in sys.argv
+
     from core import basic
     import method.stable_state  # wires the replay pipeline
     import solvers.z3wrapper  # noqa: F401 -- injects the z3 backend into

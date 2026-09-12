@@ -84,8 +84,58 @@ _current_axioms = axioms
 #   * every other macro -- expanded to primitives, emitted inline.
 # ---------------------------------------------------------------------------
 
+def _memo_key(rule, args, prev_ths, stated, thy):
+    """Content key for the incremental-verify cache.
+
+    The key is the derivation's FULL input: the rule, its arguments,
+    the identity of the previous theorems, the identity of the line's
+    own stated theorem (`stated`), and the identity of the global
+    theory (`thy`).  `stated` matters because a macro's expansion may
+    depend on the line's own statement -- e.g. auto_close specializes
+    to the goal it closes -- so two lines with the same premises but
+    different statements are different derivations.  `thy` matters
+    because the global theory is not always fixed for a whole replay:
+    z3 proof reconstruction (`theories/z3rec.py`) calls
+    basic.load_theory mid-replay, replacing it.  Keying by the theory
+    object is the same defence `core/auto.py::_cache_key` uses.
+
+    The stored value pins the premise theorems, the stated theorem, the
+    theory and the result, so an entry can only be taken when those
+    objects are literally the same ones (`verify` reuses the theorem
+    written back onto each proof item, which keeps identity stable
+    across calls).
+    """
+    try:
+        hash(args)
+        ak = args
+    except TypeError:
+        ak = repr(args)
+    return (rule, ak, tuple(id(th) for th in prev_ths),
+            None if stated is None else id(stated), id(thy))
+
+
+# Audit switch for the incremental-verify cache.  When True, a memo hit
+# is CONFIRMED by re-deriving the line and comparing, which restores the
+# original property that every line is re-derived on every pass (at the
+# original O(n^2) cost).  Off by default so normal validation keeps the
+# speedup; turn it on for an audit run (`validate_library.py --selfcheck`).
+memo_selfcheck = False
+
+
+def _thm_confirmed(fresh, cached):
+    """True when a fresh derivation confirms a cached line theorem.
+
+    Exactly the acceptance test the miss path applies (below): a derived
+    theorem may be stronger than the line's stated one (fewer hyps), so
+    the check is `fresh.can_prove(cached)`, not equality.  In self-check
+    mode this re-runs that test on every memo hit, restoring the
+    "every line re-derived on every pass" property.
+    """
+    return fresh is cached or fresh.can_prove(cached)
+
+
 def verify(prf, rpt=None, *, no_gaps=False, trust=frozenset(), axioms=None,
-           compute_only=False):
+           compute_only=False, memo=None):
     """Verify the given proof. Returns the final theorem.
 
     Raises theory.CheckProofException when a line cannot be resolved.
@@ -104,6 +154,13 @@ def verify(prf, rpt=None, *, no_gaps=False, trust=frozenset(), axioms=None,
         every line is still resolved and derived (cached theorems are
         re-derived and checked), only the final independent replay over
         the flattened stream is skipped. Full verify() runs that replay.
+    memo -- optional dict owned by the caller (one theorem replay).
+        In compute_only mode a macro line whose derivation inputs are
+        unchanged since the previous call reuses its expansion result
+        instead of re-expanding.  Keys are content-based (see
+        _memo_key), so an edited line -- or a premise whose theorem
+        changed -- always misses and is re-derived.  None disables it.
+        Only sound while the theory is fixed, i.e. within one replay.
     """
     if axioms is None:
         axioms = _current_axioms()
@@ -287,6 +344,41 @@ def verify(prf, rpt=None, *, no_gaps=False, trust=frozenset(), axioms=None,
                     raise CheckProofException(
                         "auto_close: fact %s does not match the goal"
                         % seq.prevs[0])
+            mkey = None
+            checked = None
+            if compute_only and memo is not None:
+                # Incremental reuse: identical inputs (rule, args, the
+                # very same premise theorems, and the same line
+                # statement) means an identical derivation, so the
+                # previous expansion result stands.  flat is unused in
+                # compute_only, so skipping the expansion's emitted
+                # lines is safe here; a changed line or premise changes
+                # the key and misses.
+                stated = seq.th
+                thy = theory.thy
+                mkey = _memo_key(rule, args, prev_ths, stated, thy)
+                cached = memo.get(mkey)
+                if cached is not None and cached[1] is stated \
+                        and cached[2] is thy \
+                        and len(cached[0]) == len(prev_ths) \
+                        and all(a is b for a, b in zip(cached[0], prev_ths)):
+                    if not memo_selfcheck:
+                        # Same write-back/consistency as the miss path
+                        # below, minus the (expensive) re-expansion: a
+                        # fresh line that matches an earlier derivation
+                        # still needs its own theorem cached onto it.
+                        res_th = cached[3]
+                        if stated is None:
+                            seq.th = res_th
+                        elif seq.th is not res_th and not res_th.can_prove(seq.th):
+                            raise CheckProofException(
+                                "output does not match\n%s\n vs.\n%s"
+                                % (seq.th, res_th))
+                        ths[seq.id] = seq.th
+                        return
+                    # Audit mode: fall through and confirm the cached
+                    # result against a fresh derivation (below).
+                    checked = cached[3]
             expanded = macro.expand(
                 seq.id, args, list(zip(seq.prevs, prev_ths)))
             if rpt is not None:
@@ -294,12 +386,23 @@ def verify(prf, rpt=None, *, no_gaps=False, trust=frozenset(), axioms=None,
             for s in expanded.items:
                 emit(s)
             res_th = expanded.items[-1].th
+            if checked is not None and not _thm_confirmed(res_th, checked):
+                raise CheckProofException(
+                    "incremental verify self-check: cached theorem is not "
+                    "confirmed by a fresh derivation\n%s\n vs.\n%s"
+                    % (checked, res_th))
             if seq.th is None:
                 seq.th = res_th
             elif not res_th.can_prove(seq.th):
                 raise CheckProofException(
                     "output does not match\n%s\n vs.\n%s" % (seq.th, res_th))
             ths[seq.id] = seq.th
+            if mkey is not None and seq.th is not None:
+                # Store under the statement as it now stands.  A line
+                # whose statement was not yet known re-derives once
+                # more on the next call, then hits from then on.
+                memo[_memo_key(rule, args, prev_ths, seq.th, thy)] = (
+                    tuple(prev_ths), seq.th, thy, seq.th)
             flat.append(ProofItem(seq.id, "reference",
                                   prevs=[expanded.items[-1].id], th=seq.th))
             return
