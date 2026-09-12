@@ -1598,16 +1598,103 @@ theorem lt_trans
   fixes k :: nat, m :: nat, n :: nat
   prop k < m --> m < n --> k < n
   [hint_backward,hint_backward1]
+proof
+  ← intro goal=0
+    #[1] k < m
+    #[2] m < n
+    #[3] k < n
+  → rewrite less_exist sym=false target=fact goal=3 facts=[1]
+    #[4] ?d. m = k + Suc d
+  elim a goal=3 facts=[4]
+    #[5] _VAR a
+    #[6] m = k + Suc a
+    #[7] k < n
+  → rewrite less_exist sym=false target=fact goal=7 facts=[2]
+    #[8] ?d. n = m + Suc d
+  elim b goal=7 facts=[8]
+    #[9] _VAR b
+    #[10] n = m + Suc b
+    #[11] k < n
+  cut "?d. n = k + Suc d" goal=11
+    #[12] ?d. n = k + Suc d
+  ← inst "a + Suc b" goal=12
+    #[13] n = k + Suc (a + Suc b)
+  ← rewrite source=prev goal=13 facts=[10]
+    #[14] m + Suc b = k + Suc (a + Suc b)
+  ← rewrite source=prev goal=14 facts=[6]
+    #[15] k + Suc a + Suc b = k + Suc (a + Suc b)
+  nat_norm goal=15
+    #[16] k + Suc a + Suc b = k + Suc (a + Suc b)
+  → rewrite less_exist sym=true target=fact goal=11 facts=[12]
+qed
 
 theorem let_trans
   fixes k :: nat, m :: nat, n :: nat
   prop k <= m --> m < n --> k < n
   [hint_backward,hint_backward1]
+proof
+  ← intro goal=0
+    #[1] k <= m
+    #[2] m < n
+    #[3] k < n
+  → rewrite less_eq_exist sym=false target=fact goal=3 facts=[1]
+    #[4] ?p. m = k + p
+  elim p goal=3 facts=[4]
+    #[5] _VAR p
+    #[6] m = k + p
+    #[7] k < n
+  → rewrite less_exist sym=false target=fact goal=7 facts=[2]
+    #[8] ?d. n = m + Suc d
+  elim d goal=7 facts=[8]
+    #[9] _VAR d
+    #[10] n = m + Suc d
+    #[11] k < n
+  cut "?e. n = k + Suc e" goal=11
+    #[12] ?e. n = k + Suc e
+  ← inst "p + d" goal=12
+    #[13] n = k + Suc (p + d)
+  ← rewrite source=prev goal=13 facts=[10]
+    #[14] m + Suc d = k + Suc (p + d)
+  ← rewrite source=prev goal=14 facts=[6]
+    #[15] k + p + Suc d = k + Suc (p + d)
+  nat_norm goal=15
+    #[16] k + p + Suc d = k + Suc (p + d)
+  → rewrite less_exist sym=true target=fact goal=11 facts=[12]
+qed
 
 theorem lte_trans
   fixes k :: nat, m :: nat, n :: nat
   prop k < m --> m <= n --> k < n
   [hint_backward,hint_backward1]
+proof
+  ← intro goal=0
+    #[1] k < m
+    #[2] m <= n
+    #[3] k < n
+  → rewrite less_exist sym=false target=fact goal=3 facts=[1]
+    #[4] ?d. m = k + Suc d
+  elim a goal=3 facts=[4]
+    #[5] _VAR a
+    #[6] m = k + Suc a
+    #[7] k < n
+  → rewrite less_eq_exist sym=false target=fact goal=7 facts=[2]
+    #[8] ?p. n = m + p
+  elim p goal=7 facts=[8]
+    #[9] _VAR p
+    #[10] n = m + p
+    #[11] k < n
+  cut "?e. n = k + Suc e" goal=11
+    #[12] ?e. n = k + Suc e
+  ← inst "a + p" goal=12
+    #[13] n = k + Suc (a + p)
+  ← rewrite source=prev goal=13 facts=[10]
+    #[14] m + p = k + Suc (a + p)
+  ← rewrite source=prev goal=14 facts=[6]
+    #[15] k + Suc a + p = k + Suc (a + p)
+  nat_norm goal=15
+    #[16] k + Suc a + p = k + Suc (a + p)
+  → rewrite less_exist sym=true target=fact goal=11 facts=[12]
+qed
 
 theorem le_lt
   fixes m :: nat, n :: nat
