@@ -97,6 +97,19 @@ theorem add_Suc_right
   fixes x :: nat, y :: nat
   prop x + Suc y = Suc (x + y)
   [hint_rewrite]
+proof
+  ← induct x nat_induct goal=0
+    #[1] 0 + Suc y = Suc (0 + y)
+    #[2] ∀n. n + Suc y = Suc (n + y) ⟶ Suc n + Suc y = Suc (Suc n + y)
+  ← rewrite nat_plus_def_1 sym=false goal=1
+  ← intro m goal=2
+    #[3] _VAR m
+    #[4] m + Suc y = Suc (m + y)
+    #[5] Suc m + Suc y = Suc (Suc m + y)
+  ← rewrite nat_plus_def_2 sym=false goal=5
+    #[6] Suc (m + Suc y) = Suc (Suc (m + y))
+  ← rewrite source=prev goal=6 facts=[4]
+qed
 
 theorem add_comm
   fixes x :: nat, y :: nat
@@ -521,11 +534,35 @@ theorem bit0_Suc
   fixes n :: nat
   prop Suc (bit0 n) = bit1 n
   [hint_rewrite,hint_rewrite_sym]
+proof
+  ← rewrite bit0_def sym=false goal=0
+    #[1] Suc (n + n) = bit1 n
+  ← rewrite bit1_def sym=false goal=1
+    #[2] Suc (n + n) = n + n + 1
+  ← rewrite nat_one_def sym=false goal=2
+    #[3] Suc (n + n) = n + n + Suc 0
+  ← rewrite add_Suc_right sym=false goal=3
+    #[4] Suc (n + n) = Suc (n + n + 0)
+  ← rewrite add_0_right sym=false goal=4
+qed
 
 theorem bit1_Suc
   fixes n :: nat
   prop Suc (bit1 n) = bit0 (Suc n)
   [hint_rewrite]
+proof
+  ← rewrite bit1_def sym=false goal=0
+    #[1] Suc (n + n + 1) = bit0 (Suc n)
+  ← rewrite bit0_def sym=false goal=1
+    #[2] Suc (n + n + 1) = Suc n + Suc n
+  ← rewrite nat_one_def sym=false goal=2
+    #[3] Suc (n + n + Suc 0) = Suc n + Suc n
+  ← rewrite nat_plus_def_2 sym=false goal=3
+    #[4] Suc (n + n + Suc 0) = Suc (n + Suc n)
+  ← rewrite add_Suc_right sym=false goal=4
+    #[5] Suc (Suc (n + n + 0)) = Suc (Suc (n + n))
+  ← rewrite add_0_right sym=false goal=5
+qed
 
 theorem bit0_bit0_add
   fixes m :: nat, n :: nat
