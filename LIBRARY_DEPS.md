@@ -127,3 +127,39 @@ real 下游：metric←misc←(floor,card)；integral←(real,metric)；transcen
 7. **gcd(6)/prime(13)/lcm** 收尾。
 
 > 纪律：不用 z3 / norm / auto / simp；全部手写 `rewrite`/`rule`/`intro`/`induct`/`cases` 等步骤。
+
+---
+
+## 5. 进度与遗留（2026-09-12，nat 专项）
+
+nat 现状（`python .cache/validate_one.py nat`，trust=LIBRARY_ORACLES）：
+**VALID 146 / 226，UNPROVED 13，DEP_FAILED 66，STEP_FAILED 0**（开工基线
+VALID 55 / UNPROVED 34 / DEP_FAILED 132 / STEP_FAILED 1）。
+
+已解 blocker（全部手工，无 z3）：`mult_Suc_right`、二进制位加乘 8 条、
+`less_eq_exist(17)`、`less_exist(5)`、`less_lesseqI`、`less_lesseq(9)`、
+`le_antisym(9)`、`lt_antisym`、`let_antisym`、`lt_trans`、`let_trans(7)`、
+`lte_trans(5)`、`not_le(32)`、`not_lt`、`eq_mult_lcancel(16)`、`eq_mult_rcancel`、
+`nat_norm_test1`；并修复预存 STEP_FAILED 的 `le_1_1`。
+
+声明的顺序调整（必要，因为证明不能前向引用）：
+- `less_lesseqI` 前移到 `less_lesseq` 之前（后者反向直接用前者）。
+- `eq_mult_lcancel` / `eq_mult_rcancel` 前移到 `not_le` 之后（它们原来在
+  `less_eq` 定义之前，无法使用序关系引理；更早引用仅在二者内部，其余在
+  6463/6737 之后）。
+
+剩余 UNPROVED（13）：`mult_eq_1(4)`、`bit0_neq`、`bit1_neq`、`bit0_bit1_neq`、
+`bit0_neq_one`、`bit1_neq_one`、`nat_minus_suc(4)`、`even_exists_lemma(2)`、
+`exp_mono_lt_imp(1)`、`nat_MAX(1)`、`divmod_uniq_lemma`、`div_le`、`div_mult_add4`。
+
+剩余 z3（约 27 条，当前借 trust 判 VALID，需改手工）：
+`le_mult_rcancel, lt_mult_rcancel, left_sub_distrib, not_even, not_odd,
+even_add, even_mult, even_exp, odd_add, lt_exp, le_exp, divmod_exist,
+divmod_uniq, mod_cases, mod_le_twice, mod_exists, div_mono, div_mono_lt,
+mod_eq_0, div_eq_self, odd_mod, mod_add_mod, div_add_mod, div_le_exclusion,
+div_div, div_mod, div_exp`。
+
+已知难点：`mult_eq_1` 的正向需要一个 goal 假设（`0=1`）作为事实参与
+`negE_gen` 造矛盾，而当前管线不把 goal 的 hyp 暴露为可引用事实
+（见 `repl-client.md` §8.2）；可改结构（例如先用 `mult_nonzero` 反向证
+`m≠0`/`n≠0` 再用 `Pre`）绕开。

@@ -237,3 +237,34 @@ STEP FAILED: AssertionError: rewrite: unable to apply theorem.
 6. 单请求内部异常会打挂常驻 server → `handle_request` 兜底，进程不退。
 
 **发现新痛点就改 `repl/`，并补测试。** 不要绕过 REPL 去用前后端 API。
+7. 旧 `var` 声明跨 goal 残留，与见证名撞车（`elim: duplicate name p`）
+   → 新增 `reset` 命令（清变量与当前 goal）。
+8. 写证明靠猜定理名/方法 → 新增 `methods` / `theorems [-v]` / `thm NAME`
+   三个查询命令（查的是当前理论闭包与受检注册表，见 §5.0）。
+
+---
+
+## 8. 使用中发现的限制（给后续 AI）
+
+1. **`facts=[a, b]` 不能有空格**（`[a, b]` 会被按空白切成 `[a,` 与 `b]`，
+   报 `fact sid '[' not found`）。写成 `facts=[a,b]`。
+2. **goal 的假设不能当事实引用**：`intro` 引入的假设是 goal 的 hyps，
+   `assumption` 只在命题本身等于某个 hyp 时可用；不能把它当 `facts=` 传给
+   `negE_gen` 等（报 `illegal dependence` / `prop does not appear in hyps`）。
+   需要时应改变结构，让假设留在 goal 内被 `induct`/`type_cases` 泛化。
+3. **声明顺序是硬约束**：`validate_theory` 按文件顺序装配理论，证明不能引用
+   声明在其后的定理（报 `Theorem X not found`）。REPL 里整理论已加载，
+   **不会**报这个错——所以 REPL 通过后仍要
+   `python .cache/validate_one.py <theory>` 复验。必要时把被依赖定理整体前移
+   （如 `less_lesseqI` 移到 `less_lesseq` 之前）。
+4. **`rule` 不能把 iff 当逆向规则**（`rule less_exist` 对 `k<n` 报
+   MatchException）。由 `∃d. n=k+Suc d` 反推 `k<n`：先 `cut` 出该 exists 命题
+   并证明，再 `→ rewrite target=fact less_exist sym=true`，`→` 会直接落在
+   目标位置并关门。
+5. **`type_cases`/`induct` 需要自由变量**：绑定在 `∀` 里的不行
+   （`induction: cannot find variable`）；用 `var` 声明或 `elim` 出见证。
+   `type_cases m` 会连 goal 里的假设一起代入，因此**不要提前 `intro`**。
+6. **依赖 `limit` 的方法**：`methods` 显示 `[needs X]`（如 `nat_const_ineq`
+   需 `bit1_neq_one`、`nat_norm` 需 `nat_nat_power_def_1`）。
+7. **`rewrite` 可自动关门**：goal 被重写成与某个已有事实相同/自反时，
+   这一步本身就关闭 goal（导出里不会多出 `apply_prev`），回放可复现。

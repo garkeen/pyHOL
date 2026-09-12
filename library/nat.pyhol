@@ -713,6 +713,9 @@ header "Test of macros"
 theorem nat_norm_test1
   fixes x :: nat, y :: nat, z :: nat
   prop x + y + (y + z) = y * 2 + (x + z)
+proof
+  nat_norm goal=0
+qed
 
 theorem nat_const_ineq_test1
   prop ~((12::nat) = 13)
