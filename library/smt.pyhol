@@ -41,18 +41,32 @@ qed
 theorem r003
   fixes p :: bool
   prop (p <--> true) <--> p
+proof
+  ← rewrite eq_true sym=true goal=0
+qed
 
 theorem r004
   fixes p :: bool
   prop (true <--> p) <--> p
+proof
+  ← rewrite r001 sym=false goal=0 loc=0.1
+  ← rewrite eq_true sym=true goal=1
+qed
 
 theorem r005
   fixes p :: bool
   prop (p <--> false) <--> ~p
+proof
+  ← rewrite eq_false sym=true goal=0
+qed
 
 theorem r006
   fixes p :: bool
   prop (false <--> p) <--> ~p
+proof
+  ← rewrite r001 sym=false goal=0 loc=0.1
+  ← rewrite eq_false sym=true goal=1
+qed
 
 theorem r038
   prop ~true <--> false
@@ -83,22 +97,39 @@ theorem r065
 theorem r007
   fixes p :: bool, q :: bool
   prop (~p <--> ~q) <--> p <--> q
+proof
+  ← rewrite neg_iff_both_sides sym=true goal=0
+qed
 
 theorem r008
   fixes p :: bool, q :: bool
   prop ~(p <--> ~q) <--> p <--> q
+proof
+  ← rewrite neg_iff sym=false goal=0
+  ← rewrite neg_iff_both_sides sym=true goal=1
+qed
 
 theorem r009
   fixes p :: bool, q :: bool
   prop ~(~p <--> q) <--> p <--> q
+proof
+  ← rewrite neg_iff sym=false goal=0
+  ← rewrite double_neg sym=false goal=1
+qed
 
 theorem r010
   fixes x :: bool, y :: bool
   prop (if true then x else y) <--> x
+proof
+  ← rule if_true goal=0
+qed
 
 theorem r011
   fixes x :: bool, y :: bool
   prop (if false then x else y) <--> y
+proof
+  ← rule if_false goal=0
+qed
 
 theorem r012
   fixes p :: bool, q :: bool
@@ -107,10 +138,16 @@ theorem r012
 theorem r041
   fixes p :: bool, q :: bool
   prop p | q <--> q | p
+proof
+  ← rule disj_comm goal=0
+qed
 
 theorem r031
   fixes p :: bool, q :: bool
   prop (p --> q) <--> ~p | q
+proof
+  ← rule imp_disj_eq goal=0
+qed
 
 theorem d001
   fixes p :: bool, q :: bool
@@ -243,30 +280,61 @@ theorem r028
 theorem r029
   fixes p :: bool, q :: bool
   prop (~p --> q) <--> p | q
+proof
+  ← rewrite imp_disj_eq sym=false goal=0
+  ← rewrite double_neg sym=false goal=1
+qed
 
 theorem r030
   fixes p :: bool, q :: bool
   prop (~p --> q) <--> q | p
+proof
+  ← rewrite imp_disj_eq sym=false goal=0
+  ← rewrite double_neg sym=false goal=1
+  ← rule disj_comm goal=2
+qed
 
 theorem r032
   fixes p :: bool, q :: bool
   prop (p --> q) <--> q | ~p
+proof
+  ← rewrite imp_disj_eq sym=false goal=0
+  ← rule disj_comm goal=1
+qed
 
 theorem r033
   fixes p :: bool
   prop (true --> p) <--> p
+proof
+  ← rewrite imp_disj_eq sym=false goal=0
+  ← rewrite not_true sym=false goal=1
+  ← rewrite disj_false_left sym=false goal=2
+qed
 
 theorem r034
   fixes p :: bool
   prop (p --> true) <--> true
+proof
+  ← rewrite imp_disj_eq sym=false goal=0
+  ← rewrite disj_true_right sym=false goal=1
+qed
 
 theorem r035
   fixes p :: bool
   prop (false --> p) <--> true
+proof
+  ← rewrite imp_disj_eq sym=false goal=0
+  ← rewrite not_false sym=false goal=1
+  ← rewrite disj_true_left sym=false goal=2
+qed
 
 theorem r036
   fixes p :: bool
   prop (p --> p) <--> true
+proof
+  ← rewrite imp_disj_eq sym=false goal=0
+  ← rewrite disj_neg_pos sym=false goal=1
+qed
 
 theorem r037
   fixes p :: bool, q :: bool, r :: bool
@@ -274,86 +342,159 @@ theorem r037
 
 theorem r039
   prop ~false <--> true
+proof
+  ← rule not_false goal=0
+qed
 
 theorem r040
   fixes p :: bool
   prop ~~p <--> p
+proof
+  ← rule double_neg goal=0
+qed
 
 theorem r042
   fixes p :: bool
   prop p | true <--> true
+proof
+  ← rule disj_true_right goal=0
+qed
 
 theorem r043
   fixes p :: bool
   prop p | ~p <--> true
+proof
+  ← rule disj_pos_neg goal=0
+qed
 
 theorem r044
   fixes p :: bool
   prop ~p | p <--> true
+proof
+  ← rule disj_neg_pos goal=0
+qed
 
 theorem r045
   fixes p :: bool
   prop true | p <--> true
+proof
+  ← rule disj_true_left goal=0
+qed
 
 theorem r046
   fixes p :: bool
   prop p | false <--> p
+proof
+  ← rule disj_false_right goal=0
+qed
 
 theorem r047
   fixes p :: bool
   prop false | p <--> p
+proof
+  ← rule disj_false_left goal=0
+qed
 
 theorem r048
   fixes p :: bool, q :: bool
   prop p & q <--> q & p
+proof
+  ← rule conj_comm goal=0
+qed
 
 theorem r049
   fixes p :: bool
   prop p & true <--> p
+proof
+  ← rule conj_true_right goal=0
+qed
 
 theorem r050
   fixes p :: bool
   prop true & p <--> p
+proof
+  ← rule conj_true_left goal=0
+qed
 
 theorem r051
   fixes p :: bool
   prop p & false <--> false
+proof
+  ← rule conj_false_left goal=0
+qed
 
 theorem r052
   fixes p :: bool
   prop false & p <--> false
+proof
+  ← rule conj_false_right goal=0
+qed
 
 theorem r053
   fixes p :: bool, q :: bool
   prop p & q <--> ~(~p | ~q)
+proof
+  ← rewrite de_morgan_thm2 loc=1 sym=false goal=0
+  ← rewrite double_neg sym=false goal=1
+qed
 
 theorem r054
   fixes p :: bool, q :: bool
   prop ~p & q <--> ~(p | ~q)
+proof
+  ← rewrite de_morgan_thm2 loc=1 sym=false goal=0
+  ← rewrite double_neg sym=false goal=1
+qed
 
 theorem r055
   fixes p :: bool, q :: bool
   prop p & ~q <--> ~(~p | q)
+proof
+  ← rewrite de_morgan_thm2 loc=1 sym=false goal=0
+  ← rewrite double_neg sym=false goal=1
+qed
 
 theorem r056
   fixes p :: bool, q :: bool
   prop ~p & ~q <--> ~(p | q)
+proof
+  ← rewrite de_morgan_thm2 loc=1 sym=false goal=0
+qed
 
 theorem r057
   fixes p :: bool, q :: bool
   prop p & q <--> ~(~q | ~p)
+proof
+  ← rewrite de_morgan_thm2 loc=1 sym=false goal=0
+  ← rewrite double_neg sym=false goal=1
+  ← rule conj_comm goal=2
+qed
 
 theorem r058
   fixes p :: bool, q :: bool
   prop ~p & q <--> ~(~q | p)
+proof
+  ← rewrite de_morgan_thm2 loc=1 sym=false goal=0
+  ← rewrite double_neg sym=false goal=1
+  ← rule conj_comm goal=2
+qed
 
 theorem r059
   fixes p :: bool, q :: bool
   prop p & ~q <--> ~(q | ~p)
+proof
+  ← rewrite de_morgan_thm2 loc=1 sym=false goal=0
+  ← rewrite double_neg sym=false goal=1
+  ← rule conj_comm goal=2
+qed
 
 theorem r060
   fixes p :: bool, q :: bool
   prop ~p & ~q <--> ~(q | p)
+proof
+  ← rewrite de_morgan_thm2 loc=1 sym=false goal=0
+  ← rule conj_comm goal=1
+qed
 
 theorem r066
   fixes x :: int, y :: int, z :: int
@@ -656,10 +797,16 @@ header "Schematic rules for Z3 rewrite: idempotence and annihilation"
 theorem r136
   fixes p :: bool
   prop p & p <--> p
+proof
+  ← rule conj_same_atom goal=0
+qed
 
 theorem r137
   fixes p :: bool
   prop p | p <--> p
+proof
+  ← rule disj_same_atom goal=0
+qed
 
 theorem r138
   fixes p :: bool, q :: bool
@@ -746,7 +893,13 @@ header "Schematic rules for Z3 rewrite: boolean literal folding"
 theorem r155
   fixes A :: bool
   prop (A <--> true) <--> A
+proof
+  ← rewrite eq_true sym=true goal=0
+qed
 
 theorem r156
   fixes A :: bool
   prop (A <--> false) <--> ~A
+proof
+  ← rewrite eq_false sym=true goal=0
+qed
