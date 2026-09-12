@@ -1043,11 +1043,173 @@ theorem less_eq_exist
   fixes m :: nat, n :: nat
   prop m <= n <--> (?p. n = m + p)
   [hint_rewrite]
+proof
+  cut "m <= m" goal=0
+    #[1] m <= m
+  ← induct m nat_induct goal=1
+    #[2] (0::nat) <= 0
+    #[3] !n. n <= n --> Suc n <= Suc n
+  ← rewrite nat_less_eq_def_1 sym=false goal=2
+  ← intro n goal=3
+    #[4] _VAR n
+    #[5] n <= n
+    #[6] Suc n <= Suc n
+  ← rewrite nat_less_eq_def_2 sym=false goal=6
+    #[7] Suc n = Suc n | Suc n <= n
+  ← rule disjI1 goal=7
+    #[8] Suc n = Suc n
+  ← refl goal=8
+    #[9] Suc n = Suc n
+  ← rule iffI goal=0
+    #[10] m <= n --> (?p. n = m + p)
+    #[11] (?p. n = m + p) --> m <= n
+  ← induct n nat_induct goal=10
+    #[12] m <= 0 --> (?p. 0 = m + p)
+    #[13] !n. (m <= n --> (?p. n = m + p)) --> m <= Suc n --> (?p. Suc n = m + p)
+  ← rewrite nat_less_eq_def_1 sym=false goal=12
+    #[14] m = 0 --> (?p. 0 = m + p)
+  ← intro goal=14
+    #[15] m = 0
+    #[16] ?p. 0 = m + p
+  ← inst "(0::nat)" goal=16
+    #[17] 0 = m + 0
+  ← rewrite add_0_right sym=false goal=17
+    #[18] 0 = m
+  ← rewrite source=prev goal=18 facts=[15]
+  ← intro n goal=13
+    #[19] m <= n --> (?p. n = m + p)
+    #[20] m <= Suc n
+    #[21] ?p. Suc n = m + p
+  → rewrite nat_less_eq_def_2 sym=false target=fact goal=21 facts=[20]
+    #[22] m = Suc n | m <= n
+  ← rule disjE goal=21 facts=[22]
+    #[23] m = Suc n --> (?p. Suc n = m + p)
+    #[24] m <= n --> (?p. Suc n = m + p)
+  ← intro goal=23
+    #[25] m = Suc n
+    #[26] ?p. Suc n = m + p
+  ← inst "(0::nat)" goal=26
+    #[27] Suc n = m + 0
+  ← rewrite add_0_right sym=false goal=27
+    #[28] Suc n = m
+  ← rewrite source=prev goal=28 facts=[25]
+    #[29] Suc n = m
+  ← intro goal=24
+    #[30] m <= n
+    #[31] ?p. Suc n = m + p
+  → forward goal=31 facts=[19,30]
+    #[32] ?p. n = m + p
+  elim p goal=31 facts=[32]
+    #[33] _VAR p
+    #[34] n = m + p
+    #[35] ?p. Suc n = m + p
+  ← inst "Suc p" goal=35
+    #[36] Suc n = m + Suc p
+  ← rewrite add_Suc_right sym=false goal=36
+    #[37] Suc n = Suc (m + p)
+  ← rewrite source=prev goal=37 facts=[34]
+    #[38] Suc n = Suc (m + p)
+  ← intro goal=11
+    #[39] ?p. n = m + p
+    #[40] m <= n
+  elim p goal=40 facts=[39]
+    #[41] m <= n
+  ← rewrite source=prev goal=41 facts=[34]
+    #[42] m <= m + p
+  ← induct p nat_induct goal=42
+    #[43] m <= m + 0
+    #[44] !n. m <= m + n --> m <= m + Suc n
+  ← rewrite add_0_right sym=false goal=43
+  ← intro q goal=44
+    #[45] _VAR q
+    #[46] m <= m + q
+    #[47] m <= m + Suc q
+  ← rewrite add_Suc_right sym=false goal=47
+    #[48] m <= Suc (m + q)
+  ← rewrite nat_less_eq_def_2 sym=false goal=48
+    #[49] m = Suc (m + q) | m <= m + q
+  ← rule disjI2 goal=49
+qed
 
 theorem less_exist
   fixes m :: nat, n :: nat
   prop m < n <--> (?d. n = m + Suc d)
   [hint_rewrite]
+proof
+  cut "m <= m" goal=0
+    #[1] m <= m
+  ← induct m nat_induct goal=1
+    #[2] (0::nat) <= 0
+    #[3] !n. n <= n --> Suc n <= Suc n
+  ← rewrite nat_less_eq_def_1 sym=false goal=2
+  ← intro n goal=3
+    #[4] _VAR n
+    #[5] n <= n
+    #[6] Suc n <= Suc n
+  ← rewrite nat_less_eq_def_2 sym=false goal=6
+    #[7] Suc n = Suc n | Suc n <= n
+  ← rule disjI1 goal=7
+    #[8] Suc n = Suc n
+  ← refl goal=8
+    #[9] Suc n = Suc n
+  ← rule iffI goal=0
+    #[10] m < n --> (?d. n = m + Suc d)
+    #[11] (?d. n = m + Suc d) --> m < n
+  ← induct n nat_induct goal=10
+    #[12] m < 0 --> (?d. 0 = m + Suc d)
+    #[13] !n. (m < n --> (?d. n = m + Suc d)) --> m < Suc n --> (?d. Suc n = m + Suc d)
+  ← rewrite nat_less_def_1 sym=false goal=12
+    #[14] false --> (?d. 0 = m + Suc d)
+  ← intro goal=14
+    #[15] false
+    #[16] ?d. 0 = m + Suc d
+  ← rule falseE goal=16 facts=[15]
+  ← intro k goal=13
+    #[17] _VAR k
+    #[18] m < k --> (?d. k = m + Suc d)
+    #[19] m < Suc k
+    #[20] ?d. Suc k = m + Suc d
+  → rewrite less_Suc_lesseq sym=false target=fact goal=20 facts=[19]
+    #[21] m <= k
+  → rewrite less_eq_exist sym=false target=fact goal=20 facts=[21]
+    #[22] ?p. k = m + p
+  elim p goal=20 facts=[22]
+    #[23] _VAR p
+    #[24] k = m + p
+    #[25] ?d. Suc k = m + Suc d
+  ← rewrite add_Suc_right sym=false goal=25
+    #[26] ?d. Suc k = Suc (m + d)
+  ← inst p goal=26
+    #[27] Suc k = Suc (m + p)
+  ← rewrite source=prev goal=27 facts=[24]
+    #[28] Suc k = Suc (m + p)
+  ← intro goal=11
+    #[29] ?d. n = m + Suc d
+    #[30] m < n
+  elim d goal=30 facts=[29]
+    #[31] _VAR d
+    #[32] n = m + Suc d
+    #[33] m < n
+  ← rewrite source=prev goal=33 facts=[32]
+    #[34] m < m + Suc d
+  ← rewrite add_Suc_right sym=false goal=34
+    #[35] m < Suc (m + d)
+  ← rewrite less_Suc_lesseq sym=false goal=35
+    #[36] m <= m + d
+  ← induct d nat_induct goal=36
+    #[37] m <= m + 0
+    #[38] !n. m <= m + n --> m <= m + Suc n
+  ← rewrite add_0_right sym=false goal=37
+  ← intro q goal=38
+    #[39] _VAR q
+    #[40] m <= m + q
+    #[41] m <= m + Suc q
+  ← rewrite add_Suc_right sym=false goal=41
+    #[42] m <= Suc (m + q)
+  ← rewrite nat_less_eq_def_2 sym=false goal=42
+    #[43] m = Suc (m + q) | m <= m + q
+  ← rule disjI2 goal=43
+qed
 
 theorem less_lesseq
   fixes m :: nat, n :: nat
