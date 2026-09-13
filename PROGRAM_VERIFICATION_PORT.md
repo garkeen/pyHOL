@@ -882,6 +882,10 @@ prop linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x
 
 ### 11.4 阶段 3 剩余
 
+**转写 auto2 陈述时的一个文法语限制**：holpy 的 `∀` 只吃一个绑定变量，
+`∀x y z. P` 必须写成 `∀x. ∀y. ∀z. P`（`∃` 同理）；`library/order.pyhol` 的定义
+里就是这么写的。auto2/Isabelle 原文里的多变量量词照抄会解析失败。
+
 谓词层（preorder/order/linorder + 层级引理 + nat 实例）已就位；
 `sorted`/`strict_sorted`/`insort`/`ordered_insert` 与 `Min`/`Max` 仍待做，
 它们建在 `linorder` 谓词上，语法照 auto2 写（`fixes xs :: ('a::linorder) list`）。
