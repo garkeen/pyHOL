@@ -1375,9 +1375,184 @@ proof
   ← rule negE_gen param_A="card A < card A" param_C="z Mem A" goal=19 facts=[27,26]
 qed
 
+-- The pigeonhole step behind `surjective_iff_injective`: for a finite
+-- self-map of `s` that is surjective on `s`, two preimages of the same
+-- point must coincide.  Stated with the element variables in `fixes`
+-- (not as a lambda over them) so that the element-level equality
+-- rewrites go through.
+theorem surjective_imp_injective
+  fixes s :: 'a set, f :: 'a => 'a, x :: 'a, y :: 'a
+  prop finite s --> image f s Sub s --> (!z. z Mem s --> (?w. w Mem s & f w = z)) --> x Mem s --> y Mem s --> f x = f y --> x = y
+proof
+  ← intro goal=0
+    #[1] finite s
+    #[2] image f s Sub s
+    #[3] !z. z Mem s --> (?w. w Mem s & f w = z)
+    #[4] x Mem s
+    #[5] y Mem s
+    #[6] f x = f y
+    #[7] x = y
+  ← cases "x = y" goal=7
+    #[8] x = y --> x = y
+    #[9] ~(x = y) --> x = y
+  ← intro goal=9
+    #[10] ~(x = y)
+    #[11] x = y
+  → forward subset_delete param_A=s param_a=x goal=11
+    #[12] delete s x Sub s
+  → forward finite_subset param_A="delete s x" param_B=s goal=11 facts=[12,1]
+    #[13] finite (delete s x)
+  → forward not_mem_delete_self param_A=s param_x=x goal=11
+    #[14] ~(x Mem delete s x)
+  → forward insert_delete param_A=s param_a=x goal=11 facts=[4]
+    #[15] insert x (delete s x) = s
+  → forward card_insert param_A="delete s x" param_a=x goal=11 facts=[13,14]
+    #[16] card (insert x (delete s x)) = Suc (card (delete s x))
+  → rewrite eq_sym_eq sym=false target=fact goal=11 facts=[15]
+    #[17] s = insert x (delete s x)
+  → rewrite source=prev target=fact goal=11 facts=[15,16]
+    #[18] card s = Suc (card (delete s x))
+  → forward less_eq_refl param_n="card (delete s x)" goal=11
+    #[19] card (delete s x) <= card (delete s x)
+  → rewrite less_Suc_lesseq sym=true target=fact goal=11 facts=[19]
+    #[20] card (delete s x) < Suc (card (delete s x))
+  → rewrite eq_sym_eq sym=false target=fact goal=11 facts=[18]
+    #[21] Suc (card (delete s x)) = card s
+  → rewrite source=prev target=fact goal=11 facts=[21,20]
+    #[22] card (delete s x) < card s
+  → forward card_image_le param_X="delete s x" param_g=f goal=11 facts=[13]
+    #[23] card (image f (delete s x)) <= card (delete s x)
+  → rewrite eq_sym_eq sym=false target=fact goal=11 facts=[10]
+    #[24] ~(y = x)
+  cut "y Mem delete s x" goal=11
+    #[25] y Mem delete s x
+  ← rewrite member_delete sym=false goal=25
+    #[26] y Mem s & ~(y = x)
+  ← rule conjI goal=26
+  cut "f x Mem image f (delete s x)" goal=11
+    #[27] f x Mem image f (delete s x)
+  ← rewrite in_image sym=false goal=27
+    #[28] ?x1. x1 Mem delete s x & f x = f x1
+  ← inst y goal=28
+    #[29] y Mem delete s x & f x = f y
+  → forward conjI goal=29 facts=[25,6]
+  → forward insert_absorb goal=11 facts=[27]
+    #[30] insert (f x) (image f (delete s x)) = image f (delete s x)
+  → forward image_insert param_A="delete s x" param_a=x param_f=f goal=11
+    #[31] image f (insert x (delete s x)) = insert (f x) (image f (delete s x))
+  → rewrite source=prev target=fact goal=11 facts=[15,31]
+    #[32] image f s = insert (f x) (image f (delete s x))
+  → rewrite source=prev target=fact goal=11 facts=[30,32]
+    #[33] image f s = image f (delete s x)
+  cut "card (image f s) = card (image f (delete s x))" goal=11
+    #[34] card (image f s) = card (image f (delete s x))
+  ← rewrite source=prev goal=34 facts=[33]
+  → rewrite eq_sym_eq sym=false target=fact goal=11 facts=[34]
+    #[35] card (image f (delete s x)) = card (image f s)
+  → rewrite source=prev target=fact goal=11 facts=[35,23]
+    #[36] card (image f s) <= card (delete s x)
+  → rewrite less_Suc_lesseq sym=true target=fact goal=11 facts=[36]
+    #[37] card (image f s) < Suc (card (delete s x))
+  → rewrite lesseq_Suc_less sym=true target=fact goal=11 facts=[37]
+    #[38] Suc (card (image f s)) <= Suc (card (delete s x))
+  → rewrite lesseq_Suc_less sym=true target=fact goal=11 facts=[22]
+    #[39] Suc (card (delete s x)) <= card s
+  → forward less_eq_trans goal=11 facts=[38,39]
+    #[40] Suc (card (image f s)) <= card s
+  → rewrite lesseq_Suc_less sym=false target=fact goal=11 facts=[40]
+    #[41] card (image f s) < card s
+  cut "s Sub image f s" goal=11
+    #[42] s Sub image f s
+  ← rewrite subset_def sym=false goal=42
+    #[43] !x. x Mem s --> x Mem image f s
+  ← intro z1 goal=43
+    #[44] _VAR z1
+    #[45] z1 Mem s
+    #[46] z1 Mem image f s
+  → forward goal=46 facts=[3,45]
+    #[47] ?w. w Mem s & f w = z1
+  elim w1 goal=46 facts=[47]
+    #[48] _VAR w1
+    #[49] w1 Mem s & f w1 = z1
+    #[50] z1 Mem image f s
+  → rewrite eq_sym_eq sym=false target=fact goal=50 facts=[49]
+    #[51] w1 Mem s & z1 = f w1
+  ← rewrite in_image sym=false goal=50
+    #[52] ?x. x Mem s & z1 = f x
+  ← inst w1 goal=52
+  cut "image f s = s" goal=11
+    #[53] image f s = s
+  ← rewrite set_equal_iff sym=false goal=53
+    #[54] !x. x Mem image f s <--> x Mem s
+  ← intro z goal=54
+    #[55] _VAR z
+    #[56] z Mem image f s <--> z Mem s
+  → forward subsetE param_A="image f s" param_B=s param_x=z goal=56 facts=[2]
+    #[57] z Mem image f s --> z Mem s
+  → forward subsetE param_A=s param_B="image f s" param_x=z goal=57 facts=[42]
+    #[58] z Mem s --> z Mem image f s
+  ← rule iffI goal=56
+  → forward subsetE param_A="image f s" param_B=s param_x=z goal=57 facts=[2]
+  → forward subsetE param_A=s param_B="image f s" param_x=z goal=58 facts=[42]
+  cut "card (image f s) = card s" goal=11
+    #[59] card (image f s) = card s
+  ← rewrite source=prev goal=59 facts=[53]
+  → rewrite eq_sym_eq sym=false target=fact goal=11 facts=[59]
+    #[60] card s = card (image f s)
+  → rewrite source=prev target=fact goal=11 facts=[60,41]
+    #[61] card (image f s) < card (image f s)
+  → forward less_irrefl param_n="card (image f s)" goal=11
+    #[62] ~(card (image f s) < card (image f s))
+  ← rule negE_gen param_A="card (image f s) < card (image f s)" param_C="x = y" goal=11 facts=[62,61]
+qed
+
 theorem surjective_iff_injective
   fixes s :: 'a set, f :: 'a => 'a
   prop finite s --> image f s Sub s --> (!y. y Mem s --> (?x. x Mem s & f x = y)) <--> (!x. !y. x Mem s --> y Mem s --> f x = f y --> x = y)
+proof
+  ← intro goal=0
+    #[1] finite s
+    #[2] image f s Sub s
+    #[3] (!y. y Mem s --> (?x. x Mem s & f x = y)) <--> (!x. !y. x Mem s --> y Mem s --> f x = f y --> x = y)
+  ← rule iffI goal=3
+    #[4] (!y. y Mem s --> (?x. x Mem s & f x = y)) --> (!x. !y. x Mem s --> y Mem s --> f x = f y --> x = y)
+    #[5] (!x. !y. x Mem s --> y Mem s --> f x = f y --> x = y) --> (!y. y Mem s --> (?x. x Mem s & f x = y))
+  ← intro goal=4
+    #[6] !y. y Mem s --> (?x. x Mem s & f x = y)
+    #[7] !x. !y. x Mem s --> y Mem s --> f x = f y --> x = y
+  ← intro x,y goal=7
+    #[8] _VAR x
+    #[9] _VAR y
+    #[10] x Mem s
+    #[11] y Mem s
+    #[12] f x = f y
+    #[13] x = y
+  → forward surjective_imp_injective param_f=f param_s=s param_x=x param_y=y goal=13
+    #[14] finite s --> image f s Sub s --> (!z. z Mem s --> (?w. w Mem s & f w = z)) --> x Mem s --> y Mem s --> f x = f y --> x = y
+  ← apply_prev goal=13 facts=[14,1,2,6,10,11,12]
+  ← intro goal=5
+    #[15] !x. !y. x Mem s --> y Mem s --> f x = f y --> x = y
+    #[16] !y. y Mem s --> (?x. x Mem s & f x = y)
+  → forward card_image_inj param_f=f param_s=s goal=16 facts=[1,15]
+    #[17] card (image f s) = card s
+  → forward card_subset_eq param_A="image f s" param_B=s goal=16 facts=[2,1,17]
+    #[18] image f s = s
+  ← intro y goal=16
+    #[19] ?x. x Mem s & f x = y
+  → rewrite eq_sym_eq sym=false target=fact goal=19 facts=[18]
+    #[20] s = image f s
+  → rewrite source=prev target=fact goal=19 facts=[20,11]
+    #[21] y Mem image f s
+  → rewrite in_image sym=false target=fact goal=19 facts=[21]
+    #[22] ?x. x Mem s & y = f x
+  elim x0 goal=19 facts=[22]
+    #[23] _VAR x0
+    #[24] x0 Mem s & y = f x0
+    #[25] ?x. x Mem s & f x = y
+  → rewrite eq_sym_eq sym=false target=fact goal=25 facts=[24]
+    #[26] x0 Mem s & f x0 = y
+  ← inst x0 goal=25
+qed
 
 header "Monotone operators and least fixed point"
 

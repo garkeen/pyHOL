@@ -701,9 +701,10 @@ def finite :: 'a set ⇒ bool = finite A ⟷ (∀P. P {} ∧ (∀x B. P B ⟶ P 
 - **multiset**：`mset_list_swap`（`mset (list_swap xs i j) = mset xs`）、
   `set_list_swap`。需要「`count` 对 `list_update` 的逐点刻画」再让两次更新抵消，
   依赖上一条。
-- **set（已收口，见 §10）**：`card_image_inj`、`card_mono`、`card_image_le`、
-  `card_subset_eq` 与两条元素层辅助已证并 VALID；只剩 `surjective_iff_injective`
-  （两条方向里「单射 ⟹ 满射」已通，「满射 ⟹ 单射」要鸽子洞论证，见 §10.3）。
+- **set（已收口，见 §10）**：基数层全部证完——`card_image_inj`、`card_mono`、
+  `card_image_le`、`card_subset_eq`、鸽子洞引理 `surjective_imp_injective` 与
+  `surjective_iff_injective` 都 VALID；set 只剩 3 条故意留的公理（`set_equal_iff`
+  与两条 `card` 递归）。
 - 阶段 3–6（序、良基递归、Functional 域库、指令式堆模型）未开始；阶段 3 是
   `sorted`/`strict_sorted`/`insort` 的前置。
 
@@ -719,9 +720,12 @@ def finite :: 'a set ⇒ bool = finite A ⟷ (∀P. P {} ∧ (∀x B. P B ⟶ P 
 ```
 validate_one.py set
   AXIOM        3     set_equal_iff / card_empty / card_insert
-  UNPROVED     1     surjective_iff_injective
-  VALID        71
+  VALID        73
+non-green: 0
 ```
+
+`surjective_iff_injective` 本身也证完了（见 §10.3），set 理论里除了那 3 条
+故意留的公理之外**全部 VALID**。
 
 新增定义（都只为给 `finite_induct` 提供**无 beta-redex 的 P**，varying 参数在最后）：
 
@@ -746,6 +750,9 @@ validate_one.py set
   则 `insert y A ⊆ B`（`insert_subset_imp`），`card (insert y A) = Suc (card A)`
   与 `card_mono` 的 `≤ card B = card A` 冲突，经 `lesseq_Suc_less` + `less_irrefl`
   收口。**不依赖 `subset_antisym`**（它在文件后面，replay 截断会 STEP_FAILED）。
+
+- **`surjective_imp_injective`**（鸽子洞辅助引理，见 §10.3）与
+  **`surjective_iff_injective`**（`finite s → image f s ⊆ s → 满射 ⟷ 单射`）。
 
 card 公理仍是 `card_empty`/`card_insert` 两条（§9 已论证：要定义化需要
 pigeonhole 唯一性，库里没有，holpy 也没有类型定义原语）。
@@ -773,23 +780,45 @@ pigeonhole 唯一性，库里没有，holpy 也没有类型定义原语）。
    带前提的重写定理可以直接重写目标（`card_insert` 的两个前提作为 facts），
    省掉「先 forward 出等式事实」的一步。
 
-### 10.3 `surjective_iff_injective` 的剩余与已定路线
+### 10.3 `surjective_iff_injective`（已证）
 
-命题：`finite s → image f s ⊆ s → (满射) ⟷ (单射)`。两个方向：
+命题：`finite s → image f s ⊆ s → (满射) ⟷ (单射)`，用 `iffI` 分成两支。
 
-- **单射 ⟹ 满射（已在 REPL 走通，未写回）**：`card_image_inj` 给
-  `card (image f s) = card s`，`card_subset_eq` 配 `image f s ⊆ s` 给
-  `image f s = s`；再对 `y ∈ s` 用 `in_image` 反向取原像（注意
-  `in_image` 的右式是 `y = f x`，要 `eq_sym_eq` 翻向）。
-- **满射 ⟹ 单射（未通）**：走鸽子洞反证——由满射得 `s ⊆ image f s`，
-  于是 `image f s = s`、`card (image f s) = card s`；若 `x ≠ y` 而
-  `f x = f y`，令 `s' = delete s x`，则
-  `image f s = image f s'`（因 `f x = f y ∈ image f s'`），
-  `card (image f s') ≤ card s'`（`card_image_le`），而
-  `card s = Suc (card s')`（`insert_delete` + `card_insert`）故
-  `card s' < card s`，串起来得 `card (image f s) < card (image f s)`，
-  与 `less_irrefl` 冲突。
-  余下的工作量主要在这条链的事实编排（要把等式/不等式在事实层重写，
-  并用 `less_eq_trans` 类引理拼 `≤`/`<`；`nat` 里若有
-  `less_eq_less_trans` 可直接用，否则得先补一条）。这条链里的
-  `stable-ID` 书签建议照 §10.2 的经验：先 `inst` 出新命题、少用兄弟分支引用。
+- **单射 ⟹ 满射**：`card_image_inj` 给 `card (image f s) = card s`，
+  `card_subset_eq` 配 `image f s ⊆ s` 给 `image f s = s`；对 `y ∈ s`
+  用 `image f s = s` 把 `y Mem s` 改写成 `y Mem image f s`，再用
+  `in_image` 取原像——注意 `in_image` 的右式是 `y = f x`，与目标里的
+  `f x = y` 反向，用 `eq_sym_eq` 翻一次即可。
+- **满射 ⟹ 单射**：鸽子洞，单独提成辅助引理
+
+  ```
+  theorem surjective_imp_injective
+    fixes s :: 'a set, f :: 'a => 'a, x :: 'a, y :: 'a
+    prop finite s --> image f s Sub s --> (!z. z Mem s --> (?w. w Mem s & f w = z))
+         --> x Mem s --> y Mem s --> f x = f y --> x = y
+  ```
+
+  **元素变量用 `fixes` 声明而不是写成 λ/∀**，正是 §10.2 第 1 条的经验：
+  这样元素层的等式重写（`eq_sym_eq`、`less_Suc_lesseq` 等）都能过
+  `has_rewrite`。证明骨架（`cases "x = y"` 后只留 `x ≠ y` 一支）：
+
+  1. `s' = delete s x`：`finite s'`、`~(x Mem s')`、`insert x s' = s`、
+     `card s = Suc (card s')`（`card_insert`）、`card s' < card s`。
+  2. `y ∈ s'`（用 `~(x = y)` 翻转 + `member_delete`）。
+  3. `f x ∈ image f s'`（`in_image` 反向 + 见证 `y`，用 `f x = f y`）。
+  4. 于是 `insert (f x) (image f s') = image f s'`（`insert_absorb`），
+     配上 `image_insert` 与 `insert x s' = s` 得
+     `image f s = image f s'`，进而 `card (image f s) = card (image f s')`
+     （用 `cut` + `rewrite source=prev` 造出这条等式，因为库里没有 `arg_cong`）。
+  5. `card_image_le` 给 `card (image f s') ≤ card s'`；用上面的等式换成
+     `card (image f s) ≤ card s'`，再配 1 的 `card s' < card s`：
+     先用 `less_Suc_lesseq sym=true` / `lesseq_Suc_less sym=true` 把
+     `a ≤ b`、`b < c` 都抬到 `Suc` 层，`less_eq_trans` 拼，最后
+     `lesseq_Suc_less sym=false` 落回 `card (image f s) < card s`
+     （这一手避开了「`≤` + `≠` 推 `<`」那条更长的路）。
+  6. 满射 → `s ⊆ image f s`（同 §10.3 第一支的取原像配方），配
+     `image f s ⊆ s` 得 `image f s = s`（`set_equal_iff` + `iffI` + `subsetE`，
+     **不用 `subset_antisym`**，它在文件后面），于是
+     `card (image f s) = card s`，把 5 的结论改写成
+     `card (image f s) < card (image f s)`，与 `less_irrefl` 冲突，
+     `negE_gen` 收口。

@@ -3,7 +3,8 @@
 """Subset/finite-set/cardinality closure lemmas.
 
 Active: the newly proved subset, finite-set and cardinality lemmas replay
-VALID, and the stub list (the remaining axiom debt) is pinned exactly.
+VALID, and the remaining non-VALID items are pinned to exactly the three
+deliberate axioms.
 Passive: `insert a (delete A a) = A` needs its hypothesis, `finite A` cannot
 be had from the insert lemma alone, `card_insert` needs the non-membership
 hypothesis, and `insert x A Sub B` needs the subset hypothesis.
@@ -39,18 +40,18 @@ NEW_LEMMAS = ['subsetE', 'subset_refl', 'subset_trans', 'subset_diff',
 CARD_LEMMAS = ['card_image_inj', 'card_mono', 'card_image_le',
                'card_subset_eq', 'insert_subset_imp',
                'card_le_bound_empty', 'not_mem_delete_self',
-               'delete_subset_insert_imp']
+               'delete_subset_insert_imp',
+               'surjective_imp_injective', 'surjective_iff_injective']
 
-# Still unproved: the deliberate `set_equal_iff` axiom plus the remaining
-# stubs.  Pinned so that proving one of them fails this test loudly and the
-# list gets updated, instead of the debt silently growing.
+# What is left over after the cardinality layer: only the deliberate axioms
+# (`set_equal_iff` plus the two `card` recursion axioms).  Pinned so that
+# anything slipping back to a non-VALID state fails this test loudly.
 EXPECTED_NON_GREEN = {
     # deliberate axioms: set extensionality, and the card recursion (see the
     # comment above `axiom card_empty` in set.pyhol for why card is axiomatized)
     'set_equal_iff': 'AXIOM',
     'card_empty': 'AXIOM',
     'card_insert': 'AXIOM',
-    'surjective_iff_injective': 'UNPROVED',
 }
 
 
