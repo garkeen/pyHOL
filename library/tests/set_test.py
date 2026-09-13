@@ -19,6 +19,7 @@ from core.verify import validate_theory, COMPUTATION_ORACLES
 # block: `finite_induct`/`finite_insert_imp`/`insert_delete` are what gets
 # facts back out of the `finite_def` encoding.
 NEW_LEMMAS = ['subsetE', 'subset_refl', 'subset_trans', 'subset_diff',
+              'subset_insert_imp', 'delete_subset_insert',
               'inter_comm', 'union_comm', 'insert_delete',
               'finite_induct', 'finite_insert_imp']
 

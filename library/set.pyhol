@@ -32,6 +32,13 @@ def comp_fun :: ('a ⇒ 'b) ⇒ ('b ⇒ 'c) ⇒ 'a ⇒ 'c = f ∘ g = (λx. g (f
 
 def finite :: 'a set ⇒ bool = finite A ⟷ (∀P::'a set ⇒ bool. P ({}::'a set) ∧ (∀x::'a. ∀B::'a set. P B ⟶ P (insert x B)) ⟶ P A)
 
+-- `fin_sub X` ("everything below X is finite") is the predicate that has
+-- to be instantiated for the P in `finite_def` to get subset closure:
+-- `finite B` then yields `fin_sub B`, and `fin_sub B` applied to a subset
+-- of `B` yields finiteness.  Named so the instantiated induction
+-- hypothesis carries no beta-redex.
+def fin_sub :: 'a set ⇒ bool = fin_sub X ⟷ (!Y::'a set. Y Sub X --> finite Y) [hint_rewrite]
+
 def delete :: 'a set ⇒ 'a ⇒ 'a set = delete A a = (λx. A x ∧ ¬(x = a))
 
 def image :: ('a ⇒ 'b) ⇒ 'a set ⇒ 'b set = image f A = (λy. ∃x. A x ∧ y = f x)
@@ -185,6 +192,15 @@ axiom set_equal_iff
 
 header "Subset"
 
+theorem subsetE
+  fixes A :: 'a set, B :: 'a set, x :: 'a
+  prop A Sub B --> x Mem A --> x Mem B
+proof
+  ← intro goal=0
+  → rewrite target=fact subset_def sym=false goal=3 facts=[1]
+  ← apply_prev goal=3 facts=[4,2]
+qed
+
 theorem subset_refl
   fixes A :: 'a set
   prop A Sub A
@@ -205,6 +221,44 @@ proof
   ← intro x goal=6
   → forward goal=9 facts=[4,8]
   ← apply_prev goal=9 facts=[5,10]
+qed
+
+-- `insert x` is the one constructor in `finite_def`, so both directions of
+-- subset reasoning have to eliminate it: either the new element is already
+-- absent from the subset (subset_insert_imp) or it is deleted before the
+-- subset is compared (delete_subset_insert).
+theorem subset_insert_imp
+  fixes A :: 'a set, B :: 'a set, x :: 'a
+  prop A Sub insert x B --> ~(x Mem A) --> A Sub B
+proof
+  ← intro goal=0
+  ← rewrite subset_def sym=false goal=3
+  ← intro z goal=4
+  → forward subsetE goal=7 facts=[1,6]
+  → rewrite target=fact member_insert sym=false goal=7 facts=[8]
+  → rewrite target=fact disj_comm sym=false goal=7 facts=[9]
+  cut "~(z = x)" goal=7
+  ← rule negI goal=11
+  ← intro goal=12
+  → rewrite target=fact source=prev goal=14 facts=[13,6]
+  ← rule negE_gen goal=14 facts=[2,15]
+  → forward force_disj_true1 goal=7 facts=[10,11]
+qed
+
+theorem delete_subset_insert
+  fixes A :: 'a set, B :: 'a set, x :: 'a
+  prop A Sub insert x B --> delete A x Sub B
+proof
+  ← intro goal=0
+  ← rewrite subset_def sym=false goal=2
+  ← intro z goal=3
+  → rewrite target=fact member_delete sym=false goal=6 facts=[5]
+  → forward conjD1 goal=6 facts=[7]
+  → forward conjD2 goal=6 facts=[7]
+  → forward subsetE goal=6 facts=[1,8]
+  → rewrite target=fact member_insert sym=false goal=6 facts=[10]
+  → rewrite target=fact disj_comm sym=false goal=6 facts=[11]
+  → forward force_disj_true1 goal=6 facts=[12,9]
 qed
 
 theorem subset_empty
@@ -567,15 +621,6 @@ proof
   → rewrite target=fact member_collect sym=false goal=14 facts=[15]
     #[16] ¬¬(x ∈ f x)
   ← rule negE goal=14 facts=[16,13]
-qed
-
-theorem subsetE
-  fixes A :: 'a set, B :: 'a set, x :: 'a
-  prop A Sub B --> x Mem A --> x Mem B
-proof
-  ← intro goal=0
-  → rewrite target=fact subset_def sym=false goal=3 facts=[1]
-  ← apply_prev goal=3 facts=[4,2]
 qed
 
 theorem subset_antisym
