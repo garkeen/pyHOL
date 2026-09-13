@@ -99,6 +99,11 @@ STEP_FAILED），实验后要清理。
   `record`（`Record.thy`、HOL Light `Library/records.ml`）；`map`（`Map.thy`）；
   `finset`/`multiset`（`multiset` 已建：`library/multiset.pyhol`，用计数函数
   `'a ⇒ nat` 表示，避开缺失的类型定义原语；`mset`/单点/并/置换律已证）；`vector`/`tree`。
+  有限集（`set` 理论）：`finite_induct`/`finite_insert`/`finite_subset`/`finite_union_imp`/
+  `finite_inter`/`finite_image`/`finite_delete`/`finite_diff` 与 `lfp_*` 均已证
+  （见 `PROGRAM_VERIFICATION_PORT.md` §9），**P0 有限集债清除**；仅余
+  `card_image_inj`/`surjective_iff_injective`
+  两条声明式命题——它们用未解释常量 `card`，要证得先给 card 建公理体系（不属于当前范围）。
 - **P3 数系与代数**：`rat` 补全（现仅 5 条，无逆元/除法/序/floor；
   对照 `Rat.thy`、Mathlib `Data/Rat/`）；`binomial`/`factorial`；
   `Euclidean_Rings`/`GCD`；抽象代数 `group`/`ring`/`field`

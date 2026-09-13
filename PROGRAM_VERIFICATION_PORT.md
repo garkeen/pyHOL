@@ -587,3 +587,106 @@ grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | 
     **顺序约束**：这些事实必须**在**用它们改写的那一步**之前**全部搭好，否则报
     `apply_method: illegal dependence`——线性证明只允许依赖同分支且位置在前的项
     （`length_sublist` 就是把 `sublist_def` 的展开放到最后一步才成功）。
+
+---
+
+## 9. 阶段 2.5 实测：set.pyhol 有限集块收口（本轮）
+
+阶段 2.2/2.3 的 list/multiset 之后，本轮把 `library/set.pyhol` 的证明债收掉了
+大头。**set 的非绿项从 22 条降到 2 条**。
+
+### 9.1 结果
+
+```
+validate_one.py set
+  AXIOM        1     set_equal_iff（故意留的公理）
+  UNPROVED     2     card_image_inj / surjective_iff_injective
+  VALID        58
+non-green: 2
+```
+
+那 2 条用的是 `const card`（未解释常量，理论里没有任何 card 公理），属于
+「可表达性移植」要保留的声明式命题，不打算证——真要证得先给 card 建公理体系。
+
+本轮新证 26 条（含 3 条原为空壳的新增引理）：
+
+| 组 | 引理 |
+| --- | --- |
+| 子集基础 | `subsetE`、`subset_refl`、`subset_trans`、`subset_diff`、`subset_insert`、`subset_delete`、`subset_inter_left`、`subset_inter_right` |
+| 消 insert/delete | `subset_insert_imp`、`delete_subset_insert`、`subset_insert_delete`、`insert_delete` |
+| 交并 | `inter_comm`、`union_comm`、`union_insert` |
+| image | `image_insert`、`image_combine` |
+| 有限集 | `finite_induct`、`finite_insert_imp`、`finite_fin_sub`、`finite_subset`、`finite_insert`、`finite_union_imp`、`finite_inter`、`finite_image`、`finite_delete`、`finite_diff` |
+| 最小不动点 | `lfp_lowerbound`、`lfp_greatest`、`lfp_fix_upper`、`lfp_fix_lower`（连带 `lfp_unfold` 从 DEP_FAILED 变 VALID） |
+
+### 9.2 有限集的核心：从 `finite_def` 里挤出事实
+
+`finite` 在本仓库是定义而非归纳规则：
+
+```
+def finite :: 'a set ⇒ bool = finite A ⟷ (∀P. P {} ∧ (∀x B. P B ⟶ P (insert x B)) ⟶ P A)
+```
+
+于是**关于有限集的一切都得靠代入那个 P**。三条出口：
+
+1. `finite_induct` —— 就是 `finite_def` 的直译（2 步）。
+2. `finite_insert_imp` —— 由 `finite A` 造 `finite (insert a A)`：把 `finite_def`
+   的 P 实例化成目标谓词，逐条消去前提。
+3. `finite_subset`（子集封闭）—— 需要 P 是「一切子集都有限」这种**带 ∀ 的谓词**。
+   holpy 没有 beta 化简通道，所以不能直接代入 λ：**把谓词写成命名定义**，
+   再代入那个名字（`def fin_sub X ⟷ ∀Y. Y ⊆ X ⟶ finite Y`）。
+
+第 3 条的证明形状（`finite_fin_sub`）：`cut` 出两条归纳前提的合取、`rule conjI` 分两
+支证明、再 `apply_prev` 把合取喂给实例化的蕴含。insert 步里要对 `x ∈ Y` 做分叉，
+分叉后 `x ∈ Y` 用 `insert_delete` 把 Y 还原成 `insert x (delete Y x)`、`x ∉ Y` 用
+`subset_insert_imp` 把 `Y ⊆ insert x B` 收紧成 `Y ⊆ B`。
+
+**偏应用代替 λ**：`finite_union_imp` / `finite_image` 用的谓词是
+`def fin_union B X ⟷ finite (B Un X)`、`def fin_image f X ⟷ finite (image f X)`——
+把归纳变量放在**最后一个参数**，于是 `fin_union A` / `fin_image f` 是偏应用
+（类型就是 `'a set ⇒ bool`），代入时不需要 λ。副作用是 `fin_union` 的参数顺序
+刻意反直觉（B 在前、归纳变量 X 在后），文件里写了注释。
+
+### 9.3 新踩到的机制坑（§8.5 的补充）
+
+14. **定理不能前向引用**。`validate_theory` 对每条定理用
+    `context.set_context(filename, limit=('thm', name))` 把理论**截断到该定理之前**，
+    再 replay。所以在 `.pyhol` 里引用声明在自己后面的定理（或定义），
+    探针进程里能跑通，独立 replay 一定 `STEP_FAILED`。
+    **表现极具误导性**：错误只是「某个 step failed」，不说是前向引用。
+    本轮的 `subsetE`（原先在文件后部）、`finite_empty`（在 `finite_fin_sub` 之后）、
+    `insert_delete`、`image_insert` 都因此挪过位置。
+15. **定义体引用未声明的常量会被静默丢弃**。`def` 的 item 若解析失败（例如
+    `def fin_image` 用了声明在其后的 `def image`），loader 只是把它记成
+    `item.error` 并跳过，**常量根本没注册**。下游的症状是解析期
+    「The variable(s) fin_image are not declared」——名字被当成变量，
+    于是 `inst` 能"侥幸"通过（用变量代入），生成的定理却毫无意义。
+    排查办法：`basic.theory_cache[f]['content']` 里翻该 item 的 `.error`。
+16. **稳定 ID 会随证明增长重排**。往证明中间插一步，其后所有 sid 平移，
+    早先记下的字面 sid 全部失效。REPL/探针里应当用「第几步产生的第几个新条目」
+    之类的相对引用，最后再一次性把字面 sid 抄进文件。
+    （`.cache/probe.py` 因此加了 `facts=[@step.k]` 与 `goal=autoN` 语法。）
+17. **`rewrite`/`apply_prev` 的依赖合法性按位置判定**：
+    `ItemID.can_depend_on` 要求「同一分支且位置在前」。跨 `cases` 分支引用兄弟支
+    的事实、或引用被 `cut`/`rule` 展开后位于其后的行，都会报
+    `apply_method: illegal dependence`。`cases` 之后要用的外部假设，
+    位置必须在分叉点之前。
+18. **`rule <thm> facts=[...]` 的前提必须与 facts 顺序对齐**，且 `rule` 是
+    逐个 premise 匹配的：只给一个事实却想消掉第三个前提（如 `disjE2` 的
+    `A ∨ B`）会报 `When matching implies with disj`。这时改用
+    `rule <thm>` 后把析取前提当子目标关掉，或给全 `param_*`。
+19. **`disjE2` 这类多前提定理要显式给 `param_*`**：元变量从目标推不出来时
+    报 `ParameterQueryException: ['param_A', 'param_B']`，必须
+    `← rule disjE2 param_A="finite A" param_B="finite B"`。
+20. **消析取的实用配方**：`member_insert` 出析取后
+    `disj_comm` 换序 + `force_disj_true1`（`A ∨ B ⟶ ¬B ⟶ A`）消掉已知为假的一支；
+    矛盾支用 `negE_gen`（`¬A ⟶ A ⟶ C`，结论 C 可与任意目标合一，不必先转成 false）。
+21. **带前提的等式/非等式假设**：`x = a` 直接 `← rewrite source=prev` 代入；
+    `¬(x = a)` 要先 `→ rewrite target=fact eq_false ... facts=[h]` 得到
+    `(x = a) ⟷ false`，再用 `rewrite source=prev` 把它当重写规则用。
+    纯布尔事实（如 `a ∈ A`）**不能**当重写规则（`eq_false` 只吃 `¬P`）。
+22. **`exists_flatten` 是"存在量词套等式"的专用清理器**：
+    `(∃y. (∃z. P z ∧ y = Q z) ∧ R y) ⟷ (∃z. P z ∧ R (Q z))`。
+    `image_combine`（`image f (image g A) = image (g ∘ f) A`）整个证明就是
+    `set_equal_iff` → `intro` → 两次 `in_image` → `comp_fun_def` → `exists_flatten`。
+    `comp_fun_def` 展开 `g ∘ f` 产生的 β-redex 由重写器自动约简，无需额外步骤。

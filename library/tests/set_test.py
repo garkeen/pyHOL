@@ -27,6 +27,7 @@ NEW_LEMMAS = ['subsetE', 'subset_refl', 'subset_trans', 'subset_diff',
               'finite_subset', 'finite_insert', 'finite_union_imp',
               'finite_inter', 'finite_image', 'finite_delete', 'finite_diff',
               'image_insert',
+              'image_combine',
               'lfp_lowerbound', 'lfp_greatest', 'lfp_fix_upper', 'lfp_fix_lower']
 
 # Still unproved: the deliberate `set_equal_iff` axiom plus the remaining
@@ -34,7 +35,6 @@ NEW_LEMMAS = ['subsetE', 'subset_refl', 'subset_trans', 'subset_diff',
 # list gets updated, instead of the debt silently growing.
 EXPECTED_NON_GREEN = {
     'set_equal_iff': 'AXIOM',
-    'image_combine': 'UNPROVED',
     'card_image_inj': 'UNPROVED',
     'surjective_iff_injective': 'UNPROVED',
 }

@@ -756,6 +756,14 @@ theorem image_combine
   fixes f :: 'b => 'c, g :: 'a => 'b, A :: 'a set
   prop image f (image g A) = image (g O f) A
   [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+  ← intro x goal=1
+  ← rewrite in_image sym=false goal=3
+  ← rewrite in_image sym=false goal=4
+  ← rewrite comp_fun_def sym=false goal=5
+  ← rewrite exists_flatten sym=false goal=6
+qed
 
 theorem exists_in_gspec1
   fixes P :: 'a => bool, Q :: 'a => bool
