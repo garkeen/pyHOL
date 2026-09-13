@@ -480,15 +480,29 @@ grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | 
   （`take_nil`/`take_cons`/`drop_nil`/`drop_cons`/`append_take_drop_id`/`length_map`/`map_append`）+ 测试。
 - 阶段 2.2 part 2（本次）：`nth_append_lt: !xs. i < length xs ⟹ nth (xs @ ys) i = nth xs i`
   ——第一条带 `< length` 守卫的列表引理，也是 `!`（320 次）引理族的范式样板（见 §8.5 第 6–9 条）。
-- 阶段 2.2 part 3（本次）：`list_update` 的展开特化引理 `list_update_nil`/`list_update_zero`/
+- 阶段 2.2 part 3：`list_update` 的展开特化引理 `list_update_nil`/`list_update_zero`/
   `list_update_cons`（都 `[hint_rewrite]`，§4.2 范式）、`nth_list_update_same`、
   `length_list_update`、`length_list_swap`。`list_update` 的递归参数从 list 改成 nat
   （与 take/drop/nth 一致，去掉 `i - 1` 与 `Suc n = 0` 的算术摩擦）。
+- 阶段 2.2 part 4：`nth_map`（`!`×`map` 交叉处的核心引理）、`sublist_0`。
+- 阶段 2.3：新理论 `library/multiset.pyhol`（10 条定理，全 VALID）。多重集用
+  `typeabbrev multiset 'a = 'a ⇒ nat`（计数函数）表示——**不需要商类型，也就不受
+  "holpy 没有类型定义原语"的限制**。定义 `empty_mset`/`single_mset`/`union_mset`/`count`/
+  `set_mset`/`mset`，并证 `count_union_mset`、`count_empty_mset`、`count_single_mset_same/other`、
+  `union_mset_empty_left/right`、`union_mset_comm`、`union_mset_assoc`、`mset_append`、`mset_rev`
+  （置换律）。集合层面的等式靠 `rule extension` + `intro` 转成逐点计数等式。
   回归 `pytest library/tests syntax/tests core/tests util/tests -q` → 189 passed；
-  `validate_one.py list` → VALID 24，non-green 0。
+  `validate_one.py list` → VALID 26、`multiset` → VALID 10，non-green 都是 0。
 
-仍未做：list 的其余 `nth`/`update`/`swap`/`sublist` 引理族（2.2 part 2 续）、`mset`（2.3）、
+仍未做：list 的其余 `nth`/`update`/`swap`/`sublist` 引理族（2.2 part 2 续，
+其中 `length_sublist`/`sublist_append` 之类需要 `≤` 的算术引理，见下）、
+`mset_list_swap`（2.3 收尾，依赖 2.2 的 `list_update` 计数引理）、
 `card`/`finite_induct` 收口（2.5），以及阶段 3–6。
+
+**新发现的前置依赖**：`length_sublist`（`r ≤ length xs ⟹ length (sublist l r xs) = r - l`）、
+`length_filter_le`（`length (filter P xs) ≤ length xs`）这类引理需要 nat 上 `≤` 与
+`Suc` 的交换律（如 `Suc m ≤ Suc n ⟷ m ≤ n`），而 nat 库现在没有。所以**阶段 3（序）
+的一部分必须先于阶段 2 的这部分列表引理**（与 §8.3 关于 sorted 的结论同源）。
 
 ### 8.5 机制上的新经验（§3 之外）
 

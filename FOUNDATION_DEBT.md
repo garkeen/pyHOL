@@ -97,7 +97,8 @@ STEP_FAILED），实验后要清理。
   `PROGRAM_VERIFICATION_PORT.md` §8；`sorted`/`strict_sorted`/`insort` 需序，归入 P1 序）；
   `option` 已建（`library/option.pyhol`）；`sum`（`Sum_Type.thy`）；
   `record`（`Record.thy`、HOL Light `Library/records.ml`）；`map`（`Map.thy`）；
-  `finset`/`multiset`；`vector`/`tree`。
+  `finset`/`multiset`（`multiset` 已建：`library/multiset.pyhol`，用计数函数
+  `'a ⇒ nat` 表示，避开缺失的类型定义原语；`mset`/单点/并/置换律已证）；`vector`/`tree`。
 - **P3 数系与代数**：`rat` 补全（现仅 5 条，无逆元/除法/序/floor；
   对照 `Rat.thy`、Mathlib `Data/Rat/`）；`binomial`/`factorial`；
   `Euclidean_Rings`/`GCD`；抽象代数 `group`/`ring`/`field`

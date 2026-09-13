@@ -1,0 +1,150 @@
+theory multiset
+imports list
+description "Multisets as counting functions ('a multiset = 'a => nat). auto2's Program_Verification only uses mset, singleton and union (mset xs = mset ys as 'permutation'); count/set_mset/difference are declared here but measured at 0 uses"
+
+header "Multiset as a counting function"
+
+typeabbrev multiset 'a = 'a ⇒ nat
+
+def empty_mset :: 'a multiset = empty_mset = (λx::'a. 0)
+
+def single_mset :: 'a ⇒ 'a multiset = single_mset a = (λx::'a. if x = a then 1 else 0)
+
+def union_mset :: 'a multiset ⇒ 'a multiset ⇒ 'a multiset = union_mset M N = (λx::'a. M x + N x)
+
+def count :: 'a multiset ⇒ 'a ⇒ nat = count M x = M x [hint_rewrite]
+
+def set_mset :: 'a multiset ⇒ 'a set = set_mset M = {x::'a. 0 < M x}
+
+header "mset of a list"
+
+fun mset :: 'a list ⇒ 'a multiset
+  | mset ([]::'a list) = empty_mset
+  | mset (x # xs) = union_mset (single_mset x) (mset xs)
+
+header "Counting lemmas"
+
+theorem count_union_mset
+  fixes M :: 'a multiset, N :: 'a multiset, x :: 'a
+  prop count (union_mset M N) x = count M x + count N x
+  [hint_rewrite]
+proof
+  ← rewrite count_def goal=0
+  ← rewrite union_mset_def goal=1
+qed
+
+theorem count_empty_mset
+  fixes x :: 'a
+  prop count empty_mset x = 0
+  [hint_rewrite]
+proof
+  ← rewrite count_def goal=0
+  ← rewrite empty_mset_def goal=1
+qed
+
+theorem count_single_mset_same
+  fixes a :: 'a
+  prop count (single_mset a) a = 1
+  [hint_rewrite]
+proof
+  ← rewrite count_def goal=0
+  ← rewrite single_mset_def goal=1
+  cut "a = a" goal=2
+  ← refl goal=3
+  ← rewrite if_P goal=2 facts=[3]
+qed
+
+theorem count_single_mset_other
+  fixes a :: 'a, x :: 'a
+  prop ~(x = a) --> count (single_mset a) x = 0
+proof
+  ← intro goal=0
+  ← rewrite count_def goal=2
+  ← rewrite single_mset_def goal=3
+  ← rewrite if_not_P goal=4 facts=[1]
+qed
+
+header "Union is commutative, associative, and has empty_mset as unit"
+
+theorem union_mset_empty_left
+  fixes M :: 'a multiset
+  prop union_mset empty_mset M = M
+  [hint_rewrite]
+proof
+  ← rule extension goal=0
+  ← intro y goal=1
+  ← rewrite empty_mset_def goal=3
+  ← rewrite union_mset_def goal=4
+  ← rewrite nat_plus_def_1 goal=5
+qed
+
+theorem union_mset_empty_right
+  fixes M :: 'a multiset
+  prop union_mset M empty_mset = M
+  [hint_rewrite]
+proof
+  ← rule extension goal=0
+  ← intro y goal=1
+  ← rewrite empty_mset_def goal=3
+  ← rewrite union_mset_def goal=4
+  ← rewrite add_0_right goal=5
+qed
+
+theorem union_mset_comm
+  fixes M :: 'a multiset, N :: 'a multiset
+  prop union_mset M N = union_mset N M
+  [hint_rewrite]
+proof
+  ← rule extension goal=0
+  ← intro y goal=1
+  ← rewrite union_mset_def goal=3
+  ← rewrite add_comm loc=1 goal=4
+qed
+
+theorem union_mset_assoc
+  fixes M :: 'a multiset, N :: 'a multiset, K :: 'a multiset
+  prop union_mset (union_mset M N) K = union_mset M (union_mset N K)
+  [hint_rewrite]
+proof
+  ← rule extension goal=0
+  ← intro y goal=1
+  ← rewrite union_mset_def goal=3
+  ← rewrite union_mset_def goal=4
+  ← rewrite add_assoc goal=5
+qed
+
+header "mset and append"
+
+theorem mset_append
+  fixes xs :: 'a list, ys :: 'a list
+  prop mset (xs @ ys) = union_mset (mset xs) (mset ys)
+  [hint_rewrite]
+proof
+  ← induct xs list_induct goal=0
+  ← rewrite append_def_1 goal=1
+  ← rewrite mset_def_1 goal=3
+  ← rewrite union_mset_empty_left goal=4
+  ← intro x,xs goal=2
+  ← rewrite mset_def_2 goal=8
+  ← rewrite append_def_2 goal=9
+  ← rewrite mset_def_2 goal=10
+  ← rewrite source=prev goal=11 facts=[7]
+  ← rewrite union_mset_assoc sym=true goal=12
+qed
+
+theorem mset_rev
+  fixes xs :: 'a list
+  prop mset (rev xs) = mset xs
+  [hint_rewrite]
+proof
+  ← induct xs list_induct goal=0
+  ← rewrite rev_def_1 goal=1
+  ← intro x,xs goal=2
+  ← rewrite rev_def_2 goal=6
+  ← rewrite mset_append goal=7
+  ← rewrite source=prev goal=8 facts=[5]
+  ← rewrite mset_def_2 goal=9
+  ← rewrite mset_def_1 goal=10
+  ← rewrite union_mset_empty_right goal=11
+  ← rewrite union_mset_comm loc=1 goal=12
+qed
