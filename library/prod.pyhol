@@ -1,0 +1,26 @@
+theory prod
+imports logic_base
+description "Product type: pairing, projections, extensionality"
+
+header "Product type"
+
+datatype prod 'a 'b =
+  | Pair (left :: 'a) (right :: 'b) :: ('a,'b) prod
+
+fun fst :: ('a,'b) prod ⇒ 'a
+  | fst (Pair a b) = a
+
+fun snd :: ('a,'b) prod ⇒ 'b
+  | snd (Pair a b) = b
+
+theorem Pair_fst_snd
+  fixes p :: ('a,'b) prod
+  prop Pair (fst p) (snd p) = p
+  [hint_rewrite]
+proof
+  ← type_cases p goal=0
+  ← rewrite fst_def_1 goal=1
+  ← rewrite snd_def_1 goal=2
+  ← intro u,v goal=3
+  ← rule eq_refl goal=6
+qed

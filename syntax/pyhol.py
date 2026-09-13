@@ -946,6 +946,27 @@ def _parse_theorem(lines, i):
     return result, i
 
 
+def _split_top_commas(s):
+    """Split on commas outside parentheses.
+
+    A `fixes` type may itself contain commas, as in
+    `fixes p :: ('a,'b) prod`.
+    """
+    parts, depth, cur = [], 0, []
+    for ch in s:
+        if ch in '([{':
+            depth += 1
+        elif ch in ')]}':
+            depth -= 1
+        if ch == ',' and depth == 0:
+            parts.append(''.join(cur))
+            cur = []
+        else:
+            cur.append(ch)
+    parts.append(''.join(cur))
+    return parts
+
+
 def _parse_thm_body(lines, i, result):
     """Parse the body of an axiom or theorem (fixes, prop, attrs, proof)."""
     while i < len(lines):
@@ -957,7 +978,7 @@ def _parse_thm_body(lines, i, result):
         if line.startswith('  fixes '):
             # fixes A :: bool, B :: nat
             fixes_str = line[8:].strip()
-            for var_decl in fixes_str.split(','):
+            for var_decl in _split_top_commas(fixes_str):
                 var_decl = var_decl.strip()
                 if '::' in var_decl:
                     nm, T = var_decl.split('::', 1)

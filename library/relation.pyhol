@@ -1,0 +1,305 @@
+theory relation
+imports set, prod
+description "Relations as sets of pairs, and the partial equivalence relation API required by the auto2 program-verification port"
+
+header "Relation predicates"
+
+def sym :: ('a × 'a) set ⇒ bool = sym R ⟷ (∀x. ∀y. (x,y) ∈ R ⟶ (y,x) ∈ R) [hint_rewrite]
+
+def trans :: ('a × 'a) set ⇒ bool = trans R ⟷ (∀x. ∀y. ∀z. (x,y) ∈ R ⟶ (y,z) ∈ R ⟶ (x,z) ∈ R) [hint_rewrite]
+
+header "Partial equivalence relation"
+
+def part_equiv :: ('a × 'a) set ⇒ bool = part_equiv R ⟷ sym R ∧ trans R [hint_rewrite]
+
+header "Combining two elements in a partial equivalence relation"
+
+def per_union :: ('a × 'a) set ⇒ 'a ⇒ 'a ⇒ ('a × 'a) set = per_union R a b = R ∪ ({p. (fst p, a) ∈ R ∧ (b, snd p) ∈ R} ∪ {p. (fst p, b) ∈ R ∧ (a, snd p) ∈ R}) [hint_rewrite]
+
+theorem per_union_iff
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a
+  prop ((x,y) ∈ per_union R a b) ⟷ ((x,y) ∈ R ∨ ((x,a) ∈ R ∧ (b,y) ∈ R) ∨ ((x,b) ∈ R ∧ (a,y) ∈ R))
+  [hint_rewrite]
+proof
+  ← rule iffI goal=0
+  ← intro goal=1
+  → rewrite per_union_def target=fact goal=4 facts=[3]
+  → rewrite member_union_iff target=fact goal=4 facts=[5]
+  → rewrite member_union_iff target=fact goal=4 facts=[6]
+  → rewrite member_collect target=fact goal=4 facts=[7]
+  → rewrite fst_def_1 target=fact goal=4 facts=[8]
+  → rewrite snd_def_1 target=fact goal=4 facts=[9]
+  ← intro goal=2
+  ← rewrite per_union_def goal=11
+  ← rewrite member_union_iff goal=12
+  ← rewrite member_union_iff goal=13
+  ← rewrite member_collect goal=14
+  ← rewrite fst_def_1 goal=15
+  ← rewrite snd_def_1 goal=16
+qed
+
+
+theorem part_equivI
+  fixes R :: ('a × 'a) set
+  prop sym R ⟶ trans R ⟶ part_equiv R
+  [hint_backward]
+proof
+  ← intro goal=0
+  ← rewrite part_equiv_def goal=3
+  ← rule conjI goal=4 facts=[1,2]
+qed
+
+theorem part_equivD1
+  fixes R :: ('a × 'a) set
+  prop part_equiv R ⟶ sym R
+  [hint_forward]
+proof
+  ← intro goal=0
+  → rewrite part_equiv_def target=fact goal=2 facts=[1]
+  → forward conjD1 goal=2 facts=[3]
+qed
+
+theorem part_equivD2
+  fixes R :: ('a × 'a) set
+  prop part_equiv R ⟶ trans R
+  [hint_forward]
+proof
+  ← intro goal=0
+  → rewrite part_equiv_def target=fact goal=2 facts=[1]
+  → forward conjD2 goal=2 facts=[3]
+qed
+
+theorem per_union_memI1
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a
+  prop (x,y) ∈ R ⟶ (x,y) ∈ per_union R a b
+  [hint_backward]
+proof
+  ← intro goal=0
+  ← rewrite per_union_iff goal=2
+  ← rule disjI1 goal=3 facts=[1]
+qed
+
+theorem per_union_memI2
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a
+  prop (x,a) ∈ R ⟶ (b,y) ∈ R ⟶ (x,y) ∈ per_union R a b
+  [hint_backward]
+proof
+  ← intro goal=0
+  ← rewrite per_union_iff goal=3
+  ← rule disjI2 goal=4
+  ← rule disjI1 goal=5
+  ← rule conjI goal=6 facts=[1,2]
+qed
+
+theorem per_union_memI3
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a
+  prop (x,b) ∈ R ⟶ (a,y) ∈ R ⟶ (x,y) ∈ per_union R a b
+  [hint_backward]
+proof
+  ← intro goal=0
+  ← rewrite per_union_iff goal=3
+  ← rule disjI2 goal=4
+  ← rule disjI2 goal=5
+  ← rule conjI goal=6 facts=[1,2]
+qed
+
+theorem per_union_memD
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a
+  prop (x,y) ∈ per_union R a b ⟶ (x,y) ∈ R ∨ ((x,a) ∈ R ∧ (b,y) ∈ R) ∨ ((x,b) ∈ R ∧ (a,y) ∈ R)
+  [hint_forward]
+proof
+  ← intro goal=0
+  → rewrite per_union_iff target=fact goal=2 facts=[1]
+qed
+
+theorem per_union_is_sym
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a
+  prop sym R ⟶ sym (per_union R a b)
+  [hint_forward]
+proof
+  ← intro goal=0
+  → rewrite sym_def target=fact goal=2 facts=[1]
+  ← rewrite sym_def goal=2
+  ← intro x,y goal=4
+  → rewrite per_union_iff target=fact goal=8 facts=[7]
+  ← rule disjE goal=8 facts=[9]
+  ← intro goal=10
+  → forward goal=13 facts=[3,12]
+  ← rule per_union_memI1 goal=13 facts=[14]
+  ← intro goal=11
+  ← rule disjE goal=17 facts=[16]
+  ← intro goal=18
+  → forward conjD1 goal=21 facts=[20]
+  → forward conjD2 goal=21 facts=[20]
+  → forward goal=21 facts=[3,22]
+  → forward goal=21 facts=[3,23]
+  ← rule per_union_memI3 goal=21 facts=[25,24]
+  ← intro goal=19
+  → forward conjD1 goal=28 facts=[27]
+  → forward conjD2 goal=28 facts=[27]
+  → forward goal=28 facts=[3,29]
+  → forward goal=28 facts=[3,30]
+  ← rule per_union_memI2 goal=28 facts=[32,31]
+qed
+
+theorem per_union_case_12
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a, z :: 'a
+  prop trans R ⟶ (Pair x y Mem R) ⟶ (Pair y a Mem R & Pair b z Mem R) ⟶ Pair x z Mem per_union R a b
+proof
+  ← intro goal=0
+  → rewrite trans_def target=fact goal=4 facts=[1]
+  → forward conjD1 goal=4 facts=[3]
+  → forward conjD2 goal=4 facts=[3]
+  → forward goal=4 facts=[5,2,6]
+  ← rule per_union_memI2 goal=4 facts=[8,7]
+qed
+
+theorem per_union_case_13
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a, z :: 'a
+  prop trans R ⟶ (Pair x y Mem R) ⟶ (Pair y b Mem R & Pair a z Mem R) ⟶ Pair x z Mem per_union R a b
+proof
+  ← intro goal=0
+  → rewrite trans_def target=fact goal=4 facts=[1]
+  → forward conjD1 goal=4 facts=[3]
+  → forward conjD2 goal=4 facts=[3]
+  → forward goal=4 facts=[5,2,6]
+  ← rule per_union_memI3 goal=4 facts=[8,7]
+qed
+
+theorem per_union_case_22
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a, z :: 'a
+  prop trans R ⟶ (Pair x a Mem R & Pair b y Mem R) ⟶ (Pair y a Mem R & Pair b z Mem R) ⟶ Pair x z Mem per_union R a b
+proof
+  ← intro goal=0
+  → forward conjD1 goal=4 facts=[2]
+  → forward conjD2 goal=4 facts=[3]
+  ← rule per_union_memI2 goal=4 facts=[5,6]
+qed
+
+theorem per_union_case_33
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a, z :: 'a
+  prop trans R ⟶ (Pair x b Mem R & Pair a y Mem R) ⟶ (Pair y b Mem R & Pair a z Mem R) ⟶ Pair x z Mem per_union R a b
+proof
+  ← intro goal=0
+  → forward conjD1 goal=4 facts=[2]
+  → forward conjD2 goal=4 facts=[3]
+  ← rule per_union_memI3 goal=4 facts=[5,6]
+qed
+
+theorem per_union_case_11
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a, z :: 'a
+  prop trans R ⟶ (Pair x y Mem R) ⟶ (Pair y z Mem R) ⟶ Pair x z Mem per_union R a b
+proof
+  ← intro goal=0
+  → rewrite trans_def target=fact goal=4 facts=[1]
+  → forward goal=4 facts=[5,2,3]
+  ← rule per_union_memI1 goal=4 facts=[6]
+qed
+
+theorem per_union_case_21
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a, z :: 'a
+  prop trans R ⟶ (Pair x a Mem R & Pair b y Mem R) ⟶ (Pair y z Mem R) ⟶ Pair x z Mem per_union R a b
+proof
+  ← intro goal=0
+  → rewrite trans_def target=fact goal=4 facts=[1]
+  → forward conjD1 goal=4 facts=[2]
+  → forward conjD2 goal=4 facts=[2]
+  → forward goal=4 facts=[5,7,3]
+  ← rule per_union_memI2 goal=4 facts=[6,8]
+qed
+
+theorem per_union_case_23
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a, z :: 'a
+  prop trans R ⟶ (Pair x a Mem R & Pair b y Mem R) ⟶ (Pair y b Mem R & Pair a z Mem R) ⟶ Pair x z Mem per_union R a b
+proof
+  ← intro goal=0
+  → rewrite trans_def target=fact goal=4 facts=[1]
+  → forward conjD1 goal=4 facts=[2]
+  → forward conjD2 goal=4 facts=[3]
+  → forward goal=4 facts=[5,6,7]
+  ← rule per_union_memI1 goal=4 facts=[8]
+qed
+
+theorem per_union_case_31
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a, z :: 'a
+  prop trans R ⟶ (Pair x b Mem R & Pair a y Mem R) ⟶ (Pair y z Mem R) ⟶ Pair x z Mem per_union R a b
+proof
+  ← intro goal=0
+  → rewrite trans_def target=fact goal=4 facts=[1]
+  → forward conjD1 goal=4 facts=[2]
+  → forward conjD2 goal=4 facts=[2]
+  → forward goal=4 facts=[5,7,3]
+  ← rule per_union_memI3 goal=4 facts=[6,8]
+qed
+
+theorem per_union_case_32
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a, x :: 'a, y :: 'a, z :: 'a
+  prop trans R ⟶ (Pair x b Mem R & Pair a y Mem R) ⟶ (Pair y a Mem R & Pair b z Mem R) ⟶ Pair x z Mem per_union R a b
+proof
+  ← intro goal=0
+  → rewrite trans_def target=fact goal=4 facts=[1]
+  → forward conjD1 goal=4 facts=[2]
+  → forward conjD2 goal=4 facts=[3]
+  → forward goal=4 facts=[5,6,7]
+  ← rule per_union_memI1 goal=4 facts=[8]
+qed
+
+theorem per_union_is_trans
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a
+  prop trans R ⟶ trans (per_union R a b)
+  [hint_forward]
+proof
+  ← intro goal=0
+  ← rewrite trans_def goal=2
+  ← intro x,y,z goal=3
+  → rewrite per_union_iff target=fact goal=9 facts=[7]
+  → rewrite per_union_iff target=fact goal=9 facts=[8]
+  ← rule disjE goal=9 facts=[10]
+  ← intro goal=12
+  ← rule disjE goal=15 facts=[11]
+  ← intro goal=16
+  ← rule per_union_case_11 goal=19 facts=[1,14,18]
+  ← intro goal=17
+  ← rule disjE goal=22 facts=[21]
+  ← intro goal=23
+  ← rule per_union_case_12 goal=26 facts=[1,14,25]
+  ← intro goal=24
+  ← rule per_union_case_13 goal=29 facts=[1,14,28]
+  ← intro goal=13
+  ← rule disjE goal=32 facts=[31]
+  ← intro goal=33
+  ← rule disjE goal=36 facts=[11]
+  ← intro goal=37
+  ← rule per_union_case_21 goal=39 facts=[1,35,18]
+  ← intro goal=38
+  ← rule disjE goal=41 facts=[21]
+  ← intro goal=42
+  ← rule per_union_case_22 goal=44 facts=[1,35,25]
+  ← intro goal=43
+  ← rule per_union_case_23 goal=46 facts=[1,35,28]
+  ← intro goal=34
+  ← rule disjE goal=49 facts=[11]
+  ← intro goal=50
+  ← rule per_union_case_31 goal=52 facts=[1,48,18]
+  ← intro goal=51
+  ← rule disjE goal=54 facts=[21]
+  ← intro goal=55
+  ← rule per_union_case_32 goal=57 facts=[1,48,25]
+  ← intro goal=56
+  ← rule per_union_case_33 goal=59 facts=[1,48,28]
+qed
+
+theorem per_union_is_part_equiv
+  fixes R :: ('a × 'a) set, a :: 'a, b :: 'a
+  prop part_equiv R ⟶ part_equiv (per_union R a b)
+  [hint_forward]
+proof
+  ← intro goal=0
+  → rewrite part_equiv_def target=fact goal=2 facts=[1]
+  → forward conjD1 goal=2 facts=[3]
+  → forward conjD2 goal=2 facts=[3]
+  ← rewrite part_equiv_def goal=2
+  ← rule conjI goal=6
+  ← rule per_union_is_sym goal=7 facts=[4]
+  ← rule per_union_is_trans goal=8 facts=[5]
+qed

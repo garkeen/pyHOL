@@ -241,6 +241,17 @@ def get_ast_type(T):
                     arg1_ast = Bracket(arg1_ast)
                 arg2_ast = helper(T.args[1])
                 return FunType(arg1_ast, fun_op, arg2_ast)
+            elif T.name == 'prod' and len(T.args) == 2 and settings.unicode:
+                # Product type prints as 'a × 'b in unicode mode; ascii
+                # mode falls back to ('a,'b) prod.
+                arg1_ast = helper(T.args[0])
+                if T.args[0].is_fun() or (T.args[0].is_tconst() and
+                                          T.args[0].name == 'prod'):
+                    arg1_ast = Bracket(arg1_ast)
+                arg2_ast = helper(T.args[1])
+                if T.args[1].is_fun():
+                    arg2_ast = Bracket(arg2_ast)
+                return FunType(arg1_ast, " × ", arg2_ast)
             else:
                 return TypeConstr(T.name, [helper(arg) for arg in T.args])
         else:

@@ -31,12 +31,19 @@ ParserError = LarkParseError
 
 
 grammar = r"""
-    ?type: "'" CNAME  -> tvar              // Type variable
+    ?type: typ_fun
+
+    ?typ_fun: typ_prod ("=>"|"⇒") typ_fun -> funtype   // Function types
+        | typ_prod
+
+    ?typ_prod: typ_atom "×" typ_prod -> prodtype       // Product type, right assoc
+        | typ_atom
+
+    ?typ_atom: "'" CNAME  -> tvar              // Type variable
         | "?'" CNAME  -> stvar             // Schematic type variable
-        | type ("=>"|"⇒") type -> funtype       // Function types
         | CNAME -> type                   // Type constants
-        | type CNAME                      // Type constructor with one argument
-        | "(" type ("," type)* ")" CNAME  // Type constructor with multiple arguments
+        | typ_atom CNAME -> typeapp       // Type constructor with one argument
+        | "(" type ("," type)* ")" CNAME -> type  // Type constructor with multiple arguments
         | "(" type ")"                    // Parenthesis
 
     ?atom: CNAME -> vname                 // Constant, variable, or bound variable
@@ -65,6 +72,7 @@ grammar = r"""
         | "if" term "then" term "else" term  -> if_expr // if expression
         | "(" term ")(" term ":=" term ("," term ":=" term)* ")"   -> fun_upd // function update
         | "{" term ".." term "}"   -> nat_interval
+        | "(" term "," term ("," term)* ")" -> tuple   // Pair / tuple
         | "(" term ")"                    // Parenthesis
         | "(" term "::" type ")"   -> typed_term    // Term with specified type
 
@@ -177,6 +185,20 @@ class HOLTransformer(Transformer):
 
     def funtype(self, t1, t2):
         return TFun(t1, t2)
+
+    def typeapp(self, T, name):
+        return expand_type_abbrevs(TConst(str(name), T))
+
+    def prodtype(self, t1, t2):
+        return TConst('prod', t1, t2)
+
+    def tuple(self, *args):
+        # Right-nested pairs: (a, b, c) is Pair a (Pair b c).  Types are
+        # left to infertype, as with the other term transformers.
+        res = args[-1]
+        for a in reversed(args[:-1]):
+            res = Const('Pair', None)(a, res)
+        return res
 
     def sname(self, s):
         s = str(s)
