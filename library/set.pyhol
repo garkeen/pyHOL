@@ -39,11 +39,21 @@ def finite :: 'a set ⇒ bool = finite A ⟷ (∀P::'a set ⇒ bool. P ({}::'a s
 -- hypothesis carries no beta-redex.
 def fin_sub :: 'a set ⇒ bool = fin_sub X ⟷ (!Y::'a set. Y Sub X --> finite Y) [hint_rewrite]
 
+-- `fin_union B X` and `fin_image f X` exist only so that the P in
+-- `finite_def` can be a *partial application* rather than a lambda: the
+-- varying argument is last, so `fin_union A` / `fin_image f` are terms of
+-- type 'a set => bool, and the instantiated induction hypothesis carries
+-- no beta-redex to reduce.
+def fin_union :: 'a set ⇒ 'a set ⇒ bool = fin_union B X ⟷ finite (B Un X) [hint_rewrite]
+
+
 def delete :: 'a set ⇒ 'a ⇒ 'a set = delete A a = (λx. A x ∧ ¬(x = a))
 
 def image :: ('a ⇒ 'b) ⇒ 'a set ⇒ 'b set = image f A = (λy. ∃x. A x ∧ y = f x)
 
 def disjoint :: 'a set ⇒ 'a set ⇒ bool = disjoint A B ⟷ inter A B = empty_set
+
+def fin_image :: ('a ⇒ 'b) ⇒ 'a set ⇒ bool = fin_image f X ⟷ finite (image f X) [hint_rewrite]
 
 def from :: nat ⇒ nat set = from n = (λm. n ≤ m)
 
@@ -339,6 +349,61 @@ proof
   ← rewrite disj_iff_left sym=false goal=3
 qed
 
+theorem subset_inter_left
+  fixes A :: 'a set, B :: 'a set
+  prop A Int B Sub A
+  [hint_rewrite]
+proof
+  ← rewrite subset_def sym=false goal=0
+  ← intro z goal=1
+  → rewrite target=fact member_inter_iff sym=false goal=4 facts=[3]
+  → forward conjD1 goal=4 facts=[5]
+qed
+
+theorem subset_inter_right
+  fixes A :: 'a set, B :: 'a set
+  prop A Int B Sub B
+  [hint_rewrite]
+proof
+  ← rewrite subset_def sym=false goal=0
+  ← intro z goal=1
+  → rewrite target=fact member_inter_iff sym=false goal=4 facts=[3]
+  → forward conjD2 goal=4 facts=[5]
+qed
+
+theorem subset_delete
+  fixes A :: 'a set, a :: 'a
+  prop delete A a Sub A
+  [hint_rewrite]
+proof
+  ← rewrite subset_def sym=false goal=0
+  ← intro z goal=1
+  → rewrite target=fact member_delete sym=false goal=4 facts=[3]
+  → forward conjD1 goal=4 facts=[5]
+qed
+
+theorem subset_insert_delete
+  fixes A :: 'a set, a :: 'a
+  prop A Sub insert a (delete A a)
+proof
+  ← rewrite subset_def sym=false goal=0
+  ← intro z goal=1
+  ← rewrite member_insert sym=false goal=4
+  ← rewrite member_delete sym=false goal=5
+  cases "z = a" goal=6
+  ← intro goal=7
+  ← rewrite source=prev goal=10 facts=[9]
+  ← rewrite eq_mean_true sym=false goal=11
+  ← rewrite disj_true_left sym=false goal=12
+  ← rule trueI goal=13
+  ← intro goal=8
+  → rewrite target=fact eq_false sym=false goal=16 facts=[15]
+  ← rewrite source=prev goal=16 facts=[17]
+  ← rewrite not_false sym=false goal=18
+  ← rewrite conj_true_right sym=false goal=19
+  ← rewrite disj_false_left sym=false goal=20
+qed
+
 theorem subset_insert
   fixes A :: 'a set, a :: 'a
   prop A Sub insert a A
@@ -399,6 +464,28 @@ proof
   ← rewrite disj_comm sym=false loc="0.1" goal=4
 qed
 
+theorem union_insert
+  fixes A :: 'a set, B :: 'a set, x :: 'a
+  prop A Un insert x B = insert x (A Un B)
+  [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+  ← intro z goal=1
+  ← rewrite member_union_iff sym=false goal=3
+  ← rewrite member_insert sym=false goal=4
+  ← rewrite member_union_iff sym=false goal=5
+  cases "z = x" goal=6
+  ← intro goal=7
+  ← rewrite source=prev goal=10 facts=[9]
+  ← rewrite eq_mean_true sym=false goal=11
+  ← rewrite disj_true_left sym=false goal=12
+  ← rewrite disj_true_right sym=false goal=13
+  ← intro goal=8
+  → rewrite target=fact eq_false sym=false goal=16 facts=[15]
+  ← rewrite source=prev goal=16 facts=[17]
+  ← rewrite disj_false_left sym=false goal=18
+qed
+
 theorem union_empty
   fixes A :: 'a set
   prop A Un {} = A
@@ -416,6 +503,43 @@ proof
     #[5] _VAR x
     #[6] x ∈ A ⟷ x ∈ A
   ← refl goal=6
+qed
+
+header "Image"
+
+theorem image_empty
+  fixes f :: 'a => 'b
+  prop image f {} = {}
+  [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+    #[1] ∀x. x ∈ image f ∅ ⟷ x ∈ ∅
+  ← rewrite in_image sym=false goal=1
+    #[2] ∀x. (∃x1. x1 ∈ ∅ ∧ x = f x1) ⟷ x ∈ ∅
+  ← rewrite member_empty_simp sym=false goal=2
+    #[3] ∀x. (∃x1. false ∧ x = f x1) ⟷ false
+  ← rewrite conj_false_right sym=false goal=3
+    #[4] ∀x::'b. (∃x1::'a. false) ⟷ false
+  ← rewrite exists_false sym=false goal=4
+    #[5] ∀x::'b. false ⟷ false
+  ← intro x goal=5
+    #[6] _VAR x
+    #[7] false ⟷ false
+  ← refl goal=7
+qed
+
+theorem image_insert
+  fixes f :: 'a => 'b, A :: 'a set, a :: 'a
+  prop image f (insert a A) = insert (f a) (image f A)
+  [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+  ← intro x goal=1
+  ← rewrite in_image sym=false goal=3
+  ← rewrite member_insert sym=false goal=4
+  ← rewrite exists_disj_conj_distrib sym=false goal=5
+  ← rewrite exists_eq_left sym=false goal=6
+  ← rewrite in_image sym=true goal=7
 qed
 
 header "Finite sets"
@@ -530,54 +654,86 @@ theorem finite_union_imp
   fixes A :: 'a set, B :: 'a set
   prop finite A --> finite B --> finite (A Un B)
   [hint_backward]
+proof
+  ← intro goal=0
+  → rewrite target=fact finite_def sym=false goal=3 facts=[2]
+  → inst "(fin_union A)" goal=3 facts=[4]
+  cut "fin_union A {} & (!x::'a. !B1::'a set. fin_union A B1 --> fin_union A (insert x B1))" goal=3
+  ← rule conjI goal=6
+  ← rewrite fin_union_def sym=false goal=7
+  ← rewrite union_empty sym=false goal=9
+  ← intro x,B1 goal=8
+  → rewrite target=fact fin_union_def sym=false goal=13 facts=[12]
+  ← rewrite fin_union_def sym=false goal=13
+  ← rewrite union_insert sym=false goal=15
+  ← rule finite_insert_imp goal=16 facts=[14]
+  ← rewrite fin_union_def sym=true goal=3
+  ← apply_prev goal=18 facts=[5,6]
+qed
 
 theorem finite_inter
   fixes A :: 'a set, B :: 'a set
   prop finite A | finite B --> finite (A Int B)
   [hint_backward]
+proof
+  ← intro goal=0
+  ← rule disjE2 param_A="finite A" param_B="finite B" goal=2
+  ← intro goal=3
+  → forward subset_inter_left param_A=A param_B=B goal=6
+  ← rule finite_subset goal=6 facts=[7,5]
+  ← intro goal=4
+  → forward subset_inter_right param_A=A param_B=B goal=10
+  ← rule finite_subset goal=10 facts=[11,9]
+qed
 
 theorem finite_image
   fixes f :: 'a => 'b, A :: 'a set
   prop finite A --> finite (image f A)
   [hint_backward]
+proof
+  ← intro goal=0
+  → rewrite target=fact finite_def sym=false goal=2 facts=[1]
+  → inst "(fin_image f)" goal=2 facts=[3]
+  cut "fin_image f {} & (!x::'a. !B::'a set. fin_image f B --> fin_image f (insert x B))" goal=2
+  ← rule conjI goal=5
+  ← rewrite fin_image_def sym=false goal=6
+  ← rewrite image_empty sym=false goal=8
+  ← rule finite_empty goal=9
+  ← intro x,B goal=7
+  → rewrite target=fact fin_image_def sym=false goal=14 facts=[13]
+  ← rewrite fin_image_def sym=false goal=14
+  ← rewrite image_insert sym=false goal=16
+  ← rule finite_insert_imp goal=17 facts=[15]
+  ← rewrite fin_image_def sym=true goal=2
+  ← apply_prev goal=19 facts=[4,5]
+qed
 
 theorem finite_delete
   fixes A :: 'a set, a :: 'a
   prop finite (delete A a) <--> finite A
   [hint_backward,hint_rewrite]
+proof
+  ← rule iffI goal=0
+  ← intro goal=1
+  → forward subset_insert_delete param_A=A param_a=a goal=4
+  → forward finite_insert_imp param_a=a goal=4 facts=[3]
+  ← rule finite_subset goal=4 facts=[5,6]
+  ← intro goal=2
+  → forward subset_delete param_A=A param_a=a goal=8
+  ← rule finite_subset goal=8 facts=[9,7]
+qed
 
 theorem finite_diff
   fixes A :: 'a set, B :: 'a set
   prop finite A --> finite (diff A B)
   [hint_backward]
-
-header "Image"
-
-theorem image_empty
-  fixes f :: 'a => 'b
-  prop image f {} = {}
-  [hint_rewrite]
 proof
-  ← rewrite set_equal_iff sym=false goal=0
-    #[1] ∀x. x ∈ image f ∅ ⟷ x ∈ ∅
-  ← rewrite in_image sym=false goal=1
-    #[2] ∀x. (∃x1. x1 ∈ ∅ ∧ x = f x1) ⟷ x ∈ ∅
-  ← rewrite member_empty_simp sym=false goal=2
-    #[3] ∀x. (∃x1. false ∧ x = f x1) ⟷ false
-  ← rewrite conj_false_right sym=false goal=3
-    #[4] ∀x::'b. (∃x1::'a. false) ⟷ false
-  ← rewrite exists_false sym=false goal=4
-    #[5] ∀x::'b. false ⟷ false
-  ← intro x goal=5
-    #[6] _VAR x
-    #[7] false ⟷ false
-  ← refl goal=7
+  ← intro goal=0
+  → forward subset_diff param_A=A param_B=B goal=2
+  ← rule finite_subset goal=2 facts=[3,1]
 qed
 
-theorem image_insert
-  fixes f :: 'a => 'b, A :: 'a set, a :: 'a
-  prop image f (insert a A) = insert (f a) (image f A)
-  [hint_rewrite]
+header "Image"
 
 theorem image_id
   fixes A :: 'a set

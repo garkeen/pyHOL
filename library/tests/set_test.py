@@ -20,9 +20,13 @@ from core.verify import validate_theory, COMPUTATION_ORACLES
 # facts back out of the `finite_def` encoding.
 NEW_LEMMAS = ['subsetE', 'subset_refl', 'subset_trans', 'subset_diff',
               'subset_insert', 'subset_insert_imp', 'delete_subset_insert',
-              'inter_comm', 'union_comm', 'insert_delete',
+              'subset_insert_delete', 'subset_inter_left', 'subset_inter_right',
+              'subset_delete', 'inter_comm', 'union_comm', 'union_insert',
+              'insert_delete',
               'finite_induct', 'finite_insert_imp', 'finite_fin_sub',
-              'finite_subset', 'finite_insert']
+              'finite_subset', 'finite_insert', 'finite_union_imp',
+              'finite_inter', 'finite_image', 'finite_delete', 'finite_diff',
+              'image_insert']
 
 # Still unproved: the deliberate `set_equal_iff` axiom plus the remaining
 # stubs.  Pinned so that proving one of them fails this test loudly and the
@@ -30,12 +34,6 @@ NEW_LEMMAS = ['subsetE', 'subset_refl', 'subset_trans', 'subset_diff',
 EXPECTED_NON_GREEN = {
     'set_equal_iff': 'AXIOM',
     'lfp_unfold': 'DEP_FAILED',
-    'finite_union_imp': 'UNPROVED',
-    'finite_inter': 'UNPROVED',
-    'finite_image': 'UNPROVED',
-    'finite_delete': 'UNPROVED',
-    'finite_diff': 'UNPROVED',
-    'image_insert': 'UNPROVED',
     'image_combine': 'UNPROVED',
     'card_image_inj': 'UNPROVED',
     'surjective_iff_injective': 'UNPROVED',
