@@ -1,20 +1,35 @@
 """New-pipeline API endpoints using stable #[N] IDs.
 
-Routes are prefixed with /api/v2/ to coexist with the old pipeline.
+Routes are prefixed with /api/v2/ (the old positional pipeline is gone).
 """
 
-import json, os, traceback, time
+import json, traceback, time
 from flask import request
 from flask.json import jsonify
 
 from backend.app import app
 from kernel import theory
 from kernel.theory import TheoryException
-from syntax import parser, printer
+from syntax import printer
 from syntax.settings import global_setting
 from core import basic
 from core import context
-from method.stable_state import StableProofState, BACKWARD, FORWARD
+from core import verify
+from method.stable_state import StableProofState
+
+
+def _trust_from(data):
+    """Computation-oracle trust set for this request.
+
+    The /v2 endpoints are stateless (each one replays from scratch), so
+    the session's trust set travels with every request.  Omitted ->
+    core.verify.COMPUTATION_ORACLES (the CLI validator's default); an
+    explicit list wins; an empty list is strict and rejects every oracle.
+    """
+    names = data.get('trust')
+    if names is None:
+        return verify.COMPUTATION_ORACLES
+    return frozenset(names)
 
 
 # Method args whose value carries the meaningful display content
@@ -98,9 +113,11 @@ def v2_init_saved_proof():
         try:
             prop, vars = _load_theory(data['theory_name'], data.get('thm_name'),
                                       data.get('prop'), data.get('vars', {}))
-            sps = StableProofState.create(prop, vars)
+            sps = StableProofState.create(prop, vars, trust=_trust_from(data))
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            # 200 + error payload: the frontend reads response.data.error
+            # instead of relying on an axios throw (see FRONTEND_API.md).
+            return jsonify({'error': str(e)})
 
         steps = data.get('steps', [])
         index = data.get('index', len(steps))
@@ -146,9 +163,9 @@ def v2_apply_method():
         try:
             prop, vars = _load_theory(data['theory_name'], data.get('thm_name'),
                                       data.get('prop'), data.get('vars', {}))
-            sps = StableProofState.create(prop, vars)
+            sps = StableProofState.create(prop, vars, trust=_trust_from(data))
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            return jsonify({'error': str(e)})
 
         steps = data.get('steps', [])
         index = data.get('index', 0)
@@ -156,7 +173,7 @@ def v2_apply_method():
         # Replay up to index
         for i, step in enumerate(steps[:index]):
             if not sps.apply_method_dict(step):
-                return jsonify({'error': 'replay failed at step %d' % i}), 500
+                return jsonify({'error': 'replay failed at step %d' % i})
 
         # Apply the new step
         step = data['step']
@@ -168,29 +185,22 @@ def v2_apply_method():
                 step['goal'] = goal_sid
 
         old_ths = set(sps.th2sid.keys())
-        ok = sps.apply_method_dict(step)
+        try:
+            # strict: surface the underlying exception instead of a
+            # terse False, so the frontend gets err_type/err_str (or the
+            # parameter query) rather than a generic failure.
+            sps.apply_method_dict(step, strict=True)
+        except Exception as e:
+            if hasattr(e, 'params'):
+                return jsonify({'query': e.params,
+                                'query_hints': getattr(e, 'hints', {})})
+            return jsonify({'error': {
+                'err_type': e.__class__.__name__,
+                'err_str': str(e),
+                'trace': traceback.format_exc(),
+            }})
 
-        if not ok:
-            # Check if it's a parameter query
-            try:
-                # Re-apply to catch the exception
-                sps2 = StableProofState.create(prop, vars)
-                for s in steps[:index]:
-                    sps2.apply_method_dict(s)
-                pos2sid = sps2._build_pos2sid()
-                sid2pos = {v: k for k, v in pos2sid.items()}
-                step_dict = _build_step_dict(step, sid2pos)
-                from method.methods.core import apply_method as core_apply
-                core_apply(sps2.state, step_dict)
-            except TheoryException as e:
-                if hasattr(e, 'params'):
-                    return jsonify({'query': e.params, 'query_hints': getattr(e, 'hints', {})})
-            except Exception as e:
-                if hasattr(e, 'params'):
-                    return jsonify({'query': e.params, 'query_hints': getattr(e, 'hints', {})})
-            return jsonify({'error': 'method application failed'}), 500
-
-# Get new items for #[N] annotations
+        # Get new items for #[N] annotations
         new_items = sps._find_new_items(old_ths)
 
         with global_setting(unicode=True):
@@ -202,6 +212,52 @@ def v2_apply_method():
             'new_items': new_items_out,
             'num_gaps': sps.num_gaps,
             'apply_time': time.perf_counter() - start,
+        })
+
+
+@app.route('/api/v2/trust-report', methods=['POST'])
+def v2_trust_report():
+    """Run a FULL verification of the replayed proof and return its trust
+    report (audit §7.2).
+
+    Interactive apply uses verify(compute_only=True), which deliberately
+    skips the independent primitive replay -- so its state carries no
+    oracle entries.  This endpoint pays for that replay on demand, giving
+    the UI the true set of oracles/axioms the proof rests on.
+
+    Input: same as init-saved-proof (theory_name, thm_name, vars, prop,
+    steps, index?, trust?).
+    Returns: { oracles, axioms, num_gaps, trust } or { error }.
+    """
+    data = json.loads(request.get_data().decode('utf-8'))
+
+    with theory.fresh_theory():
+        try:
+            prop, vars = _load_theory(data['theory_name'], data.get('thm_name'),
+                                      data.get('prop'), data.get('vars', {}))
+            sps = StableProofState.create(prop, vars, trust=_trust_from(data))
+        except Exception as e:
+            return jsonify({'error': str(e)})
+
+        steps = data.get('steps', [])
+        index = data.get('index', len(steps))
+        try:
+            for step in steps[:index]:
+                sps.apply_method_dict(step, strict=True)
+            sps.verify()
+        except Exception as e:
+            return jsonify({'error': {
+                'err_type': e.__class__.__name__,
+                'err_str': str(e),
+                'trace': traceback.format_exc(),
+            }})
+
+        rpt = sps.state.rpt
+        return jsonify({
+            'oracles': sorted(rpt.oracles),
+            'axioms': sorted(rpt.axioms),
+            'num_gaps': len(rpt.gaps),
+            'trust': sorted(sps.trust),
         })
 
 
@@ -218,7 +274,7 @@ def v2_backward_search():
         try:
             prop, vars = _load_theory(data['theory_name'], data.get('thm_name'),
                                       data.get('prop'), data.get('vars', {}))
-            sps = StableProofState.create(prop, vars)
+            sps = StableProofState.create(prop, vars, trust=_trust_from(data))
             for step in data.get('steps', [])[:data.get('index', 0)]:
                 sps.apply_method_dict(step)
         except Exception as e:
@@ -243,7 +299,7 @@ def v2_forward_search():
         try:
             prop, vars = _load_theory(data['theory_name'], data.get('thm_name'),
                                       data.get('prop'), data.get('vars', {}))
-            sps = StableProofState.create(prop, vars)
+            sps = StableProofState.create(prop, vars, trust=_trust_from(data))
             for step in data.get('steps', [])[:data.get('index', 0)]:
                 sps.apply_method_dict(step)
         except Exception as e:
@@ -252,22 +308,3 @@ def v2_forward_search():
         fact_sids = data.get('facts', [])
         res = sps.search_forward(fact_sids)
         return jsonify({'results': res['results'], 'fuzzy': res['fuzzy'], 'ctxt': {}})
-
-
-# ── helpers ──────────────────────────────────────────────────────
-
-def _build_step_dict(step, sid2pos):
-    """Convert a stable-ID step dict to positional step dict."""
-    goal_pos = sid2pos.get(step.get('goal', 0))
-    if goal_pos is None:
-        goal_pos = '0'
-    step_dict = {'method_name': step['method_name'], 'goal_id': goal_pos}
-    facts = step.get('facts', [])
-    if facts:
-        fact_pos = [sid2pos.get(f, '0') for f in facts]
-        step_dict['fact_ids'] = fact_pos
-    for k, v in step.items():
-        if k not in ('method_name', 'goal', 'facts', 'new_ids', 'args'):
-            step_dict[k] = v
-    step_dict.update(step.get('args', {}))
-    return step_dict

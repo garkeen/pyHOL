@@ -4,8 +4,6 @@ from copy import copy
 
 from kernel.type import Type
 from kernel import term
-from kernel import extension
-from kernel import theory
 from syntax.settings import settings, global_setting
 from syntax import infertype
 from syntax import operator
@@ -52,11 +50,10 @@ class VarName(AST):
         return "VarName(%s,%s)" % (self.name, self.T)
 
 class ConstName(AST):
-    def __init__(self, name, T, link_name):
+    def __init__(self, name, T):
         self.ty = "const_name"
         self.name = name
         self.T = T
-        self.link_name = link_name
 
     def __repr__(self):
         return "ConstName(%s,%s)" % (self.name, self.T)
@@ -89,14 +86,13 @@ class Set(AST):
         return "Set(%s,%s)" % (','.join(str(e) for e in self.entries), self.T)
 
 class Operator(AST):
-    def __init__(self, symbol, T, link_name):
+    def __init__(self, symbol, T):
         self.ty = "operator"
         self.symbol = symbol
         self.T = T
-        self.link_name = link_name
 
     def __repr__(self):
-        return "Operator(%s,%s,%s)" % (self.symbol, self.T, self.link_name)
+        return "Operator(%s,%s)" % (self.symbol, self.T)
 
 class BinaryOp(AST):
     def __init__(self, arg1, op, arg2, T):
@@ -338,7 +334,7 @@ def get_ast_term(t):
         elif set.is_literal_set(t):
             items = set.dest_literal_set(t)
             if set.is_empty_set(t):
-                res = Operator("∅", t.T, "empty_set") if settings.unicode else Operator("{}", t.T, "empty_set")
+                res = Operator("∅", t.T) if settings.unicode else Operator("{}", t.T)
                 if hasattr(t, "print_type"):
                     res = Bracket(ShowType(res, get_ast_type(res.T)))
                 return res
@@ -379,8 +375,7 @@ def get_ast_term(t):
             return VarName(t.name, t.T)
 
         elif t.is_const():
-            link_name = theory.thy.get_overload_const_name(t.name, t.T)
-            res = ConstName(t.name, t.T, link_name=link_name)
+            res = ConstName(t.name, t.T)
             if hasattr(t, "print_type"):
                 res = Bracket(ShowType(res, get_ast_type(res.T)))
             return res
@@ -401,8 +396,7 @@ def get_ast_term(t):
                     arg1_ast = Bracket(arg1_ast)
 
                 op_str = op_data.unicode_op if settings.unicode else op_data.ascii_op
-                op_name = theory.thy.get_overload_const_name(op_data.fun_name, t.head.get_type())
-                op_ast = Operator(op_str, t.head.get_type(), op_name)
+                op_ast = Operator(op_str, t.head.get_type())
 
                 # Obtain output for second argument, enclose in parenthesis
                 # if necessary.
@@ -416,8 +410,7 @@ def get_ast_term(t):
             # Unary case
             elif op_data and op_data.arity == operator.UNARY:
                 op_str = op_data.unicode_op if settings.unicode else op_data.ascii_op
-                op_name = theory.thy.get_overload_const_name(op_data.fun_name, t.head.get_type())
-                op_ast = Operator(op_str, t.head.get_type(), op_name)
+                op_ast = Operator(op_str, t.head.get_type())
 
                 arg_ast = helper(t.arg, bd_vars)
                 arg_prior, arg_type = get_priority_pair(t.arg)
@@ -500,16 +493,9 @@ def print_length(ast):
         return len(res)
 
 # 0, 1, 2, 3 = NORMAL, BOUND, VAR, TVAR
-def N(s, *, link=None):
+def N(s):
     if settings.highlight:
-        res = {'text': s, 'color': 0}
-        if link:
-            if link['name'] == s:
-                res['link_name'] = ''
-            else:
-                res['link_name'] = link['name']
-            res['link_ty'] = link['ty']
-        return [res]
+        return [{'text': s, 'color': 0}]
     else:
         return s
 
@@ -597,7 +583,7 @@ def print_ast(ast):
         elif ast.ty == "var_name":
             add_var(ast.name)
         elif ast.ty == "const_name":
-            add_normal(ast.name, link={'name': ast.link_name, 'ty': extension.Extension.CONSTANT})
+            add_normal(ast.name)
         elif ast.ty == "number":
             add_normal(str(ast.n))
         elif ast.ty == "list":
@@ -617,7 +603,7 @@ def print_ast(ast):
                 rec(e)
             add_normal("}")
         elif ast.ty == "operator":
-            add_normal(ast.symbol, link={'name': ast.link_name, 'ty': extension.Extension.CONSTANT})
+            add_normal(ast.symbol)
         elif ast.ty == "binary_op":
             if settings.line_length and print_length(ast) > settings.line_length:
                 if ast.op.symbol in ("-->", "⟶"):

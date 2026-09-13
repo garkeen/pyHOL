@@ -60,6 +60,25 @@ def axioms():
 _current_axioms = axioms
 
 
+# Computation-oracle macros admitted by default (audit §7.1 "computation
+# is oracle" debt).  These name level-0 oracle nodes that appear *inside*
+# a macro expansion (norm/auto folding numeric constants through
+# *_eval_conv's auto_solve) rather than as explicit method steps, so they
+# never pass through the checked apply_macro channel that self-authorizes
+# a directly-applied level-0 macro (z3).  Without them, `auto` on
+# `(1::real) + 1 = 2` and `norm` on `(1::int) + 1 = 2` hard-fail with
+# "oracle macro 'real_eval'/'int_eval' is not trusted".
+#
+# Single source of truth for both validate_library.py (CLI, full-library)
+# and the backend IDE endpoints (interactive default).
+COMPUTATION_ORACLES = frozenset({
+    'nat_eval', 'int_eval', 'int_const_ineq',
+    'real_eval', 'real_norm', 'real_const_eq', 'real_compare',
+    'real_const_ineq', 'real_eq_comparison',
+    'sympy', 'z3',
+})
+
+
 # ---------------------------------------------------------------------------
 # The expander: the core half of proof-level verify (audit §7.1).
 #

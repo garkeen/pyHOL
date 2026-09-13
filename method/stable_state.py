@@ -45,6 +45,43 @@ FORWARD = {
 }
 
 
+# Structural methods: they reshape the proof (insert a goal, declare a
+# variable, decompose an exists fact) rather than consuming a goal.
+# UI-only classification -- deliberately separate from BACKWARD/FORWARD,
+# which drive the .pyhol direction arrows (accept/cut/var/elim carry no
+# arrow there, see manual/06_method.md §6).
+_STRUCTURAL_METHODS = {'cut', 'var', 'elim'}
+
+
+def _method_directions(sig: dict) -> dict:
+    """Classify each available method for the frontend method picker.
+
+    Returns {name: [direction, ...]} with direction one of:
+    * 'backward' -- consumes a goal (rule/intro/cases/.../accept/auto and
+      goal-directed domain macro methods like nat_norm);
+    * 'forward'  -- consumes facts, no goal (forward/rewrite/inst);
+    * 'direct'   -- structural (cut/var/elim).
+    Dual-mode methods (rewrite/inst) list both 'backward' and 'forward'
+    and appear in both groups.  Only methods in ``sig`` (already
+    limit-filtered) are included, so the picker can never offer an
+    unavailable method.
+    """
+    res = {}
+    for name in sig:
+        if name in _STRUCTURAL_METHODS:
+            res[name] = ['direct']
+            continue
+        dirs = []
+        # Backward unless the method is forward-only.  Dual-mode methods
+        # (rewrite/inst) are in both sets and get both directions.
+        if name in BACKWARD or name not in FORWARD:
+            dirs.append('backward')
+        if name in FORWARD:
+            dirs.append('forward')
+        res[name] = dirs
+    return res
+
+
 def _trackable(item):
     return item.th is not None and item.rule not in _SKIP_RULES
 
@@ -358,19 +395,33 @@ class StableProofState:
         with global_setting(unicode=True):
             vars = {v.name: printer.print_type(v.T) for v in self.state.vars}
             proof_lines = self._export_proof_lines()
+            # Print open goals under the same setting as the proof lines,
+            # otherwise the two render in different notation (--> vs ⟶).
+            open_goals = [{'sid': sid, 'prop': printer.print_term(th.prop)}
+                          for sid, th in self.get_open_goals()]
 
         # Ensure rpt is computed
         if self.state.rpt is None:
             self.state.verify(compute_only=True)
 
+        sig = get_method_sig()
+        from core.verify import COMPUTATION_ORACLES
         return {
             'vars': vars,
             'proof': proof_lines,
             'num_gaps': len(self.state.rpt.gaps),
-            'method_sig': get_method_sig(),
+            'method_sig': sig,
             'method_list_params': get_method_list_params(),
-            'open_goals': [{'sid': sid, 'prop': printer.print_term(th.prop)}
-                          for sid, th in self.get_open_goals()],
+            'method_direction': _method_directions(sig),
+            'open_goals': open_goals,
+            # Trust set in effect for this session, and the canonical set
+            # of computation oracles the UI offers.  Which oracles the
+            # proof actually rests on is NOT available here: interactive
+            # apply runs verify(compute_only=True), which skips the
+            # independent replay that fills rpt.oracles.  Ask the
+            # /api/v2/trust-report endpoint for that (full verify).
+            'trust': sorted(self.trust),
+            'known_oracles': sorted(COMPUTATION_ORACLES),
         }
 
     def _export_proof_lines(self) -> list:

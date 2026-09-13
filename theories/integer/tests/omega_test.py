@@ -21,6 +21,12 @@ class OmegaConstantGoalTest(unittest.TestCase):
     decision procedure (exact_var/least_coeff_var return None, then the
     code indexed a factoid with None)."""
 
+    def setUp(self):
+        # omega_solve rewrites with int theorems, so it needs the ambient
+        # theory to be int.  Set it explicitly rather than relying on the
+        # import of theories.integer having set the global theory.
+        context.set_context('int')
+
     def testConstantTrueGoal(self):
         # 0 < 1: the negated goal 1 <= 0 normalizes to the trivially
         # false factoid 0 <= -1, which is the contradiction.

@@ -45,6 +45,8 @@
                   <li><a class="dropdown-item" href="#" @click.prevent="add_item('def')">Definition</a></li>
                   <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.ax')">Constant</a></li>
                   <li><a class="dropdown-item" href="#" @click.prevent="add_item('type.ind')">Datatype</a></li>
+                  <li><a class="dropdown-item" href="#" @click.prevent="add_item('type.abbrev')">Type Synonym</a></li>
+                  <li><a class="dropdown-item" href="#" @click.prevent="add_item('type.quot')">Quotient Type</a></li>
                   <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.ind')">Fun</a></li>
                   <li><a class="dropdown-item" href="#" @click.prevent="add_item('def.pred')">Inductive</a></li>
                   <li><hr class="dropdown-divider"/></li>
@@ -115,6 +117,14 @@
                   <template v-else-if="item.ty === 'def.ind' || item.ty === 'def.pred'">
                     <div class="item-type-sig">:: {{ formatDisplay(item.display.type) }}</div>
                   </template>
+                  <template v-else-if="item.ty === 'type.abbrev'">
+                    <div class="item-type-sig">= {{ formatDisplay(item.display.def) }}</div>
+                  </template>
+                  <template v-else-if="item.ty === 'type.quot'">
+                    <div class="item-prop-text">
+                      ({{ item.abs }}, {{ item.rep }}) {{ formatDisplay(item.display.rel) }}
+                    </div>
+                  </template>
                 </div>
               </div>
               <!-- Edit form (inline) -->
@@ -123,6 +133,8 @@
                 <ConstantEdit v-else-if="item.ty === 'def.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
                 <DefinitionEdit v-else-if="item.ty === 'def'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
                 <DatatypeEdit v-else-if="item.ty === 'type.ind'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+                <TypeAbbrevEdit v-else-if="item.ty === 'type.abbrev'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
+                <QuotientEdit v-else-if="item.ty === 'type.quot'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
                 <InductiveEdit v-else-if="item.ty === 'def.ind' || item.ty === 'def.pred'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
                 <TheoremEdit v-else-if="item.ty === 'thm' || item.ty === 'thm.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
                 <AxTypeEdit v-else-if="item.ty === 'type.ax'" :item="item" :ref="el => { if (el) edit_ref = el }"/>
@@ -166,7 +178,10 @@
         </div>
         <div v-if="open_goals.length > 0" class="open-goals-section">
           <div class="open-goals-title">Open goals</div>
-          <div v-for="gid in open_goals" :key="gid" class="open-goal-item">{{ gid }}</div>
+          <div v-for="(g, i) in open_goals" :key="i" class="open-goal-item">
+            <span class="open-goal-sid">#{{ typeof g === 'object' ? g.sid : g }}</span>
+            <span v-if="typeof g === 'object' && g.prop" class="open-goal-prop">{{ g.prop }}</span>
+          </div>
         </div>
         <div class="history-list">
           <div class="history-item" :class="{'history-selected': proof_history_idx === 0}"
@@ -217,6 +232,8 @@ import TheoremEdit from '../components/items/TheoremEdit.vue'
 import ConstantEdit from '../components/items/ConstantEdit.vue'
 import DefinitionEdit from '../components/items/DefinitionEdit.vue'
 import DatatypeEdit from '../components/items/DatatypeEdit.vue'
+import TypeAbbrevEdit from '../components/items/TypeAbbrevEdit.vue'
+import QuotientEdit from '../components/items/QuotientEdit.vue'
 import InductiveEdit from '../components/items/InductiveEdit.vue'
 import HeaderEdit from '../components/items/HeaderEdit.vue'
 import AxTypeEdit from '../components/items/AxTypeEdit.vue'
@@ -451,6 +468,8 @@ const add_item = (ty) => {
   else if (ty === 'def.ax') { item.type = '' }
   else if (ty === 'type.ax') { item.args = [] }
   else if (ty === 'type.ind') { item.type = ''; item.args = []; item.constrs = '' }
+  else if (ty === 'type.abbrev') { item.args = []; item.def = '' }
+  else if (ty === 'type.quot') { item.args = []; item.abs = ''; item.rep = ''; item.rel = '' }
   else if (ty === 'def.ind' || ty === 'def.pred') { item.type = ''; item.rules = '' }
   else if (ty === 'header') { item.depth = 0 }
 
@@ -562,6 +581,10 @@ const save_item = async (index) => {
     if (result.rules !== undefined) updated.rules = result.rules
     if (result.depth !== undefined) updated.depth = result.depth
     if (result.overloaded !== undefined) updated.overloaded = result.overloaded
+    if (result.def !== undefined) updated.def = result.def
+    if (result.abs !== undefined) updated.abs = result.abs
+    if (result.rep !== undefined) updated.rep = result.rep
+    if (result.rel !== undefined) updated.rel = result.rel
     if (steps) updated.steps = steps
     updated._from_disk = true
     theory.value.content[index] = updated
@@ -661,6 +684,7 @@ const compute_thm_status = async () => {
 
 const typeLabel = (ty) => ({
   'header': 'header', 'type.ax': 'type', 'type.ind': 'datatype',
+  'type.abbrev': 'typeabbrev', 'type.quot': 'quotient',
   'def.ax': 'constant', 'def': 'definition', 'def.ind': 'fun',
   'def.pred': 'inductive', 'thm.ax': 'axiom', 'thm': 'theorem'
 }[ty] || ty)
@@ -736,8 +760,9 @@ onMounted(() => { load_files() })
 .open-goals-section { padding: 6px 8px; border-bottom: 1px solid #e0e0e0; }
 .open-goals-title { font-size: 11px; font-weight: 700; color: #c0392b; text-transform: uppercase; margin-bottom: 3px; }
 .open-goal-item { font-family: Consolas, monospace; font-size: 12px; color: #333; padding: 1px 0; }
+.open-goal-sid { color: #c0392b; font-weight: 600; margin-right: 4px; }
+.open-goal-prop { color: #444; }
 .file-select { width: auto; min-width: 120px; cursor: pointer; }
-.center-panel { flex: 1; overflow-y: auto; padding: 12px; }-list { overflow-y: auto; }
 .file-item { padding: 6px 10px; cursor: pointer; border-radius: 4px; margin-bottom: 2px; font-size: 14px; }
 .file-item:hover { background: #e9ecef; }
 .file-item.active { background: #007bff; color: white; }

@@ -24,14 +24,6 @@ well as the corresponding extension.
 """
 theory_cache = dict()
 
-"""
-Cache of item mapping.
-
-A mapping from (ty, name) to (theory_name, timestamp, index).
-
-"""
-item_index = dict()
-
 dirname = os.path.dirname(os.path.dirname(__file__))  # project root
 
 def _lib_dirs():
@@ -242,7 +234,6 @@ def load_pyhol_data(filename):
 def load_metadata():
     """Load metadata for all theory files across all library directories."""
     theory_cache.clear()
-    item_index.clear()
     for d in _lib_dirs():
         if not os.path.isdir(d):
             continue
@@ -404,33 +395,11 @@ def load_theory_cache(filename):
             cache['content'].append(item)
             if item.error is None:
                 try:
-                    exts = item.get_extension()
-                    theory.thy.unchecked_extend(exts)
-                    for ext in exts:
-                        if ext.is_constant():
-                            name = ext.ref_name
-                        else:
-                            name = ext.name
-                        item_index[(ext.ty, name)] = (filename, timestamp, index)
+                    theory.thy.unchecked_extend(item.get_extension())
                 except TheoryException:
                     pass  # Skip duplicates
 
     return cache
-
-def query_item_index(filename, ext_ty, name):
-    """Query the item index."""
-
-    # Make sure the theory (and all its dependencies) are indexed
-    load_theory_cache(filename)
-
-    if (ext_ty, name) in item_index:
-        filename, timestamp, index = item_index[(ext_ty, name)]
-        if timestamp == os.path.getmtime(user_file(filename)):
-            return filename, index
-        else:
-            return None
-    else:
-        return None
 
 def _apply_item(item):
     """Extend the theory with a parsed item, and re-register the

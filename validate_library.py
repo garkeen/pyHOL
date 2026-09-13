@@ -36,18 +36,13 @@ def main():
     import solvers.z3wrapper  # noqa: F401 -- injects the z3 backend into
     #     the z3 oracle macro (z3_loaded / solve).  Without this the
     #     z3 method steps in stored proofs fail with "not installed".
-    from core.verify import validate_theory
+    from core.verify import validate_theory, COMPUTATION_ORACLES
 
     # Computation-oracle macros admitted in library proofs (audit §7.1
-    # trust set; audit line 366 "computation is oracle" debt): numeric
-    # evaluation and decision procedures recorded as explicit oracle
-    # lines in the stored proofs.  Declared here, not scanned.
-    LIBRARY_ORACLES = frozenset({
-        'nat_eval', 'int_eval', 'int_const_ineq',
-        'real_eval', 'real_norm', 'real_const_eq', 'real_compare',
-        'real_const_ineq', 'real_eq_comparison',
-        'sympy', 'z3',
-    })
+    # trust set; audit line 366 "computation is oracle" debt).  The
+    # canonical set lives in core/verify.py so the CLI validator and the
+    # backend IDE endpoints default to the same names.
+    LIBRARY_ORACLES = COMPUTATION_ORACLES
 
     basic.load_metadata()
     depend_list = basic.get_import_order(sorted(basic.theory_cache.keys()))

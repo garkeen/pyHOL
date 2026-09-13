@@ -325,33 +325,6 @@ def rename_file():
     return jsonify({'ok': True})
 
 
-@app.route('/api/find-link', methods=['POST'])
-def find_link():
-    """Return the location of the link.
-
-    Input:
-    * filename: name of the file in which the query originates.
-    * ty: type of item.
-    * name: name of the item to find.
-
-    Returns:
-    * filename: name of the theory file.
-    * position: index of the item in the theory.
-
-    """
-    data = json.loads(request.get_data().decode("utf-8"))
-
-    res = basic.query_item_index(data['filename'], data['ext_ty'], data['name'])
-    if res:
-        filename, index = res
-        return jsonify({
-            'filename': filename,
-            'index': index
-        })
-    else:
-        return jsonify({})
-
-
 # ==================== Validation ====================
 
 @app.route('/api/validate-theory', methods=['POST'])
@@ -361,20 +334,23 @@ def validate_theory():
     Input:
     * filename: name of the theory file.
     * force: (optional) if true, ignore cache and re-validate.
+    * trust: (optional) list of computation-oracle macro names admitted
+      while replaying.  Omitted -> core.verify.COMPUTATION_ORACLES, the
+      same default the CLI validator (validate_library.py) uses, so the
+      IDE and the CLI agree.
 
     Returns:
     * statuses: dict of {name: status}.
     * errors: dict of {name: error_message} for failed theorems.
-    * valid: number of VALID theorems.
-    * axiom: number of AXIOM theorems.
-    * unproved: number of UNPROVED theorems.
-    * failed: number of STEP_FAILED + DEP_FAILED theorems.
-    * total: total number of theorems.
+    * valid / axiom / unproved / failed / total: counts.
 
     """
     data = json.loads(request.get_data().decode("utf-8"))
     force = data.get('force', False)
-    statuses, errors = verify.validate_theory(data['filename'], force=force)
+    trust = data.get('trust')
+    trust = frozenset(trust) if trust is not None else verify.COMPUTATION_ORACLES
+    statuses, errors = verify.validate_theory(data['filename'], force=force,
+                                              trust=trust)
     counts = {}
     for s in statuses.values():
         counts[s] = counts.get(s, 0) + 1

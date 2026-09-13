@@ -281,27 +281,3 @@ def vcg_solve(goal):
     pt = vcg_norm(T, goal)
     vc_pt = [eval_macro("z3", vc, []) for vc in pt.assums]
     return eval_macro("vcg", goal, vc_pt)
-
-
-@register_method('vcg')
-class vcg_method(Method):
-    """Method corresponding to VCG."""
-    def __init__(self):
-        self.sig = []
-        self.limit = 'while_rule'
-
-    def search(self, state, id, prevs, data=None):
-        if data:
-            return [data]
-
-        cur_th = state.get_proof_item(id).th
-        if len(cur_th.hyps) == 0 and cur_th.prop.is_comb("Valid", 3):
-            return [{}]
-        else:
-            return []
-
-    def display_step(self, state, data):
-        return pprint.N("Apply VCG")
-
-    def apply(self, state, id, data, prevs):
-        state.apply_tactic(id, vcg_tactic(), prevs=prevs)

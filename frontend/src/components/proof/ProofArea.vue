@@ -5,7 +5,33 @@
       <span class="proof-thm-name">{{ thm_name }}</span>
       <span class="proof-thm-prop">{{ formatProp }}</span>
       <span class="proof-gaps">{{ num_gaps }} gaps</span>
+      <button class="btn btn-sm btn-outline-secondary" @click="show_trust = !show_trust"
+              title="Computation oracles admitted this session">Oracles {{ trust_summary }}</button>
       <button class="btn btn-sm btn-outline-secondary" @click="emit('close-prove')" title="Close">✕</button>
+    </div>
+
+    <!-- Trust panel: admit/reject computation oracles (audit §7.1) -->
+    <div v-if="show_trust" class="trust-panel">
+      <div class="trust-row">
+        <span class="trust-title">Admitted computation oracles</span>
+        <span class="trust-hint">{{ trust_is_default ? 'backend default' : 'session override' }}</span>
+        <button class="btn btn-sm btn-outline-secondary trust-reset" @click="resetTrust"
+                :disabled="trust_is_default">Default</button>
+        <button class="btn btn-sm btn-outline-primary trust-check" @click="check_trust">Full verify</button>
+      </div>
+      <div class="trust-items">
+        <label v-for="name in known_oracles" :key="name" class="trust-item"
+               :class="{admitted: isAdmitted(name)}">
+          <input type="checkbox" :checked="isAdmitted(name)" @change="toggleOracle(name)"/>
+          <span class="trust-name">{{ name }}</span>
+        </label>
+      </div>
+      <div v-if="trust_report" class="trust-report">
+        oracles used: {{ trust_report.oracles.length ? trust_report.oracles.join(', ') : 'none' }}
+        &nbsp;|&nbsp; axioms: {{ trust_report.axioms.length ? trust_report.axioms.length : 'none' }}
+        &nbsp;|&nbsp; gaps: {{ trust_report.num_gaps }}
+      </div>
+      <div v-if="trust_error" class="trust-error">{{ trust_error }}</div>
     </div>
 
     <!-- Proof lines (scrollable) -->
@@ -103,31 +129,14 @@
           <label>Method:</label>
           <select v-model="manual_method" class="method-select">
             <option value="">-- select --</option>
-            <optgroup label="⟶ Forward (needs facts, no goal)">
-              <option value="forward">forward</option>
-              <option value="rewrite">rewrite (fact mode w/o goal)</option>
-              <option value="inst">inst (fact mode w/o goal)</option>
+            <optgroup v-if="manual_groups.forward.length" label="⟶ Forward (needs facts, no goal)">
+              <option v-for="n in manual_groups.forward" :key="'mf'+n" :value="n">{{ n }}</option>
             </optgroup>
-            <optgroup label="← Backward (needs goal)">
-              <option value="rule">rule</option>
-              <option value="resolve">resolve</option>
-              <option value="apply_prev">apply_prev</option>
-              <option value="intro">intro</option>
-              <option value="elim">elim</option>
-              <option value="cases">cases</option>
-              <option value="type_cases">type_cases</option>
-              <option value="induct">induct</option>
-              <option value="unfold">unfold</option>
-              <option value="simp">simp</option>
-              <option value="refl">refl</option>
-              <option value="eq_intro">eq_intro</option>
-              <option value="trans">trans</option>
-              <option value="assumption">assumption</option>
-              <option value="accept">accept</option>
+            <optgroup v-if="manual_groups.backward.length" label="← Backward (needs goal)">
+              <option v-for="n in manual_groups.backward" :key="'mb'+n" :value="n">{{ n }}</option>
             </optgroup>
-            <optgroup label="Structural">
-              <option value="cut">cut</option>
-              <option value="var">var</option>
+            <optgroup v-if="manual_groups.direct.length" label="Structural">
+              <option v-for="n in manual_groups.direct" :key="'md'+n" :value="n">{{ n }}</option>
             </optgroup>
           </select>
         </div>
@@ -153,14 +162,12 @@
 
       <!-- Auto tab -->
       <div v-if="active_tab === 'auto'" class="auto-tab">
-        <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('simp')" :disabled="goal === -1">simp</button>
-        <span class="auto-desc">hint_rewrite auto-rewrite</span>
-        <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('norm')" :disabled="goal === -1">norm</button>
-        <span class="auto-desc">polynomial normalize</span>
-        <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('z3')" :disabled="goal === -1">z3</button>
-        <span class="auto-desc">SMT solver (oracle)</span>
-        <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto('vcg')" :disabled="goal === -1">vcg</button>
-        <span class="auto-desc">Hoare logic VC generation</span>
+        <template v-for="[name, desc] in auto_methods" :key="'auto'+name">
+          <button class="btn btn-sm btn-outline-primary auto-btn" @click="apply_auto(name)"
+                  :disabled="goal === -1">{{ name }}</button>
+          <span class="auto-desc">{{ desc }}</span>
+        </template>
+        <div v-if="auto_methods.length === 0" class="auto-empty">No automatic methods available.</div>
       </div>
     </div>
 
@@ -176,6 +183,11 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '../../api'
 import ProofLine from './ProofLine.vue'
+import {
+  trustOverride, knownOracles, effectiveTrust,
+  setKnownOracles, setEffectiveTrust,
+  currentTrust, isAdmitted, toggleOracle, resetTrust, withTrust,
+} from '../../api/trust'
 
 const props = defineProps({
   theory_name: String,
@@ -190,12 +202,14 @@ const emit = defineEmits(['set-message', 'query', 'set-context', 'set-status', '
 
 const method_sig = ref({})
 const method_list_params = ref({})
+const method_direction = ref({})
 const index = ref(0)
 const history = ref([])
 const steps = ref([])
 const goal = ref(-1)
 const facts = ref([])
 const proof = ref(undefined)
+const open_goals = ref([])
 const num_gaps = ref(0)
 const search_res = ref([])
 const fuzzy_res = ref([])
@@ -203,6 +217,38 @@ const active_tab = ref('suggest')
 const manual_method = ref('')
 const manual_params = ref({})
 const theorem_results = ref([])
+
+// Trust panel (audit §7.1).  `known_oracles`/`effectiveTrust` come from
+// the backend proof state; the session override lives in api/trust.js so
+// it survives switching theorems within the session.
+const show_trust = ref(false)
+const trust_report = ref(null)
+const trust_error = ref('')
+
+const trust_names = computed(() => currentTrust() ?? knownOracles.value)
+const trust_is_default = computed(() => trustOverride.value === null)
+const trust_summary = computed(
+  () => trust_names.value.length + '/' + knownOracles.value.length)
+
+const check_trust = async () => {
+  trust_error.value = ''
+  trust_report.value = null
+  try {
+    const res = await api.post('/v2/trust-report', withTrust({
+      theory_name: props.theory_name, thm_name: props.thm_name,
+      vars: props.vars, prop: props.prop,
+      steps: steps.value, index: index.value,
+    }))
+    if (res.data.error) {
+      trust_error.value = res.data.error.err_str || String(res.data.error)
+    } else {
+      trust_report.value = res.data
+      setEffectiveTrust(res.data.trust)
+    }
+  } catch (e) {
+    trust_error.value = 'trust report failed'
+  }
+}
 
 // Fields that are comma-separated lists (rendered as +/- dynamic inputs)
 const listFieldsFor = (mn) => new Set(method_list_params.value[mn] || [])
@@ -237,6 +283,48 @@ const method_params = computed(() => {
   if (sig) return sig
   return method_sig_map[manual_method.value] || []
 })
+
+// Fallback direction map, used only before the first proof state arrives
+// (method_direction is empty).  Mirrors method/stable_state._method_directions.
+const static_direction = (name) => {
+  if (['cut', 'var', 'elim'].includes(name)) return ['direct']
+  if (name === 'forward') return ['forward']
+  if (['rewrite', 'inst'].includes(name)) return ['backward', 'forward']
+  return ['backward']
+}
+
+// Manual method picker driven by the backend list: method_sig is already
+// limit-filtered to what the current theory offers, so the picker can
+// never present an unavailable method (it grows with domain loading --
+// nat_norm/int_norm/real_norm/vcg appear only when their limit theorem
+// is loaded).  Dual-mode methods show up in both forward and backward.
+const manual_groups = computed(() => {
+  const dirs = method_direction.value
+  const have_backend = Object.keys(method_sig.value).length > 0
+  const names = have_backend
+    ? Object.keys(method_sig.value).sort()
+    : Object.keys(method_sig_map).sort()
+  const groups = { forward: [], backward: [], direct: [] }
+  for (const n of names) {
+    const d = have_backend ? (dirs[n] || ['direct']) : static_direction(n)
+    if (d.includes('forward')) groups.forward.push(n)
+    if (d.includes('backward')) groups.backward.push(n)
+    if (d.includes('direct')) groups.direct.push(n)
+  }
+  return groups
+})
+
+// Auto tab: curated set, filtered to what the backend actually offers
+// (vcg only exists once hoare/while_rule is loaded).
+const AUTO_METHODS = [
+  ['simp', 'hint_rewrite auto-rewrite (does not close)'],
+  ['norm', 'domain / numeric normalization'],
+  ['auto', 'close the goal (may use computation oracles)'],
+  ['z3', 'SMT solver (oracle)'],
+  ['vcg', 'Hoare logic VC generation'],
+]
+const auto_methods = computed(
+  () => AUTO_METHODS.filter(([n]) => n in method_sig.value || n in method_sig_map))
 
 const param_hint = (p) => ({
   'theorem': 'theorem name', 'sym': 'true/false', 'loc': 'position', 'case': 'expression',
@@ -366,7 +454,8 @@ const mark_fact = (line_no) => {
 const mark_goal = (line_no) => {
   if (!proof.value) return
   const line = proof.value[line_no]
-  if (!line || line.rule !== 'sorry') return  // only sorry lines can be goals
+  // Backend marks the open goals; use it rather than re-deriving from rule.
+  if (!line || !line.is_goal) return
   
   if (goal.value === line_no) {
     // Deselect goal
@@ -387,7 +476,7 @@ const current_state = () => {
   if (goal.value === -1 && facts.value.length === 0) return undefined
   const fact_arr = facts.value.map(i => proof.value[i].sid)
   const goal_val = goal.value !== -1 ? proof.value[goal.value].sid : null
-  return {
+  return withTrust({
     theory_name: props.theory_name,
     thm_name: props.thm_name,
     vars: props.vars,
@@ -395,7 +484,7 @@ const current_state = () => {
     steps: steps.value,
     index: index.value,
     step: { goal: goal_val, facts: fact_arr },
-  }
+  })
 }
 
 const match_thm = async () => {
@@ -403,8 +492,7 @@ const match_thm = async () => {
   if (input === undefined) {
     search_res.value = []
     fuzzy_res.value = []
-    const og = proof.value ? proof.value.filter(l => l.is_goal).map(l => l.sid) : []
-    emit('set-context', { ctxt: {}, history: history.value, history_idx: -1, open_goals: og })
+    emit('set-context', { ctxt: {}, history: history.value, history_idx: -1, open_goals: open_goals.value })
     return
   }
   try {
@@ -429,12 +517,11 @@ const match_thm = async () => {
     })
     search_res.value = response.data[resultsKey] || []
     fuzzy_res.value = response.data.fuzzy || []
-    const og2 = proof.value ? proof.value.filter(l => l.is_goal).map(l => l.sid) : []
     emit('set-context', {
       ctxt: response.data.ctxt || {},
       history: history.value,
       history_idx: index.value,
-      open_goals: og2
+      open_goals: open_goals.value
     })
   } catch (err) {
     search_res.value = []
@@ -569,10 +656,10 @@ const search_theorems = async (pattern) => {
 
 const gotoStep = async (new_index, set_selected, update_history = false) => {
   index.value = new_index
-  const data = {
+  const data = withTrust({
     theory_name: props.theory_name, thm_name: props.thm_name,
     vars: props.vars, prop: props.prop, steps: steps.value, index: index.value
-  }
+  })
   try {
     const response = await api.post('/v2/init-saved-proof', data)
     if (response.data.error) {
@@ -585,14 +672,18 @@ const gotoStep = async (new_index, set_selected, update_history = false) => {
     num_gaps.value = state.num_gaps
     method_sig.value = state.method_sig || {}
     method_list_params.value = state.method_list_params || {}
+    method_direction.value = state.method_direction || {}
+    setKnownOracles(state.known_oracles)
+    setEffectiveTrust(state.trust)
     proof.value = state.proof
-    // Emit open_goals immediately (don't wait for match_thm)
-    const og = state.proof ? state.proof.filter(l => l.is_goal).map(l => l.sid) : []
+    // Open goals come from the backend ({sid, prop}); do not rebuild them
+    // from the proof lines -- the backend's list is the authoritative one.
+    open_goals.value = state.open_goals || []
     emit('set-context', {
       ctxt: {},
       history: history.value,
       history_idx: index.value,
-      open_goals: og
+      open_goals: open_goals.value
     })
     facts.value = []
     if (index.value >= history.value.length) {
@@ -656,6 +747,18 @@ defineExpose({ apply_method, gotoStep, step_backward, step_forward, proof, num_g
 .proof-thm-name { font-weight: 700; font-size: 13px; color: #333; flex-shrink: 0; }
 .proof-thm-prop { font-family: Consolas, monospace; font-size: 12px; color: #555; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .proof-gaps { font-size: 11px; color: #c0392b; flex-shrink: 0; }
+.trust-panel { flex-shrink: 0; border-bottom: 1px solid #d0d7de; background: #fffdf5; padding: 6px 10px; font-size: 12px; }
+.trust-row { display: flex; align-items: center; gap: 8px; }
+.trust-title { font-weight: 700; color: #8a6d1a; }
+.trust-hint { color: #999; font-size: 11px; }
+.trust-reset, .trust-check { margin-left: auto; padding: 1px 8px; font-size: 11px; }
+.trust-check { margin-left: 4px; }
+.trust-items { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 6px 0 2px; }
+.trust-item { display: flex; align-items: center; gap: 4px; font-family: Consolas, monospace; color: #999; }
+.trust-item.admitted { color: #1a1a1a; }
+.trust-name { font-size: 11px; }
+.trust-report { color: #2e7d32; font-size: 11px; margin-top: 4px; }
+.trust-error { color: #c0392b; font-size: 11px; margin-top: 4px; }
 .proof-lines-scroll { flex: 1; overflow-y: auto; padding: 4px 8px; min-height: 0; }
 .proof-lines { font-family: Consolas, monospace; }
 .proof-line-row { cursor: pointer; padding: 1px 4px; border-radius: 3px; }
@@ -703,6 +806,7 @@ defineExpose({ apply_method, gotoStep, step_backward, step_forward, proof, num_g
 .auto-tab { display: flex; flex-direction: column; gap: 4px; }
 .auto-btn { width: fit-content; }
 .auto-desc { font-size: 11px; color: #888; margin-left: 8px; }
+.auto-empty { color: #999; font-size: 12px; font-style: italic; }
 .proof-footer { display: flex; align-items: center; justify-content: space-between; padding: 4px 10px; border-top: 1px solid #dee2e6; background: #f8f9fa; flex-shrink: 0; }
 .proof-status { font-size: 11px; color: #666; }
 .proof-loading { padding: 20px; color: #999; }

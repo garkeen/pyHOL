@@ -20,14 +20,12 @@ from kernel import proofterm
 from kernel import term_ord
 from syntax import numeral
 from syntax.logicops import is_not
-from core import basic, logic, conv
+from core import logic, conv
 from core import auto as _auto_omega
 from theories.integer import conv as integer
 from solvers.omega import (ASM, Contr, DirectContr, GCDCheck, RealCombine,
                            factoid_to_term, is_integer_ineq, solve_matrix,
                            term_to_factoid)
-
-basic.load_theory('int')
 
 
 class OmegaHOL:

@@ -3,7 +3,7 @@
     <header class="text-center mb-5">
       <h1 class="display-4 mb-3">HOLPY</h1>
       <p class="lead text-secondary mb-1">Interactive theorem proving in the browser</p>
-      <p class="text-secondary">Edit HOL theories, verify proofs, and run integrated CAS & program-verification demos.</p>
+      <p class="text-secondary">Edit HOL theories, prove theorems interactively, and verify imperative programs.</p>
     </header>
 
     <div class="row g-4 justify-content-center">
