@@ -64,9 +64,20 @@ method/+backend/ 应用层：Method/ProofState/Flask API，点击式证明，不
 
   客户端指令：`theory NAME`、`var NAME TYPE`（**不写 `::`**，写法是 `var A 'a set`）、
   `goal <prop>`（只给命题，上下文变量靠 `var` 预先声明）、步进行、
-  `all`（列出全部条目与稳定 ID）、`undo`、`check`、`export`、`thm NAME`。
+  `all`（列出全部条目与稳定 ID）、`undo`、`check`、`export`、
+  `item NAME`（输出整段可粘贴的 `.pyhol` 条目：theorem/fixes/prop/proof/qed）、
+  `let NAME REF`（给稳定 ID 起别名）、`thm NAME`。
   退出码 0/1/2；出现 `STEP FAILED` 会打印失败行与当前所有稳定 ID。
+  改了 `repl/` 或 `.pyhol` 之后**换端口重起**（端口被占会明确报错并退出 2）；
   做完工作**记得关掉后台服务**。
+
+  **步进行里不要手算稳定 ID**：`goal=` / `facts=` 接受语义引用——`goal=@`
+  （上一步开的仍开子目标／上一步的目标／最新仍开目标）、`goal="<命题>"`、
+  `facts=[@]`（上一步派生的事实）、`facts=["<命题>"]`、`facts=[别名]`。
+  REPL 会回显 `resolved: ...` 的字面形态，`export` / `item` 输出的也是字面 ID。
+  事实引用按引擎的依赖规则（`ItemID.can_depend_on`）预检：指到父目标或兄弟
+  分支会直接报 `cannot depend on`，而不是回放时才 `illegal dependence`。
+  细节见 `repl-client.md` §4.1。
 
   **两个坑**：`check` 只做 `compute_only`，说 VALID 不等于独立重放通过，
   最终必须用 `.cache/validate_one.py <理论>` 复核；临时脚本（每次新进程、

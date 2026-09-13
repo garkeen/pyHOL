@@ -275,12 +275,13 @@ goal 一旦展开成析取，`rule per_union_memI*` 就匹配不上（结论是�
 ### 5.1 常驻 REPL（推荐）
 
 ```bash
-python -m repl.repl --theory relation --serve --port 5598 &
+python -m repl.repl --serve --port 5598 --theory relation &
 python -m repl.client --port 5598 --stdin < steps.txt   # 退出码 0=无失败且无 open goal
 ```
 
-`steps.txt` 形如：`var ...` / `goal ...` / 步骤行 / `export`。
-改完 `.pyhol` 要**重启 server** 才能看到新定理。
+`steps.txt` 形如：`var ...` / `goal ...` / 步骤行 / `item NAME`。
+改完 `.pyhol` 要**换端口重起 server** 才能看到新定理（端口被占会明确报错退出 2，
+不会像以前那样悄悄抢占端口、让客户端继续连旧进程）。
 
 ### 5.2 单理论验证
 
@@ -288,23 +289,34 @@ python -m repl.client --port 5598 --stdin < steps.txt   # 退出码 0=无失败�
 python .cache/validate_one.py relation --force
 ```
 
-### 5.3 已写的辅助脚本（都在 `.cache/`，**被 gitignore，不会进仓库**）
+### 5.3 语义化 ID 现已内建（2026-09-13 补记）
 
-- `.cache/drive_rel.py`：进程内跑 REPL，支持**语义化 ID 解析**，是本次效率的关键。规则：
-  - `goal=@` → 上一步新开的第一个仍开的子目标；否则上一步的目标（若仍开）；否则最大 sid。
-  - `facts=[#PROP]` → 按打印形式匹配事实，**取 sid 最大的那个**（即同分支最近派生的一次）。
-  - `facts=[#@]` → 最近派生的事实（做重写链时用）。
-  - 调用：`python .cache/drive_rel.py CASES_FILE`，CASES 文件里定义 `THEORY`、`VARS`、`PROOFS`。
-- `.cache/add_thm.py`：跑 client → 抽取 `proof..qed` → 去注解 → 追加定理 → 验证。
-- `.cache/validate_one.py`：**仓库原有**（不在 .cache 的话见 `FOUNDATION_DEBT.md` 的说明）。
+§5.3 原先建议"把语义解析规则当基础设施重建一遍（`.cache` 随时可能被清）"。
+现在它已经落在 `repl/` 里，不再是 `.cache` 的临时脚本：
 
-**给下一个 AI 的建议**：把 §5.3 的语义解析规则当作基础设施先重建一遍
-（`.cache` 随时可能被清），比手算稳定 ID 快得多。手算 id 在 §3.9/§3.10 那些行为下极易错位。
+- `goal=@` / `goal=@N` / `goal="<命题>"`；`facts=[@]` / `facts=[@N]` /
+  `facts=["<命题>"]`；`let NAME <引用>` 起别名。REPL 在应用前解析成字面 ID
+  并回显 `resolved: ...`，`export` / `item` 输出的永远是字面 ID。
+- 事实引用按**引擎自己的依赖规则**（`ItemID.can_depend_on`）预检，指到父目标
+  或兄弟分支时报 `CANNOT RESOLVE REFERENCE: ... cannot depend on`，
+  而不是回放到一半才 `apply_method: illegal dependence`（§9.3 第 17 条）。
+- `item NAME` 直接输出可粘贴的 `.pyhol` 条目（`theorem` + `fixes` +
+  **保留 `'a::C` 的原文 `prop`** + `proof..qed`），写回文件不必手抄命题。
+- `facts=[1, 2]`（逗号后带空格）现在与 `facts=[1,2]` 等价。
+
+用法与匹配规则见 `repl-client.md` §4.1；测试在 `repl/tests/repl_test.py`
+（`SemanticRefTest` / `ServerBindTest`）。
+
+历史（已被上面的内建功能取代，`.cache` 里的脚本早就不在了）：
+以前是 `.cache/drive_rel.py`（进程内 REPL + 语义 ID）、`.cache/add_thm.py`
+（抽 proof 块追加定理）、`.cache/validate_one.py`（单理论验证，**仓库原有**，
+不在 `.cache` 时见 `FOUNDATION_DEBT.md` 的说明）。
 
 ### 5.4 抽取证明块的注意点
 
 从 REPL 输出里抓导出块**必须按行判断** `l.strip() == 'proof'` 与 `== 'qed'`。
 用 `text.split('proof')` 会撞上 REPL 的 `no open goals -- proof complete` 那行（我踩过）。
+现在不需要手写抽取器：`item NAME` 直接输出整段条目。
 
 ---
 

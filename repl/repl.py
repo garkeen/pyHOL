@@ -27,9 +27,35 @@ Commands
                            (paste lines straight out of a .pyhol file)
     undo                   drop the last step
     export                 print the current proof as a .pyhol block
+    item NAME              print the whole .pyhol item (header + proof)
+    let NAME REF           bind an alias for a stable ID
     check                  report the verification status
     trust NAME,...         admit computation-oracle macros (default: none)
     help / quit
+
+Reference arguments (goal= / facts=)
+-------------------------------------
+Writing literal stable IDs by hand goes wrong as soon as a proof grows, so a
+step line may refer to items *semantically*; the resolved line (with literal
+IDs) is echoed, and `export`/`item` always print literal IDs.
+
+    goal=@             first still-open goal opened by the previous step;
+                       else the previous step's goal (if still open); else
+                       the newest open goal (a note says so)
+    goal=@N            same, for the step N steps back (@0 = previous step)
+    goal="<prop>"      the open goal whose printed proposition matches
+    facts=[@]          the last fact created by the previous step
+    facts=[@N]         same, for the step N steps back
+    facts=["<prop>"]   the fact whose printed proposition matches
+    facts=[NAME]       an alias bound with `let NAME <ref>`
+    let NAME 3         bind an alias (references: <sid> | @ | @N | "prop")
+
+Matching is by the printed proposition (whitespace-insensitive): an exact
+match wins; otherwise any item containing the text matches, and the largest
+stable ID (the most recent derivation) is used, with a note printed.  A
+quoted alias is resolved at *use* time, against the branch of the goal it is
+used for; fact references are checked against that branch, so a reference
+that would fail with `illegal dependence` is reported as such up front.
 
 Design notes (the pain points this REPL exists to fix)
 ------------------------------------------------------
@@ -45,6 +71,7 @@ import contextlib
 import io
 import os
 import re
+import socket
 import sys
 import traceback
 
@@ -53,6 +80,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from core import basic, context
+from kernel.proof import ItemID
 from syntax.settings import global_setting
 from syntax import parser, pyhol
 import method.stable_state as ss
@@ -60,6 +88,67 @@ import method.stable_state as ss
 
 def _short(name):
     return name
+
+
+class RefError(Exception):
+    """A `goal=`/`facts=` reference that does not resolve in this state."""
+
+
+_IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_']*")
+
+
+def _split_top_commas(text):
+    """Split on commas that are not inside a quoted string."""
+    parts, cur, in_quote = [], '', False
+    for ch in text:
+        if ch == '"':
+            in_quote = not in_quote
+            cur += ch
+        elif ch == ',' and not in_quote:
+            parts.append(cur)
+            cur = ''
+        else:
+            cur += ch
+    parts.append(cur)
+    return parts
+
+
+def _is_quoted(s):
+    return len(s) >= 2 and s.startswith('"') and s.endswith('"')
+
+
+def _scan_goal_ref(line):
+    """Find the first `goal=<ref>` token: (start, end, ref) or None.
+
+    Quote-aware, so `goal="some prop"` scans as one reference.
+    """
+    for m in re.finditer(r'(?<![\w=])goal=', line):
+        k = m.end()
+        if k < len(line) and line[k] == '"':
+            e = line.find('"', k + 1)
+            if e < 0:
+                return None
+            return (m.start(), e + 1, line[k:e + 1])
+        e = k
+        while e < len(line) and not line[e].isspace():
+            e += 1
+        return (m.start(), e, line[k:e])
+    return None
+
+
+def _scan_bracket_end(line, start):
+    """Index of the `]` matching the `[` at line[start]; -1 if unbalanced.
+
+    Quote-aware, so a quoted proposition containing `]` cannot close it.
+    """
+    in_quote = False
+    for i in range(start, len(line)):
+        ch = line[i]
+        if ch == '"':
+            in_quote = not in_quote
+        elif ch == ']' and not in_quote:
+            return i
+    return -1
 
 
 # Schematic variables print as `?name`; `rule`/`forward` take them as
@@ -98,6 +187,8 @@ class Repl:
         self.vars = {}
         self.sps = None
         self.goal_prop = None
+        self.goal_raw = None
+        self.aliases = {}
         self.history = []      # list of (step_dict, [(sid, prop, is_goal), ...])
         self.trust = frozenset(trust)
         self.failed = False    # a step failed (drives the exit code)
@@ -137,6 +228,215 @@ class Repl:
         for sid, prop, is_goal in self._items():
             print('  #[%d]%s %s' % (sid, ' GOAL' if is_goal else '     ', prop))
 
+    # -- semantic references (goal= / facts=) ------------------------------
+
+    @staticmethod
+    def _norm(s):
+        return ' '.join(s.split())
+
+    def _open_sids(self):
+        if self.sps is None:
+            return set()
+        return {sid for sid, _ in self.sps.get_open_goals()}
+
+    def _sid2pos(self):
+        """Stable ID -> positional ID, exactly as the engine resolves it."""
+        if self.sps is None:
+            return {}
+        pos2sid = self.sps._build_pos2sid()
+        return {v: k for k, v in pos2sid.items()}
+
+    def _in_branch_of(self, sid, target_sid):
+        """Whether item `sid` is a legal dependency of item `target_sid`.
+
+        This is the engine's own rule (`ItemID.can_depend_on`: same parent
+        proof, earlier line), so a reference that resolves here is accepted
+        there too.  A match outside the branch is reported as such, instead
+        of failing later with `apply_method: illegal dependence`.
+        """
+        if self.sps is None or target_sid is None:
+            return True
+        sid2pos = self._sid2pos()
+        gpos, fpos = sid2pos.get(target_sid), sid2pos.get(sid)
+        if gpos is None:
+            return True
+        if fpos is None or fpos == gpos:
+            return False
+        return ItemID(gpos).can_depend_on(ItemID(fpos))
+
+    def _match_prop(self, text, pool):
+        """Items in `pool` whose printed proposition matches `text`.
+
+        Whitespace-insensitive exact match wins; otherwise any proposition
+        containing the text matches.  Returns (sids, exact).
+        """
+        norm = self._norm(text)
+        exact = [sid for sid, prop, _ in pool if self._norm(prop) == norm]
+        if exact:
+            return exact, True
+        return [sid for sid, prop, _ in pool if norm in self._norm(prop)], False
+
+    def _pick_match(self, text, pool, outside, what, target_sid=None):
+        """Best match for a quoted proposition: (sid, note)."""
+        sids, exact = self._match_prop(text, pool)
+        if not sids:
+            if outside:
+                raise RefError(
+                    '%r matches %d item(s) that goal #[%s] cannot depend on '
+                    '(#%s); a fact must be an earlier line of the same subproof'
+                    % (text, len(outside), target_sid,
+                       ','.join(str(s) for s in sorted(it[0] for it in outside))))
+            raise RefError('no %s matches %r' % (what, text))
+        sid = max(sids)
+        if exact and len(sids) == 1:
+            return sid, None
+        return sid, ('%d %s(s) match %r; using #[%d]'
+                     % (len(sids), what, text, sid))
+
+    def _step_back(self, spec):
+        """Parse `@` / `@N` into the history index it refers to."""
+        if spec == '@':
+            n = 0
+        elif spec[1:].isdigit():
+            n = int(spec[1:])
+        else:
+            raise RefError('bad reference %r (use @ or @N)' % spec)
+        idx = len(self.history) - 1 - n
+        if idx < 0:
+            raise RefError('%s: only %d step(s) recorded' % (spec, len(self.history)))
+        return idx
+
+    def _alias_value(self, spec):
+        """Look up an alias, or explain that it does not exist."""
+        val = self.aliases.get(spec)
+        if val is None:
+            raise RefError("unknown alias %r (bind one with: let %s <ref>)"
+                           % (spec, spec))
+        return val
+
+    def _open_goal_pool(self):
+        open_sids = self._open_sids()
+        return [it for it in self._items() if it[2] and it[0] in open_sids]
+
+    def resolve_goal_ref(self, spec):
+        """Resolve a `goal=` argument to a stable ID.  Returns (sid, note)."""
+        spec = spec.strip()
+        if spec.isdigit():
+            return int(spec), None
+        if spec.startswith('@'):
+            open_sids = self._open_sids()
+            step, new = self.history[self._step_back(spec)]
+            sub = [sid for sid, _, is_goal in new if is_goal and sid in open_sids]
+            if sub:
+                return min(sub), None
+            g = step.get('goal')
+            if isinstance(g, int) and g in open_sids:
+                return g, None
+            # The step closed its own goal without opening subgoals (a
+            # rewrite that finished it).  Continue on the newest goal still
+            # open; the note keeps the heuristic visible.
+            rest = sorted(open_sids)
+            if rest:
+                return rest[-1], ('%s: the step closed its goal; '
+                                  'continuing on the newest open goal #[%d]'
+                                  % (spec, rest[-1]))
+            raise RefError('%s: no open goal to continue (the proof is closed)' % spec)
+        if _is_quoted(spec):
+            return self._pick_match(spec[1:-1], self._open_goal_pool(), [],
+                                    'open goal')
+        if _IDENT_RE.fullmatch(spec):
+            val = self._alias_value(spec)
+            if isinstance(val, tuple):
+                return self._pick_match(val[1], self._open_goal_pool(), [],
+                                        'open goal')
+            return val, None
+        raise RefError('cannot resolve goal reference %r' % spec)
+
+    def resolve_fact_ref(self, spec, target_sid=None):
+        """Resolve one `facts=[...]` entry to a stable ID.  (sid, note).
+
+        `target_sid` is the goal the step will be applied to; facts are
+        checked against its branch (see `_in_branch_of`).
+        """
+        spec = spec.strip()
+        if spec.isdigit():
+            return int(spec), None
+        items = self._items()
+        pool_all = [it for it in items if not it[2]]
+        pool = [it for it in pool_all if self._in_branch_of(it[0], target_sid)]
+        outside = [it for it in pool_all if it not in pool]
+        if spec.startswith('@'):
+            _, new = self.history[self._step_back(spec)]
+            sids = [sid for sid, _, is_goal in new if not is_goal]
+            if not sids:
+                raise RefError(
+                    '%s: the previous step created no fact; use a literal id, '
+                    'a quoted proposition, or the goal reference' % spec)
+            sid = max(sids)
+            if not self._in_branch_of(sid, target_sid):
+                raise RefError('%s = #[%d] is outside the branch of goal #[%s]'
+                               % (spec, sid, target_sid))
+            return sid, None
+        if _is_quoted(spec):
+            text = spec[1:-1]
+            try:
+                return self._pick_match(text, pool, outside, 'fact', target_sid)
+            except RefError:
+                goals, _ = self._match_prop(text, [it for it in items if it[2]])
+                if goals:
+                    raise RefError('%r matches open goal #[%d]; facts= takes facts'
+                                   % (text, max(goals)))
+                raise
+        if _IDENT_RE.fullmatch(spec):
+            val = self._alias_value(spec)
+            if isinstance(val, tuple):
+                return self._pick_match(val[1], pool, outside, 'fact', target_sid)
+            if not self._in_branch_of(val, target_sid):
+                raise RefError('alias %s = #[%d] is outside the branch of goal #[%s]'
+                               % (spec, val, target_sid))
+            return val, None
+        raise RefError('cannot resolve fact reference %r' % spec)
+
+    def _rewrite_refs(self, line):
+        """Replace semantic `goal=`/`facts=` references by literal stable IDs.
+
+        Returns (new_line, notes).  Only references that are not plain IDs
+        are touched, so a stored .pyhol line passes through unchanged.  The
+        goal is resolved first: it fixes the branch that fact references are
+        then checked against.
+        """
+        goal_ref = _scan_goal_ref(line)
+        notes = []
+        target = None
+        if goal_ref is not None:
+            target, note = self.resolve_goal_ref(goal_ref[2])
+            if note:
+                notes.append(note)
+        out, i = [], 0
+        while i < len(line):
+            at_word = (i == 0 or line[i - 1].isspace())
+            if goal_ref is not None and i == goal_ref[0]:
+                out.append('goal=%d' % target)
+                i = goal_ref[1]
+            elif at_word and line.startswith('facts=[', i):
+                end = _scan_bracket_end(line, i + 6)
+                if end < 0:
+                    raise RefError('unbalanced facts=[ ... ] in %r' % line)
+                sids = []
+                for part in _split_top_commas(line[i + 7:end]):
+                    if not part.strip():
+                        continue
+                    sid, note = self.resolve_fact_ref(part, target)
+                    sids.append(sid)
+                    if note:
+                        notes.append(note)
+                out.append('facts=[%s]' % ','.join(str(s) for s in sids))
+                i = end + 1
+            else:
+                out.append(line[i])
+                i += 1
+        return ''.join(out), notes
+
     # -- commands ---------------------------------------------------------
 
     def cmd_theory(self, arg):
@@ -163,13 +463,15 @@ class Repl:
             print('load a theory first (theory NAME)')
             return
         context.set_context(self.theory, vars=dict(self.vars))
+        self.goal_raw = arg.strip()
+        self.aliases = {}
         try:
             # `'a::C` sugar, same rule as the item layer (syntax/parser.py):
             # annotations in the declared variables' types (or in the goal
             # itself) become premises, so a proof developed here matches the
             # statement the .pyhol item is stored with.
             prop = parser.with_class_premises(
-                arg.strip(), *self.vars.values())
+                self.goal_raw, *self.vars.values())
         except Exception as e:
             print('cannot parse goal: %s' % _exc_str(e))
             self.sps = None
@@ -184,6 +486,8 @@ class Repl:
             return
         self.history = []
         print('goal accepted:')
+        if self._norm(prop) != self._norm(self.goal_raw):
+            print('  prop (with class premises): %s' % prop)
         self.show_goals()
 
     def _rebuild(self, upto):
@@ -203,7 +507,21 @@ class Repl:
         if self.sps is None:
             print('no active goal (use: goal PROP)')
             return False
-        step = pyhol._parse_step_line(line.strip())
+        try:
+            resolved, notes = self._rewrite_refs(line.strip())
+        except RefError as e:
+            self.failed = True
+            print('CANNOT RESOLVE REFERENCE: %s' % e)
+            print('  failing line: %s' % line.strip())
+            print('  live stable ids: %s'
+                  % sorted({sid for sid, _, _ in self._items()}))
+            self.show_goals()
+            return False
+        for note in notes:
+            print('  note: %s' % note)
+        if resolved != line.strip():
+            print('  resolved: %s' % resolved)
+        step = pyhol._parse_step_line(resolved)
         if step is None:
             print('cannot parse step: %r' % line)
             return False
@@ -215,7 +533,7 @@ class Repl:
             print('STEP FAILED: %s' % _exc_str(e))
             if os.environ.get('HOLPY_REPL_TRACE'):
                 traceback.print_exc()
-            print('  failing line: %s' % line.strip())
+            print('  failing line: %s' % resolved)
             print('  live stable ids: %s'
                   % sorted({sid for sid, _, _ in self._items()}))
             self.show_goals()
@@ -249,16 +567,16 @@ class Repl:
         self.vars = {}
         self.sps = None
         self.goal_prop = None
+        self.goal_raw = None
+        self.aliases = {}
         self.history = []
         self.failed = False
         if self.theory:
             context.set_context(self.theory, vars={})
         print('session reset (variables and goal cleared)')
 
-    def cmd_export(self):
-        if not self.history:
-            print('no steps to export')
-            return
+    def _proof_lines(self):
+        """The recorded proof as .pyhol lines (with `#[N]` annotations)."""
         lines = ['proof']
         for step, new in self.history:
             step = dict(step)
@@ -268,7 +586,101 @@ class Repl:
             for ann in pyhol._export_anns(step):
                 lines.append('    %s' % ann)
         lines.append('qed')
+        return lines
+
+    def cmd_export(self):
+        if not self.history:
+            print('no steps to export')
+            return
+        print('\n'.join(self._proof_lines()))
+
+    def cmd_item(self, arg):
+        """Print the whole .pyhol item: header, statement, and proof.
+
+        The statement uses the text given to `goal` (so a `'a::C` annotation
+        stays in the file and the item layer re-injects the premise), and the
+        committed variables are the session's `var` declarations.  Copy the
+        output into a theory file -- do not retype the proposition.
+        """
+        name = arg.strip()
+        if not name:
+            print('usage: item NAME   (prints the .pyhol item block)')
+            return
+        if not self.history:
+            print('no steps to export')
+            return
+        if not _IDENT_RE.fullmatch(name):
+            print('bad theorem name: %r' % name)
+            return
+        lines = ['theorem %s' % name]
+        if self.vars:
+            lines.append('  fixes ' + ', '.join(
+                '%s :: %s' % (k, v) for k, v in self.vars.items()))
+        lines.append('  prop %s' % (self.goal_raw or self.goal_prop))
+        lines.extend(self._proof_lines())
         print('\n'.join(lines))
+
+    def cmd_let(self, arg):
+        """Bind a name to an item, so step lines can read semantically.
+
+        `let h 3`            the item with stable ID 3
+        `let h @`            the last fact the previous step created
+        `let h "x <= y"`     the fact whose printed proposition matches
+        `let g goal=@`       the goal auto-reference (usable as goal=g)
+        With no argument, list the current bindings.
+
+        A quoted proposition is bound *by text* and resolved when it is
+        used, against the branch of the goal it is used for; stable IDs and
+        `@` references are resolved immediately.
+        """
+        arg = arg.strip()
+        if not arg:
+            if not self.aliases:
+                print('no aliases')
+                return
+            for name, val in self.aliases.items():
+                if isinstance(val, tuple):
+                    print('  %-10s "%s" (resolved at use time)' % (name, val[1]))
+                else:
+                    prop = next((p for s, p, _ in self._items() if s == val), None)
+                    print('  %-10s #[%d] %s' % (name, val, prop if prop else '<?>'))
+            return
+        parts = arg.split(None, 1)
+        name = parts[0]
+        if len(parts) != 2:
+            print('usage: let NAME <sid|@|@N|"prop"|goal=<ref>>')
+            return
+        if not _IDENT_RE.fullmatch(name):
+            print('bad alias name: %r' % name)
+            return
+        spec = parts[1].strip()
+        if _is_quoted(spec):
+            # Bound by text: the branch is only known when the alias is
+            # used, so resolve (and report) at use time.
+            self.aliases[name] = ('prop', spec[1:-1])
+            sids, _ = self._match_prop(spec[1:-1], self._items())
+            where = ('now matches #[%d] ' % max(sids)) if sids else 'no match yet '
+            print('alias %s = "%s" (%s; resolved at use time)'
+                  % (name, spec[1:-1], where.strip()))
+            return
+        try:
+            if spec.startswith('goal='):
+                sid, _ = self.resolve_goal_ref(spec[len('goal='):])
+            else:
+                try:
+                    sid, _ = self.resolve_fact_ref(spec)
+                except RefError as e:
+                    # The reference may name an open goal instead of a
+                    # fact; a name is useful for both.
+                    if 'matches open goal' not in str(e):
+                        raise
+                    sid, _ = self.resolve_goal_ref(spec)
+        except RefError as e:
+            print('cannot bind %s: %s' % (name, e))
+            return
+        self.aliases[name] = sid
+        prop = next((p for s, p, g in self._items() if s == sid), None)
+        print('alias %s = #[%d] %s' % (name, sid, prop if prop else '<?>'))
 
     def cmd_check(self):
         if self.sps is None:
@@ -443,6 +855,8 @@ class Repl:
                             ('methods', self.cmd_methods),
                             ('theorems', self.cmd_theorems), ('thm ', self.cmd_thm),
                             ('validate', self.cmd_validate),
+                            ('item ', self.cmd_item), ('let ', self.cmd_let),
+                            ('let', self.cmd_let),
                             ('trust ', lambda a: self._set_trust(a))):
                 if stripped.startswith(cmd):
                     fn(stripped[len(cmd):])
@@ -522,6 +936,27 @@ def main():
             break
 
 
+def bind_server(port):
+    """Bind the resident server socket to 127.0.0.1:port.
+
+    SO_REUSEADDR is only set on POSIX (where it is needed to rebind after
+    TIME_WAIT).  On Windows it does the opposite of what one wants: a second
+    server can bind the same port and silently shadow the first, so a
+    "restart" appears to work while clients keep talking to the old code.
+    Failing loudly here is the point.
+    """
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if os.name != 'nt':
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        srv.bind(('127.0.0.1', port))
+    except OSError as e:
+        srv.close()
+        raise
+    srv.listen(1)
+    return srv
+
+
 def serve(port, theory, trust):
     """Resident REPL: theory stays loaded across client requests.
 
@@ -532,16 +967,17 @@ def serve(port, theory, trust):
     Binds 127.0.0.1 only.  The client is repl/client.py.
     """
     import json
-    import socket
 
     rp = Repl(trust=trust)
     if theory:
         rp.run_line('theory %s' % theory)
 
-    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind(('127.0.0.1', port))
-    srv.listen(1)
+    try:
+        srv = bind_server(port)
+    except OSError as e:
+        print('cannot bind 127.0.0.1:%d: %s -- another server on this port?'
+              % (port, e), flush=True)
+        sys.exit(2)
     print('repl server on 127.0.0.1:%d (theory=%s)' % (port, theory or '-'),
           flush=True)
     while True:

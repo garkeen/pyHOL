@@ -58,6 +58,10 @@ python -m repl.client --port 5599 --stdin < batch.txt
 - 服务端只绑 `127.0.0.1`，协议是一行一个 JSON 请求/回复。
 - 客户端退出码：`0` 成功、`1` 有失败或剩余目标、`2` 连不上服务端。
 - 实测第二次请求 ~0.27s（对比冷启动 ~4s）。
+- **改了 `repl/` 或 `.pyhol` 之后必须换一个端口重起**（理论/代码都只在启动时读）。
+  端口被占用时服务端会打印 `cannot bind ... another server on this port?` 并
+  退出 2——这是有意的：Windows 的 `SO_REUSEADDR` 允许第二个 server 抢占端口、
+  客户端继续连到旧进程，看上去"重启成功"其实还在跑旧代码（§7 第 11 条）。
 - **做完工作记得关掉后台服务**，不要留常驻进程。
 
 ---
@@ -78,11 +82,15 @@ python -m repl.client --port 5599 --stdin < batch.txt
 | `<步骤行>` | 直接粘贴 `.pyhol` 步骤，如 `← rule iffI goal=0` |
 | `undo` | 撤销最后一步（从头重放重建，坏步骤不留痕） |
 | `export` | 输出 `.pyhol` proof 块（**自动重新生成 `#[N]` 注解**） |
+| `item NAME` | 输出完整 `.pyhol` 条目：`theorem NAME` + `fixes` + `prop` + `proof..qed`（见 §4.1） |
+| `let NAME REF` | 给稳定 ID 起别名，步骤行里用名字引用（见 §4.1） |
 | `check` | 打印 `VALID` 或剩余目标数 |
 | `trust NAME,...` / `trust +N` / `trust -N` | 设置/追加/移除会话信任集 |
 | `help`、`quit`/`exit`/`q` | |
 
 步骤行与 `.pyhol` 完全同构，可直接从库里复制粘贴。
+**`goal=` / `facts=` 除了字面 ID，还接受语义引用**（`@`、`"命题"`、别名）；
+命令行上写语义引用、`export`/`item` 输出字面 ID——见 §4.1，这是写证明时的默认用法。
 
 ---
 
@@ -126,6 +134,48 @@ sid 按 **命题值（prop + hyps）去重**：不同分支里相同的命题会
 ---
 
 ## 4. 常见技巧（手工证明）
+
+### 4.1 语义引用：不要手算 `#[N]`
+
+`#[N]` 按**命题去重**分配（§3.3），所以步号与 ID 不成正比；一条 `rule`/`cases`
+开出几个子目标、一次重写顺手关掉一个目标，都会让"我猜下一个是 N+1"出错。
+步骤行的 `goal=` / `facts=` 因此可以直接写语义引用，REPL 在应用前把它们
+解析成字面 ID 并回显 `resolved: ...`（`export` / `item` 输出的永远是字面 ID）：
+
+```
+goal=@             上一步新开的第一个仍开的子目标；否则上一步的目标（若仍开）；
+                   否则跳到当前最新仍开的目标（会打印 note 说明）
+goal=@N            同上，N 步之前（@0 = 上一步）
+goal="<命题>"      仍开目标里命题匹配的那个
+facts=[@]          上一步派生出来的那个事实
+facts=[@N]         同上，N 步之前
+facts=["<命题>"]   事实里命题匹配的那个
+facts=[NAME]       用 `let NAME <引用>` 起的别名
+let NAME 3         起别名；引用形式：<字面ID> | @ | @N | "命题" | goal=<引用>
+let                不带参数时列出当前所有别名
+```
+
+- **匹配按打印出来的命题**（空白不敏感）：完全相等优先；否则取"包含该文本"的
+  项，命中多个时用**最大的 ID** 并打印 note。命题文本就用 `all` / 步骤回显里
+  打印出来的那份（变量名以当前打印为准，`intro` 会改名，别用旧文本）。
+- **带引号的文本是"用时解析"的**：绑定时不锁定 ID，真正用到那一步才按
+  *那个目标的依赖范围* 解析，所以不会因为后面又开了新目标而指错。
+- **事实引用会按引擎自己的依赖规则检查**（`ItemID.can_depend_on`：同一子证明里
+  更靠前的行）。引到父目标、兄弟分支、或用旧变量名匹配到祖先命题时，报的是
+  `CANNOT RESOLVE REFERENCE: ... cannot depend on`，而不是等到回放才
+  `apply_method: illegal dependence`。这一步失败不留痕（gap 不变）。
+
+### 4.2 写回理论文件：用 `item`，不要手抄命题
+
+```
+item strict_sorted_appendI
+```
+
+输出 `theorem NAME` + `fixes`（会话里 `var` 声明的变量，**保留 `'a::C` 注解**）
++ `prop`（给 `goal` 的原文，不是脱糖后的）+ `proof..qed`。整段直接粘进
+`.pyhol` 即可；手抄命题/注解是 sugar 与类型都容易抄错的地方。
+
+### 4.3 其它技巧
 
 - `intro` 会**一次引入所有嵌套蕴含**：`A ⟶ B ⟶ C` → 事实 `A`、`B`，目标 `C`。
 - `rule` 是 stripped-conclusion 匹配；蕴含形目标要**先 `intro`** 再 `rule`。
@@ -244,13 +294,24 @@ STEP FAILED: AssertionError: rewrite: unable to apply theorem.
    → 新增 `reset` 命令（清变量与当前 goal）。
 8. 写证明靠猜定理名/方法 → 新增 `methods` / `theorems [-v]` / `thm NAME`
    三个查询命令（查的是当前理论闭包与受检注册表，见 §5.0）。
+9. `facts=[1, 2]`（逗号后有空格）被分词器切成两半，报 `fact sid '[' not found`
+   → `facts=` / `new_ids=` 的方括号列表在分词**之前**从整行里取出
+   （`syntax/pyhol.py:_extract_bracket_ids`），空格随便写；不是纯 ID 列表的
+   方括号仍然走老路径，诊断不变。
+10. 手算 `#[N]` 易错（§3.3/§8.2）→ 新增 §4.1 的语义引用与 `let` 别名，
+    并把引擎的依赖规则（`can_depend_on`）搬进解析器，提前报
+    `cannot depend on` 而不是事后 `illegal dependence`。
+11. 重启常驻 server 时，Windows 上 `SO_REUSEADDR` 会让**第二个** server
+    悄悄抢占同端口，客户端仍然连到跑着旧代码的那个进程（"重启了但没生效"）
+    → `--serve` 不再设 `SO_REUSEADDR`（POSIX 仍设，TIME_WAIT 需要），
+    端口被占时直接报 `cannot bind ... another server on this port?` 并退出 2。
 
 ---
 
 ## 8. 使用中发现的限制（给后续 AI）
 
-1. **`facts=[a, b]` 不能有空格**（`[a, b]` 会被按空白切成 `[a,` 与 `b]`，
-   报 `fact sid '[' not found`）。写成 `facts=[a,b]`。
+1. ~~**`facts=[a, b]` 不能有空格**~~ 已修（§7 第 9 条），现在 `facts=[a, b]`
+   与 `facts=[a,b]` 等价。
 2. **跨分支不能互相引用是正常语义，不是缺陷；假设可以用**：
    - HOL/LCF 的证明是「每个分支各自线性」的：`apply_method` 用
      `ItemID.can_depend_on`（`kernel/proof.py:71`）强制 `facts=` 必须是目标的

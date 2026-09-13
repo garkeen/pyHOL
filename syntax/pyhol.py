@@ -1052,6 +1052,27 @@ def _parse_proof_block(lines, i):
     return steps, i
 
 
+def _extract_bracket_ids(line, key):
+    """Pull `<key>=[...]` (a list of stable IDs) out of a step line.
+
+    The tokenizer splits on whitespace, so `facts=[1, 2]` would break into
+    two tokens and stop matching the `facts=` pattern; the bracket list is
+    therefore extracted from the raw line, where a space after a comma is
+    harmless.  Returns (ids, line_without_it), or (None, line) when the
+    bracket does not hold a plain ID list (that case keeps the old path, so
+    the diagnostics for a malformed line do not change).
+
+    """
+    m = re.search(r'(?<![\w=])%s=\[([^\]]*)\]' % key, line)
+    if m is None:
+        return None, line
+    inner = m.group(1).strip()
+    if not re.fullmatch(r'[\d,\s]*', inner):
+        return None, line
+    ids = [int(x) for x in inner.split(',')] if inner else []
+    return ids, line[:m.start()] + ' ' + line[m.end():]
+
+
 def _parse_step_line(line):
     """Parse a new-format step line.
 
@@ -1065,7 +1086,12 @@ def _parse_step_line(line):
     elif line.startswith('→ '):
         direction = '→'
         line = line[2:]
-    
+
+    # Keyword lists are pulled out before tokenizing, so that `facts=[1, 2]`
+    # (a space after the comma) parses like `facts=[1,2]`.
+    facts_val, line = _extract_bracket_ids(line, 'facts')
+    new_ids_val, line = _extract_bracket_ids(line, 'new_ids')
+
     # Tokenize
     tokens = _tokenize_step(line.strip())
     if not tokens:
@@ -1075,6 +1101,10 @@ def _parse_step_line(line):
     rest_tokens = tokens[1:]
 
     step = {'method_name': method_name}
+    if facts_val is not None:
+        step['facts'] = facts_val
+    if new_ids_val is not None:
+        step['new_ids'] = new_ids_val
 
     # Extract goal=N and facts=[N,...]
     remaining = []
