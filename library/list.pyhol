@@ -729,3 +729,34 @@ proof
   ← rewrite nat_less_eq_def_2 goal=20
   ← rule disjI2 goal=21
 qed
+
+header "Length of take"
+
+theorem length_take_le
+  fixes n :: nat
+  prop !xs::'a list. length (take n xs) <= n
+proof
+  ← induct n nat_induct goal=0
+  ← intro xs goal=1
+  ← rewrite take_def_1 goal=4
+  ← rewrite length_def_1 goal=5
+  ← rewrite nat_less_eq_def_1 goal=6
+  ← intro n goal=2
+  ← intro xs goal=9
+  ← rewrite take_def_2 goal=10
+  ← type_cases xs goal=11
+  cut "([]::'a list) = []" goal=12
+  ← refl goal=14
+  ← rewrite if_P goal=12 facts=[15]
+  ← rewrite length_def_1 goal=16
+  ← rule lesseq_zero goal=17
+  ← intro u,vv goal=13
+  cut "~(u # vv = [])" goal=21
+  ← rule ineq_sym goal=22
+  ← rule list_nil_cons_neq goal=23
+  ← rewrite if_not_P goal=21 facts=[22]
+  ← rewrite tl_def_1 goal=25
+  ← rewrite length_def_2 goal=26
+  ← rewrite le_suc goal=27
+  ← apply_prev goal=28 facts=[8]
+qed

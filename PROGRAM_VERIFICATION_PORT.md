@@ -503,8 +503,8 @@ grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | 
 叫 `le_suc`。真正缺的是更基础的两条，本次补入 `library/nat.pyhol`：
 `lesseq_refl`（`n ≤ n`）与 `lesseq_zero`（`0 ≤ n`）——都是 `nat_induct` + `nat_less_eq_def_1/2`
 各两步的短证明。补上之后 `length_filter_le`（`length (filter P xs) ≤ length xs`）顺利证出。
-仍依赖序算术的是 `length_sublist`（需要带守卫的 `length_take`/`length_drop`），
-以及 §8.3 说的 `sorted`/`strict_sorted`（需要 `linorder`），这些仍然属于阶段 3 的前置。
+本次接着证出 `length_take_le`（`length (take n xs) ≤ n`，∀-形式，用归纳 + 守卫折回 + `apply_prev` 实例化归纳假设）。
+还差 `length_take`（带守卫的等式版）与 `length_drop`，然后才能拼出 `length_sublist`；§8.3 说的 `sorted`/`strict_sorted`（需要 `linorder`）同样仍属阶段 3 的前置。
 
 ### 8.5 机制上的新经验（§3 之外）
 

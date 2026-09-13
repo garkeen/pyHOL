@@ -48,7 +48,8 @@ class ListTheoryTest(unittest.TestCase):
                      'nth_append_lt', 'nth_list_update_same',
                      'list_update_nil', 'list_update_zero', 'list_update_cons',
                      'length_list_update', 'length_list_swap',
-                     'nth_map', 'sublist_0']:
+                     'nth_map', 'sublist_0',
+                     'length_filter_le', 'length_take_le']:
             self.assertIsNotNone(theory.get_theorem(name),
                                  'missing theorem %s' % name)
 
