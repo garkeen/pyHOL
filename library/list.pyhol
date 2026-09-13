@@ -1,5 +1,5 @@
 theory list
-imports set
+imports set, prod
 description "Lists"
 
 header "Basic definitions"
@@ -259,4 +259,244 @@ proof
     #[10] ¬(x = y ∨ x ∈ set ys)
   ← rewrite de_morgan_thm2 sym=false goal=10
 qed
+
+header "Prefix and suffix"
+
+fun take :: nat ⇒ 'a list ⇒ 'a list
+  | take 0 xs = []
+  | take (Suc n) xs = (if xs = [] then [] else hd xs # take n (tl xs))
+
+fun drop :: nat ⇒ 'a list ⇒ 'a list
+  | drop 0 xs = xs
+  | drop (Suc n) xs = (if xs = [] then [] else drop n (tl xs))
+
+def sublist :: nat ⇒ nat ⇒ 'a list ⇒ 'a list = sublist l r xs = drop l (take r xs) [hint_rewrite]
+
+theorem take_nil
+  fixes n :: nat
+  prop take n ([]::'a list) = []
+  [hint_rewrite]
+proof
+  ← induct n nat_induct goal=0
+    #[1] take 0 ([]::'a list) = []
+    #[2] !n. take n ([]::'a list) = [] --> take (Suc n) ([]::'a list) = []
+  ← rewrite take_def_1 goal=1
+  ← intro n goal=2
+    #[3] _VAR n
+    #[4] take n ([]::'a list) = []
+    #[5] take (Suc n) ([]::'a list) = []
+  ← rewrite take_def_2 goal=5
+    #[6] (if ([]::'a list) = [] then ([]::'a list) else hd [] # take n (tl [])) = []
+  cut "([]::'a list) = []" goal=6
+    #[7] ([]::'a list) = []
+  ← refl goal=7
+    #[8] ([]::'a list) = []
+  ← rewrite if_P goal=6 facts=[8]
+qed
+
+theorem take_cons
+  fixes n :: nat, x :: 'a, xs :: 'a list
+  prop take (Suc n) (x # xs) = x # take n xs
+  [hint_rewrite]
+proof
+  ← rewrite take_def_2 goal=0
+    #[1] (if x # xs = [] then [] else hd (x # xs) # take n (tl (x # xs))) = x # take n xs
+  cut "~(x # xs = [])" goal=1
+    #[2] ~(x # xs = [])
+  ← rule ineq_sym goal=2
+    #[3] ~([] = x # xs)
+  ← rule list_nil_cons_neq goal=3
+  ← rewrite if_not_P goal=1 facts=[2]
+    #[4] hd (x # xs) # take n (tl (x # xs)) = x # take n xs
+  ← rewrite hd_def_1 goal=4
+    #[5] x # take n (tl (x # xs)) = x # take n xs
+  ← rewrite tl_def_1 goal=5
+qed
+
+theorem drop_nil
+  fixes n :: nat
+  prop drop n ([]::'a list) = []
+  [hint_rewrite]
+proof
+  ← induct n nat_induct goal=0
+    #[1] drop 0 ([]::'a list) = []
+    #[2] !n. drop n ([]::'a list) = [] --> drop (Suc n) ([]::'a list) = []
+  ← rewrite drop_def_1 goal=1
+  ← intro n goal=2
+    #[3] _VAR n
+    #[4] drop n ([]::'a list) = []
+    #[5] drop (Suc n) ([]::'a list) = []
+  ← rewrite drop_def_2 goal=5
+    #[6] (if ([]::'a list) = [] then ([]::'a list) else drop n (tl [])) = []
+  cut "([]::'a list) = []" goal=6
+    #[7] ([]::'a list) = []
+  ← refl goal=7
+    #[8] ([]::'a list) = []
+  ← rewrite if_P goal=6 facts=[8]
+qed
+
+theorem drop_cons
+  fixes n :: nat, x :: 'a, xs :: 'a list
+  prop drop (Suc n) (x # xs) = drop n xs
+  [hint_rewrite]
+proof
+  ← rewrite drop_def_2 goal=0
+    #[1] (if x # xs = [] then [] else drop n (tl (x # xs))) = drop n xs
+  cut "~(x # xs = [])" goal=1
+    #[2] ~(x # xs = [])
+  ← rule ineq_sym goal=2
+    #[3] ~([] = x # xs)
+  ← rule list_nil_cons_neq goal=3
+  ← rewrite if_not_P goal=1 facts=[2]
+    #[4] drop n (tl (x # xs)) = drop n xs
+  ← rewrite tl_def_1 goal=4
+qed
+
+theorem append_take_drop_id
+  fixes n :: nat
+  prop !xs::'a list. take n xs @ drop n xs = xs
+proof
+  ← induct n nat_induct goal=0
+    #[1] !xs::'a list. take 0 xs @ drop 0 xs = xs
+    #[2] !n. (!xs::'a list. take n xs @ drop n xs = xs) --> (!xs::'a list. take (Suc n) xs @ drop (Suc n) xs = xs)
+  ← intro xs goal=1
+    #[3] _VAR xs
+    #[4] take 0 xs @ drop 0 xs = xs
+  ← rewrite drop_def_1 goal=4
+    #[5] take 0 xs @ xs = xs
+  ← rewrite take_def_1 goal=5
+    #[6] [] @ xs = xs
+  ← rewrite append_def_1 goal=6
+  ← intro ih goal=2
+    #[7] _VAR ih
+    #[8] !xs::'a list. take ih xs @ drop ih xs = xs
+    #[9] !xs::'a list. take (Suc ih) xs @ drop (Suc ih) xs = xs
+  ← intro xs goal=9
+    #[10] take (Suc ih) xs @ drop (Suc ih) xs = xs
+  ← type_cases xs goal=10
+    #[11] take (Suc ih) ([]::'a list) @ drop (Suc ih) [] = []
+    #[12] !x::'a. !xs. take (Suc ih) (x # xs) @ drop (Suc ih) (x # xs) = x # xs
+  ← rewrite take_nil goal=11
+    #[13] ([]::'a list) @ drop (Suc ih) [] = []
+  ← rewrite drop_nil goal=13
+    #[14] ([]::'a list) @ [] = []
+  ← rewrite append_def_1 goal=14
+  ← intro x,xs goal=12
+    #[16] _VAR x
+    #[17] take (Suc ih) (x # xs) @ drop (Suc ih) (x # xs) = x # xs
+  ← rewrite take_cons goal=17
+    #[18] (x # take ih xs) @ drop (Suc ih) (x # xs) = x # xs
+  ← rewrite drop_cons goal=18
+    #[19] (x # take ih xs) @ drop ih xs = x # xs
+  ← rewrite append_def_2 goal=19
+    #[20] x # take ih xs @ drop ih xs = x # xs
+  → inst xs goal=20 facts=[8]
+    #[21] take ih xs @ drop ih xs = xs
+  ← rewrite source=prev goal=20 facts=[21]
+qed
+
+header "Last element"
+
+fun last :: 'a list ⇒ 'a
+  | last (x # xs) = (if xs = [] then x else last xs)
+
+fun butlast :: 'a list ⇒ 'a list
+  | butlast [] = []
+  | butlast (x # xs) = (if xs = [] then [] else x # butlast xs)
+
+header "Map, filter and folds"
+
+fun map :: ('a ⇒ 'b) ⇒ 'a list ⇒ 'b list
+  | map f [] = []
+  | map f (x # xs) = f x # map f xs
+
+fun filter :: ('a ⇒ bool) ⇒ 'a list ⇒ 'a list
+  | filter P [] = []
+  | filter P (x # xs) = (if P x then x # filter P xs else filter P xs)
+
+fun foldr :: ('a ⇒ 'b ⇒ 'b) ⇒ 'b ⇒ 'a list ⇒ 'b
+  | foldr f z [] = z
+  | foldr f z (x # xs) = f x (foldr f z xs)
+
+fun foldl :: ('a ⇒ 'b ⇒ 'a) ⇒ 'a ⇒ 'b list ⇒ 'a
+  | foldl f z [] = z
+  | foldl f z (x # xs) = foldl f (f z x) xs
+
+fun concat :: 'a list list ⇒ 'a list
+  | concat [] = []
+  | concat (xs # xss) = xs @ concat xss
+
+fun zip :: 'a list ⇒ 'b list ⇒ ('a × 'b) list
+  | zip [] ys = []
+  | zip (x # xs) ys = (if ys = [] then [] else (x, hd ys) # zip xs (tl ys))
+
+theorem length_map
+  fixes f :: 'a ⇒ 'b, xs :: 'a list
+  prop length (map f xs) = length xs
+  [hint_rewrite]
+proof
+  ← induct xs list_induct goal=0
+    #[1] length (map f []) = length ([]::'a list)
+    #[2] !x. !xs. length (map f xs) = length xs --> length (map f (x # xs)) = length (x # xs)
+  ← rewrite map_def_1 goal=1
+    #[3] length ([]::'b list) = length ([]::'a list)
+  ← intro x,xs goal=2
+    #[4] _VAR x
+    #[5] _VAR xs
+    #[6] length (map f xs) = length xs
+    #[7] length (map f (x # xs)) = length (x # xs)
+  ← rewrite length_def_1 goal=3
+  ← rewrite map_def_2 goal=7
+    #[8] length (f x # map f xs) = length (x # xs)
+  ← rewrite length_def_2 goal=8
+    #[9] Suc (length (map f xs)) = Suc (length xs)
+  ← rewrite source=prev goal=9 facts=[6]
+qed
+
+theorem map_append
+  fixes f :: 'a ⇒ 'b, xs :: 'a list, ys :: 'a list
+  prop map f (xs @ ys) = map f xs @ map f ys
+  [hint_rewrite]
+proof
+  ← induct xs list_induct goal=0
+    #[1] map f ([] @ ys) = map f [] @ map f ys
+    #[2] !x. !xs. map f (xs @ ys) = map f xs @ map f ys --> map f ((x # xs) @ ys) = map f (x # xs) @ map f ys
+  ← rewrite append_def_1 goal=1
+    #[3] map f ys = map f [] @ map f ys
+  ← rewrite map_def_1 goal=3
+    #[4] map f ys = [] @ map f ys
+  ← rewrite append_def_1 goal=4
+  ← intro x,xs goal=2
+    #[5] _VAR x
+    #[6] _VAR xs
+    #[7] map f (xs @ ys) = map f xs @ map f ys
+    #[8] map f ((x # xs) @ ys) = map f (x # xs) @ map f ys
+  ← rewrite map_def_2 goal=8
+    #[9] map f ((x # xs) @ ys) = (f x # map f xs) @ map f ys
+  ← rewrite append_def_2 goal=9
+    #[10] map f (x # xs @ ys) = f x # map f xs @ map f ys
+  ← rewrite map_def_2 goal=10
+    #[11] f x # map f (xs @ ys) = f x # map f xs @ map f ys
+  ← rewrite source=prev goal=11 facts=[7]
+qed
+
+header "Reverse by accumulation"
+
+fun itrev :: 'a list ⇒ 'a list ⇒ 'a list
+  | itrev [] ys = ys
+  | itrev (x # xs) ys = itrev xs (x # ys)
+
+header "Update and swap by index"
+
+fun list_update :: 'a list ⇒ nat ⇒ 'a ⇒ 'a list
+  | list_update [] i v = []
+  | list_update (x # xs) i v = (if i = 0 then v # xs else x # list_update xs (i - 1) v)
+
+def list_swap :: 'a list ⇒ nat ⇒ nat ⇒ 'a list = list_swap xs i j = list_update (list_update xs i (nth xs j)) j (nth xs i)
+
+header "Removing duplicates"
+
+fun remdups :: 'a list ⇒ 'a list
+  | remdups [] = []
+  | remdups (x # xs) = (if x Mem set xs then remdups xs else x # remdups xs)
 
