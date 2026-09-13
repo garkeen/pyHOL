@@ -65,6 +65,11 @@ def has_size :: 'a set ⇒ nat ⇒ bool = has_size A n ⟷ finite A ∧ card A =
 
 def infinite :: 'a set ⇒ bool = infinite A ⟷ ¬ finite A
 
+-- `card_inj f X` is the P instantiated in `finite_def` to get
+-- `card (image f X) = card X` for an injective f.  Finiteness is a premise
+-- (not a parameter) because card_insert needs it.
+def card_inj :: ('a ⇒ 'b) ⇒ 'a set ⇒ bool = card_inj f X ⟷ (finite X --> (!x::'a. !y::'a. x Mem X --> y Mem X --> f x = f y --> x = y) --> card (image f X) = card X) [hint_rewrite]
+
 theorem member_empty_simp
   fixes x :: 'a
   prop x ∈ ∅ ⟷ false
@@ -885,6 +890,307 @@ qed
 theorem card_image_inj
   fixes f :: 'a => 'b, s :: 'a set
   prop finite s --> (!x. !y. x Mem s --> y Mem s --> f x = f y --> x = y) --> card (image f s) = card s
+proof
+  ← intro goal=0
+    #[1] finite s
+    #[2] !x. !y. x Mem s --> y Mem s --> f x = f y --> x = y
+    #[3] card (image f s) = card s
+  → forward finite_induct param_A=s goal=3 facts=[1]
+    #[4] !P. P {} & (!x. !B. P B --> P (insert x B)) --> P s
+  ← inst "(card_inj::('a => 'b) => 'a set => bool) f" goal=3 facts=[4]
+    #[5] card_inj f {} & (!x. !B. card_inj f B --> card_inj f (insert x B)) --> card_inj f s
+  cut "card_inj f ({}::'a set) & (!x::'a. !B::'a set. card_inj f B --> card_inj f (insert x B))" goal=3
+    #[6] card_inj f {} & (!x. !B. card_inj f B --> card_inj f (insert x B))
+  ← rule conjI goal=6
+    #[7] card_inj f {}
+    #[8] !x. !B. card_inj f B --> card_inj f (insert x B)
+  ← rewrite card_inj_def sym=false goal=7
+    #[9] finite ({}::'a => bool) --> (!x. !y. x Mem {} --> y Mem {} --> f x = f y --> x = y) --> card (image f {}) = card ({}::'a => bool)
+  ← intro goal=9
+    #[10] finite ({}::'a => bool)
+    #[11] !x. !y. x Mem {} --> y Mem {} --> f x = f y --> x = y
+    #[12] card (image f {}) = card ({}::'a => bool)
+  ← rewrite image_empty sym=false goal=12
+    #[13] card ({}::'b => bool) = card ({}::'a => bool)
+  ← rewrite card_empty sym=false goal=13
+    #[14] card ({}::'b => bool) = card ({}::'a => bool)
+  ← intro x,B goal=8
+    #[15] _VAR x
+    #[16] _VAR B
+    #[17] card_inj f B
+    #[18] card_inj f (insert x B)
+  ← rewrite card_inj_def sym=false goal=18
+    #[19] finite (insert x B) --> (!x1. !y. x1 Mem insert x B --> y Mem insert x B --> f x1 = f y --> x1 = y) --> card (image f (insert x B)) = card (insert x B)
+  ← intro goal=19
+    #[20] finite (insert x B)
+    #[21] !x1. !y. x1 Mem insert x B --> y Mem insert x B --> f x1 = f y --> x1 = y
+    #[22] card (image f (insert x B)) = card (insert x B)
+  → rewrite finite_insert sym=false target=fact goal=22 facts=[20]
+    #[23] finite B
+  cut "!u::'a. !v::'a. u Mem B --> v Mem B --> f u = f v --> u = v" goal=22
+    #[24] !u. !v. u Mem B --> v Mem B --> f u = f v --> u = v
+  ← intro u,v goal=24
+    #[25] _VAR u
+    #[26] _VAR v
+    #[27] u Mem B
+    #[28] v Mem B
+    #[29] f u = f v
+    #[30] u = v
+  → forward subset_insert param_A=B param_a=x goal=27
+    #[31] B Sub insert x B
+  → forward subsetE goal=30 facts=[31,27]
+    #[32] u Mem insert x B
+  → forward subsetE goal=30 facts=[31,28]
+    #[33] v Mem insert x B
+  ← apply_prev goal=30 facts=[21,32,33,29]
+    #[34] u = v
+  ← cases "x Mem B" goal=22
+    #[35] x Mem B --> card (image f (insert x B)) = card (insert x B)
+    #[36] ~(x Mem B) --> card (image f (insert x B)) = card (insert x B)
+  ← intro goal=35
+    #[37] x Mem B
+    #[38] card (image f (insert x B)) = card (insert x B)
+  → forward insert_absorb goal=38 facts=[37]
+    #[39] insert x B = B
+  ← rewrite source=prev goal=38 facts=[39]
+    #[40] card (image f B) = card B
+  → rewrite card_inj_def sym=false target=fact goal=40 facts=[17]
+    #[41] finite B --> (!x. !y. x Mem B --> y Mem B --> f x = f y --> x = y) --> card (image f B) = card B
+  ← apply_prev goal=40 facts=[41,23,24]
+    #[42] card (image f B) = card B
+  ← intro goal=36
+    #[43] ~(x Mem B)
+    #[44] card (image f (insert x B)) = card (insert x B)
+  → forward finite_image param_A=B param_f=f goal=44
+    #[45] finite B --> finite (image f B)
+  → forward image_insert param_A=B param_a=x param_f=f goal=44
+    #[46] image f (insert x B) = insert (f x) (image f B)
+  → forward card_insert param_A=B param_a=x goal=44 facts=[23,43]
+    #[47] card (insert x B) = Suc (card B)
+  → forward goal=44 facts=[45,23]
+    #[48] finite (image f B)
+  cut "x Mem insert x B" goal=44
+    #[49] x Mem insert x B
+  ← rewrite member_insert sym=false goal=49
+    #[50] x = x | x Mem B
+  ← rule disjI1 goal=50
+    #[51] x = x
+  ← rule eq_refl goal=51
+    #[52] x = x
+  cut "~(f x Mem image f B)" goal=44
+    #[53] ~(f x Mem image f B)
+  ← rule negI goal=53
+    #[54] f x Mem image f B --> false
+  ← intro goal=54
+    #[55] f x Mem image f B
+    #[56] false
+  → rewrite in_image sym=false target=fact goal=56 facts=[55]
+    #[57] ?x1. x1 Mem B & f x = f x1
+  elim z goal=56 facts=[57]
+    #[58] _VAR z
+    #[59] z Mem B & f x = f z
+    #[60] false
+  → forward conjD1 goal=60 facts=[59]
+    #[61] z Mem B
+  → forward conjD2 goal=60 facts=[59]
+    #[62] f x = f z
+  → forward subset_insert param_A=B param_a=x goal=60
+  → forward subsetE goal=60 facts=[31,61]
+    #[63] z Mem insert x B
+  → forward goal=60 facts=[21,49,63,62]
+    #[64] x = z
+  → rewrite eq_sym_eq sym=false target=fact goal=60 facts=[64]
+    #[65] z = x
+  → rewrite source=prev target=fact goal=60 facts=[65,61]
+    #[66] x Mem B
+  ← rule negE_gen param_A="x Mem B" goal=60 facts=[43,66]
+    #[67] false
+  → forward card_insert param_A="image f B" param_a="f x" goal=44 facts=[48,53]
+    #[68] card (insert (f x) (image f B)) = Suc (card (image f B))
+  ← rewrite source=prev goal=44 facts=[46]
+    #[69] card (insert (f x) (image f B)) = card (insert x B)
+  ← rewrite source=prev goal=69 facts=[68]
+    #[70] Suc (card (image f B)) = card (insert x B)
+  ← rewrite source=prev goal=70 facts=[47]
+    #[71] Suc (card (image f B)) = Suc (card B)
+  → rewrite card_inj_def sym=false target=fact goal=71 facts=[17]
+  → forward goal=71 facts=[41,23,24]
+  ← rewrite source=prev goal=71 facts=[42]
+    #[72] Suc (card (image f B)) = Suc (card B)
+  → forward goal=3 facts=[5,6]
+    #[73] card_inj f s
+  → rewrite card_inj_def sym=false target=fact goal=3 facts=[73]
+    #[74] finite s --> (!x. !y. x Mem s --> y Mem s --> f x = f y --> x = y) --> card (image f s) = card s
+  ← apply_prev goal=3 facts=[74,1,2]
+qed
+
+-- The three predicates below exist only so that `finite_induct` can be
+-- instantiated as P without a lambda (hence without a beta-redex):
+-- `card_le_bound`/`card_img_le` are the monotonicity facts, `card_faithful`
+-- is the pigeonhole step "equal image cardinality forces injectivity".
+-- `card_le_bound` quantifies over the bounded set *inside* P: the induction
+-- step for `x ∈ A` needs the hypothesis at `delete A x`, which is only
+-- available if P is instantiated for every subset, not just for A.
+def card_le_bound :: 'a set ⇒ bool = card_le_bound X ⟷ (!A::'a set. finite X --> A Sub X --> card A <= card X) [hint_rewrite]
+
+def card_img_le :: ('a ⇒ 'b) ⇒ 'a set ⇒ bool = card_img_le g X ⟷ (finite X --> card (image g X) <= card X) [hint_rewrite]
+
+def card_faithful :: ('a ⇒ 'a) ⇒ 'a set ⇒ bool = card_faithful g X ⟷ (finite X --> card (image g X) = card X --> (!x. !y. x Mem X --> y Mem X --> g x = g y --> x = y)) [hint_rewrite]
+
+theorem card_le_bound_empty
+  fixes A :: 'a set
+  prop A Sub {} --> card A <= card ({}::'a set)
+proof
+  ← intro goal=0
+  → rewrite target=fact subset_empty sym=false goal=2 facts=[1]
+  ← rewrite source=prev goal=2 facts=[3]
+  ← rewrite card_empty sym=false goal=4
+  ← rule less_eq_refl goal=5
+qed
+
+theorem not_mem_delete_self
+  fixes A :: 'a set, x :: 'a
+  prop ~(x Mem delete A x)
+proof
+  ← rule negI goal=0
+  ← intro goal=1
+  → rewrite target=fact member_delete sym=false goal=3 facts=[2]
+  → forward conjD2 goal=3 facts=[4]
+  → forward eq_refl param_x=x goal=3
+  ← rule negE_gen param_A="x = x" goal=3 facts=[5,6]
+qed
+
+theorem delete_subset_insert_imp
+  fixes A :: 'a set, B :: 'a set, x :: 'a
+  prop x Mem A --> A Sub insert x B --> delete A x Sub B
+proof
+  ← intro goal=0
+  ← rewrite subset_def sym=false goal=3
+  ← intro y goal=4
+  → rewrite target=fact member_delete sym=false goal=7 facts=[6]
+  → forward conjD1 goal=7 facts=[8]
+  → forward conjD2 goal=7 facts=[8]
+  → forward subsetE goal=7 facts=[2,9]
+  → rewrite target=fact member_insert sym=false goal=7 facts=[11]
+  → rewrite target=fact disj_comm sym=false goal=7 facts=[12]
+  ← rule force_disj_true1 goal=7 facts=[13,10]
+qed
+
+theorem card_mono
+  fixes A :: 'a set, B :: 'a set
+  prop A Sub B --> finite B --> card A <= card B
+proof
+  ← intro goal=0
+    #[1] A Sub B
+    #[2] finite B
+    #[3] card A <= card B
+  → forward finite_induct param_A=B goal=3 facts=[2]
+    #[4] !P. P {} & (!x. !B1. P B1 --> P (insert x B1)) --> P B
+  ← inst "(card_le_bound::'a set => bool)" goal=3 facts=[4]
+    #[5] card_le_bound ({}::'a => bool) & (!x::'a. !B1. card_le_bound B1 --> card_le_bound (insert x B1)) --> card_le_bound B
+  cut "card_le_bound ({}::'a set) & (!x::'a. !B1::'a set. card_le_bound B1 --> card_le_bound (insert x B1))" goal=3
+    #[6] card_le_bound ({}::'a => bool) & (!x::'a. !B1. card_le_bound B1 --> card_le_bound (insert x B1))
+  ← rule conjI goal=6
+    #[7] card_le_bound ({}::'a => bool)
+    #[8] !x::'a. !B1. card_le_bound B1 --> card_le_bound (insert x B1)
+  ← rewrite card_le_bound_def sym=false goal=7
+    #[9] !A::'a => bool. finite ({}::'a => bool) --> A Sub {} --> card A <= card ({}::'a => bool)
+  ← intro A1 goal=9
+    #[10] _VAR A1
+    #[11] finite ({}::'a => bool)
+    #[12] A1 Sub {}
+    #[13] card A1 <= card ({}::'a => bool)
+  → forward card_le_bound_empty param_A=A1 goal=13
+    #[14] A1 Sub {} --> card A1 <= card ({}::'a => bool)
+  ← apply_prev goal=13 facts=[14,12]
+    #[15] card A1 <= card ({}::'a => bool)
+  ← intro x,B1 goal=8
+    #[16] _VAR x
+    #[17] _VAR B1
+    #[18] card_le_bound B1
+    #[19] card_le_bound (insert x B1)
+  → rewrite card_le_bound_def sym=false target=fact goal=19 facts=[18]
+    #[20] !A. finite B1 --> A Sub B1 --> card A <= card B1
+  ← rewrite card_le_bound_def sym=false goal=19
+    #[21] !A. finite (insert x B1) --> A Sub insert x B1 --> card A <= card (insert x B1)
+  ← intro A1 goal=21
+    #[22] finite (insert x B1)
+    #[23] A1 Sub insert x B1
+    #[24] card A1 <= card (insert x B1)
+  → rewrite finite_insert sym=false target=fact goal=24 facts=[22]
+    #[25] finite B1
+  ← cases "x Mem B1" goal=24
+    #[26] x Mem B1 --> card A1 <= card (insert x B1)
+    #[27] ~(x Mem B1) --> card A1 <= card (insert x B1)
+  ← intro goal=26
+    #[28] x Mem B1
+    #[29] card A1 <= card (insert x B1)
+  → forward insert_absorb goal=29 facts=[28]
+    #[30] insert x B1 = B1
+  → rewrite source=prev target=fact goal=29 facts=[30,23]
+    #[31] A1 Sub B1
+  ← rewrite source=prev goal=29 facts=[30]
+    #[32] card A1 <= card B1
+  ← apply_prev goal=32 facts=[20,25,31]
+    #[33] card A1 <= card B1
+  ← intro goal=27
+    #[34] ~(x Mem B1)
+    #[35] card A1 <= card (insert x B1)
+  ← cases "x Mem A1" goal=35
+    #[36] x Mem A1 --> card A1 <= card (insert x B1)
+    #[37] ~(x Mem A1) --> card A1 <= card (insert x B1)
+  ← intro goal=37
+    #[38] ~(x Mem A1)
+    #[39] card A1 <= card (insert x B1)
+  → forward subset_insert_imp goal=39 facts=[23,38]
+    #[40] A1 Sub B1
+  ← inst A1 goal=39 facts=[20]
+    #[41] finite B1 --> A1 Sub B1 --> card A1 <= card B1
+  ← rewrite card_insert sym=false goal=39 facts=[25,34]
+    #[42] card A1 <= Suc (card B1)
+  ← rewrite nat_less_eq_def_2 sym=false goal=42
+    #[43] card A1 = Suc (card B1) | card A1 <= card B1
+  ← rule disjI2 goal=43
+    #[44] card A1 <= card B1
+  ← apply_prev goal=44 facts=[41,25,40]
+    #[45] card A1 <= card B1
+  ← intro goal=36
+    #[46] x Mem A1
+    #[47] card A1 <= card (insert x B1)
+  → forward insert_delete goal=47 facts=[46]
+    #[48] insert x (delete A1 x) = A1
+  → rewrite eq_sym_eq sym=false target=fact goal=47 facts=[48]
+    #[49] A1 = insert x (delete A1 x)
+  ← rewrite source=prev goal=47 facts=[49]
+    #[50] card (insert x (delete A1 x)) <= card (insert x B1)
+  → forward finite_subset param_A=A1 param_B="insert x B1" goal=50 facts=[23,22]
+    #[51] finite A1
+  → forward subset_delete param_A=A1 param_a=x goal=50
+    #[52] delete A1 x Sub A1
+  → forward finite_subset goal=50 facts=[52,51]
+    #[53] finite (delete A1 x)
+  → forward not_mem_delete_self param_A=A1 param_x=x goal=50
+    #[54] ~(x Mem delete A1 x)
+  ← rewrite card_insert sym=false goal=50 facts=[53,54]
+    #[55] Suc (card (delete A1 x)) <= card (insert x B1)
+  ← rewrite card_insert sym=false goal=55 facts=[25,34]
+    #[56] Suc (card (delete A1 x)) <= Suc (card B1)
+  ← rewrite lesseq_Suc_less sym=false goal=56
+    #[57] card (delete A1 x) < Suc (card B1)
+  ← rewrite less_Suc_lesseq sym=false goal=57
+    #[58] card (delete A1 x) <= card B1
+  → forward delete_subset_insert_imp goal=58 facts=[46,23]
+    #[59] delete A1 x Sub B1
+  ← inst "delete A1 x" goal=58 facts=[20]
+    #[60] finite B1 --> delete A1 x Sub B1 --> card (delete A1 x) <= card B1
+  ← apply_prev goal=58 facts=[60,25,59]
+    #[61] card (delete A1 x) <= card B1
+  → forward goal=3 facts=[5,6]
+    #[62] card_le_bound B
+  → rewrite card_le_bound_def sym=false target=fact goal=3 facts=[62]
+    #[63] !A. finite B --> A Sub B --> card A <= card B
+  ← apply_prev goal=3 facts=[63,2,1]
+qed
 
 theorem surjective_iff_injective
   fixes s :: 'a set, f :: 'a => 'a
