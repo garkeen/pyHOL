@@ -1448,6 +1448,18 @@ proof
   ← rule less_lesseqI goal=21 facts=[22,23]
 qed
 
+theorem less_irrefl
+  fixes n :: nat
+  prop ~(n < n)
+proof
+  ← rule negI goal=0
+  ← intro goal=1
+  → rewrite target=fact less_lesseq sym=false goal=3 facts=[2]
+  → forward conjD2 goal=3 facts=[4]
+  → rewrite target=fact eq_mean_true sym=false goal=3 facts=[5]
+  → rewrite target=fact not_true sym=false goal=3 facts=[6]
+qed
+
 theorem le_0
   fixes n :: nat
   prop 0 <= n

@@ -27,14 +27,20 @@ NEW_LEMMAS = ['subsetE', 'subset_refl', 'subset_trans', 'subset_diff',
               'finite_subset', 'finite_insert', 'finite_union_imp',
               'finite_inter', 'finite_image', 'finite_delete', 'finite_diff',
               'image_insert',
-              'image_combine',
+              'image_combine', 'insert_absorb',
+              'less_than_eq_empty', 'less_than_eq_insert', 'less_than_finite',
+              'less_than_card',
               'lfp_lowerbound', 'lfp_greatest', 'lfp_fix_upper', 'lfp_fix_lower']
 
 # Still unproved: the deliberate `set_equal_iff` axiom plus the remaining
 # stubs.  Pinned so that proving one of them fails this test loudly and the
 # list gets updated, instead of the debt silently growing.
 EXPECTED_NON_GREEN = {
+    # deliberate axioms: set extensionality, and the card recursion (see the
+    # comment above `axiom card_empty` in set.pyhol for why card is axiomatized)
     'set_equal_iff': 'AXIOM',
+    'card_empty': 'AXIOM',
+    'card_insert': 'AXIOM',
     'card_image_inj': 'UNPROVED',
     'surjective_iff_injective': 'UNPROVED',
 }

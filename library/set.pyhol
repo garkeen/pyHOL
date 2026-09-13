@@ -765,6 +765,28 @@ proof
   ← rewrite exists_flatten sym=false goal=6
 qed
 
+theorem insert_absorb
+  fixes A :: 'a set, a :: 'a
+  prop a Mem A --> insert a A = A
+  [hint_rewrite]
+proof
+  ← intro goal=0
+  ← rewrite set_equal_iff sym=false goal=2
+  ← intro x goal=3
+  ← rewrite member_insert sym=false goal=5
+  cases "x = a" goal=6
+  ← intro goal=7
+  ← rewrite disj_comm sym=false goal=10
+  ← rewrite disj_iff_left sym=false goal=11
+  ← intro goal=12
+  → rewrite target=fact eq_sym_eq sym=false goal=13 facts=[9]
+  → rewrite target=fact source=prev goal=13 facts=[14,1]
+  ← intro goal=8
+  → rewrite target=fact eq_false sym=false goal=16 facts=[15]
+  ← rewrite source=prev goal=16 facts=[17]
+  ← rewrite disj_false_left sym=false goal=18
+qed
+
 theorem exists_in_gspec1
   fixes P :: 'a => bool, Q :: 'a => bool
   prop (?x. x Mem {y. P y} & Q x) <--> (?x. P x & Q x)
@@ -782,6 +804,83 @@ proof
 qed
 
 header "Cardinality and surjectivity"
+
+-- `card` is AXIOMATIZED, not defined, and this is deliberate.  A real
+-- definition would be `card A = the n such that A is in bijection with
+-- {0..<n}` (or: A has a distinct enumeration of length n); using either
+-- form requires proving that witness n is unique, i.e. the pigeonhole
+-- principle, which this library does not have (holpy also has no
+-- type-definition primitive, so the usual `finited` quotient route is
+-- closed too).
+--
+-- The two equations below characterize card on *every finite set* -- by
+-- `finite_induct` they pin down card A for all finite A -- so this is a
+-- complete recursion, not an arbitrary axiomatization.  It has the same
+-- status as the deliberate `set_equal_iff` axiom above: listed as AXIOM by
+-- the verifier and surfaced in the trust report.
+axiom card_empty
+  fixes A :: 'a set
+  prop card ({}::'a set) = 0
+
+axiom card_insert
+  fixes A :: 'a set, a :: 'a
+  prop finite A --> ~(a Mem A) --> card (insert a A) = Suc (card A)
+
+-- {i | i < n} is the shape auto2's Dijkstra uses (`verts G = {i. i < size G}`),
+-- so the two facts that make it usable are proved here from the axioms.
+theorem less_than_eq_empty
+  fixes n :: nat
+  prop ({i::nat. i < 0}::nat set) = {}
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+  ← intro x goal=1
+  ← rewrite member_collect sym=false goal=3
+  ← rewrite member_empty_simp sym=false goal=4
+  ← rewrite nat_less_def_1 sym=false goal=5
+qed
+
+theorem less_than_eq_insert
+  fixes n :: nat
+  prop ({i::nat. i < Suc n}::nat set) = insert n {i::nat. i < n}
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+  ← intro x goal=1
+  ← rewrite member_collect sym=false goal=3
+  ← rewrite member_insert sym=false goal=4
+  ← rewrite member_collect sym=false goal=5
+  ← rewrite nat_less_def_2 sym=false goal=6
+qed
+
+theorem less_than_finite
+  fixes n :: nat
+  prop finite ({i::nat. i < n}::nat set)
+proof
+  ← induct n nat_induct goal=0
+  ← rewrite less_than_eq_empty sym=false goal=1
+  ← rule finite_empty goal=3
+  ← rewrite less_than_eq_insert sym=false goal=2
+  ← rewrite finite_insert sym=false goal=4
+qed
+
+theorem less_than_card
+  fixes n :: nat
+  prop card ({i::nat. i < n}::nat set) = n
+  [hint_rewrite]
+proof
+  ← induct n nat_induct goal=0
+  ← rewrite less_than_eq_empty sym=false goal=1
+  ← rule card_empty goal=3
+  ← intro n goal=2
+  ← rewrite less_than_eq_insert sym=false goal=6
+  → forward less_than_finite param_n=n goal=7
+  cut "~(n Mem {i::nat. i < n})" goal=7
+  ← rewrite member_collect sym=false goal=9
+  ← rule less_irrefl goal=10
+  → forward card_insert goal=7 facts=[8,9]
+  ← rewrite source=prev goal=7 facts=[12]
+  ← rewrite source=prev goal=13 facts=[5]
+qed
+
 
 theorem card_image_inj
   fixes f :: 'a => 'b, s :: 'a set
