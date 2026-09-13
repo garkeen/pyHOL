@@ -189,11 +189,23 @@ theorem subset_refl
   fixes A :: 'a set
   prop A Sub A
   [hint_rewrite]
+proof
+  ← rewrite subset_def sym=false goal=0
+qed
 
 theorem subset_trans
   fixes A :: 'a set, B :: 'a set, C :: 'a set
   prop A Sub B --> B Sub C --> A Sub C
   [hint_backward]
+proof
+  ← intro goal=0
+  → rewrite target=fact subset_def sym=false goal=3 facts=[1]
+  → rewrite target=fact subset_def sym=false goal=3 facts=[2]
+  ← rewrite subset_def sym=false goal=3
+  ← intro x goal=6
+  → forward goal=9 facts=[4,8]
+  ← apply_prev goal=9 facts=[5,10]
+qed
 
 theorem subset_empty
   fixes A :: 'a set
@@ -248,6 +260,12 @@ theorem subset_diff
   fixes A :: 'a set, B :: 'a set
   prop diff A B Sub A
   [hint_rewrite]
+proof
+  ← rewrite subset_def sym=false goal=0
+  ← intro x goal=1
+  → rewrite target=fact member_diff sym=false goal=4 facts=[3]
+  → forward conjD1 goal=4 facts=[5]
+qed
 
 header "Union and intersection"
 
@@ -255,6 +273,12 @@ theorem inter_comm
   fixes A :: 'a set, B :: 'a set
   prop A Int B = B Int A
   [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+  ← rewrite member_inter_iff sym=false goal=1
+  ← intro x goal=2
+  ← rewrite conj_comm sym=false loc="0.1" goal=4
+qed
 
 theorem inter_subset_id
   fixes A :: 'a set, B :: 'a set
@@ -274,6 +298,12 @@ theorem union_comm
   fixes A :: 'a set, B :: 'a set
   prop A Un B = B Un A
   [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+  ← rewrite member_union_iff sym=false goal=1
+  ← intro x goal=2
+  ← rewrite disj_comm sym=false loc="0.1" goal=4
+qed
 
 theorem union_empty
   fixes A :: 'a set
@@ -295,6 +325,37 @@ proof
 qed
 
 header "Finite sets"
+
+-- The three lemmas below are the *only* way out of the `finite_def`
+-- encoding used in this theory: `finite A` is definitionally
+-- `∀P. P {} ∧ (∀x B. P B ⟶ P (insert x B)) ⟶ P A`, so every derived
+-- fact about finite sets has to be obtained by instantiating that P
+-- (finite_induct), by building an insertion (finite_insert_imp), or by
+-- shrinking to a subset (finite_subset).
+
+theorem finite_induct
+  fixes A :: 'a set
+  prop finite A --> (!P::'a set => bool. P {} & (!x. !B. P B --> P (insert x B)) --> P A)
+proof
+  ← intro goal=0
+  → rewrite target=fact finite_def sym=false goal=2 facts=[1]
+qed
+
+theorem finite_insert_imp
+  fixes A :: 'a set, a :: 'a
+  prop finite A --> finite (insert a A)
+proof
+  ← intro goal=0
+  ← rewrite finite_def sym=false goal=2
+  ← intro P goal=3
+  → rewrite target=fact finite_def sym=false goal=6 facts=[1]
+  → inst "P" goal=6 facts=[7]
+  → forward goal=6 facts=[8,5]
+  → forward conjD2 goal=6 facts=[5]
+  → inst a goal=6 facts=[10]
+  → inst A goal=6 facts=[11]
+  ← apply_prev goal=6 facts=[12,9]
+qed
 
 theorem finite_empty
   fixes A :: 'a set
@@ -395,6 +456,30 @@ theorem insert_delete
   fixes A :: 'a set, a :: 'a
   prop a Mem A --> insert a (delete A a) = A
   [hint_rewrite]
+proof
+  ← intro goal=0
+  ← rewrite set_equal_iff sym=false goal=2
+  ← intro x goal=3
+  ← rewrite member_insert sym=false goal=5
+  ← rewrite member_delete sym=false goal=6
+  ← cases "x = a" goal=7
+  ← intro goal=8
+  ← rewrite source=prev goal=11 facts=[10]
+  ← rewrite eq_mean_true sym=false goal=12
+  ← rewrite not_true sym=false goal=13
+  ← rewrite conj_false_left sym=false goal=14
+  ← rewrite disj_false_right sym=false goal=15
+  ← rule iffI goal=16
+  ← intro goal=17
+  ← intro goal=18
+  ← rule trueI goal=20
+  ← intro goal=9
+  → rewrite target=fact eq_false sym=false goal=23 facts=[22]
+  ← rewrite source=prev goal=23 facts=[24]
+  ← rewrite not_false sym=false goal=25
+  ← rewrite conj_true_right sym=false goal=26
+  ← rewrite disj_false_left sym=false goal=27
+qed
 
 theorem exists_in_gspec1
   fixes P :: 'a => bool, Q :: 'a => bool
@@ -487,6 +572,11 @@ qed
 theorem subsetE
   fixes A :: 'a set, B :: 'a set, x :: 'a
   prop A Sub B --> x Mem A --> x Mem B
+proof
+  ← intro goal=0
+  → rewrite target=fact subset_def sym=false goal=3 facts=[1]
+  ← apply_prev goal=3 facts=[4,2]
+qed
 
 theorem subset_antisym
   fixes A :: 'a set, B :: 'a set
