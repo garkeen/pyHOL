@@ -261,6 +261,35 @@ proof
   → forward force_disj_true1 goal=6 facts=[12,9]
 qed
 
+theorem insert_delete
+  fixes A :: 'a set, a :: 'a
+  prop a Mem A --> insert a (delete A a) = A
+  [hint_rewrite]
+proof
+  ← intro goal=0
+  ← rewrite set_equal_iff sym=false goal=2
+  ← intro x goal=3
+  ← rewrite member_insert sym=false goal=5
+  ← rewrite member_delete sym=false goal=6
+  ← cases "x = a" goal=7
+  ← intro goal=8
+  ← rewrite source=prev goal=11 facts=[10]
+  ← rewrite eq_mean_true sym=false goal=12
+  ← rewrite not_true sym=false goal=13
+  ← rewrite conj_false_left sym=false goal=14
+  ← rewrite disj_false_right sym=false goal=15
+  ← rule iffI goal=16
+  ← intro goal=17
+  ← intro goal=18
+  ← rule trueI goal=20
+  ← intro goal=9
+  → rewrite target=fact eq_false sym=false goal=23 facts=[22]
+  ← rewrite source=prev goal=23 facts=[24]
+  ← rewrite not_false sym=false goal=25
+  ← rewrite conj_true_right sym=false goal=26
+  ← rewrite disj_false_left sym=false goal=27
+qed
+
 theorem subset_empty
   fixes A :: 'a set
   prop A Sub {} <--> A = {}
@@ -308,6 +337,17 @@ proof
   ← rewrite subset_def sym=false goal=2
     #[3] (∀x. x ∈ A ∨ x ∈ B ⟷ x ∈ A) ⟷ (∀x. x ∈ B ⟶ x ∈ A)
   ← rewrite disj_iff_left sym=false goal=3
+qed
+
+theorem subset_insert
+  fixes A :: 'a set, a :: 'a
+  prop A Sub insert a A
+  [hint_rewrite]
+proof
+  ← rewrite subset_def sym=false goal=0
+  ← intro z goal=1
+  ← rewrite member_insert sym=false goal=4
+  ← rule disjI2 goal=5
 qed
 
 theorem subset_diff
@@ -421,15 +461,70 @@ proof
   → forward conjD1 goal=4 facts=[3]
 qed
 
-theorem finite_insert
-  fixes A :: 'a set, a :: 'a
-  prop finite (insert a A) <--> finite A
-  [hint_backward,hint_rewrite]
+-- The induction in `finite_def` only *adds* elements, so a statement about
+-- arbitrary subsets has to be phrased as a predicate on the constructed set
+-- and instantiated for the P.  `fin_sub` is that predicate; this lemma
+-- derives it from `finite A` by discharging its two induction premises
+-- (`fin_sub {}`, and the insert step, which is where the case split on
+-- `x ∈ Y` lands).  Subset closure then follows by running the forall in
+-- `fin_sub`.
+theorem finite_fin_sub
+  fixes A :: 'a set
+  prop finite A --> fin_sub A
+proof
+  ← intro goal=0
+  → rewrite target=fact finite_def sym=false goal=2 facts=[1]
+  → inst "(fin_sub::'a set => bool)" goal=2 facts=[3]
+  cut "fin_sub ({}::'a set) & (!x::'a. !B1::'a set. fin_sub B1 --> fin_sub (insert x B1))" goal=2
+  ← rule conjI goal=5
+  ← rewrite fin_sub_def sym=false goal=6
+  ← intro Y goal=8
+  → rewrite target=fact subset_empty sym=false goal=11 facts=[10]
+  ← rewrite source=prev goal=11 facts=[12]
+  ← rule finite_empty goal=13
+  ← intro x,B1 goal=7
+  → rewrite target=fact fin_sub_def sym=false goal=18 facts=[17]
+  ← rewrite fin_sub_def sym=false goal=18
+  ← intro Y goal=20
+  cases "x Mem Y" goal=22
+  ← intro goal=24
+  → forward subset_insert_imp goal=26 facts=[21,25]
+  → inst "Y" goal=26 facts=[19]
+  ← apply_prev goal=26 facts=[28,27]
+  ← intro goal=23
+  → forward delete_subset_insert goal=31 facts=[21]
+  → inst "delete Y x" goal=31 facts=[19]
+  → forward goal=31 facts=[33,32]
+  → forward insert_delete goal=31 facts=[30]
+  → rewrite target=fact eq_sym_eq sym=false goal=31 facts=[35]
+  ← rewrite source=prev goal=31 facts=[36]
+  ← rule finite_insert_imp goal=37 facts=[34]
+  ← apply_prev goal=2 facts=[4,5]
+qed
 
 theorem finite_subset
   fixes A :: 'a set, B :: 'a set
   prop A Sub B --> finite B --> finite A
   [hint_backward]
+proof
+  ← intro goal=0
+  → forward finite_fin_sub goal=3 facts=[2]
+  → rewrite target=fact fin_sub_def sym=false goal=3 facts=[4]
+  ← apply_prev goal=3 facts=[5,1]
+qed
+
+theorem finite_insert
+  fixes A :: 'a set, a :: 'a
+  prop finite (insert a A) <--> finite A
+  [hint_backward,hint_rewrite]
+proof
+  ← rule iffI goal=0
+  ← intro goal=1
+  → forward subset_insert param_A=A param_a=a goal=4
+  ← rule finite_subset goal=4 facts=[5,3]
+  ← intro goal=2
+  ← rule finite_insert_imp goal=7 facts=[6]
+qed
 
 theorem finite_union_imp
   fixes A :: 'a set, B :: 'a set
@@ -505,35 +600,6 @@ theorem image_combine
   fixes f :: 'b => 'c, g :: 'a => 'b, A :: 'a set
   prop image f (image g A) = image (g O f) A
   [hint_rewrite]
-
-theorem insert_delete
-  fixes A :: 'a set, a :: 'a
-  prop a Mem A --> insert a (delete A a) = A
-  [hint_rewrite]
-proof
-  ← intro goal=0
-  ← rewrite set_equal_iff sym=false goal=2
-  ← intro x goal=3
-  ← rewrite member_insert sym=false goal=5
-  ← rewrite member_delete sym=false goal=6
-  ← cases "x = a" goal=7
-  ← intro goal=8
-  ← rewrite source=prev goal=11 facts=[10]
-  ← rewrite eq_mean_true sym=false goal=12
-  ← rewrite not_true sym=false goal=13
-  ← rewrite conj_false_left sym=false goal=14
-  ← rewrite disj_false_right sym=false goal=15
-  ← rule iffI goal=16
-  ← intro goal=17
-  ← intro goal=18
-  ← rule trueI goal=20
-  ← intro goal=9
-  → rewrite target=fact eq_false sym=false goal=23 facts=[22]
-  ← rewrite source=prev goal=23 facts=[24]
-  ← rewrite not_false sym=false goal=25
-  ← rewrite conj_true_right sym=false goal=26
-  ← rewrite disj_false_left sym=false goal=27
-qed
 
 theorem exists_in_gspec1
   fixes P :: 'a => bool, Q :: 'a => bool

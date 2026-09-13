@@ -19,9 +19,10 @@ from core.verify import validate_theory, COMPUTATION_ORACLES
 # block: `finite_induct`/`finite_insert_imp`/`insert_delete` are what gets
 # facts back out of the `finite_def` encoding.
 NEW_LEMMAS = ['subsetE', 'subset_refl', 'subset_trans', 'subset_diff',
-              'subset_insert_imp', 'delete_subset_insert',
+              'subset_insert', 'subset_insert_imp', 'delete_subset_insert',
               'inter_comm', 'union_comm', 'insert_delete',
-              'finite_induct', 'finite_insert_imp']
+              'finite_induct', 'finite_insert_imp', 'finite_fin_sub',
+              'finite_subset', 'finite_insert']
 
 # Still unproved: the deliberate `set_equal_iff` axiom plus the remaining
 # stubs.  Pinned so that proving one of them fails this test loudly and the
@@ -29,8 +30,6 @@ NEW_LEMMAS = ['subsetE', 'subset_refl', 'subset_trans', 'subset_diff',
 EXPECTED_NON_GREEN = {
     'set_equal_iff': 'AXIOM',
     'lfp_unfold': 'DEP_FAILED',
-    'finite_insert': 'UNPROVED',
-    'finite_subset': 'UNPROVED',
     'finite_union_imp': 'UNPROVED',
     'finite_inter': 'UNPROVED',
     'finite_image': 'UNPROVED',
