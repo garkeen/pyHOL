@@ -701,7 +701,95 @@ def finite :: 'a set ⇒ bool = finite A ⟷ (∀P. P {} ∧ (∀x B. P B ⟶ P 
 - **multiset**：`mset_list_swap`（`mset (list_swap xs i j) = mset xs`）、
   `set_list_swap`。需要「`count` 对 `list_update` 的逐点刻画」再让两次更新抵消，
   依赖上一条。
-- **set**：`card_image_inj`/`surjective_iff_injective`——用未解释常量 `card`，
-  要证得先给 card 建公理体系（有限基数的存在性/唯一性），不属当前范围。
+- **set（已收口，见 §10）**：`card_image_inj`、`card_mono`、`card_image_le`、
+  `card_subset_eq` 与两条元素层辅助已证并 VALID；只剩 `surjective_iff_injective`
+  （两条方向里「单射 ⟹ 满射」已通，「满射 ⟹ 单射」要鸽子洞论证，见 §10.3）。
 - 阶段 3–6（序、良基递归、Functional 域库、指令式堆模型）未开始；阶段 3 是
   `sorted`/`strict_sorted`/`insort` 的前置。
+
+## 10. 阶段 2.6：set 基数层（2026-09-13 续轮，全部经常驻 REPL 开发）
+
+本轮把 §9.4 里「需要先给 card 建公理体系」的那一层做了。开发流程按
+`AGENTS.md` §4：`repl.repl --serve --theory set` 起一次，所有步进走
+`repl/client`，证完 `export` 出的证明块直接写回 `.pyhol`，最后
+`.cache/validate_one.py set` 独立重放。
+
+### 10.1 结果
+
+```
+validate_one.py set
+  AXIOM        3     set_equal_iff / card_empty / card_insert
+  UNPROVED     1     surjective_iff_injective
+  VALID        71
+```
+
+新增定义（都只为给 `finite_induct` 提供**无 beta-redex 的 P**，varying 参数在最后）：
+
+- `card_le_bound X ⟷ ∀A. finite X → A ⊆ X → card A ≤ card X`
+- `card_img_le g X ⟷ finite X → card (image g X) ≤ card X`
+- `card_faithful g X ⟷ finite X → card (image g X) = card X → inj on X`
+  （本轮未用上，留给 §10.3 的备选路线）
+- `card_inj f X`（`card_image_inj` 的 P，RHS 就是那条命题）
+
+新增引理（全部 VALID）：
+
+- `card_image_inj`：`finite s → inj on s → card (image f s) = card s`。
+  由 `finite_induct` 实例化 `card_inj f` 归纳；归纳步分 `x ∈ B`（用
+  `insert_absorb` 化归 IH）与 `x ∉ B`（`image_insert` + 反证 `f x ∉ image f B`：
+  若 `f x = f y`（`y ∈ B`）则 `x = y ∈ B`，与 `x ∉ B` 冲突）。
+- `card_le_bound_empty`、`insert_subset_imp`、`not_mem_delete_self`、
+  `delete_subset_insert_imp`：元素层辅助（都带**非冗余前提**，见 `set_test.py`
+  的被动用例）。
+- `card_mono : A ⊆ B → finite B → card A ≤ card B`（`card_le_bound` 归纳）。
+- `card_image_le : finite X → card (image g X) ≤ card X`（`card_img_le` 归纳）。
+- `card_subset_eq : A ⊆ B → finite B → card A = card B → A = B`：反证 `y ∈ B \ A`，
+  则 `insert y A ⊆ B`（`insert_subset_imp`），`card (insert y A) = Suc (card A)`
+  与 `card_mono` 的 `≤ card B = card A` 冲突，经 `lesseq_Suc_less` + `less_irrefl`
+  收口。**不依赖 `subset_antisym`**（它在文件后面，replay 截断会 STEP_FAILED）。
+
+card 公理仍是 `card_empty`/`card_insert` 两条（§9 已论证：要定义化需要
+pigeonhole 唯一性，库里没有，holpy 也没有类型定义原语）。
+
+### 10.2 本轮新踩到的机制坑（§8.5/§9.3 的补充）
+
+1. **对事实做重写时，事实里的变量必须是「上下文声明」的**：
+   `has_rewrite` 内部对 `t.is_open()` 的子项不匹配，`intro`/`elim` 引进的
+   变量让 `→ rewrite target=fact THEOREM facts=[f]` 直接
+   `InvalidDerivationException`；同一命题在 `fixes` 声明变量下（例如
+   写成独立的辅助引理）就能重写。所以元素层的 iff 前向化都下沉成
+   带 `fixes` 的辅助引理。
+2. **同一命题的条目按 Thm 结构去重**：`#[N]` 是「同命题共号」。于是
+   (a) 在兄弟分支里引用先去重过的命题会 `illegal dependence`；
+   (b) 在分支内「重做」一遍该推导得到的仍是旧位置，不能用来规避。
+   对策：把归纳假设在**进入 `cases` 之前**展开一次（成为两支的共同祖先），
+   或者用 `inst "<term>"` 现推出**新命题**再引用。
+3. **`rule` 用定理名 + `facts=[...]` 只能给 sid**：定理名不能写在 facts 里；
+   要先把定理 `forward` 成事实再用 `apply_prev`（`← apply_prev goal=G
+   facts=[<thm事实>, <前提…>]` 会做 forall 消去）。
+4. **定理里引用文件后面才声明的条目**：replay 在 `(thm, name)` 处截断理论，
+   直接 `STEP_FAILED`（信息只显示「replay failed at step: rule」）。
+   要用 `.cache/validate_one.py` 复核，别只看 `check`。
+5. **`← rewrite THEOREM sym=false goal=G facts=[<条件…>]`** 很好用：
+   带前提的重写定理可以直接重写目标（`card_insert` 的两个前提作为 facts），
+   省掉「先 forward 出等式事实」的一步。
+
+### 10.3 `surjective_iff_injective` 的剩余与已定路线
+
+命题：`finite s → image f s ⊆ s → (满射) ⟷ (单射)`。两个方向：
+
+- **单射 ⟹ 满射（已在 REPL 走通，未写回）**：`card_image_inj` 给
+  `card (image f s) = card s`，`card_subset_eq` 配 `image f s ⊆ s` 给
+  `image f s = s`；再对 `y ∈ s` 用 `in_image` 反向取原像（注意
+  `in_image` 的右式是 `y = f x`，要 `eq_sym_eq` 翻向）。
+- **满射 ⟹ 单射（未通）**：走鸽子洞反证——由满射得 `s ⊆ image f s`，
+  于是 `image f s = s`、`card (image f s) = card s`；若 `x ≠ y` 而
+  `f x = f y`，令 `s' = delete s x`，则
+  `image f s = image f s'`（因 `f x = f y ∈ image f s'`），
+  `card (image f s') ≤ card s'`（`card_image_le`），而
+  `card s = Suc (card s')`（`insert_delete` + `card_insert`）故
+  `card s' < card s`，串起来得 `card (image f s) < card (image f s)`，
+  与 `less_irrefl` 冲突。
+  余下的工作量主要在这条链的事实编排（要把等式/不等式在事实层重写，
+  并用 `less_eq_trans` 类引理拼 `≤`/`<`；`nat` 里若有
+  `less_eq_less_trans` 可直接用，否则得先补一条）。这条链里的
+  `stable-ID` 书签建议照 §10.2 的经验：先 `inst` 出新命题、少用兄弟分支引用。

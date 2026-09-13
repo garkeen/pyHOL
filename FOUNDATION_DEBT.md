@@ -101,9 +101,11 @@ STEP_FAILED），实验后要清理。
   `'a ⇒ nat` 表示，避开缺失的类型定义原语；`mset`/单点/并/置换律已证）；`vector`/`tree`。
   有限集（`set` 理论）：`finite_induct`/`finite_insert`/`finite_subset`/`finite_union_imp`/
   `finite_inter`/`finite_image`/`finite_delete`/`finite_diff` 与 `lfp_*` 均已证
-  （见 `PROGRAM_VERIFICATION_PORT.md` §9），**P0 有限集债清除**；仅余
-  `card_image_inj`/`surjective_iff_injective`
-  两条声明式命题——它们用未解释常量 `card`，要证得先给 card 建公理体系（不属于当前范围）。
+  （见 `PROGRAM_VERIFICATION_PORT.md` §9），**P0 有限集债清除**。
+  基数层（同文档 §10，2026-09-13 续轮）：在 `card_empty`/`card_insert` 两条公理上
+  证出 `card_image_inj`/`card_mono`/`card_image_le`/`card_subset_eq` 与元素层辅助，
+  至此只剩 `surjective_iff_injective` 一条未证（「单射 ⟹ 满射」已走通，
+  「满射 ⟹ 单射」是鸽子洞，路线见 §10.3）。
 - **P3 数系与代数**：`rat` 补全（现仅 5 条，无逆元/除法/序/floor；
   对照 `Rat.thy`、Mathlib `Data/Rat/`）；`binomial`/`factorial`；
   `Euclidean_Rings`/`GCD`；抽象代数 `group`/`ring`/`field`
