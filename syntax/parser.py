@@ -524,26 +524,35 @@ def clear_type_abbrevs():
 # a marker only: their equations are uniform in the instance (the operation is
 # the generic, overloaded constant), so nothing is injected for them.
 #
-# CLASSES is the syntax-side registry: class name -> (predicate name, ops),
-# where an op is (constant name, type template) and %s in the template stands
-# for the annotated type variable.  The predicate itself is library content.
+# CLASSES is the syntax-side registry: class name -> entries, where an entry
+# is (predicate name, ops).  One annotation contributes one premise per
+# operation, in the order listed, so a class with several operations
+# contributes all of its laws.  The predicates themselves are library content.
 CLASSES = {
-    'preorder': ('preorder', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),
-    'order': ('order', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),
-    'linorder': ('linorder', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),
+    'preorder': (('preorder', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),),
+    'order': (('order', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),),
+    # holpy's `less` and `less_eq` are independent overloaded constants (each
+    # instance defines both separately), so a linear order needs a law
+    # predicate for each; `'a::linorder` states both.
+    'linorder': (('linorder', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),
+                 ('linorder_lt', (('less', "'%s ⇒ '%s ⇒ bool"),))),
+    # Isabelle's `ord` provides the two constants and no laws; so does this
+    # (accepted as a marker, contributes no premise).
+    'ord': (),
 }
 
 
-def add_class(name, predicate, ops):
+def add_class(name, *entries):
     """Register a class for the `'a::NAME` sugar.
 
     name -- class name as written after `::`.
-    predicate -- library predicate that the class stands for.
-    ops -- the class's operations, as (constant name, type template) pairs;
-           `%s` in the template is replaced by the annotated type variable.
+    entries -- one (predicate, ops) per premise the annotation stands for.
+               ops are (constant name, type template) pairs; `%s` in the
+               template is replaced by the annotated type variable.  A class
+               may contribute several premises, or none (`ord`).
 
     """
-    CLASSES[name] = (predicate, tuple(ops))
+    CLASSES[name] = tuple((pred, tuple(ops)) for pred, ops in entries)
 
 
 _class_annot_re = re.compile(r"'([A-Za-z_][A-Za-z0-9_']*)::([A-Za-z_][A-Za-z0-9_']*)")
@@ -583,9 +592,10 @@ def class_premises(constraints):
     """Premise texts for `(var, class)` constraints, in the given order."""
     res = []
     for var, cls in constraints:
-        predicate, ops = CLASSES[cls]
-        for op_name, op_ty in ops:
-            res.append('%s (%s::%s)' % (predicate, op_name, op_ty % (var, var)))
+        for predicate, ops in CLASSES[cls]:
+            for op_name, op_ty in ops:
+                res.append('%s (%s::%s)'
+                           % (predicate, op_name, op_ty % (var, var)))
     return res
 
 

@@ -24,20 +24,49 @@ class ClassSugarTest(unittest.TestCase):
         self.assertEqual(str(T), "('a, 'b) tree")
 
     def testPremiseInjection(self):
+        # `linorder` constrains both operations: holpy's `less` and `less_eq`
+        # are independent overloaded constants, so the annotation states a
+        # law predicate for each.
         prop = parser.with_class_premises("x <= x", "'a::linorder")
+        self.assertEqual(
+            prop,
+            "linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ "
+            "linorder_lt (less::'a ⇒ 'a ⇒ bool) ⟶ x <= x")
+
+    def testSingleOperationClassInjectsOnePremise(self):
+        prop = parser.with_class_premises("x <= x", "'a::order")
         self.assertEqual(prop,
-                         "linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x")
+                         "order (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x")
+
+    def testLawlessClassInjectsNothing(self):
+        # Isabelle's `ord` states the two constants and no laws; it is
+        # accepted as a marker.
+        self.assertEqual(parser.with_class_premises("x <= x", "'a::ord"),
+                         "x <= x")
 
     def testPremiseInjectionDedupes(self):
         prop = parser.with_class_premises("x <= y", "'a::order", "'a::order")
         self.assertEqual(prop, "order (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= y")
 
     def testSeveralConstraintsKeepOrder(self):
-        prop = parser.with_class_premises("P", "'a::linorder", "'b::preorder")
+        prop = parser.with_class_premises("P", "'a::order", "'b::preorder")
         self.assertEqual(
             prop,
-            "linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ "
+            "order (less_eq::'a ⇒ 'a ⇒ bool) ⟶ "
             "preorder (less_eq::'b ⇒ 'b ⇒ bool) ⟶ P")
+
+    def testAddClassRegistersSeveralPremises(self):
+        try:
+            parser.add_class('_test_two_ops',
+                             ('preorder', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),
+                             ('linorder_lt', (('less', "'%s ⇒ '%s ⇒ bool"),)))
+            prop = parser.with_class_premises("P", "'a::_test_two_ops")
+            self.assertEqual(
+                prop,
+                "preorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ "
+                "linorder_lt (less::'a ⇒ 'a ⇒ bool) ⟶ P")
+        finally:
+            parser.CLASSES.pop('_test_two_ops', None)
 
     def testNoAnnotationNoChange(self):
         self.assertEqual(

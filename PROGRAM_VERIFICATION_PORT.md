@@ -852,25 +852,35 @@ prop x <= x
 
 ```
 fixes x :: 'a
-prop linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x
+prop linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶
+     linorder_lt (less::'a ⇒ 'a ⇒ bool) ⟶ x <= x
 ```
 
-即**注解 = 前提**，`'a` 的类型不变。于是 item 层以下（步进、重放、内核）
-完全不知道类；前提在**使用处**由实例定理消掉（`nat_linorder`）。
-这条等价性来自 Isabelle 自己：Pure 内核没有类，`OFCLASS` 只是 meta 层假设，
-类定律全是有条件假设。差别只在「谁来做实例解析」——糖版是显式的，
-忠实类型类版交给 elaborator。
+即**注解 = 前提**，`'a` 的类型不变。每个类运算各贡献一条前提
+（`preorder`/`order` 只有 `≤`，`linorder` 有 `≤` 与 `<`；Isabelle 的 `ord` 无法则，
+贡献 0 条前提，只作标记）。**为什么 `<` 要单独一条**：holpy 的 `less` 与 `less_eq`
+是**互相独立**的重载常量（nat 各自用递归定义），不像 Isabelle 的 `less` 由 `≤` 定义，
+所以约束 `≤` 推不出 `<` 的任何性质，一条 `'a::linorder` 注解必须同时给出两者的法则。
+于是 item 层以下（步进、重放、内核）完全不知道类；前提在**使用处**由实例定理消掉
+（`nat_linorder`、`nat_linorder_lt`）。这条等价性来自 Isabelle 自己：Pure 内核没有类，
+`OFCLASS` 只是 meta 层假设，类定律全是有条件假设。差别只在「谁来做实例解析」——
+糖版是显式的，忠实类型类版交给 elaborator。
 
-### 11.2 实现（约 130 行 + 测试）
+### 11.2 实现（约 150 行 + 测试）
 
 | 位置 | 内容 |
 |---|---|
 | `syntax/parser.py` 文法 | `?typ_atom: "'" CNAME ("::" CNAME)? -> tvar`；transformer 丢掉注解，类型仍是 `'a` |
-| `syntax/parser.py` 表 | `CLASSES`: 类名 → (谓词名, 运算表)，运算 = (常量名, 类型模板)；`add_class()` 是扩展点 |
+| `syntax/parser.py` 表 | `CLASSES`: 类名 → 若干 `(谓词名, 运算表)`；一条 `add_class` 条目 = 一条前提，所以多运算类（`linorder`）写两条 |
 | `syntax/parser.py` 函数 | `class_constraints()`（收集 + 报错）、`class_premises()`、`with_class_premises()` |
 | `core/items.py` | `Axiom.parse`（`Theorem` 继承）里注入前提；`data` 是原始文本，所以 `'a::linorder` 留在源码里、导出回环保留 |
 | `repl/repl.py` | `cmd_goal` 用同一条规则注入，所以 `var x 'a::linorder` + `goal x <= x` 与 item 的陈述一致 |
-| `library/order.pyhol` | 新理论：`preorder`/`order`/`linorder` 谓词、6 条层级/投影引理、3 条 `nat` 实例、`linorder_refl/trans/antisym`、两条糖的端到端演示 |
+| `library/order.pyhol` | 新理论：`preorder`/`order`/`linorder`/`linorder_lt` 四个谓词、投影引理、`nat` 实例（`nat_linorder_lt` 由 `less_irrefl`/`lt_trans`/`lt_cases` 组成）、两条糖的端到端演示 |
+
+`linorder_lt` 的法则 = 非自反 + 传递 + 三歧（`∀x.∀y. lt x y ∨ lt y x ∨ x = y`）；
+下游 `<` 引理实际用到的派生引理也建在这一层：`linorder_lt_neq`（`lt x y ⟹ x ≠ y`）、
+`linorder_lt_gt_of_not_lt`（`x ≠ y ⟹ ¬ lt x y ⟹ lt y x`，即 ordered_insert 的
+else 分支要用的「既不等于也不小于就是大于」）。
 
 ### 11.3 边界（明确不做 / 留待增量 2）
 
@@ -878,7 +888,7 @@ prop linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x
   `datatype` 行只写参数名，没有 kind 注解。阶段 5 真需要时加一个 item 元数据
   + 传播（那时是「约束环境」，不是文本替换）。
 - **定义（`def`/`fun`/`inductive`）只把注解当标记**：它们的方程对实例是均匀的
-  （运算就是通用重载常量 `less_eq`），所以不注入前提；`fun tree_sorted ::
+  （运算就是通用重载常量 `less_eq`/`less`），所以不注入前提；`fun tree_sorted ::
   ('a::linorder,'b) tree ⇒ bool` 这类签名照写即可。
 - **不做忠实类型类**：`kernel/type.py` 的 `Type` 没有 sort；`kernel/theory.py:253`
   的 `get_overload_const_name` 明确要求实例类型是具体类型常量，所以「在类型变量上
@@ -886,9 +896,9 @@ prop linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x
   且动内核相邻代码，换来的只是 50 处的书写便利。
 - **JSON/edit 面看到的是脱糖形态**：`.pyhol` 源码（和 `.pyhol` 回环）保留
   `'a::linorder`，而 `export_json`/`get_display` 给出的是去掉注解的 fixes +
-  显式前提 `linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ ...`（两者语义相同，且不会
-  二次注入——注解已经不在文本里了）。前端保存的文本因此是脱糖形态，这是可接受
-  的规范形态。
+  显式前提 `linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ linorder_lt (less::…) ⟶ ...`
+  （两者语义相同，且不会二次注入——注解已经不在文本里了）。前端保存的文本因此是
+  脱糖形态，这是可接受的正规形态。
 - **实例解析暂不做自动化**：使用处手写 `rule <law> facts=[<约束事实>]`（约束事实
   来自注解或实例定理）。以后要自动化，加一张实例表让 solver 试即可，不动内核。
 
@@ -898,7 +908,67 @@ prop linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x
 `∀x y z. P` 必须写成 `∀x. ∀y. ∀z. P`（`∃` 同理）；`library/order.pyhol` 的定义
 里就是这么写的。auto2/Isabelle 原文里的多变量量词照抄会解析失败。
 
-谓词层（preorder/order/linorder + 层级引理 + nat 实例）已就位；
-`sorted`/`strict_sorted`/`insort`/`ordered_insert` 与 `Min`/`Max` 仍待做，
-它们建在 `linorder` 谓词上，语法照 auto2 写（`fixes xs :: ('a::linorder) list`）。
-实例还需要 `int`/`real`（各自一条定理，料已在各自理论里）。
+序谓词层已完整：`preorder`/`order`/`linorder`/`linorder_lt` + 层级与投影引理
++ `nat` 实例（20 条 VALID）。`sorted` 在本仓库无消费方（§8.1：auto2 里 0 次），
+**不做**；`strict_sorted` 与 `ordered_insert` 及其引理已建在 `linorder_lt` 上，
+见 `library/lists_ex.pyhol`（对应 auto2 `Lists_Ex.thy`；该文件里依赖 Mapping_Str
+的 `ordered_insert_pairs`/`remove_elt_pairs` 部分留到阶段 5）。
+实例还缺 `int`/`real` 的 `nat_linorder`/`nat_linorder_lt` 对应物。
+
+## 12. 阶段 3：strict_sorted 层（2026-09-13 续轮，常驻 REPL）
+
+### 12.1 交付物
+
+| 位置 | 内容 | 验证 |
+|---|---|---|
+| `library/order.pyhol` | `linorder_lt` 谓词（非自反/传递/三歧）+ `linorder_lt_irrefl/trans/linear` + 派生 `linorder_lt_neq`、`linorder_lt_gt_of_not_lt` + 实例 `nat_linorder_lt` | VALID 20 / 0 非绿 |
+| `syntax/parser.py` | `CLASSES` 改为「类名 → 若干 (谓词, 运算)」：`'a::linorder` 现在注入**两条**前提（`linorder less_eq` + `linorder_lt less`）；新增无公理的 `ord` 类 | 回归 349 → 见 §12.4 |
+| `library/logic.pyhol` | `disj_left_comm`（`A ∨ (B ∨ C) ⟷ B ∨ (A ∨ C)`） | VALID 92 / 0 非绿 |
+| `library/set.pyhol` | `empty_union`、`insert_union`、`insert_comm`、`subset_union_left`、`subset_union_right`、`all_mem_elim` | VALID 79 / AXIOM 3 / 0 非绿 |
+| `library/list.pyhol` | `set_append`、`member_set_append`、`member_set_append_left/right` | VALID 41 / 0 非绿 |
+| `library/lists_ex.pyhol`（新） | `fun strict_sorted` + `strict_sorted_appendE1` | VALID 1 / 0 非绿 |
+
+`strict_sorted` 的定义照 auto2（`∀y. y ∈ set ys ⟶ x < y`），约束写成
+`fixes xs :: 'a::linorder list`——注解注入两条前提，证明里用 `linorder_lt_*`。
+`strict_sorted_appendE1` 是 auto2 的 `strict_sorted_appendE1 [forward]`，33 步。
+
+### 12.2 机制新发现（§8.5/§9.3/§10.2 的继续）
+
+23. **`induct` 必须先作用在整条蕴含上**。auto2 那类 `strict_sorted (xs@ys) ⟹ …`
+    的引理，若先 `← intro` 把假设变成事实，`induct` 只看到结论，归纳假设退化成
+    「结论 ⇒ 结论」而完全无用。正确顺序：`← induct xs list_induct goal=0`（此时
+    目标还是整条蕴含，ih 带假设），再 `← intro goal=1` / `goal=2` 进入两个分支。
+24. **`rule <thm>` 匹配的是定理的结论**，所以对上条那种蕴含式引理，用之前要先把
+    目标 `intro` 成结论形态，再用 `facts=[<两个类前提…>, <被 intro 出的假设>]`。
+25. **`rewrite <iff 定理>` 作用在目标上会产生「转换子目标」**：被改写子项的那条
+    等式会成为新的目标（例如 `union_comm` 把 `set ys = {} Un set ys` 变成
+    `set ys = set ys Un {}`），要再用同一条定理或另一条引理关掉。同理
+    `disj_assoc_eq`/`insert_union` 这类「恰好左右两边互为实例」的情形会自动关门。
+26. **`loc` 路径要按项树算**：`A ⟷ B` 的左/右操作数是 `0.1` / `1`，而 `f a` 的参数
+    是 `1`——所以 `z ∈ insert x A ∪ B` 里那个 `z ∈ insert x A` 的路径是
+    `0.1.0.1`（`0.1` 是这个成员关系的左操作数 `z`、`z ∈ insert x A ∪ B` 整体在
+    `0.1`，「集合」是 `member z` 的参数）。`insert_comm`/`insert_union` 全靠
+    `loc` 精准落点。
+27. **对事实做重写时，含 `intro`/`induct` 绑定变量的事实会被 `has_rewrite` 拒绝**
+    （`InvalidDerivationException: rewrite_fact using X`，§10.2 第 1 条的实践版）。
+    两条出路：(a) 改用**等式事实** + `→ rewrite target=fact source=prev sym=…`；
+    (b) 不用重写，改用**投影/消去引理**（如新增的 `all_mem_elim`）。
+28. **`all_mem_elim`**（set.pyhol）：`(∀z. z ∈ B ⟶ P z) ⟹ y ∈ B ⟹ P y`，
+    把「有界全称 + 成员事实」的一步推理固定成一条可 `rule` 的定理——
+    `strict_sorted` 那类证明里每处「头元素小于尾部每个元素」都只用一步。
+29. **推导结果与目标同命题时 `forward` 不新增条目**，此时关门要用
+    `← apply_prev goal=G facts=[<∀/蕴含事实>, <参数事实>]`（§8.5 第 10 条的确认），
+    或者先 `→ inst` 出蕴含式再 `apply_prev`。
+30. **`rewrite … sym=true` 是「等式反向用」**：`strict_sorted_def_2`（定义）要用
+    `sym=false` 展开；`append_def_1`（`[]@xs = xs`）反向用才是 `xs → []@xs`。
+
+### 12.3 阶段 3 剩余（下一步）
+
+`library/lists_ex.pyhol` 里还缺 auto2 `Lists_Ex.thy` 的其余陈述：
+`strict_sorted_appendI`（`[backward]`）、`strict_sorted_appendE2`（`[forward]`，
+前缀元素小于后缀）、`strict_sorted_distinct`、`ordered_insert` 与
+`ordered_insert_set`/`ordered_insert_sorted`/`ordered_insert_binary`。
+`remove_elt_list` 一组（BST 的删除用）与依赖 Mapping_Str 的
+`ordered_insert_pairs`/`remove_elt_pairs`/`map_of_alist_binary` 归阶段 5。
+
+

@@ -186,6 +186,18 @@ proof
   ← rule disjI2 goal=20
 qed
 
+theorem disj_left_comm
+  fixes A :: bool, B :: bool, C :: bool
+  prop A ∨ (B ∨ C) ⟷ B ∨ (A ∨ C)
+  [hint_rewrite]
+proof
+  ← rewrite disj_assoc_eq sym=false goal=0
+    #[1] (A ∨ B) ∨ C ⟷ (B ∨ A) ∨ C
+  ← rewrite disj_comm sym=false goal=1
+    #[2] C ∨ A ∨ B ⟷ C ∨ B ∨ A
+  ← rewrite disj_comm loc=0.1.1 sym=false goal=2
+qed
+
 theorem double_neg
   fixes A :: bool
   prop ¬¬A ⟷ A

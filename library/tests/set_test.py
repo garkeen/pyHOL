@@ -43,6 +43,13 @@ CARD_LEMMAS = ['card_image_inj', 'card_mono', 'card_image_le',
                'delete_subset_insert_imp',
                'surjective_imp_injective', 'surjective_iff_injective']
 
+# Set algebra used when porting list facts (`set (xs @ ys)`, and the
+# `strict_sorted` proofs): union/insert manipulation, plus the bounded-universal
+# elimination that turns `∀z. z ∈ B ⟶ P z` into `P y` in one step.
+LIST_SUPPORT_LEMMAS = ['empty_union', 'insert_union', 'insert_comm',
+                       'subset_union_left', 'subset_union_right',
+                       'all_mem_elim']
+
 # What is left over after the cardinality layer: only the deliberate axioms
 # (`set_equal_iff` plus the two `card` recursion axioms).  Pinned so that
 # anything slipping back to a non-VALID state fails this test loudly.
@@ -67,14 +74,14 @@ class SetTheoryTest(unittest.TestCase):
             basic.load_theory_cache(fn)
         statuses, errors = validate_theory('set', force=True,
                                            trust=COMPUTATION_ORACLES)
-        for name in NEW_LEMMAS + CARD_LEMMAS:
+        for name in NEW_LEMMAS + CARD_LEMMAS + LIST_SUPPORT_LEMMAS:
             self.assertEqual(statuses.get(name), 'VALID', errors)
         self.assertEqual({k: v for k, v in statuses.items() if v != 'VALID'},
                          EXPECTED_NON_GREEN, errors)
 
     def testApiPresent(self):
         basic.load_theory('set')
-        for name in NEW_LEMMAS + CARD_LEMMAS:
+        for name in NEW_LEMMAS + CARD_LEMMAS + LIST_SUPPORT_LEMMAS:
             self.assertIsNotNone(theory.get_theorem(name))
 
     def testInsertDeleteNeedsHypothesis(self):

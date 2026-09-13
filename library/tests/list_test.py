@@ -53,7 +53,9 @@ class ListTheoryTest(unittest.TestCase):
                      'length_take', 'length_drop', 'length_sublist',
                      'itrev_rev_gen', 'itrev_eq_rev', 'set_map',
                      'append_singleton_neq_nil', 'last_append',
-                     'butlast_append']:
+                     'butlast_append',
+                     'set_append', 'member_set_append',
+                     'member_set_append_left', 'member_set_append_right']:
             self.assertIsNotNone(theory.get_theorem(name),
                                  'missing theorem %s' % name)
 

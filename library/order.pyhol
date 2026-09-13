@@ -11,16 +11,27 @@ description "Orders as explicit relations (phase 3 of the auto2 port)."
 --     fixes x :: 'a::linorder
 --     prop x <= x
 --
--- is stored as `linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x`.  The premise is
--- discharged at the *use* site by the instance theorem below (`nat_linorder`),
--- so nothing below the item layer knows about classes.  See
--- PROGRAM_VERIFICATION_PORT.md §11 for the design and its boundaries.
+-- is stored as
+--
+--     linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶
+--     linorder_lt (less::'a ⇒ 'a ⇒ bool) ⟶ x <= x
+--
+-- Both operations are constrained because holpy's `less` and `less_eq` are
+-- independent overloaded constants (nat defines each by its own recursion).
+-- The premises are discharged at the *use* site by the instance theorems below
+-- (`nat_linorder`, `nat_linorder_lt`), so nothing below the item layer knows
+-- about classes.  See PROGRAM_VERIFICATION_PORT.md §11 for the design and its
+-- boundaries.
 
 def preorder :: ('a ⇒ 'a ⇒ bool) ⇒ bool = preorder le ⟷ (∀x. le x x) ∧ (∀x. ∀y. ∀z. le x y ⟶ le y z ⟶ le x z) [hint_rewrite]
 
 def order :: ('a ⇒ 'a ⇒ bool) ⇒ bool = order le ⟷ preorder le ∧ (∀x. ∀y. le x y ⟶ le y x ⟶ x = y) [hint_rewrite]
 
 def linorder :: ('a ⇒ 'a ⇒ bool) ⇒ bool = linorder le ⟷ order le ∧ (∀x. ∀y. le x y ∨ le y x) [hint_rewrite]
+
+-- The strict companion of `linorder` (irreflexive, transitive, trichotomous).
+-- A statement about `<` under `'a::linorder` uses these laws.
+def linorder_lt :: ('a ⇒ 'a ⇒ bool) ⇒ bool = linorder_lt lt ⟷ (∀x. ¬(lt x x)) ∧ (∀x. ∀y. ∀z. lt x y ⟶ lt y z ⟶ lt x z) ∧ (∀x. ∀y. lt x y ∨ lt y x ∨ x = y) [hint_rewrite]
 
 theorem preorder_refl
   fixes le :: 'a ⇒ 'a ⇒ bool, x :: 'a
@@ -128,6 +139,90 @@ proof
   ← apply_prev goal=4 facts=[8,2,3]
 qed
 
+-- The strict-order laws, in the form a proof about `<` needs.
+
+theorem linorder_lt_irrefl
+  fixes lt :: 'a ⇒ 'a ⇒ bool, x :: 'a
+  prop linorder_lt lt ⟶ ~(lt x x)
+proof
+  ← intro goal=0
+  → rewrite linorder_lt_def sym=false target=fact goal=2 facts=[1]
+  → forward conjD1 goal=2 facts=[3]
+  ← apply_prev goal=2 facts=[4]
+qed
+
+theorem linorder_lt_trans
+  fixes lt :: 'a ⇒ 'a ⇒ bool, x :: 'a, y :: 'a, z :: 'a
+  prop linorder_lt lt ⟶ lt x y ⟶ lt y z ⟶ lt x z
+proof
+  ← intro goal=0
+  → rewrite linorder_lt_def sym=false target=fact goal=4 facts=[1]
+  → forward conjD2 goal=4 facts=[5]
+  → forward conjD1 goal=4 facts=[6]
+  → inst "x" goal=4 facts=[7]
+  → inst "y" goal=4 facts=[8]
+  → inst "z" goal=4 facts=[9]
+  ← apply_prev goal=4 facts=[10,2,3]
+qed
+
+theorem linorder_lt_linear
+  fixes lt :: 'a ⇒ 'a ⇒ bool, x :: 'a, y :: 'a
+  prop linorder_lt lt ⟶ lt x y | lt y x | x = y
+proof
+  ← intro goal=0
+  → rewrite linorder_lt_def sym=false target=fact goal=2 facts=[1]
+  → forward conjD2 goal=2 facts=[3]
+  → forward conjD2 goal=2 facts=[4]
+  ← apply_prev goal=2 facts=[5]
+qed
+
+theorem linorder_lt_neq
+  fixes lt :: 'a ⇒ 'a ⇒ bool, x :: 'a, y :: 'a
+  prop linorder_lt lt ⟶ lt x y ⟶ ~(x = y)
+proof
+  ← intro goal=0
+    #[1] linorder_lt lt
+    #[2] lt x y
+    #[3] ~(x = y)
+  → rewrite linorder_lt_def sym=false target=fact goal=3 facts=[1]
+    #[4] (!x. ~(lt x x)) & (!x. !y. !z. lt x y --> lt y z --> lt x z) & (!x. !y. lt x y | lt y x | x = y)
+  → forward conjD1 goal=3 facts=[4]
+    #[5] !x. ~(lt x x)
+  ← rule negI goal=3
+    #[6] x = y --> false
+  ← intro goal=6
+    #[7] x = y
+    #[8] false
+  ← inst y goal=8 facts=[5]
+    #[9] ~(lt y y)
+  → rewrite source=prev target=fact goal=8 facts=[7,2]
+    #[10] lt y y
+  ← rule negE_gen goal=8 facts=[9,10]
+qed
+
+-- `~lt x y` and `x ≠ y` together give the other direction.  (Eliminate the
+-- trichotomy with disj_comm + force_disj_true1, dropping the two known-false
+-- branches; the port's §9.3 recipe.)
+theorem linorder_lt_gt_of_not_lt
+  fixes lt :: 'a ⇒ 'a ⇒ bool, x :: 'a, y :: 'a
+  prop linorder_lt lt ⟶ ~(x = y) ⟶ ~(lt x y) ⟶ lt y x
+proof
+  ← intro goal=0
+    #[1] linorder_lt lt
+    #[2] ~(x = y)
+    #[3] ~(lt x y)
+    #[4] lt y x
+  cut "lt x y | lt y x | x = y" goal=4
+    #[5] lt x y | lt y x | x = y
+  ← rule linorder_lt_linear goal=5 facts=[1]
+    #[6] lt x y | lt y x | x = y
+  → rewrite disj_comm sym=false target=fact goal=4 facts=[6]
+    #[7] (lt y x | x = y) | lt x y
+  → forward force_disj_true1 goal=4 facts=[7,3]
+    #[8] lt y x | x = y
+  → forward force_disj_true1 goal=4 facts=[8,2]
+qed
+
 -- Instances: `nat` is a linear order.  These are ordinary theorems; a future
 -- `instance`/solver layer only needs to find one of them by name.
 
@@ -163,6 +258,33 @@ proof
   ← rule le_cases goal=6
 qed
 
+theorem nat_linorder_lt
+  prop linorder_lt (less :: nat ⇒ nat ⇒ bool)
+proof
+  ← rewrite linorder_lt_def sym=false goal=0
+    #[1] (!x::nat. ~(x < x)) & (!x::nat. !y. !z. x < y --> y < z --> x < z) & (!x::nat. !y. x < y | y < x | x = y)
+  ← rule conjI goal=1
+    #[2] !x::nat. ~(x < x)
+    #[3] (!x::nat. !y. !z. x < y --> y < z --> x < z) & (!x::nat. !y. x < y | y < x | x = y)
+  ← intro x goal=2
+    #[4] _VAR x
+    #[5] ~(x < x)
+  ← rule less_irrefl goal=5
+  ← rule conjI goal=3
+    #[6] !x::nat. !y. !z. x < y --> y < z --> x < z
+    #[7] !x::nat. !y. x < y | y < x | x = y
+  ← intro x,y,z goal=6
+    #[8] _VAR y
+    #[9] _VAR z
+    #[10] x < y
+    #[11] y < z
+    #[12] x < z
+  ← rule lt_trans goal=12 facts=[10,11]
+  ← intro x,y goal=7
+    #[13] x < y | y < x | x = y
+  ← rule lt_cases goal=13
+qed
+
 -- End-to-end demonstration of the sugar: `linorder_le_refl` is stated the way
 -- auto2 states it, and `nat_le_refl` uses it at `nat` by discharging the class
 -- premise with the instance theorem.
@@ -172,7 +294,11 @@ theorem linorder_le_refl
   prop x <= x
 proof
   ← intro goal=0
-  ← rule linorder_refl goal=2 facts=[1]
+    #[1] linorder (less_eq::'a => 'a => bool)
+    #[2] linorder_lt (less::'a => 'a => bool)
+    #[3] x <= x
+  ← rule linorder_refl goal=3 facts=[1]
+    #[4] x <= x
 qed
 
 theorem nat_le_refl

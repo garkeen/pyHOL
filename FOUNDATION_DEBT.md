@@ -87,14 +87,17 @@ STEP_FAILED），实验后要清理。
   Isabelle `Finite_Set.thy`、Mathlib `Data/Finset/Card.lean`。
 - **P1 结构性大缺口（holpy 完全空白）**：
   序（Isabelle `Orderings.thy`/`Order_Relation.thy`、Mathlib `Order/Defs/`）——
-  **已开工**：`'a::C` 类型类糖 + `library/order.pyhol` 的
-  `preorder`/`order`/`linorder` 谓词、层级引理与 `nat` 实例已就位
-  （见 `PROGRAM_VERIFICATION_PORT.md` §11）；`sorted`/`strict_sorted`/`insort` 待做、
+  **谓词层已完成**：`'a::C` 类型类糖（一个类可贡献多条前提）+ `library/order.pyhol` 的
+  `preorder`/`order`/`linorder`/`linorder_lt` 谓词、层级与严格序引理、`nat` 实例
+  都已就位（见 `PROGRAM_VERIFICATION_PORT.md` §11）；`strict_sorted` 与其第一条引理
+  在 `library/lists_ex.pyhol`（同文档 §12），其余列表引理与 `ordered_insert` 待补；
+  `int`/`real` 实例与
   格（`Lattices.thy`/`Complete_Lattices.thy`/`Conditionally_Complete_Lattices.thy`/
   `Lattices_Big.thy`、Mathlib `Order/Lattice.lean`/`Order/CompleteLattice/`）、
   关系（`Relation.thy`/`Transitive_Closure.thy`/`Equiv_Relations.thy`、
   HOL Light `Library/rstc.ml`）、
-  良基与递归（`Wellfounded.thy`/`Wfrec.thy`/`Zorn.thy`、HOL Light `wf.ml`/`Library/wo.ml`）。
+  良基与递归（`Wellfounded.thy`/`Wfrec.thy`/`Zorn.thy`、HOL Light `wf.ml`/`Library/wo.ml`）
+  仍缺。
 - **P2 数据结构**：list 补全（已补 take/drop/sublist/last/butlast/map/filter/foldr/foldl/
   concat/zip/itrev/list_update/list_swap/remdups 的定义与 take/drop/map 骨架引理，见
   `PROGRAM_VERIFICATION_PORT.md` §8；`sorted`/`strict_sorted`/`insort` 需序，归入 P1 序）；

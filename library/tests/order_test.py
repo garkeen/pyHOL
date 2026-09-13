@@ -20,7 +20,9 @@ from syntax.settings import global_setting
 ORDER_LEMMAS = ['preorder_refl', 'preorder_trans', 'order_preorder',
                 'order_antisym', 'linorder_order', 'linorder_total',
                 'linorder_refl', 'linorder_trans', 'linorder_antisym',
-                'nat_preorder', 'nat_order', 'nat_linorder',
+                'linorder_lt_irrefl', 'linorder_lt_trans', 'linorder_lt_linear',
+                'linorder_lt_neq', 'linorder_lt_gt_of_not_lt',
+                'nat_preorder', 'nat_order', 'nat_linorder', 'nat_linorder_lt',
                 'linorder_le_refl', 'nat_le_refl']
 
 
@@ -41,12 +43,17 @@ class OrderTheoryTest(unittest.TestCase):
         basic.load_theory('order')
         for name in ORDER_LEMMAS:
             self.assertIsNotNone(theory.get_theorem(name))
-        for name in ['preorder', 'order', 'linorder']:
+        for name in ['preorder', 'order', 'linorder', 'linorder_lt']:
             self.assertTrue(theory.thy.has_term_sig(name),
                             'missing constant %s' % name)
 
     def testItemLayerInjectsPremise(self):
-        """`fixes x :: 'a::linorder` becomes a premise of the statement."""
+        """`fixes x :: 'a::linorder` becomes a premise of the statement.
+
+        Both operations are constrained: holpy's `less` and `less_eq` are
+        independent overloaded constants, so a law predicate for each is
+        injected (a statement about `<` needs the second one).
+        """
         for fn in basic.get_import_order(['order']):
             basic.load_theory_cache(fn)
         basic.load_theory('order')
@@ -57,10 +64,23 @@ class OrderTheoryTest(unittest.TestCase):
         self.assertIsNone(obj.error)
         with global_setting(unicode=False):
             prop = str(obj.prop)
-        self.assertIn('linorder', prop)
-        self.assertIn('less_eq', prop)
+        self.assertIn('linorder (less_eq', prop)
+        self.assertIn('linorder_lt (less', prop)
         # The annotation is dropped from the parsed fixes: the type is 'a.
         self.assertEqual(str(obj.vars['x']), "'a")
+
+    def testStrictOrderPremiseIsUsable(self):
+        """A statement about `<` can use the injected strict-order laws."""
+        from repl.repl import Repl
+        repl = Repl()
+        repl.cmd_theory('order')
+        repl.cmd_var("x 'a::linorder")
+        repl.cmd_goal('~(x < x)')
+        repl.run_line('← intro goal=0')
+        # #1 is the `linorder less_eq` premise, #2 the `linorder_lt less` one.
+        repl.run_line('← rule linorder_lt_irrefl goal=3 facts=[2]')
+        self.assertFalse(repl.failed)
+        self.assertEqual(repl.sps.num_gaps, 0)
 
     def testConstraintIsARealObligation(self):
         """Without the annotation, `x <= x` at a type variable is not

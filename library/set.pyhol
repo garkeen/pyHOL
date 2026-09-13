@@ -510,6 +510,114 @@ proof
   ← refl goal=6
 qed
 
+-- The mirror of `union_empty` (used when `∅` ends up on the left).
+theorem empty_union
+  fixes A :: 'a set
+  prop {} Un A = A
+  [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+  ← rewrite member_union_iff sym=false goal=1
+  ← rewrite member_empty_simp sym=false goal=2
+  ← rewrite disj_false_left sym=false goal=3
+  ← intro x goal=4
+  ← refl goal=6
+qed
+
+-- `insert` on the left of a union: needed to assemble `set (xs @ ys)`.
+theorem insert_union
+  fixes x :: 'a, A :: 'a set, B :: 'a set
+  prop insert x A Un B = insert x (A Un B)
+  [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+    #[1] !x1. x1 Mem insert x A Un B <--> x1 Mem insert x (A Un B)
+  ← intro z goal=1
+    #[2] _VAR z
+    #[3] z Mem insert x A Un B <--> z Mem insert x (A Un B)
+  ← rewrite member_union_iff loc=0.1 sym=false goal=3
+    #[4] z Mem insert x A | z Mem B <--> z Mem insert x (A Un B)
+  ← rewrite member_insert loc=0.1.0.1 sym=false goal=4
+    #[5] (z = x | z Mem A) | z Mem B <--> z Mem insert x (A Un B)
+  ← rewrite member_insert loc=1 sym=false goal=5
+    #[6] (z = x | z Mem A) | z Mem B <--> z = x | z Mem A Un B
+  ← rewrite member_union_iff loc=1.1 sym=false goal=6
+    #[7] (z = x | z Mem A) | z Mem B <--> z = x | z Mem A | z Mem B
+  ← rewrite disj_assoc_eq loc=1 sym=false goal=7
+qed
+
+-- Two inserts commute (set level): needed for `ordered_insert_set`.
+theorem insert_comm
+  fixes x :: 'a, y :: 'a, A :: 'a set
+  prop insert x (insert y A) = insert y (insert x A)
+  [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+    #[1] !x1. x1 Mem insert x (insert y A) <--> x1 Mem insert y (insert x A)
+  ← intro z goal=1
+    #[2] _VAR z
+    #[3] z Mem insert x (insert y A) <--> z Mem insert y (insert x A)
+  ← rewrite member_insert loc=0.1 sym=false goal=3
+    #[4] z = x | z Mem insert y A <--> z Mem insert y (insert x A)
+  ← rewrite member_insert loc=0.1.1 sym=false goal=4
+    #[5] z = x | z = y | z Mem A <--> z Mem insert y (insert x A)
+  ← rewrite member_insert loc=1 sym=false goal=5
+    #[6] z = x | z = y | z Mem A <--> z = y | z Mem insert x A
+  ← rewrite member_insert loc=1.1 sym=false goal=6
+    #[7] z = x | z = y | z Mem A <--> z = y | z = x | z Mem A
+  ← rule disj_left_comm goal=7
+qed
+
+-- `A` (resp. `B`) is contained in its union: the standard way to move a
+-- membership into a union (used by the `strict_sorted` lemmas).
+theorem subset_union_left
+  fixes A :: 'a set, B :: 'a set
+  prop A Sub A Un B
+  [hint_rewrite]
+proof
+  ← rewrite subset_def sym=false goal=0
+    #[1] !x. x Mem A --> x Mem A Un B
+  ← intro x goal=1
+    #[2] _VAR x
+    #[3] x Mem A
+    #[4] x Mem A Un B
+  ← rewrite member_union_iff sym=false goal=4
+    #[5] x Mem A | x Mem B
+  ← rule disjI1 goal=5
+qed
+
+theorem subset_union_right
+  fixes A :: 'a set, B :: 'a set
+  prop B Sub A Un B
+  [hint_rewrite]
+proof
+  ← rewrite subset_def sym=false goal=0
+    #[1] !x. x Mem B --> x Mem A Un B
+  ← intro x goal=1
+    #[2] _VAR x
+    #[3] x Mem B
+    #[4] x Mem A Un B
+  ← rewrite member_union_iff sym=false goal=4
+    #[5] x Mem A | x Mem B
+  ← rule disjI2 goal=5
+qed
+
+-- Eliminate a bounded universal at a member: `(∀z. z ∈ B ⟶ P z)` plus
+-- `y ∈ B` gives `P y` in one checked step (`rule all_mem_elim`), which is what
+-- every `strict_sorted` proof needs when it uses the head-adjacent law.
+theorem all_mem_elim
+  fixes B :: 'a set, y :: 'a, P :: 'a ⇒ bool
+  prop (∀z. z Mem B ⟶ P z) ⟶ y Mem B ⟶ P y
+proof
+  ← intro goal=0
+    #[1] !z. z Mem B --> P z
+    #[2] y Mem B
+    #[3] P y
+  ← inst y goal=3 facts=[1]
+    #[4] y Mem B --> P y
+  ← apply_prev goal=3 facts=[4,2]
+qed
+
 header "Image"
 
 theorem image_empty
