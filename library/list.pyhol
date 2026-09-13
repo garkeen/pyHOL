@@ -299,6 +299,16 @@ proof
   ← rewrite member_union_iff sym=false goal=1
 qed
 
+theorem member_set_cons
+  fixes xs :: 'a list, x :: 'a, y :: 'a
+  prop x Mem set (y # xs) <--> x = y | x Mem set xs
+  [hint_rewrite]
+proof
+  ← rewrite set_def_2 sym=false goal=0
+    #[1] x Mem insert y (set xs) <--> x = y | x Mem set xs
+  ← rewrite member_insert sym=false goal=1
+qed
+
 theorem member_set_append_left
   fixes xs :: 'a list, ys :: 'a list, x :: 'a
   prop x Mem set xs ⟶ x Mem set (xs @ ys)

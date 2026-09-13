@@ -926,11 +926,32 @@ else 分支要用的「既不等于也不小于就是大于」）。
 | `library/logic.pyhol` | `disj_left_comm`（`A ∨ (B ∨ C) ⟷ B ∨ (A ∨ C)`） | VALID 92 / 0 非绿 |
 | `library/set.pyhol` | `empty_union`、`insert_union`、`insert_comm`、`subset_union_left`、`subset_union_right`、`all_mem_elim` | VALID 79 / AXIOM 3 / 0 非绿 |
 | `library/list.pyhol` | `set_append`、`member_set_append`、`member_set_append_left/right` | VALID 41 / 0 非绿 |
-| `library/lists_ex.pyhol`（新） | `fun strict_sorted` + `strict_sorted_appendE1` | VALID 1 / 0 非绿 |
+| `library/list.pyhol` | （补）`member_set_cons` | VALID 42 / 0 非绿 |
+| `library/lists_ex.pyhol`（新） | `fun strict_sorted` + `strict_sorted_appendE1`、两个析构引理 `strict_sorted_append_head/tail`、`strict_sorted_appendE2` | VALID 4 / 0 非绿 |
 
 `strict_sorted` 的定义照 auto2（`∀y. y ∈ set ys ⟶ x < y`），约束写成
 `fixes xs :: 'a::linorder list`——注解注入两条前提，证明里用 `linorder_lt_*`。
-`strict_sorted_appendE1` 是 auto2 的 `strict_sorted_appendE1 [forward]`，33 步。
+`strict_sorted_appendE1`（33 步）与 `strict_sorted_appendE2`（36 步，auto2 的
+`[forward]` 前缀-后缀性质）都已证成；`_head`/`_tail` 是把「`(x # xs) @ ys` 的
+strict_sorted 拆开」固定下来的析构引理（见 §12.2 第 31 条）。
+
+### 12.1.1 分支内命题去重（本轮最费时的一处）
+
+`StableProofState` 按命题去重分配 sid（§3.8），于是**两个 `cases` 分支里如果
+推导出同一条中间命题，它们共用同一个 sid，只对其中一个分支可达**——第二个分支
+拿到的是"非法依赖"（`apply_method: illegal dependence`）。E2 的归纳步正好踩上：
+两支都要先把 `strict_sorted ((x1 # xs) @ ys)` 展成
+`(∀y. y ∈ set (xs@ys) ⟶ x1 < y) ∧ strict_sorted (xs @ ys)`，于是那一串中间命题
+全被第一支占住。**对策（本轮采用）**：把两支各自需要的东西做成**不同命题**的
+析构引理 `strict_sorted_append_head`/`_tail`，让两支从同一个假设出发各自推出
+*互不相同* 的结论（head 支只要 `∀…`，tail 支只要 `strict_sorted (xs@ys)`），
+分支内部再展开。这与 §4.3「按分支拆引理」是同一招，只是这里拆的是"同一个证明的
+两个分支"。
+
+另一条经验：**为某个目标 `goal=G` 派生的事实落在 G 的子树里**，`cases G` 之后
+的两个分支看不到它们（可见的是 G 之前、同一层子证明里的事实，例如 `intro` 出来的
+假设）。所以"进 cases 之前先 forward 出来当共同祖先"（repl-client §8.2 的建议）
+要求那些 forward 的插入点在外层，而不是在被 split 的那个目标下面。
 
 ### 12.2 机制新发现（§8.5/§9.3/§10.2 的继续）
 
@@ -961,13 +982,21 @@ else 分支要用的「既不等于也不小于就是大于」）。
     或者先 `→ inst` 出蕴含式再 `apply_prev`。
 30. **`rewrite … sym=true` 是「等式反向用」**：`strict_sorted_def_2`（定义）要用
     `sym=false` 展开；`append_def_1`（`[]@xs = xs`）反向用才是 `xs → []@xs`。
+31. **`forward <thm> facts=[…]` 要按定理的前提顺序把前提全给上**：带类前提的
+    引理（如 `strict_sorted_append_tail`）若只给 `strict_sorted` 假设，matcher
+    会拿第一条前提 `linorder less_eq` 去比，报 `linorder … --- strict_sorted …`。
+    正确写法 `facts=[<P1>, <P2>, <假设>]`（`param_*` 可给可不给，给了也对）。
+32. **`forward` 推出的命题与目标相同时会直接关门**（本轮 `strict_sorted_append_head`
+    就是 `conjD1` 一步关门），不需要再 `apply_prev`；反之若目标没关（见第 29 条
+    的 `all_mem_elim` 场景），才要 `apply_prev`。
 
 ### 12.3 阶段 3 剩余（下一步）
 
 `library/lists_ex.pyhol` 里还缺 auto2 `Lists_Ex.thy` 的其余陈述：
-`strict_sorted_appendI`（`[backward]`）、`strict_sorted_appendE2`（`[forward]`，
-前缀元素小于后缀）、`strict_sorted_distinct`、`ordered_insert` 与
-`ordered_insert_set`/`ordered_insert_sorted`/`ordered_insert_binary`。
+`strict_sorted_appendI`（`[backward]`）、`strict_sorted_distinct`（需要 cons 形式的
+析构引理 + `linorder_lt_irrefl` + `negE_gen`，配方已明确）、`ordered_insert` 与
+`ordered_insert_set`（要 `insert_comm`）/`ordered_insert_sorted`（要
+`linorder_lt_gt_of_not_lt`）/`ordered_insert_binary`。
 `remove_elt_list` 一组（BST 的删除用）与依赖 Mapping_Str 的
 `ordered_insert_pairs`/`remove_elt_pairs`/`map_of_alist_binary` 归阶段 5。
 

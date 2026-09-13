@@ -17,7 +17,8 @@ from core.verify import validate_theory, COMPUTATION_ORACLES
 from syntax.settings import global_setting
 
 
-STRICT_SORTED_LEMMAS = ['strict_sorted_appendE1']
+STRICT_SORTED_LEMMAS = ['strict_sorted_appendE1', 'strict_sorted_append_head',
+                        'strict_sorted_append_tail', 'strict_sorted_appendE2']
 
 
 class ListsExTheoryTest(unittest.TestCase):

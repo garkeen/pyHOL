@@ -82,3 +82,106 @@ proof
   ← rule all_mem_elim goal=30 facts=[18,32]
     #[33] x < y
 qed
+
+-- Destructors for a list whose head is followed by an append.  auto2 gets
+-- these from its rewrite engine; here they are two lemmas, which also keeps
+-- the two branches of an induction on `xs` from forging the *same*
+-- intermediate propositions (stable IDs are assigned per proposition, so a
+-- shared intermediate between two branches is only reachable from one).
+
+theorem strict_sorted_append_head
+  fixes x :: 'a::linorder, xs :: 'a::linorder list, ys :: 'a::linorder list
+  prop strict_sorted ((x # xs) @ ys) ⟶ (∀y. y Mem set (xs @ ys) ⟶ x < y)
+proof
+  ← intro goal=0
+    #[1] linorder (less_eq::'a => 'a => bool)
+    #[2] linorder_lt (less::'a => 'a => bool)
+    #[3] strict_sorted ((x # xs) @ ys)
+    #[4] !y. y Mem set (xs @ ys) --> x < y
+  → rewrite append_def_2 sym=false target=fact goal=4 facts=[3]
+    #[5] strict_sorted (x # xs @ ys)
+  → rewrite strict_sorted_def_2 sym=false target=fact goal=4 facts=[5]
+    #[6] (!y. y Mem set (xs @ ys) --> x < y) & strict_sorted (xs @ ys)
+  → forward conjD1 goal=4 facts=[6]
+    #[7] !y. y Mem set (xs @ ys) --> x < y
+qed
+
+theorem strict_sorted_append_tail
+  fixes x :: 'a::linorder, xs :: 'a::linorder list, ys :: 'a::linorder list
+  prop strict_sorted ((x # xs) @ ys) ⟶ strict_sorted (xs @ ys)
+proof
+  ← intro goal=0
+    #[1] linorder (less_eq::'a => 'a => bool)
+    #[2] linorder_lt (less::'a => 'a => bool)
+    #[3] strict_sorted ((x # xs) @ ys)
+    #[4] strict_sorted (xs @ ys)
+  → rewrite append_def_2 sym=false target=fact goal=4 facts=[3]
+    #[5] strict_sorted (x # xs @ ys)
+  → rewrite strict_sorted_def_2 sym=false target=fact goal=4 facts=[5]
+    #[6] (!y. y Mem set (xs @ ys) --> x < y) & strict_sorted (xs @ ys)
+  → forward conjD2 goal=4 facts=[6]
+    #[7] strict_sorted (xs @ ys)
+qed
+
+theorem strict_sorted_appendE2
+  fixes xs :: 'a::linorder list, ys :: 'a::linorder list, x :: 'a
+  prop strict_sorted (xs @ ys) ⟶ x Mem set xs ⟶ (∀y. y Mem set ys ⟶ x < y)
+proof
+  ← induct xs list_induct goal=0
+    #[1] linorder (less_eq::'a => 'a => bool) --> linorder_lt (less::'a => 'a => bool) --> strict_sorted ([] @ ys) --> x Mem set [] --> (!y. y Mem set ys --> x < y)
+    #[2] !x1. !xs. (linorder (less_eq::'a => 'a => bool) --> linorder_lt (less::'a => 'a => bool) --> strict_sorted (xs @ ys) --> x Mem set xs --> (!y. y Mem set ys --> x < y)) --> linorder (less_eq::'a => 'a => bool) --> linorder_lt (less::'a => 'a => bool) --> strict_sorted ((x1 # xs) @ ys) --> x Mem set (x1 # xs) --> (!y. y Mem set ys --> x < y)
+  ← intro goal=1
+    #[3] linorder (less_eq::'a => 'a => bool)
+    #[4] linorder_lt (less::'a => 'a => bool)
+    #[5] strict_sorted ([] @ ys)
+    #[6] x Mem set []
+    #[7] !y. y Mem set ys --> x < y
+  → rewrite set_def_1 sym=false target=fact goal=7 facts=[6]
+    #[8] x Mem {}
+  → rewrite member_empty_simp sym=false target=fact goal=7 facts=[8]
+    #[9] false
+  ← rule falseE goal=7 facts=[9]
+    #[10] !y. y Mem set ys --> x < y
+  ← intro x1,xs goal=2
+    #[11] _VAR x1
+    #[12] _VAR xs
+    #[13] linorder (less_eq::'a => 'a => bool) --> linorder_lt (less::'a => 'a => bool) --> strict_sorted (xs @ ys) --> x Mem set xs --> (!y. y Mem set ys --> x < y)
+    #[14] strict_sorted ((x1 # xs) @ ys)
+    #[15] x Mem set (x1 # xs)
+    #[16] !y. y Mem set ys --> x < y
+  ← cases "x Mem set xs" goal=16
+    #[17] x Mem set xs --> (!y. y Mem set ys --> x < y)
+    #[18] ~(x Mem set xs) --> (!y. y Mem set ys --> x < y)
+  ← intro goal=17
+    #[19] x Mem set xs
+    #[20] !y. y Mem set ys --> x < y
+  → forward goal=20 facts=[13,3]
+    #[21] linorder_lt (less::'a => 'a => bool) --> strict_sorted (xs @ ys) --> x Mem set xs --> (!y. y Mem set ys --> x < y)
+  → forward goal=20 facts=[21,4]
+    #[22] strict_sorted (xs @ ys) --> x Mem set xs --> (!y. y Mem set ys --> x < y)
+  → forward strict_sorted_append_tail param_x=x1 param_xs=xs param_ys=ys goal=20 facts=[3,4,14]
+    #[23] strict_sorted (xs @ ys)
+  → forward goal=20 facts=[22,23]
+    #[24] x Mem set xs --> (!y. y Mem set ys --> x < y)
+  ← apply_prev goal=20 facts=[24,19]
+    #[25] !y. y Mem set ys --> x < y
+  ← intro goal=18
+    #[26] ~(x Mem set xs)
+    #[27] !y. y Mem set ys --> x < y
+  → forward strict_sorted_append_head param_x=x1 param_xs=xs param_ys=ys goal=27 facts=[3,4,14]
+    #[28] !y. y Mem set (xs @ ys) --> x1 < y
+  → rewrite member_set_cons sym=false target=fact goal=27 facts=[15]
+    #[29] x = x1 | x Mem set xs
+  → forward force_disj_true1 goal=27 facts=[29,26]
+    #[30] x = x1
+  ← intro y goal=27
+    #[31] _VAR y
+    #[32] y Mem set ys
+    #[33] x < y
+  ← rewrite source=prev goal=33 facts=[30]
+    #[34] x1 < y
+  → forward member_set_append_right param_x=y param_xs=xs param_ys=ys goal=34 facts=[32]
+    #[35] y Mem set (xs @ ys)
+  ← rule all_mem_elim goal=34 facts=[28,35]
+    #[36] x1 < y
+qed
