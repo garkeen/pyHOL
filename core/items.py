@@ -183,9 +183,15 @@ class Axiom(Item):
         self.name = data['name']
 
         try:
+            # `'a::C` is sugar for a premise on the statement (syntax/parser.py):
+            # the annotation lives in the source text (and so round-trips), the
+            # kernel item sees only the ordinary implication.
+            prop_text = parser.with_class_premises(
+                data['prop'], *data.get('vars', {}).values())
+
             with context.fresh_context(vars=data['vars']):
                 self.vars = context.ctxt.vars
-                self.prop = context.parse_term(data['prop'])
+                self.prop = context.parse_term(prop_text)
 
             # theorem does not already exist
             if theory.thy.has_theorem(self.name):

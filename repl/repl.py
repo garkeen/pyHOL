@@ -54,7 +54,7 @@ if ROOT not in sys.path:
 
 from core import basic, context
 from syntax.settings import global_setting
-from syntax import pyhol
+from syntax import parser, pyhol
 import method.stable_state as ss
 
 
@@ -163,7 +163,18 @@ class Repl:
             print('load a theory first (theory NAME)')
             return
         context.set_context(self.theory, vars=dict(self.vars))
-        self.goal_prop = arg.strip()
+        try:
+            # `'a::C` sugar, same rule as the item layer (syntax/parser.py):
+            # annotations in the declared variables' types (or in the goal
+            # itself) become premises, so a proof developed here matches the
+            # statement the .pyhol item is stored with.
+            prop = parser.with_class_premises(
+                arg.strip(), *self.vars.values())
+        except Exception as e:
+            print('cannot parse goal: %s' % _exc_str(e))
+            self.sps = None
+            return
+        self.goal_prop = prop
         try:
             self.sps = ss.StableProofState.create(self.goal_prop, dict(self.vars),
                                                   trust=self.trust)

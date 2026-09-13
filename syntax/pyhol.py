@@ -19,6 +19,10 @@ Format specification:
     inductive <name> :: <type>\n  | <rule_name>: <prop> ...
     axiom <name>\n  fixes ...\n  prop ...\n  [attrs]
     theorem <name>\n  fixes ...\n  prop ...\n  [attrs]\n  proof\n    ...\n  qed
+
+A type variable in any type position may carry a class annotation,
+`'a::linorder`; it is sugar for a premise of the statement and is dropped from
+the type itself (see syntax/parser.py: CLASSES / with_class_premises).
 """
 
 import re

@@ -822,3 +822,67 @@ pigeonhole 唯一性，库里没有，holpy 也没有类型定义原语）。
      `card (image f s) = card s`，把 5 的结论改写成
      `card (image f s) < card (image f s)`，与 `less_irrefl` 冲突，
      `negE_gen` 收口。
+
+## 11. 阶段 3 前置：类型类糖（2026-09-13，先做糖，按用户决定）
+
+auto2 的 `'a::linorder` 共 50 处（`::linorder` 37 + `::ord` 11 + `::order` 2），
+`instantiation` 6 处。**不做类型类**（理由见下方「边界」），改成两件事：
+库里的序谓词 + 解析层的 `'a::C` 糖。
+
+### 11.1 语义：注解就是前提
+
+```
+fixes x :: 'a::linorder
+prop x <= x
+```
+
+在 item 层被存成
+
+```
+fixes x :: 'a
+prop linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x
+```
+
+即**注解 = 前提**，`'a` 的类型不变。于是 item 层以下（步进、重放、内核）
+完全不知道类；前提在**使用处**由实例定理消掉（`nat_linorder`）。
+这条等价性来自 Isabelle 自己：Pure 内核没有类，`OFCLASS` 只是 meta 层假设，
+类定律全是有条件假设。差别只在「谁来做实例解析」——糖版是显式的，
+忠实类型类版交给 elaborator。
+
+### 11.2 实现（约 130 行 + 测试）
+
+| 位置 | 内容 |
+|---|---|
+| `syntax/parser.py` 文法 | `?typ_atom: "'" CNAME ("::" CNAME)? -> tvar`；transformer 丢掉注解，类型仍是 `'a` |
+| `syntax/parser.py` 表 | `CLASSES`: 类名 → (谓词名, 运算表)，运算 = (常量名, 类型模板)；`add_class()` 是扩展点 |
+| `syntax/parser.py` 函数 | `class_constraints()`（收集 + 报错）、`class_premises()`、`with_class_premises()` |
+| `core/items.py` | `Axiom.parse`（`Theorem` 继承）里注入前提；`data` 是原始文本，所以 `'a::linorder` 留在源码里、导出回环保留 |
+| `repl/repl.py` | `cmd_goal` 用同一条规则注入，所以 `var x 'a::linorder` + `goal x <= x` 与 item 的陈述一致 |
+| `library/order.pyhol` | 新理论：`preorder`/`order`/`linorder` 谓词、6 条层级/投影引理、3 条 `nat` 实例、`linorder_refl/trans/antisym`、两条糖的端到端演示 |
+
+### 11.3 边界（明确不做 / 留待增量 2）
+
+- **datatype 参数上的约束**（`('a::linorder, 'b) tree`）暂不传播：holpy 的
+  `datatype` 行只写参数名，没有 kind 注解。阶段 5 真需要时加一个 item 元数据
+  + 传播（那时是「约束环境」，不是文本替换）。
+- **定义（`def`/`fun`/`inductive`）只把注解当标记**：它们的方程对实例是均匀的
+  （运算就是通用重载常量 `less_eq`），所以不注入前提；`fun tree_sorted ::
+  ('a::linorder,'b) tree ⇒ bool` 这类签名照写即可。
+- **不做忠实类型类**：`kernel/type.py` 的 `Type` 没有 sort；`kernel/theory.py:253`
+  的 `get_overload_const_name` 明确要求实例类型是具体类型常量，所以「在类型变量上
+  解析类运算」要改重载解析本身，再加超类闭包、重叠一致性、defaulting——2~5 天
+  且动内核相邻代码，换来的只是 50 处的书写便利。
+- **JSON/edit 面看到的是脱糖形态**：`.pyhol` 源码（和 `.pyhol` 回环）保留
+  `'a::linorder`，而 `export_json`/`get_display` 给出的是去掉注解的 fixes +
+  显式前提 `linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ ...`（两者语义相同，且不会
+  二次注入——注解已经不在文本里了）。前端保存的文本因此是脱糖形态，这是可接受
+  的规范形态。
+- **实例解析暂不做自动化**：使用处手写 `rule <law> facts=[<约束事实>]`（约束事实
+  来自注解或实例定理）。以后要自动化，加一张实例表让 solver 试即可，不动内核。
+
+### 11.4 阶段 3 剩余
+
+谓词层（preorder/order/linorder + 层级引理 + nat 实例）已就位；
+`sorted`/`strict_sorted`/`insort`/`ordered_insert` 与 `Min`/`Max` 仍待做，
+它们建在 `linorder` 谓词上，语法照 auto2 写（`fixes xs :: ('a::linorder) list`）。
+实例还需要 `int`/`real`（各自一条定理，料已在各自理论里）。

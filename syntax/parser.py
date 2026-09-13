@@ -2,6 +2,7 @@
 
 from typing import Tuple, List, Union
 import copy
+import re
 from lark import Lark, Transformer, v_args, exceptions
 
 from syntax.lark_error import LarkParseError, translate_lark_error
@@ -39,7 +40,7 @@ grammar = r"""
     ?typ_prod: typ_atom "×" typ_prod -> prodtype       // Product type, right assoc
         | typ_atom
 
-    ?typ_atom: "'" CNAME  -> tvar              // Type variable
+    ?typ_atom: "'" CNAME ("::" CNAME)? -> tvar  // Type variable, optional class
         | "?'" CNAME  -> stvar             // Schematic type variable
         | CNAME -> type                   // Type constants
         | typ_atom CNAME -> typeapp       // Type constructor with one argument
@@ -171,8 +172,12 @@ class HOLTransformer(Transformer):
         # callers above syntax pass their context explicitly.
         self.ctxt = ctxt if ctxt is not None else infertype.EMPTY_CTXT
 
-    def tvar(self, s):
-        return TVar(str(s))
+    def tvar(self, *args):
+        # `'a::C` carries a class annotation.  The type is just `'a`: the
+        # class is sugar for a premise on the statement that mentions it
+        # (see CLASSES / with_class_premises below), so the type level is
+        # free of constraints.
+        return TVar(str(args[0]))
 
     def stvar(self, s):
         return STVar(str(s))
@@ -493,6 +498,113 @@ def add_type_abbrev(name, args, body):
 def clear_type_abbrevs():
     """Drop all abbreviations.  Called when the theory is reset."""
     type_abbrevs.clear()
+
+
+# ---------------------------------------------------------------------------
+# Type-class sugar: `'a::C` annotations
+# ---------------------------------------------------------------------------
+#
+# A class annotation on a *type variable* is sugar for a premise.  The type
+# stays `'a`; a statement item that carries the annotation gains the class
+# predicate applied to the class operation(s) as an assumption:
+#
+#     theorem foo
+#       fixes x :: 'a::linorder
+#       prop x <= x
+#
+# is proved, stored and displayed as
+#
+#     fixes x :: 'a
+#     prop linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x
+#
+# The premise is discharged at the *use* site by the class's instance theorem
+# (e.g. `nat_linorder`, proved in library/order.pyhol), so nothing below the
+# item layer -- proof replay, the checked channels, the kernel -- has to know
+# about classes.  Definitions (`def`/`fun`/`inductive`) keep the annotation as
+# a marker only: their equations are uniform in the instance (the operation is
+# the generic, overloaded constant), so nothing is injected for them.
+#
+# CLASSES is the syntax-side registry: class name -> (predicate name, ops),
+# where an op is (constant name, type template) and %s in the template stands
+# for the annotated type variable.  The predicate itself is library content.
+CLASSES = {
+    'preorder': ('preorder', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),
+    'order': ('order', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),
+    'linorder': ('linorder', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),
+}
+
+
+def add_class(name, predicate, ops):
+    """Register a class for the `'a::NAME` sugar.
+
+    name -- class name as written after `::`.
+    predicate -- library predicate that the class stands for.
+    ops -- the class's operations, as (constant name, type template) pairs;
+           `%s` in the template is replaced by the annotated type variable.
+
+    """
+    CLASSES[name] = (predicate, tuple(ops))
+
+
+_class_annot_re = re.compile(r"'([A-Za-z_][A-Za-z0-9_']*)::([A-Za-z_][A-Za-z0-9_']*)")
+
+
+def class_constraints(*texts, strict=True):
+    """Collect `(var, class)` annotations from type texts, in first-seen order.
+
+    strict -- also reject a `::` annotation that does not sit on a type
+    variable (e.g. `nat::linorder`).  Type texts use strict=True; a prop text
+    is scanned leniently, since it may legitimately contain term-level type
+    annotations such as `(less_eq :: nat ⇒ nat ⇒ bool)`.
+
+    Raises ParserError for an unknown class (and, when strict, for a `::`
+    annotation that is not on a type variable).
+
+    """
+    found = []
+    for text in texts:
+        if not text or '::' not in text:
+            continue
+        if strict and '::' in _class_annot_re.sub('', text):
+            raise ParserError(
+                "class annotation must be on a type variable ('a::C): %s" % text)
+        for m in _class_annot_re.finditer(text):
+            var, cls = m.group(1), m.group(2)
+            if cls not in CLASSES:
+                raise ParserError(
+                    "class %r is not registered (known: %s) in %s"
+                    % (cls, ', '.join(sorted(CLASSES)), text))
+            if (var, cls) not in found:
+                found.append((var, cls))
+    return found
+
+
+def class_premises(constraints):
+    """Premise texts for `(var, class)` constraints, in the given order."""
+    res = []
+    for var, cls in constraints:
+        predicate, ops = CLASSES[cls]
+        for op_name, op_ty in ops:
+            res.append('%s (%s::%s)' % (predicate, op_name, op_ty % (var, var)))
+    return res
+
+
+def with_class_premises(prop_text, *type_texts):
+    """Prepend the class premises implied by the annotations in `type_texts`.
+
+    Used by the item layer for statements (theorem/axiom): the annotations in
+    the fixes' types and in the prop itself become premises of the prop.  The
+    fixes' types are checked strictly; the prop is only scanned for
+    annotations (its `::` also appears in term-level type annotations).
+    Returns prop_text unchanged when there is no annotation.
+
+    """
+    constraints = class_constraints(*type_texts)
+    prems = class_premises(class_constraints(prop_text, strict=False))
+    prems = class_premises(constraints) + prems
+    if not prems:
+        return prop_text
+    return ' ⟶ '.join(prems + [prop_text])
 
 
 def _subst_type(T, subst):

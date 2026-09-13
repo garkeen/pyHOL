@@ -86,7 +86,10 @@ STEP_FAILED），实验后要清理。
   （现只有 11 条可数定理）；`countable` 定义。参考 HOL Light `Library/card.ml`、
   Isabelle `Finite_Set.thy`、Mathlib `Data/Finset/Card.lean`。
 - **P1 结构性大缺口（holpy 完全空白）**：
-  序（Isabelle `Orderings.thy`/`Order_Relation.thy`、Mathlib `Order/Defs/`）、
+  序（Isabelle `Orderings.thy`/`Order_Relation.thy`、Mathlib `Order/Defs/`）——
+  **已开工**：`'a::C` 类型类糖 + `library/order.pyhol` 的
+  `preorder`/`order`/`linorder` 谓词、层级引理与 `nat` 实例已就位
+  （见 `PROGRAM_VERIFICATION_PORT.md` §11）；`sorted`/`strict_sorted`/`insort` 待做、
   格（`Lattices.thy`/`Complete_Lattices.thy`/`Conditionally_Complete_Lattices.thy`/
   `Lattices_Big.thy`、Mathlib `Order/Lattice.lean`/`Order/CompleteLattice/`）、
   关系（`Relation.thy`/`Transitive_Closure.thy`/`Equiv_Relations.thy`、

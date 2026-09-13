@@ -1,0 +1,184 @@
+theory order
+imports nat
+description "Orders as explicit relations (phase 3 of the auto2 port)."
+
+-- auto2 writes `'a::linorder` (and the `preorder`/`order` above it); here the
+-- class is a predicate on the relation itself, so no type classes are needed:
+-- the relation is an ordinary argument.  The `'a::C` annotation in a .pyhol
+-- file is *sugar* for the corresponding predicate premise (syntax/parser.py),
+-- i.e. the statement
+--
+--     fixes x :: 'a::linorder
+--     prop x <= x
+--
+-- is stored as `linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x`.  The premise is
+-- discharged at the *use* site by the instance theorem below (`nat_linorder`),
+-- so nothing below the item layer knows about classes.  See
+-- PROGRAM_VERIFICATION_PORT.md §11 for the design and its boundaries.
+
+def preorder :: ('a ⇒ 'a ⇒ bool) ⇒ bool = preorder le ⟷ (∀x. le x x) ∧ (∀x. ∀y. ∀z. le x y ⟶ le y z ⟶ le x z) [hint_rewrite]
+
+def order :: ('a ⇒ 'a ⇒ bool) ⇒ bool = order le ⟷ preorder le ∧ (∀x. ∀y. le x y ⟶ le y x ⟶ x = y) [hint_rewrite]
+
+def linorder :: ('a ⇒ 'a ⇒ bool) ⇒ bool = linorder le ⟷ order le ∧ (∀x. ∀y. le x y ∨ le y x) [hint_rewrite]
+
+theorem preorder_refl
+  fixes le :: 'a ⇒ 'a ⇒ bool, x :: 'a
+  prop preorder le ⟶ le x x
+proof
+  ← intro goal=0
+  → rewrite target=fact preorder_def sym=false goal=2 facts=[1]
+  → forward conjD1 goal=2 facts=[3]
+  ← apply_prev goal=2 facts=[4]
+qed
+
+theorem preorder_trans
+  fixes le :: 'a ⇒ 'a ⇒ bool, x :: 'a, y :: 'a, z :: 'a
+  prop preorder le ⟶ le x y ⟶ le y z ⟶ le x z
+proof
+  ← intro goal=0
+  → rewrite target=fact preorder_def sym=false goal=4 facts=[1]
+  → forward conjD2 goal=4 facts=[5]
+  → inst "x" goal=4 facts=[6]
+  → inst "y" goal=4 facts=[7]
+  → inst "z" goal=4 facts=[8]
+  ← apply_prev goal=4 facts=[9,2,3]
+qed
+
+theorem order_preorder
+  fixes le :: 'a ⇒ 'a ⇒ bool
+  prop order le ⟶ preorder le
+proof
+  ← intro goal=0
+  → rewrite target=fact order_def sym=false goal=2 facts=[1]
+  → forward conjD1 goal=2 facts=[3]
+qed
+
+theorem order_antisym
+  fixes le :: 'a ⇒ 'a ⇒ bool, x :: 'a, y :: 'a
+  prop order le ⟶ le x y ⟶ le y x ⟶ x = y
+proof
+  ← intro goal=0
+  → rewrite target=fact order_def sym=false goal=4 facts=[1]
+  → forward conjD2 goal=4 facts=[5]
+  → inst "x" goal=4 facts=[6]
+  → inst "y" goal=4 facts=[7]
+  ← apply_prev goal=4 facts=[8,2,3]
+qed
+
+theorem linorder_order
+  fixes le :: 'a ⇒ 'a ⇒ bool
+  prop linorder le ⟶ order le
+proof
+  ← intro goal=0
+  → rewrite target=fact linorder_def sym=false goal=2 facts=[1]
+  → forward conjD1 goal=2 facts=[3]
+qed
+
+theorem linorder_total
+  fixes le :: 'a ⇒ 'a ⇒ bool, x :: 'a, y :: 'a
+  prop linorder le ⟶ le x y ∨ le y x
+proof
+  ← intro goal=0
+  → rewrite target=fact linorder_def sym=false goal=2 facts=[1]
+  → forward conjD2 goal=2 facts=[3]
+  ← apply_prev goal=2 facts=[4]
+qed
+
+-- The `linorder` laws in the form a proof usually needs: the constraint is
+-- unfolded once through the hierarchy, so callers do not repeat the descent.
+
+theorem linorder_refl
+  fixes le :: 'a ⇒ 'a ⇒ bool, x :: 'a
+  prop linorder le ⟶ le x x
+proof
+  ← intro goal=0
+  → rewrite target=fact linorder_def sym=false goal=2 facts=[1]
+  → forward conjD1 goal=2 facts=[3]
+  → rewrite target=fact order_def sym=false goal=2 facts=[4]
+  → forward conjD1 goal=2 facts=[5]
+  → rewrite target=fact preorder_def sym=false goal=2 facts=[6]
+  → forward conjD1 goal=2 facts=[7]
+  ← apply_prev goal=2 facts=[8]
+qed
+
+theorem linorder_trans
+  fixes le :: 'a ⇒ 'a ⇒ bool, x :: 'a, y :: 'a, z :: 'a
+  prop linorder le ⟶ le x y ⟶ le y z ⟶ le x z
+proof
+  ← intro goal=0
+  → rewrite target=fact linorder_def sym=false goal=4 facts=[1]
+  → forward conjD1 goal=4 facts=[5]
+  → rewrite target=fact order_def sym=false goal=4 facts=[6]
+  → forward conjD1 goal=4 facts=[7]
+  → rewrite target=fact preorder_def sym=false goal=4 facts=[8]
+  → forward conjD2 goal=4 facts=[9]
+  ← apply_prev goal=4 facts=[10,2,3]
+qed
+
+theorem linorder_antisym
+  fixes le :: 'a ⇒ 'a ⇒ bool, x :: 'a, y :: 'a
+  prop linorder le ⟶ le x y ⟶ le y x ⟶ x = y
+proof
+  ← intro goal=0
+  → rewrite target=fact linorder_def sym=false goal=4 facts=[1]
+  → forward conjD1 goal=4 facts=[5]
+  → rewrite target=fact order_def sym=false goal=4 facts=[6]
+  → forward conjD2 goal=4 facts=[7]
+  ← apply_prev goal=4 facts=[8,2,3]
+qed
+
+-- Instances: `nat` is a linear order.  These are ordinary theorems; a future
+-- `instance`/solver layer only needs to find one of them by name.
+
+theorem nat_preorder
+  prop preorder (less_eq :: nat ⇒ nat ⇒ bool)
+proof
+  ← rewrite preorder_def sym=false goal=0
+  ← rule conjI goal=1
+  ← intro x goal=2
+  ← rule less_eq_refl goal=5
+  ← intro x,y,z goal=3
+  ← rule less_eq_trans goal=10 facts=[8,9]
+qed
+
+theorem nat_order
+  prop order (less_eq :: nat ⇒ nat ⇒ bool)
+proof
+  ← rewrite order_def sym=false goal=0
+  ← rule conjI goal=1
+  → forward nat_preorder goal=2
+  ← intro x,y goal=3
+  ← rewrite le_antisym sym=true goal=8
+  → forward conjI goal=9 facts=[6,7]
+qed
+
+theorem nat_linorder
+  prop linorder (less_eq :: nat ⇒ nat ⇒ bool)
+proof
+  ← rewrite linorder_def sym=false goal=0
+  ← rule conjI goal=1
+  → forward nat_order goal=2
+  ← intro x,y goal=3
+  ← rule le_cases goal=6
+qed
+
+-- End-to-end demonstration of the sugar: `linorder_le_refl` is stated the way
+-- auto2 states it, and `nat_le_refl` uses it at `nat` by discharging the class
+-- premise with the instance theorem.
+
+theorem linorder_le_refl
+  fixes x :: 'a::linorder
+  prop x <= x
+proof
+  ← intro goal=0
+  ← rule linorder_refl goal=2 facts=[1]
+qed
+
+theorem nat_le_refl
+  fixes x :: nat
+  prop x <= x
+proof
+  → forward nat_linorder goal=0
+  ← rule linorder_refl goal=0 facts=[1]
+qed

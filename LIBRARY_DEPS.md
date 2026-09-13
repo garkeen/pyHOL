@@ -33,7 +33,8 @@ logic_base
        │    │    ├─ expr
        │    │    ├─ gcl ─ german / mutual_ex
        │    │    └─ (mem 另需 nat)
-       │    └─ class
+       │    ├─ class
+       │    └─ order（序谓词 preorder/order/linorder + nat 实例，见 PROGRAM_VERIFICATION_PORT §11）
        ├─ sat (另需 int)  └─ smt
        └─ hoare (另需 int)
 
