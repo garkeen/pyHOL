@@ -661,3 +661,46 @@ proof
   → forward length_list_update param_i=i param_v="(nth xs j)" goal=4
   ← apply_prev goal=4 facts=[5]
 qed
+
+theorem sublist_0
+  fixes l :: nat, xs :: 'a list
+  prop sublist 0 l xs = take l xs
+  [hint_rewrite]
+proof
+  ← rewrite sublist_def goal=0
+  ← rewrite drop_def_1 goal=1
+qed
+
+theorem nth_map
+  fixes i :: nat, f :: 'a ⇒ 'b
+  prop !xs::'a list. i < length xs --> nth (map f xs) i = f (nth xs i)
+proof
+  ← induct i nat_induct goal=0
+  ← intro xs goal=1
+  cut "0 < length xs --> nth (map f xs) 0 = f (nth xs 0)" goal=4
+  ← type_cases xs goal=6
+  ← rewrite length_def_1 goal=7
+  ← rewrite nat_less_def_1 goal=9
+  accept falseE goal=10
+  ← intro u,vv goal=8
+  ← apply_prev goal=5 facts=[6,4]
+  ← rewrite map_def_2 goal=15
+  ← rewrite nth_cons_zero goal=16
+  ← intro n goal=2
+  ← intro xs goal=20
+  cut "Suc n < length xs --> nth (map f xs) (Suc n) = f (nth xs (Suc n))" goal=22
+  ← type_cases xs goal=23
+  ← rewrite length_def_1 goal=24
+  ← rewrite nat_less_def_1 goal=26
+  accept falseE goal=27
+  ← intro u,vv goal=25
+  ← rewrite map_def_2 goal=30
+  ← rewrite nth_cons_suc goal=31
+  → rewrite length_def_2 target=fact goal=32 facts=[29]
+  → rewrite less_Suc_lesseq target=fact goal=32 facts=[33]
+  → rewrite lesseq_Suc_less target=fact goal=32 facts=[34]
+  ← inst vv goal=32 facts=[19]
+  → forward goal=32 facts=[36,35]
+  ← apply_prev goal=32 facts=[37]
+  ← apply_prev goal=22 facts=[23,21]
+qed
