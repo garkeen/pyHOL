@@ -760,3 +760,95 @@ proof
   ← rewrite le_suc goal=27
   ← apply_prev goal=28 facts=[8]
 qed
+
+theorem length_take
+  fixes r :: nat
+  prop !xs::'a list. r <= length xs --> length (take r xs) = r
+proof
+  ← induct r nat_induct goal=0
+  ← intro xs goal=1
+  ← rewrite take_def_1 goal=5
+  ← rewrite length_def_1 goal=6
+  ← intro n goal=2
+  ← intro xs goal=10
+  cut "Suc n <= length xs --> length (take (Suc n) xs) = Suc n" goal=12
+  ← type_cases xs goal=13
+  ← rewrite length_def_1 goal=14
+  ← rewrite nat_less_eq_def_1 goal=16
+  ← intro goal=17
+  → rewrite eq_sym_eq target=fact goal=19 facts=[18]
+  ← resolve nat_zero_Suc_neq goal=19 facts=[20]
+  ← intro u,vv goal=15
+  cut "~(u # vv = [])" goal=25
+  ← rule ineq_sym goal=26
+  ← rule list_nil_cons_neq goal=27
+  ← rewrite take_def_2 goal=25
+  ← rewrite tl_def_1 goal=29
+  ← rewrite if_not_P goal=30 facts=[26]
+  ← rewrite length_def_2 goal=31
+  → rewrite length_def_2 target=fact goal=32 facts=[24]
+  → rewrite le_suc target=fact goal=32 facts=[33]
+  ← inst vv goal=32 facts=[9]
+  → forward goal=32 facts=[35,34]
+  ← rewrite source=prev goal=32 facts=[36]
+  ← apply_prev goal=12 facts=[13,11]
+qed
+
+theorem length_drop
+  fixes l :: nat
+  prop !ys::'a list. l <= length ys --> length (drop l ys) = length ys - l
+proof
+  ← induct l nat_induct goal=0
+  ← intro ys goal=1
+  ← rewrite drop_def_1 goal=5
+  ← rewrite nat_minus_def_1 goal=6
+  ← intro n goal=2
+  ← intro ys goal=10
+  cut "Suc n <= length ys --> length (drop (Suc n) ys) = length ys - Suc n" goal=12
+  ← type_cases ys goal=13
+  ← rewrite length_def_1 goal=14
+  ← rewrite nat_less_eq_def_1 goal=16
+  ← intro goal=17
+  → rewrite eq_sym_eq target=fact goal=19 facts=[18]
+  ← resolve nat_zero_Suc_neq goal=19 facts=[20]
+  ← intro u,vv goal=15
+  cut "~(u # vv = [])" goal=25
+  ← rule ineq_sym goal=26
+  ← rule list_nil_cons_neq goal=27
+  ← rewrite drop_def_2 goal=25
+  ← rewrite if_not_P goal=29 facts=[26]
+  ← rewrite length_def_2 goal=30
+  ← rewrite nat_minus_suc goal=31
+  ← rewrite tl_def_1 goal=32
+  → rewrite length_def_2 target=fact goal=33 facts=[24]
+  → rewrite le_suc target=fact goal=33 facts=[34]
+  ← inst vv goal=33 facts=[9]
+  → forward goal=33 facts=[36,35]
+  ← rewrite source=prev goal=33 facts=[37]
+  ← apply_prev goal=12 facts=[13,11]
+qed
+
+-- length_sublist uses the forall-form lemmas length_take / length_drop by
+-- `cut <their prop>` + `accept <thm>` to obtain the forall fact, then
+-- `→ inst <term>` + `→ forward` (or `← apply_prev`).  All facts are built
+-- BEFORE the goal is unfolded, or the linear proof order is illegal.
+theorem length_sublist
+  fixes l :: nat, r :: nat, xs :: 'a list
+  prop l <= r --> r <= length xs --> length (sublist l r xs) = r - l
+proof
+  ← intro goal=0
+  cut "!xs::'a list. r <= length xs --> length (take r xs) = r" goal=3
+  accept length_take goal=4
+  cut "length (take r xs) = r" goal=3
+  ← apply_prev goal=6 facts=[5,2]
+  cut "r = length (take r xs)" goal=3
+  ← rewrite source=prev goal=8 facts=[7]
+  → rewrite source=prev target=fact goal=3 facts=[9,1]
+  cut "!ys::'a list. l <= length ys --> length (drop l ys) = length ys - l" goal=3
+  accept length_drop goal=11
+  ← inst "take r xs" goal=3 facts=[12]
+  → forward goal=3 facts=[13,10]
+  ← rewrite sublist_def goal=3
+  ← rewrite source=prev goal=15 facts=[14]
+  ← rewrite source=prev goal=16 facts=[7]
+qed

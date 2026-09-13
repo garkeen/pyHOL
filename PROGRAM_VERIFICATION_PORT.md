@@ -503,8 +503,9 @@ grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | 
 叫 `le_suc`。真正缺的是更基础的两条，本次补入 `library/nat.pyhol`：
 `lesseq_refl`（`n ≤ n`）与 `lesseq_zero`（`0 ≤ n`）——都是 `nat_induct` + `nat_less_eq_def_1/2`
 各两步的短证明。补上之后 `length_filter_le`（`length (filter P xs) ≤ length xs`）顺利证出。
-本次接着证出 `length_take_le`（`length (take n xs) ≤ n`，∀-形式，用归纳 + 守卫折回 + `apply_prev` 实例化归纳假设）。
-还差 `length_take`（带守卫的等式版）与 `length_drop`，然后才能拼出 `length_sublist`；§8.3 说的 `sorted`/`strict_sorted`（需要 `linorder`）同样仍属阶段 3 的前置。
+随后把这条链打通：`length_take_le`（`length (take n xs) ≤ n`）、`length_take`（`r ≤ length xs ⟹ length (take r xs) = r`）、`length_drop`（`l ≤ length ys ⟹ length (drop l ys) = length ys - l`）、`length_sublist`（`l ≤ r ⟹ r ≤ length xs ⟹ length (sublist l r xs) = r - l`），全部 VALID（list 现 31 条）。sublist 实测 57 次（Arrays_Ex），这条链是它的基础。
+`length_drop` 用到 `nat_minus_suc`；`length_sublist` 把两个 ∀-形式引理引进来用，配方见 §8.5 第 13 条。
+仍属阶段 3 前置的：`sorted`/`strict_sorted`（需要 `linorder`），以及 `sublist` 的其余引理（`sublist_append`/`sublist_Cons`/`nth_sublist` 等，auto2 放在 Arrays_Ex，属阶段 5）。
 
 ### 8.5 机制上的新经验（§3 之外）
 
@@ -572,3 +573,17 @@ grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | 
     **对策**：另证「list 作参数、索引作模式」的展开特化引理（`take_cons`/`drop_cons`/
     `list_update_zero`/`list_update_cons`），下游用这些做重写；∀-形式的总结论只偶尔用
     `forward`+`inst`/`apply_prev` 引一次（`length_list_swap` 就是这么证的）。
+13. **∀-形式且带蕴含的定理（`!xs. 守卫 ⟹ 等式`），`forward` 也用不了**：`strip_implies` 看不进 ∀，
+    所以 `forward` 认为它没有前提，传前提事实会报 `too many prevs`；不给类型信息又会报
+    `unmatched type variable`（∀-绑定变量正是携带类型变量的那个）。可用的唯一配方是
+    「把定理原命题 `cut` 成目标、再用 `accept` 关掉」得到 ∀-事实：
+    ```
+    cut "!xs::'a list. r <= length xs --> length (take r xs) = r" goal=N   # N 必须是开口目标
+    accept length_take goal=<上面 cut 出来的目标>            # 得到 ∀-事实
+    cut "length (take r xs) = r" goal=N                     # 要用的实例
+    ← apply_prev goal=<该实例> facts=[<∀-事实>, r <= length xs]   # 实例化 + 消前提
+    ```
+    多层要用就先 `→ inst "<项>" goal=N facts=[<∀-事实>]` 得到蕴含式，再 `→ forward` 消前提。
+    **顺序约束**：这些事实必须**在**用它们改写的那一步**之前**全部搭好，否则报
+    `apply_method: illegal dependence`——线性证明只允许依赖同分支且位置在前的项
+    （`length_sublist` 就是把 `sublist_def` 的展开放到最后一步才成功）。
