@@ -1077,6 +1077,28 @@ proof
   ← rewrite less_Suc_lesseq sym=false goal=1
 qed
 
+theorem lesseq_refl
+  fixes n :: nat
+  prop n <= n
+proof
+  ← induct n nat_induct goal=0
+  ← rewrite nat_less_eq_def_1 goal=1
+  ← intro n goal=2
+  ← rewrite le_suc goal=5
+qed
+
+theorem lesseq_zero
+  fixes n :: nat
+  prop 0 <= n
+proof
+  ← induct n nat_induct goal=0
+  ← rewrite nat_less_eq_def_1 goal=1
+  ← intro n goal=2
+  ← rewrite nat_less_eq_def_2 goal=5
+  ← rule disjI2 goal=6
+qed
+
+
 theorem lt_suc
   fixes m :: nat, n :: nat
   prop Suc m < Suc n <--> m < n

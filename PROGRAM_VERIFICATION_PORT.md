@@ -499,10 +499,12 @@ grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | 
 `mset_list_swap`（2.3 收尾，依赖 2.2 的 `list_update` 计数引理）、
 `card`/`finite_induct` 收口（2.5），以及阶段 3–6。
 
-**新发现的前置依赖**：`length_sublist`（`r ≤ length xs ⟹ length (sublist l r xs) = r - l`）、
-`length_filter_le`（`length (filter P xs) ≤ length xs`）这类引理需要 nat 上 `≤` 与
-`Suc` 的交换律（如 `Suc m ≤ Suc n ⟷ m ≤ n`），而 nat 库现在没有。所以**阶段 3（序）
-的一部分必须先于阶段 2 的这部分列表引理**（与 §8.3 关于 sorted 的结论同源）。
+**一处需要更正的前置依赖判断**：我先前以为 nat 缺 `Suc m ≤ Suc n ⟷ m ≤ n`，实测**它已经存在**，
+叫 `le_suc`。真正缺的是更基础的两条，本次补入 `library/nat.pyhol`：
+`lesseq_refl`（`n ≤ n`）与 `lesseq_zero`（`0 ≤ n`）——都是 `nat_induct` + `nat_less_eq_def_1/2`
+各两步的短证明。补上之后 `length_filter_le`（`length (filter P xs) ≤ length xs`）顺利证出。
+仍依赖序算术的是 `length_sublist`（需要带守卫的 `length_take`/`length_drop`），
+以及 §8.3 说的 `sorted`/`strict_sorted`（需要 `linorder`），这些仍然属于阶段 3 的前置。
 
 ### 8.5 机制上的新经验（§3 之外）
 

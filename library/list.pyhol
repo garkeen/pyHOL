@@ -704,3 +704,28 @@ proof
   ← apply_prev goal=32 facts=[37]
   ← apply_prev goal=22 facts=[23,21]
 qed
+
+header "Length of filter"
+
+theorem length_filter_le
+  fixes P :: 'a ⇒ bool, xs :: 'a list
+  prop length (filter P xs) <= length xs
+proof
+  ← induct xs list_induct goal=0
+  ← rewrite filter_def_1 goal=1
+  ← rewrite length_def_1 goal=3
+  ← rewrite nat_less_eq_def_1 goal=4
+  ← intro x,xs goal=2
+  cases "P x" goal=8
+  ← intro goal=9
+  ← rewrite filter_def_2 goal=12
+  ← rewrite if_P goal=13 facts=[11]
+  ← rewrite length_def_2 goal=14
+  ← rewrite le_suc goal=15
+  ← intro goal=10
+  ← rewrite filter_def_2 goal=17
+  ← rewrite if_not_P goal=18 facts=[16]
+  ← rewrite length_def_2 goal=19
+  ← rewrite nat_less_eq_def_2 goal=20
+  ← rule disjI2 goal=21
+qed
