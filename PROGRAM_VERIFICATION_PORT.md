@@ -690,3 +690,18 @@ def finite :: 'a set ⇒ bool = finite A ⟷ (∀P. P {} ∧ (∀x B. P B ⟶ P 
     `image_combine`（`image f (image g A) = image (g ∘ f) A`）整个证明就是
     `set_equal_iff` → `intro` → 两次 `in_image` → `comp_fun_def` → `exists_flatten`。
     `comp_fun_def` 展开 `g ∘ f` 产生的 β-redex 由重写器自动约简，无需额外步骤。
+
+### 9.4 阶段 2 明确剩余（未做，非阻塞）
+
+- **list**：`nth_list_update_diff`（`i ≠ j` 时 update 不影响 nth）。需要
+  「对 i 归纳 + 对 j 分 0/Suc 两支」的双索引骨架，比 `nth_list_update_same`
+  （§8.5 的守卫重折配方，40 步）更重。`sublist_append`/`sublist_Cons`/`nth_sublist`
+  一组 auto2 放在 `Arrays_Ex` 里，归阶段 5。
+- **list 定义已备但无引理**：`foldr`/`foldl`/`concat`/`zip`/`remdups` 只有定义。
+- **multiset**：`mset_list_swap`（`mset (list_swap xs i j) = mset xs`）、
+  `set_list_swap`。需要「`count` 对 `list_update` 的逐点刻画」再让两次更新抵消，
+  依赖上一条。
+- **set**：`card_image_inj`/`surjective_iff_injective`——用未解释常量 `card`，
+  要证得先给 card 建公理体系（有限基数的存在性/唯一性），不属当前范围。
+- 阶段 3–6（序、良基递归、Functional 域库、指令式堆模型）未开始；阶段 3 是
+  `sorted`/`strict_sorted`/`insort` 的前置。
