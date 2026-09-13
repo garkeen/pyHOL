@@ -48,7 +48,7 @@ class ProofState:
 2. `pt = tactic.get_proof_term(args=args, prevs=[ProofTerm.atom(id, cur_item.th)] + prevs)`（goal 作为 prevs[0]）。
 3. 若 `pt.rule == 'atom'`（事实直接证明目标）且该事实能匹配证明目标：目标行改写为 `auto_close` 可见行（`prevs=[fact_id]`），结束。
 4. 否则 `new_prf = pt.export(prefix=id, subproof=False)`，插入新行（最后一条导出项覆盖原 goal 行，行数不变）。
-5. `check_proof(compute_only=True)` 校验。
+5. `state.verify(compute_only=True)` 校验（宏展开 + 信任报告；完整校验另跑独立原语重放）。
 6. 对新 `sorry` 行调 `_find_and_close`：若先行行能匹配证明，落可见 `auto_close` 行。
 7. 对新 `sorry` 行尝试 `trivial` 宏：构造成功则落可见 `trivial` 行。
 
@@ -68,7 +68,7 @@ method.apply -> state.apply_tactic(tactic) -> tactic.get_proof_term -> ProofTerm
 ```
 method.apply -> state.apply_macro(name, args) -> macro 展开 -> 受检原语行
 ```
-宏一律走受检调用入口（无 MacroTactic 逃生门），展开结果经 `check_proof` 验证。典型：`norm`、领域注册的 `nat_norm`/`real_norm`/`nat_const_ineq`/`eval_Sem`/`prove_avalI`。
+宏一律走受检调用入口（无 MacroTactic 逃生门），展开结果经 `verify` 校验。典型：`norm`、领域注册的 `nat_norm`/`real_norm`/`nat_const_ineq`/`eval_Sem`/`prove_avalI`。
 
 ### 模式 C：正向策略路径（向前推理）
 ```
@@ -92,10 +92,10 @@ method.apply -> state.set_line(rule, args, prevs, th) / 直接改写行结构
 
 ## 4. 方法目录
 
-方法词表（`method/methods/core.py` 注册 + 领域宏方法）：
+方法词表（`method/methods/core.py` 注册 + `method/methods/z3.py` + `imperative/imp.py` 的 `vcg` + 领域宏方法）：
 `rule` / `resolve` / `rewrite` / `intro` / `cases` / `type_cases` / `induct` / `cut` / `inst` /
 `accept` / `refl` / `eq_intro` / `trans` / `unfold` / `forward` / `elim` / `var` /
-`assumption` / `norm` / `simp` + oracle（`z3` / `vcg`）+ 领域宏方法。
+`assumption` / `norm` / `simp` / `auto` + oracle（`z3`）+ `vcg`（Hoare 逻辑）+ 领域宏方法。
 
 `rewrite` 与 `inst` 是**双模式**方法，由状态形状推断模式（显式 `target`/`source` 标记可覆盖）：
 - 目标行是缺口 → goal 模式；否则 fact 模式
@@ -131,10 +131,11 @@ method.apply -> state.set_line(rule, args, prevs, th) / 直接改写行结构
 | 方法 | 分发 | 说明 |
 |---|---|---|
 | `simp` | A | 全体 `hint_rewrite` 无前提定理定点迭代重写 + β 归一，must-change |
+| `auto` | B | 关门：`auto_macro`（level 1）经受检宏调用单行记录，成功零 gap；`simp_sweep` 是它的内置子程序 |
 | `norm` | B | 归一化：按目标类型经 `norm_registry` 分发到领域宏（`nat_norm`/`real_norm`/`int_norm`），受检宏调用 |
 | `eval_Sem` | B | 计算命令式程序小步语义 `Sem com st st2`（imperative） |
-| `z3` | D | Z3 SMT 求解器（oracle 宏行，直接 `set_line`） |
-| `vcg` | A | Hoare 逻辑 VCG：将 `Valid P c Q` 分解为验证条件子目标 |
+| `z3` | D | Z3 SMT 求解器（oracle 宏行，`level=0`，需在 `trust` 集中放行；直接 `set_line`） |
+| `vcg` | A | Hoare 逻辑 VCG：将 `Valid P c Q` 分解为验证条件子目标（`limit='while_rule'`，仅在 hoare 理论加载后可用） |
 
 领域包还直接注册了无参宏方法（模式 B，受检宏调用）：`nat_norm`、`real_norm`、`nat_const_ineq`（nat 常量不等式）、`prove_avalI`（数组访问求值）。
 
@@ -252,7 +253,15 @@ class my_method(Method):
 
 - 方法不新增逻辑内容，真正产生证明项的是底层策略与宏。
 - 你在 `.pyhol` 里写的每一步方法 -> 调用策略/宏 -> 最终展开为 15 条原始规则 + 已证定理。
-- 方法的"搜索建议"只是便利：**真正决定证明是否成立的，是底层证明项能否通过 `check_proof`**。
+- 方法的"搜索建议"只是便利：**真正决定证明是否成立的，是底层证明项能否通过 `verify`**。
+- **计算 oracle 与 trust 集合**：level-0 宏（`z3`/`nat_eval`/`real_eval`…）没有推导，`verify` 要求其名字在
+  `trust` 集合里，否则硬失败（`"oracle macro 'X' is not trusted"`）。两条放行路径：
+  1. **显式受检调用即授权**：方法层经 `ProofState.apply_macro` 应用 level-0 宏时，把宏名写进会话 trust
+     （`method/methods/core.py` `apply_macro`）。所以显式 `← z3` 步、IDE 的 z3/nat_norm 按钮自我授权，
+     **不受调用方 trust 列表限制**（`validate_theory(trust=...)` 对它们无效）。
+  2. **调用方传 trust**：宏*展开内部*发出的 oracle 节点（`norm`/`auto` 做数值折叠时经 `*_eval_conv`
+     的 `auto_solve`）从不走 `apply_macro`，只能靠调用方在 `trust` 里具名放行。
+  默认集合是 `core/verify.COMPUTATION_ORACLES`（11 个），`validate_library.py` 与后端 IDE 端点共用同一口径。
 
 ## 11. 设计红线
 
@@ -260,7 +269,7 @@ class my_method(Method):
 
 | 层 | 允许 | 禁止 |
 |---|---|---|
-| Method | 解码参数、search 试跑；向后推理经 `apply_tactic` / `apply_macro` 执行；正向推理先经正向策略 `get_proof_term` 得出受检 ProofTerm，再以 `add_line_before` + `set_line(pt.rule, pt.args, prevs)` 插入行（`apply_forward` 为预留受检入口，当前实现未使用）；结构性直接操作（`cut`/`var`/`elim`/`intro`）只重排/插入受检内容，随后 `check_proof` | 直接构造证明内容的 ProofTerm、动态宏名字符串、绕过校验的隐式消缺口 |
+| Method | 解码参数、search 试跑；向后推理经 `apply_tactic` / `apply_macro` 执行；正向推理先经正向策略 `get_proof_term` 得出受检 ProofTerm，再以 `add_line_before` + `set_line(pt.rule, pt.args, prevs)` 插入行（`apply_forward` 为预留受检入口，当前实现未使用）；结构性直接操作（`cut`/`var`/`elim`/`intro`）只重排/插入受检内容，随后 `verify` | 直接构造证明内容的 ProofTerm、动态宏名字符串、绕过校验的隐式消缺口 |
 | Tactic | 组合原语与宏字面量、调用 conv | 动态宏名字符串 |
 | apply_macro | 注册表检查后执行单条宏（唯一的宏入口，无 MacroTactic） | — |
 

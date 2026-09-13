@@ -30,9 +30,9 @@
 | [`02_kernel.md`](02_kernel.md) | 内核（Type/Term/Thm/15原语/Proof/ProofTerm/Theory/Extension/Report） | 详细 |
 | [`03_macro.md`](03_macro.md) | 宏（Macro/eval/level/expand/信任模型/核心宏目录） | 详细 |
 | [`04_conv_matcher.md`](04_conv_matcher.md) | 转换（Conv/组合子/遍历/rewr_conv）+ 匹配（first_order_match/Inst） | 详细 |
-| [`05_tactic.md`](05_tactic.md) | 策略（Tactic/tactical/内置策略目录） | 详细 |
+| [`05_tactic.md`](05_tactic.md) | 策略（Tactic/统一接口/向后与正向策略目录/受检宏入口） | 详细 |
 | [`06_method.md`](06_method.md) | 方法（Method/ProofState/四种分发/方法目录/属性/step格式） | 中等 |
-| [`07_system.md`](07_system.md) | 系统总览（.pyhol/Item/理论加载/domain/自动化/SAINT/参数化系统/目录索引/数据流） | 粗略 |
+| [`07_system.md`](07_system.md) | 系统总览（三层架构/理论组织与 Item 类型/领域扩展/自动化/语法层/应用层/目录索引/数据流） | 粗略 |
 
 ## 详细程度原则
 
@@ -49,26 +49,26 @@
 
 ### 核心宏
 
-`core/macros/core.py` 注册（领域无关）：
+`core/macro/registry.py` 注册（领域无关，全部 25 个）：
 
-`intros` / `resolve_theorem` / `beta_norm` / `apply_theorem` / `apply_theorem_for` / `apply_theorem_inst` / `apply_induct` / `apply_fact` / `apply_fact_for` / `rewrite_goal` / `rewrite_goal_sym` / `rewrite_goal_with_prev` / `rewrite_goal_with_prev_sym` / `rewrite_fact` / `rewrite_fact_sym` / `rewrite_fact_with_prev` / `forall_elim_gen` / `trivial` / `auto_close`
+`intros` / `resolve_theorem` / `beta_norm` / `apply_theorem` / `apply_theorem_for` / `apply_theorem_inst` / `accept` / `simp` / `unfold` / `unfold_sym` / `rewrite_goal_loc` / `rewrite_goal_loc_sym` / `apply_induct` / `apply_fact` / `apply_fact_for` / `rewrite_goal` / `rewrite_goal_sym` / `rewrite_goal_with_prev` / `rewrite_goal_with_prev_sym` / `rewrite_fact` / `rewrite_fact_sym` / `rewrite_fact_with_prev` / `forall_elim_gen` / `trivial` / `auto_close`
 
-领域宏示例：`imp_conj` / `imp_disj` / `resolution`（theories/logic）、`nat_norm` / `real_norm`、`eval_Sem` / `vcg`（imperative）、`z3`（core/macros/z3.py，oracle）。
+领域宏示例：`imp_conj` / `imp_disj` / `resolution`（theories/logic）、`nat_norm` / `real_norm` / `int_norm`、`eval_Sem` / `vcg`（imperative）、`z3`（`core/macro/z3.py`，oracle）。
 
 ### 内置策略
 
-向后：`rule` / `resolve` / `var_induct` / `datatype_cases` / `intros` / `rewrite_goal` / `rewrite_goal_with_conv` / `rewrite_goal_with_prev` / `apply_prev` / `cases` / `inst_exists_goal` / `assumption` / `reflexive` / `equal_intr` / `trans` / `trivial` / `accept` / `elim_exists`
+向后：`rule` / `resolve` / `var_induct` / `datatype_cases` / `intros` / `rewrite_goal` / `rewrite_goal_with_conv` / `rewrite_goal_with_prev` / `rewrite_goal_loc` / `apply_prev` / `cases` / `inst_exists_goal` / `assumption` / `reflexive` / `equal_intr` / `trans` / `unfold` / `simp` / `trivial` / `accept` / `elim_exists`
 
 正向：`apply_theorem_forward` / `rewrite_fact_forward` / `apply_fact_forward` / `rewrite_fact_with_prev_forward` / `forall_elim_forward`
 
 ### 方法分发模式
 
-- **A 策略路径**：`rule` / `cases` / `type_cases` / `rewrite`（goal）/ `induct` / `refl` / `eq_intro` / `trans` / `unfold` / `simp` / ...
-- **B 受检宏调用**：`norm` / 领域宏方法（`nat_norm` / `real_norm` / `eval_Sem` / ...）
+- **A 策略路径**：`rule` / `cases` / `type_cases` / `rewrite`（goal）/ `induct` / `refl` / `eq_intro` / `trans` / `unfold` / `simp` / `vcg` / ...
+- **B 受检宏调用**：`auto` / `norm` / 领域宏方法（`nat_norm` / `real_norm` / `eval_Sem` / ...）/ oracle（`z3`，`apply_macro` 受检放行）
 - **C 正向路径**：`forward` / `rewrite`（fact）/ `inst`（fact）
-- **D 直接操作**：`cut` / `var` / `elim` / `intro` / `z3`
+- **D 直接操作**：`cut` / `var` / `elim` / `intro`
 
-> 行不可变：fact/goal 生成后不可改写，已移除 `thin` / `sym` / `revert_intro` / `drule` 等行改写方法。
+> 行不可变：fact/goal 生成后不可改写。
 
 ### 属性
 

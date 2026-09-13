@@ -1,6 +1,8 @@
 # HOLPY Frontend (Vue 3)
 
-This is the Vue 3 version of the HOLPY frontend.
+Vue 3 + Vite single-page app for holpy. Talks to the Flask backend in
+`../backend/` through `/api/*` (dev proxy target `http://127.0.0.1:5000`,
+see `vite.config.js`).
 
 ## Setup
 
@@ -11,27 +13,31 @@ npm install
 ## Development
 
 ```bash
-npm run dev
+npm run dev          # http://localhost:8080
 ```
 
 ## Build
 
 ```bash
-npm run build
+npm run build        # output in dist/
 ```
 
-## Migration from Vue 2
+## Routes
 
-This frontend is a migration from the original Vue 2 frontend located in `app/`. The migration includes:
-
-- Vue 3 with Composition API
-- Vite instead of Webpack
-- Bootstrap 5 with bootstrap-vue-next
-- Vue Router 4
+- `/` — `views/Index.vue` (landing page)
+- `/ide` — `views/Editor.vue` (HOL theory editor and proof IDE)
+- `/program` — `views/ProgramIDE.vue` (imperative program verification)
+- `/manual` — `views/Manual.vue` (renders `../manual/*.md`)
 
 ## Features
 
-- Theory editor
-- Integral verification
-- Program verification
-- Theory monitoring
+- Theory editor over the whole kernel `item_table`: `header`, `type`,
+  `typeabbrev`, `quotient`, `datatype`, `constant`, `definition`, `fun`,
+  `inductive`, `axiom`, `theorem`.
+- Interactive proof IDE on the stable-`#[N]`-ID pipeline
+  (`StableProofState`): suggestions / manual / auto tabs, history, open goals.
+- Program verification for `.imp` files (Hoare logic VCs).
+- Manual reader.
+
+The route/payload contract for the backend is documented in
+[`FRONTEND_API.md`](FRONTEND_API.md).

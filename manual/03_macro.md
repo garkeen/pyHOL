@@ -1,6 +1,6 @@
 # 宏系统与信任模型
 
-> 代码事实以 `kernel/macro.py`、`kernel/theory.py`（宏注册部分）、`core/macros/core.py` 为准。
+> 代码事实以 `kernel/macro.py`、`kernel/theory.py`（宏注册部分）、`core/macro/registry.py` 为准。
 
 宏（Macro）是 holpy 的核心抽象之一，是"初等证明步骤的缩写"。本章讲宏的机制、信任级别、与校验的关系。
 
@@ -47,13 +47,17 @@ class Macro:
 | level | 含义 | 行为 |
 |---|---|---|
 | `None`（未指定） | 永远展开 | 每次校验都走 `get_proof_term` |
-| `0` | oracle / 不可展开 | `eval` 直接信任，通常无 `get_proof_term` 或不展开 |
-| `1` | 标准宏 | 有完整 `get_proof_term`，可展开验证 |
+| `0` | oracle / 不可展开 | 只调 `eval` 求值；结果作为 `oracle` 假设行进入原语流。**必须**在 `verify` 的 `trust` 集里具名放行，否则硬失败 |
+| `1` | 标准宏 | 有完整 `get_proof_term`，展开验证 |
 | `10` | 领域计算 | 有 `get_proof_term`，但依赖某个 `limit` 定理存在 |
 
-`check_proof(prf, check_level=N)`：`macro.level <= N` 的宏**不展开**，只调 `eval` 求值。`level > N` 或 `level is None` 的宏展开校验。
+`core/verify.py::verify(prf, no_gaps=False, trust=frozenset(), ...)` 是唯一的校验入口：
+- `level == 0` 的宏（oracle）不展开，`rule in trust` 才允许 `eval`，落一条 `oracle` 行；
+- 其余宏（含 `level is None`、`1`、`10`）一律经 `get_proof_term` 展开成原语流；
+- `no_gaps=True` 时 `sorry` 行直接拒绝（严格模式）。
 
-**实践含义**：`check_level=0` 时所有宏都展开（最严格）；`check_level=10` 时所有有 level 的宏都求值（最快，报告步数骤减）。
+**实践含义**：基础库验证默认拒绝一切 oracle（`trust` 为空）；需要计算类 oracle 时按名显式加入
+`trust`（见 `core/verify.py::validate_theory` 的 `trust` 参数）。没有旧的 `check_level=N` 开关。
 
 ## 5. limit 字段
 
@@ -95,7 +99,8 @@ class my_macro(Macro):
 
 ## 8. 核心宏目录
 
-注册在 `core/macros/core.py`。最常用的宏：
+注册在 `core/macro/registry.py`（该文件末尾用 `theory.global_macros.update({...})` 一次性登记全部领域无关宏；
+`simp_sweep` 在 `core/macro/simp.py`，`z3` 在 `core/macro/z3.py`）。最常用的宏：
 
 | 宏名 | sig | 功能 |
 |---|---|---|
@@ -116,9 +121,13 @@ class my_macro(Macro):
 | `forall_elim_gen` | `Term` | 通用全称消除 |
 | `beta_norm` | `None` | β 归一化 |
 | `resolve_theorem` | `(str, Term)` | 用 `~A` 定理 + 事实 `A` 证任意目标 |
-| `resolution` | `None` | 消解两条析取子句 |
-| `imp_conj` | `Term` | 蕴含合取（子集关系） |
-| `imp_disj` | `Term` | 蕴含析取（子集关系） |
+| `accept` | `str` | 直接用定理闭合目标（结论匹配、前提由假设满足） |
+| `auto_close` | `None` | 显式自动闭合缺口 |
+| `rewrite_goal_loc` | `(str, Term)` | 在目标指定子位置重写（`loc` 参数） |
+
+> 领域宏（不在 `core/macro/registry.py`）：`resolution`、`imp_conj`、`imp_disj` 注册在
+> `theories/logic/macro.py`；`nat_norm`/`real_norm`/`int_norm` 等在各领域包；`eval_Sem`/`vcg` 在
+> `imperative/imp.py`。
 
 ## 9. apply_theorem 详解
 

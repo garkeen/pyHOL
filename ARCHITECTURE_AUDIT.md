@@ -58,8 +58,8 @@ holpy/
 │   └── bootstrap.py       纯 kernel 引导宏（intros/trivial）
 │
 ├── core/                【L1】正向推理机器 + 服务。不识 goal。剥掉 L2/L3 仍可用
-│   ├── conv/             等式构造：basic.py（Conv 协议 + 组合子）+ inst.py（原语链接助手）
-│   ├── macro/            命名正向步骤：registry.py（注册+level+展开）/ logic.py（领域无关）/ simp.py
+│   ├── conv/             等式构造：core.py（Conv 协议 + 组合子）+ inst.py（原语链接助手）
+│   ├── macro/            命名正向步骤：registry.py（领域无关宏，注册+level+展开）/ simp.py（simp_sweep）/ z3.py（z3 oracle 宏）
 │   ├── matcher.py        精确匹配（两步匹配的第二/精确步）
 │   ├── search.py         候选检索（两步匹配的第一/候选步）
 │   ├── auto.py           global_autos 分发器
@@ -74,7 +74,7 @@ holpy/
 │
 ├── theories/            【内容】领域实例，垂直，镜像 library/*.pyhol DAG
 │   ├── <theory>/         logic/ nat/ function/ integer/ real/ expr/
-│   │   └── conv.py / macro.py / tactic.py / method.py（注册走 core 注册 API）
+│   │   └── conv.py / macro.py / method.py（按包裁剪；注册走 core 注册 API）
 │   ├── integer/omega.py  omega 的证明装配 + auto 注册（算法核在 solvers/omega.py）
 │   ├── real/simplex.py real/simplex_strict.py   实/整数线性算术的证明装配
 │   ├── z3rec.py          Z3 证明重建引擎（跨域实验链；含 solve_and_reconstruct 桥）

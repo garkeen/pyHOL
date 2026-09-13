@@ -1,6 +1,6 @@
 # 策略系统
 
-> 代码事实以 `core/tactic.py` 为准。
+> 代码事实以 `tactic/steps.py` 为准；`Goal` 的定义在同包 `tactic/goal.py`（全系统 goal 概念的唯一定义点）。
 
 策略（Tactic）是证明构造的中间层：Method 层调用策略，策略执行推理决策（匹配、参数检测、效果检查），返回 `ProofTerm`（其 rule 为宏或原语）。策略本身不直接出现在 `.pyhol` 证明文件中——那是 Method 层的序列化产物。
 
@@ -39,7 +39,10 @@ class Tactic:
 | `datatype_cases()` | `Term` 或 `(Term, cases_thm)` | 每个构造子分支 | 归纳数据类型分情况：用 `<tyname>_cases` 定理，谓词实例化为 `%x. goal`（无归纳假设）；默认定理名为 `<type>_cases` |
 | `rewrite_goal(sym=)` | `th_name` | 0 或 1 | 用定理重写目标（`top_sweep_conv` + β-norm）；重写后若自反则 0 子目标 |
 | `rewrite_goal_with_conv(cv)` | - | 0 或 1 | 用预构造 Conv 重写目标 |
+| `rewrite_goal_loc(sym=)` | `(th_name, loc)` | 0 或 1 | 在目标指定子位置重写（`loc` 如 `"0.1"`，映射为 conv 组合子） |
 | `rewrite_goal_with_prev()` | - | 0 或 1 | 用已有等式事实（含 forall）重写目标 |
+| `unfold(sym=)` | `th_name` | 0 或 1 | 展开定义（`top_conv` + β）；`sym=True` 即折叠 |
+| `simp()` | - | 0 或 1 | `hint_rewrite` 无前提定理定点重写 + β 归一，must-change |
 | `apply_prev()` | `inst?` | 每个未匹配假设 | 向后应用已有事实（forall/implies 形式）；无剩余前提时直接返回事实本身 |
 | `cases()` | `Term` 或 `(Term, thm_name)` | 2 | 分情况：`A⟶C` 与 `¬A⟶C`（默认 `classical_cases`） |
 | `inst_exists_goal()` | `Term` 或 `(Term, thm_name)` | 1 | 用见证实例化存在目标（默认 `exI`） |
@@ -107,7 +110,7 @@ class Tactic:
 
 **设计原则**：正向策略镜像对应的向后策略——推理（匹配、检测）在策略层，机械链接在宏层。`provided` 列表支持"留作 forall"语义（空值参数不询问，由宏 forall_intr）。
 
-## 5. 领域宏的受检入口（MacroTactic 已移除）
+## 5. 领域宏的受检入口
 
 ```python
 # ProofState.apply_macro(id, macro_name, args=None, prevs=None)
@@ -118,9 +121,9 @@ macro_args = (goal_prop,) + tuple(args)     # 宏的第一个参数是目标命�
 pt = ProofTerm(macro_name, macro_args, prevs)
 ```
 
-> 旧版的 `MacroTactic`（把宏包成向后策略的通用适配器）已移除，宏不得绕过注册表检查直接执行。
+> 宏不得绕过注册表检查直接执行。
 
-领域计算类方法（`norm` 及 `nat_norm`/`real_norm`/`eval_Sem` 等领域宏方法）无推理可做，直接走 `ProofState.apply_macro` 受检入口：宏名先经注册表与 limit 检查，展开结果经 `check_proof` 验证。
+领域计算类方法（`norm` 及 `nat_norm`/`real_norm`/`eval_Sem` 等领域宏方法）无推理可做，直接走 `ProofState.apply_macro` 受检入口：宏名先经注册表与 limit 检查，展开结果经 `verify` 验证。
 
 ## 6. 分层关系
 

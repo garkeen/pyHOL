@@ -67,15 +67,17 @@ python validate_library.py --force    # 忽略缓存，全量重验
 | 目录 | 职责 |
 |---|---|
 | `kernel/` | 逻辑内核（Type/Term/Thm/原语/Proof/ProofTerm/Theory/Macro/Extension/Report） |
-| `core/` | 逻辑层基础设施（Tactic/Conv/Macro/Matcher/Auto/Search/Verify/Items） |
-| `theories/` | 领域扩展包（logic/nat/real/integer/function/expr） |
+| `core/` | 逻辑层基础设施（Conv/Macro/Matcher/Auto/Search/Verify/Items/Defcheck） |
+| `tactic/` | 逆向翻译层（`goal.py` 的 Goal + `steps.py` 的 rule/cases/induct/...） |
 | `method/` | 方法层与证明状态（ProofState/Method/StableState） |
+| `theories/` | 领域扩展包（logic/nat/real/integer/function/expr） |
 | `syntax/` | 解析、打印、设置、`.pyhol` 格式 |
 | `solvers/` | 外部求解器与自动证明（Z3/Omega/Simplex/Tseitin/SAT/Congc/Sympy） |
 | `backend/` | Flask 后端 API |
 | `frontend/` | Vue 3 前端 |
 | `library/` | 理论库（`.pyhol` 文件） |
 | `imperative/` | Hoare 逻辑程序验证（独立子模块，`.imp` 格式） |
+| `repl/` | 自洽 REPL（交互/脚本/常驻，不依赖前后端） |
 | `util/` | 工具函数 |
 | `manual/` | 本手册 |
 
@@ -83,7 +85,9 @@ python validate_library.py --force    # 忽略缓存，全量重验
 
 15 条原语：`assume` / `implies_intr` / `implies_elim` / `reflexive` / `symmetric` / `transitive` / `combination` / `equal_intr` / `equal_elim` / `subst_type` / `substitution` / `beta_conv` / `abstraction` / `forall_intr` / `forall_elim`
 
-信任级别：`None` 永远展开 / `0` oracle（不可展开）/ `1` 标准宏 / `10` 领域计算
+信任级别：`None` 永远展开 / `0` oracle（不可展开，需在验证的 `trust` 集中具名放行）/ `1` 标准宏 / `10` 领域计算
+
+`.pyhol` 条目关键字：`header` / `constant` / `type` / `typeabbrev`（类型同义词）/ `quotient`（商类型）/ `datatype` / `definition` / `fun` / `inductive` / `axiom` / `theorem`
 
 ## License
 
