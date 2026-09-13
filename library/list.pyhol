@@ -489,8 +489,8 @@ fun itrev :: 'a list ⇒ 'a list ⇒ 'a list
 header "Update and swap by index"
 
 fun list_update :: 'a list ⇒ nat ⇒ 'a ⇒ 'a list
-  | list_update [] i v = []
-  | list_update (x # xs) i v = (if i = 0 then v # xs else x # list_update xs (i - 1) v)
+  | list_update xs 0 v = (if xs = [] then [] else v # tl xs)
+  | list_update xs (Suc n) v = (if xs = [] then [] else hd xs # list_update (tl xs) n v)
 
 def list_swap :: 'a list ⇒ nat ⇒ nat ⇒ 'a list = list_swap xs i j = list_update (list_update xs i (nth xs j)) j (nth xs i)
 
@@ -535,4 +535,129 @@ proof
   → forward goal=35 facts=[39,38]
   ← apply_prev goal=35 facts=[40]
   ← apply_prev goal=25 facts=[26,24]
+qed
+
+theorem nth_list_update_same
+  fixes i :: nat, v :: 'a
+  prop !xs::'a list. i < length xs --> nth (list_update xs i v) i = v
+proof
+  ← induct i nat_induct goal=0
+  ← intro xs goal=1
+  cut "0 < length xs --> nth (list_update xs 0 v) 0 = v" goal=5
+  ← type_cases xs goal=6
+  ← rewrite length_def_1 goal=7
+  ← rewrite nat_less_def_1 goal=9
+  accept falseE goal=10
+  ← intro u,vv goal=8
+  ← rewrite list_update_def_1 goal=15
+  cut "~(u # vv = [])" goal=16
+  ← rule ineq_sym goal=17
+  ← rule list_nil_cons_neq goal=18
+  ← rewrite if_not_P goal=16 facts=[17]
+  ← rewrite nth_cons_zero goal=20
+  ← apply_prev goal=5 facts=[6,4]
+  ← intro n goal=2
+  ← intro xs goal=24
+  cut "Suc n < length xs --> nth (list_update xs (Suc n) v) (Suc n) = v" goal=26
+  ← type_cases xs goal=27
+  ← rewrite length_def_1 goal=28
+  ← rewrite nat_less_def_1 goal=30
+  accept falseE goal=31
+  ← intro u,vv goal=29
+  ← rewrite list_update_def_2 goal=34
+  cut "~(u # vv = [])" goal=35
+  ← rule ineq_sym goal=36
+  ← rule list_nil_cons_neq goal=37
+  ← rewrite if_not_P goal=35 facts=[36]
+  ← rewrite hd_def_1 goal=38
+  ← rewrite tl_def_1 goal=39
+  ← rewrite nth_cons_suc goal=40
+  → rewrite length_def_2 target=fact goal=41 facts=[33]
+  → rewrite less_Suc_lesseq target=fact goal=41 facts=[42]
+  → rewrite lesseq_Suc_less target=fact goal=41 facts=[43]
+  ← inst vv goal=41 facts=[23]
+  → forward goal=41 facts=[45,44]
+  ← apply_prev goal=41 facts=[46]
+  ← apply_prev goal=26 facts=[27,25]
+qed
+
+theorem list_update_nil
+  fixes i :: nat, v :: 'a
+  prop list_update ([]::'a list) i v = []
+  [hint_rewrite]
+proof
+  cut "([]::'a list) = []" goal=0
+  ← refl goal=1
+  ← type_cases i goal=0
+  ← rewrite list_update_def_1 goal=2
+  ← rewrite if_P goal=4 facts=[1]
+  ← intro n goal=3
+  ← rewrite list_update_def_2 goal=6
+  ← rewrite if_P goal=7 facts=[1]
+qed
+
+theorem list_update_zero
+  fixes x :: 'a, xs :: 'a list, v :: 'a
+  prop list_update (x # xs) 0 v = v # xs
+  [hint_rewrite]
+proof
+  cut "~(x # xs = [])" goal=0
+  ← rule ineq_sym goal=1
+  ← rule list_nil_cons_neq goal=2
+  ← rewrite list_update_def_1 goal=0
+  ← rewrite tl_def_1 goal=3
+  ← rewrite if_not_P goal=4 facts=[1]
+qed
+
+theorem list_update_cons
+  fixes x :: 'a, xs :: 'a list, n :: nat, v :: 'a
+  prop list_update (x # xs) (Suc n) v = x # list_update xs n v
+  [hint_rewrite]
+proof
+  cut "~(x # xs = [])" goal=0
+  ← rule ineq_sym goal=1
+  ← rule list_nil_cons_neq goal=2
+  ← rewrite list_update_def_2 goal=0
+  ← rewrite if_not_P goal=3 facts=[1]
+  ← rewrite hd_def_1 goal=4
+  ← rewrite tl_def_1 goal=5
+qed
+
+-- Note: forall-form lemma.  A forall-form proposition is NOT a rewrite
+-- rule in holpy; use it via `→ forward length_list_update param_i=.. param_v=..`
+-- followed by `→ inst <list>` (fact mode) or `← apply_prev`.
+theorem length_list_update
+  fixes i :: nat, v :: 'a
+  prop !xs::'a list. length (list_update xs i v) = length xs
+proof
+  ← induct i nat_induct goal=0
+  ← intro xs goal=1
+  ← type_cases xs goal=4
+  ← rewrite list_update_nil goal=5
+  ← intro u,vv goal=6
+  ← rewrite length_def_2 goal=9
+  ← rewrite list_update_zero goal=10
+  ← rewrite length_def_2 goal=11
+  ← intro n goal=2
+  ← intro xs goal=14
+  ← type_cases xs goal=15
+  ← rewrite list_update_nil goal=16
+  ← intro u,vv goal=17
+  ← rewrite list_update_cons goal=19
+  ← rewrite length_def_2 goal=20
+  ← inst vv goal=21 facts=[13]
+  ← rewrite source=prev goal=21 facts=[22]
+qed
+
+theorem length_list_swap
+  fixes xs :: 'a list, i :: nat, j :: nat
+  prop length (list_swap xs i j) = length xs
+  [hint_rewrite]
+proof
+  ← rewrite list_swap_def goal=0
+  → forward length_list_update param_i=j param_v="(nth xs i)" goal=1
+  ← inst "list_update xs i (nth xs j)" goal=1 facts=[2]
+  ← rewrite source=prev goal=1 facts=[3]
+  → forward length_list_update param_i=i param_v="(nth xs j)" goal=4
+  ← apply_prev goal=4 facts=[5]
 qed

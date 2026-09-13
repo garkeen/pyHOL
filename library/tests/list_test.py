@@ -45,7 +45,9 @@ class ListTheoryTest(unittest.TestCase):
                             'missing constant %s' % name)
         for name in ['take_nil', 'take_cons', 'drop_nil', 'drop_cons',
                      'append_take_drop_id', 'length_map', 'map_append',
-                     'nth_append_lt']:
+                     'nth_append_lt', 'nth_list_update_same',
+                     'list_update_nil', 'list_update_zero', 'list_update_cons',
+                     'length_list_update', 'length_list_swap']:
             self.assertIsNotNone(theory.get_theorem(name),
                                  'missing theorem %s' % name)
 

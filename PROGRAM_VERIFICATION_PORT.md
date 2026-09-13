@@ -480,8 +480,12 @@ grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | 
   （`take_nil`/`take_cons`/`drop_nil`/`drop_cons`/`append_take_drop_id`/`length_map`/`map_append`）+ 测试。
 - 阶段 2.2 part 2（本次）：`nth_append_lt: !xs. i < length xs ⟹ nth (xs @ ys) i = nth xs i`
   ——第一条带 `< length` 守卫的列表引理，也是 `!`（320 次）引理族的范式样板（见 §8.5 第 6–9 条）。
+- 阶段 2.2 part 3（本次）：`list_update` 的展开特化引理 `list_update_nil`/`list_update_zero`/
+  `list_update_cons`（都 `[hint_rewrite]`，§4.2 范式）、`nth_list_update_same`、
+  `length_list_update`、`length_list_swap`。`list_update` 的递归参数从 list 改成 nat
+  （与 take/drop/nth 一致，去掉 `i - 1` 与 `Suc n = 0` 的算术摩擦）。
   回归 `pytest library/tests syntax/tests core/tests util/tests -q` → 189 passed；
-  `validate_one.py list` → VALID 18，non-green 0。
+  `validate_one.py list` → VALID 24，non-green 0。
 
 仍未做：list 的其余 `nth`/`update`/`swap`/`sublist` 引理族（2.2 part 2 续）、`mset`（2.3）、
 `card`/`finite_induct` 收口（2.5），以及阶段 3–6。
@@ -532,3 +536,23 @@ grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | 
     但完整重放可能报 `output does not match`。稳妥写法是先 `→ forward goal=G facts=[impl,arg]`
     得到等式事实，再 `← apply_prev goal=G facts=[<新事实 sid>]`（`forward` 出来的事实 sid 顺延一位）。
     `← assumption` 不行——它只认目标自身的 `Thm.hyps`，不认兄弟事实。
+11. **∀-形式的命题不是重写规则，`rule` 也吃不下**（实测）：
+    `prop !xs::'a list. length (list_update xs i v) = length xs` 这种写法产生的是
+    真全称命题；`← rewrite`/`← rule`/`← accept` 都对它报 MatchException 或 "unable to apply"，
+    `[hint_rewrite]` 也没用。用法只有：
+    ```
+    → forward <thm> param_i=.. param_v=.. goal=N     # 得到 "!xs. …" 事实（schematic 参数必须给全）
+    → inst <列表项> goal=N facts=[<该事实>]            # 得到实例事实（若实例与目标命题相同则不会新增 sid！）
+    ← apply_prev goal=N facts=[<该事实>]              # 实例正好等于目标时直接关门
+    ```
+    注意 `param_v="(nth xs i)"` 这类含空格的参数**必须加引号**，否则客户端按空白切分。
+    反过来，**只用 `fixes` 声明、命题里不写 `!` 的定理才是 `rewrite` 能用的等式**（Var 会被
+    `get_theorem(svar=True)` 转成 schematic 变量）。所以：
+12. **索引驱动递归的函数（`take`/`drop`/`nth`/`list_update`）的"一般引理"只能是 ∀-形式。**
+    因为递归同时消耗索引和列表，无论对哪一个做 `induct`，归纳假设都是错的（ih 的索引/列表与
+    递归调用的不一致）。只有把另一个参数写成 `!`（命题里），`induct` 才会给出带 ∀ 的 ih——
+    这正是 `append_take_drop_id`/`nth_append_lt`/`nth_list_update_same`/`length_list_update`
+    的写法。代价就是第 11 条：它们不能当重写规则用。
+    **对策**：另证「list 作参数、索引作模式」的展开特化引理（`take_cons`/`drop_cons`/
+    `list_update_zero`/`list_update_cons`），下游用这些做重写；∀-形式的总结论只偶尔用
+    `forward`+`inst`/`apply_prev` 引一次（`length_list_swap` 就是这么证的）。
