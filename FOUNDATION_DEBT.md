@@ -92,8 +92,10 @@ STEP_FAILED），实验后要清理。
   关系（`Relation.thy`/`Transitive_Closure.thy`/`Equiv_Relations.thy`、
   HOL Light `Library/rstc.ml`）、
   良基与递归（`Wellfounded.thy`/`Wfrec.thy`/`Zorn.thy`、HOL Light `wf.ml`/`Library/wo.ml`）。
-- **P2 数据结构**：list 补全（现仅 11 条，对照 Isabelle `List.thy`、
-  Mathlib `Data/List/` 60 文件）；`option`/`sum`（`Option.thy`/`Sum_Type.thy`）；
+- **P2 数据结构**：list 补全（已补 take/drop/sublist/last/butlast/map/filter/foldr/foldl/
+  concat/zip/itrev/list_update/list_swap/remdups 的定义与 take/drop/map 骨架引理，见
+  `PROGRAM_VERIFICATION_PORT.md` §8；`sorted`/`strict_sorted`/`insort` 需序，归入 P1 序）；
+  `option` 已建（`library/option.pyhol`）；`sum`（`Sum_Type.thy`）；
   `record`（`Record.thy`、HOL Light `Library/records.ml`）；`map`（`Map.thy`）；
   `finset`/`multiset`；`vector`/`tree`。
 - **P3 数系与代数**：`rat` 补全（现仅 5 条，无逆元/除法/序/floor；

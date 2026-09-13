@@ -415,3 +415,93 @@ auto2 建立在 Isabelle 的 Imperative_HOL 上：带类型 ref/array、`lim`、
 - 提交在 `main`（仓库惯例，origin/main 长期落后，本地主干工作流）。提交信息写清改动与测试结果。
 - 文档同步：`ARCHITECTURE_AUDIT.md`、`FOUNDATION_DEBT.md` 是本仓库的现状契约，
   动了相应内容要同步（例如阶段 2 补完 `multiset` 后要更新 `FOUNDATION_DEBT.md` 的 P2）。
+
+---
+
+## 8. 阶段 2 实测修订与进度（2026-09-13，接手者追加）
+
+§6 的依赖清单是**按 Isabelle 库的完整面**估的，不是按 auto2 的实际用量。开工前先量了一遍，
+下面每条都可复现：
+
+```bash
+cd holpy
+for f in rtrancl trancl converse Domain Range refl_on equiv Id Image Restr Field \
+         mset count set_mset card finite sum Min Max sorted strict_sorted insort \
+         zip concat foldr foldl remdups take drop sublist nth list_swap list_update \
+         butlast last map filter itrev distinct rev hd tl; do
+  printf "%-14s %s\n" "$f" \
+    "$(grep -ohE "\\b$f\\b" ../auto2/HOL/Program_Verification/Functional/*.thy \
+        ../auto2/HOL/Program_Verification/Imperative/*.thy | wc -l)"
+done
+grep -ohE '@' ../auto2/HOL/Program_Verification/Functional/*.thy | wc -l   # 1299
+grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | wc -l  # 320
+```
+
+### 8.1 应当删掉的条目
+
+| §6 里的条目 | 实测 | 结论 |
+|---|---|---|
+| 关系演算扩展 `rtrancl`/`trancl`/`equiv`/`refl_on`/`converse`/`Domain`/`Range` | **全部 0 次** | **不要做**。Connectivity 的 `connected_rel` 用的是它自己在 `Connectivity.thy` 里定义的归纳谓词 `has_path`/`is_path`，不是 `rtrancl`。`equiv` 的 8 次命中全是 Isabelle 的 `≡`（`\<equiv>` 定义记号），不是关系谓词 |
+| `Min`/`Max` | 0 次 | 不要做 |
+| `zip`/`concat`/`foldr`/`foldl`/`remdups`/`insort`/`sum` | 0 次 | 定义已给出（廉价），但不值得为它们写引理 |
+| `multiset` 的 `count`/`set_mset`/`-` | 0 次 | 只需要 `mset`（16 次）与 `{#x#}`/`+` |
+| `multiset` 类型名本身 | 0 次 | 只以 `mset _ = mset _` 的等式形式出现，即"置换" |
+
+### 8.2 应该加重的条目
+
+| 条目 | 实测 | 说明 |
+|---|---|---|
+| `@`（append） | 1299 | 最高频，`library/list.pyhol` 已有 |
+| `length` | 347 | 已有 |
+| `!`（nth） | 320 | 已有定义，但**引理几乎没有**——Rect_Intersect 与 Quicksort 大量依赖 `nth` 的追加/更新/交换律 |
+| `set`（list→set） | 145 | 已有 |
+| `hd`/`tl` | 41/12 | 已有 |
+| `map` | 45 | 本次补：`length_map`/`map_append` |
+| `sublist` | 57 | 本次补定义；引理（`length_sublist`/`nth_sublist`/`sublist_append`/`sublist_Cons`…）auto2 放在 Arrays_Ex，属阶段 5 |
+| `last`/`butlast` | 35/15 | 本次补定义 |
+| `list_swap`/`list_update` | 26/11 | 本次补定义 |
+| `take`/`drop` | 16/10 | 本次补定义 + 骨架引理 |
+| `strict_sorted`/`sorted` | 31/15 | **需要序**，见下 |
+| `mset` | 16 | 待做（阶段 2.3） |
+| `card`/`finite` | 9/1 | 待做（阶段 2.5） |
+
+### 8.3 依赖顺序的一处修正
+
+§1 的 `1 → 2 → {3,4}` 在 **`sorted`/`strict_sorted`/`insort`/`ordered_insert`** 上不成立：
+这些函数的类型里带 `'a::linorder`，没有序就写不出来。也就是说 **§6 阶段 3（序）必须排在
+阶段 2 的这一部分之前**，而不是之后。其余阶段 2 内容（`option`/list 原语/`mset`/`card`）确如
+§1 所说是阶段 3、4 的前置。
+
+### 8.4 本次已交付（两个提交）
+
+- `9c338f69` 阶段 2.1：`library/option.pyhol`（`datatype option`、`the`、`not_None_iff`）+ 测试。
+- `f46b15d0` 阶段 2.2 part 1：`library/list.pyhol` 补 15 个函数（take/drop/sublist/last/butlast/
+  map/filter/foldr/foldl/concat/zip/itrev/list_update/list_swap/remdups）与 7 条定理
+  （`take_nil`/`take_cons`/`drop_nil`/`drop_cons`/`append_take_drop_id`/`length_map`/`map_append`）+ 测试。
+  回归 `pytest library/tests syntax/tests core/tests util/tests -q` → 189 passed；
+  `validate_one.py list` → VALID 17，non-green 0。
+
+仍未做：`mset`（2.3）、`card`/`finite_induct` 收口（2.5）、list 的 `nth`/`update`/`swap`/`sub`list
+引理族（2.2 part 2），以及阶段 3–6。
+
+### 8.5 机制上的新经验（§3 之外）
+
+1. **`fun` 只允许一个参数带构造子模式**（`core/defcheck.py::check_fun_recursion` 实测），
+   所以 `take :: nat ⇒ 'a list ⇒ 'a list` 不能同时对 nat 和 list 做模式匹配。用
+   「nat 作递归参数 + `if xs = []` 守卫」写，再把 `0`/`Suc` 与 `[]`/`#` 四种组合的展开式
+   **各自证成 `[hint_rewrite]` 特化引理**（`take_nil`/`take_cons`/`drop_nil`/`drop_cons`）。
+   这正是 §4.2「先把展开固定成一条引理」的用法，否则每条下游引理都要重做一遍 if 展开。
+2. **`¬(x # xs = [])` 的来路**：datatype 只给 `list_nil_cons_neq: ~([] = ?x # ?xs)`，
+   方向是反的。用 `← rule ineq_sym`（`~(x=y) --> ~(y=x)`）先翻方向，再 `← rule list_nil_cons_neq`
+   关掉；随后 `← rewrite if_not_P ... facts=[<该事实>]` 消去守卫。
+3. **`cut "P" goal=N` 产生的可用事实，sid 是"证明 P 之后 NEW 出来的那个"**，不是 cut 行编号
+   （`cut` 建的是目标；`← refl goal=cut_sid` 之后会多出一个同命题的新 sid）。用 `all` 看一眼再引用。
+4. **`rule` 对付否定式定理会报 `_backward_rule: too many previous facts`**，因为 `neg` 是独立常量、
+   `strip_implies` 看不到前提。形状为 `~A` 的定理配事实 `A` 要用 **`← resolve <thm> facts=[A]`**。
+5. **`type_cases` 不代入归纳假设**：在「已被 `intro` 拆出的 ih」上做 `type_cases`，ih 里的变量
+   不会被替换，于是 ih 用不上。正确做法是把命题写成全称形式
+   （`prop !xs::'a list. take n xs @ drop n xs = xs`），对 `n` 用 `induct`，让 ih 带 `∀xs`；
+   之后 `→ inst "<项>" goal=N facts=[ih]` 实例化。`append_take_drop_id` 就是这么证的。
+6. **`inductive` 允许非谓词前提**（先例 `library/mem.pyhol` 的 `ll_step: ¬(p = null) ⟶ ll (s p) s ⟶ ll p s`），
+   且自动生成 `<name>_induct` 与 `<name>_cases`。若将来真要用传递闭包，这是可行入口（但见 §8.1：
+   auto2 用不上）。
