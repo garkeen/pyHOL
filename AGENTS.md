@@ -54,6 +54,24 @@ method/+backend/ 应用层：Method/ProofState/Flask API，点击式证明，不
 
 ## 4. 工作方式
 
+- **写证明一律用常驻 REPL + `repl/client`，不要写每次重载理论的临时脚本。**
+  理论加载一次，之后所有步进都走同一条连接：
+
+  ```bash
+  python -m repl.repl --serve --port 8854 --theory <理论> &   # 后台起一次
+  python -m repl.client --port 8854 --stdin < 步骤文件         # 或 “cmd1” “cmd2” ...
+  ```
+
+  客户端指令：`theory NAME`、`var NAME TYPE`（**不写 `::`**，写法是 `var A 'a set`）、
+  `goal <prop>`（只给命题，上下文变量靠 `var` 预先声明）、步进行、
+  `all`（列出全部条目与稳定 ID）、`undo`、`check`、`export`、`thm NAME`。
+  退出码 0/1/2；出现 `STEP FAILED` 会打印失败行与当前所有稳定 ID。
+  做完工作**记得关掉后台服务**。
+
+  **两个坑**：`check` 只做 `compute_only`，说 VALID 不等于独立重放通过，
+  最终必须用 `.cache/validate_one.py <理论>` 复核；临时脚本（每次新进程、
+  重载整条 import 链）的稳定 ID 分配顺序可能与 REPL 不同，两边混用会让
+  先前记下的字面 sid 失效——要就用 REPL，别在两个工具之间来回抄 sid。
 - 小步：一次只动一两个文件；机制先用不落盘原型验证，再落盘；先测后写测后跑回归。
 - 代码里不写思维链，不假装完成：没跑过的测试不写“通过”，没验证的结论不写“已确认”。
 - 改共用件（如 `simp_sweep`、`solve`、`basic.load_theory_cache`）必须跑全相关回归；
