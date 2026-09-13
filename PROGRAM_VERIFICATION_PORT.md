@@ -478,11 +478,13 @@ grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | 
 - `f46b15d0` 阶段 2.2 part 1：`library/list.pyhol` 补 15 个函数（take/drop/sublist/last/butlast/
   map/filter/foldr/foldl/concat/zip/itrev/list_update/list_swap/remdups）与 7 条定理
   （`take_nil`/`take_cons`/`drop_nil`/`drop_cons`/`append_take_drop_id`/`length_map`/`map_append`）+ 测试。
+- 阶段 2.2 part 2（本次）：`nth_append_lt: !xs. i < length xs ⟹ nth (xs @ ys) i = nth xs i`
+  ——第一条带 `< length` 守卫的列表引理，也是 `!`（320 次）引理族的范式样板（见 §8.5 第 6–9 条）。
   回归 `pytest library/tests syntax/tests core/tests util/tests -q` → 189 passed；
-  `validate_one.py list` → VALID 17，non-green 0。
+  `validate_one.py list` → VALID 18，non-green 0。
 
-仍未做：`mset`（2.3）、`card`/`finite_induct` 收口（2.5）、list 的 `nth`/`update`/`swap`/`sub`list
-引理族（2.2 part 2），以及阶段 3–6。
+仍未做：list 的其余 `nth`/`update`/`swap`/`sublist` 引理族（2.2 part 2 续）、`mset`（2.3）、
+`card`/`finite_induct` 收口（2.5），以及阶段 3–6。
 
 ### 8.5 机制上的新经验（§3 之外）
 
@@ -505,3 +507,28 @@ grep -ohE '!' ../auto2/HOL/Program_Verification/{Functional,Imperative}/*.thy | 
 6. **`inductive` 允许非谓词前提**（先例 `library/mem.pyhol` 的 `ll_step: ¬(p = null) ⟶ ll (s p) s ⟶ ll p s`），
    且自动生成 `<name>_induct` 与 `<name>_cases`。若将来真要用传递闭包，这是可行入口（但见 §8.1：
    auto2 用不上）。
+7. **带 `< length` 守卫的列表引理的标准配方**（`nth_append_lt` 用的，`!` 引理族都该照这个写）：
+   定理写成 `prop !xs. i < length xs ⟹ …` 并对 `i` 做 `induct`（这样归纳假设带 `∀xs`，能实例化）。
+   归纳步里 `xs` 是 ∀-绑定的、`type_cases` 够不着；而先 `intro` 出来又会把守卫变成事实、
+   `type_cases` 不替换事实（行不可变模型，见 §8.5 第 5 条）。解法是**把守卫重新折回目标**：
+   ```
+   ← intro xs goal=N                      # 守卫成了事实，目标只剩结论
+   cut "<守卫> --> <结论>" goal=N          # 注意 goal= 必须指当前开口目标，不是守卫事实！
+   ← type_cases xs goal=<cut 目标>         # 此时 xs 自由、守卫在目标里，两者都替换
+   ... 两个构造子分支各自收口 ...
+   ← apply_prev goal=N facts=[<cut 事实>,<守卫事实>]
+   ```
+8. **`cut "P" goal=N` 的 N 必须是开口目标**。指到一个守卫**事实**上不会报错、REPL 的
+   `check` 也照样 VALID，但完整重放会报
+   `CheckProofException: output does not match`（产生的定理假设集成了那条事实的兄弟分支，
+   而目标项的假设集不是）。**这是本次唯一一次真实翻车**，根因就是把第二个 `cut` 写成了
+   `goal=24`（守卫）而不是 `goal=25`（目标）。改一个数字即通过。
+9. **REPL 的 `check`/VALID 是 `compute_only`**，不做独立原语重放——报告 §5.3 已说过
+   "REPL 通过后仍要 `validate_one.py` 复验"，这次实测确证：同一份 proof 块 REPL 说 VALID、
+   `validate_one.py` 说 STEP_FAILED。**带守卫的引理务必走 `validate_one.py` 或重放测试台**
+   （`StableProofState.create(...)` 逐条 `apply_method_dict` 并看 `num_gaps`/`get_open_goals`），
+   不要只看 REPL 的 VALID。
+10. **用归纳假设关闭被重写过的目标**：`← apply_prev goal=G facts=[impl,arg]` 在 REPL 里能过，
+    但完整重放可能报 `output does not match`。稳妥写法是先 `→ forward goal=G facts=[impl,arg]`
+    得到等式事实，再 `← apply_prev goal=G facts=[<新事实 sid>]`（`forward` 出来的事实 sid 顺延一位）。
+    `← assumption` 不行——它只认目标自身的 `Thm.hyps`，不认兄弟事实。

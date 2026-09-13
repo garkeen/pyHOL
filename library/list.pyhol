@@ -500,3 +500,39 @@ fun remdups :: 'a list ⇒ 'a list
   | remdups [] = []
   | remdups (x # xs) = (if x Mem set xs then remdups xs else x # remdups xs)
 
+header "Index lemmas"
+
+theorem nth_append_lt
+  fixes i :: nat, ys :: 'a list
+  prop !xs::'a list. i < length xs --> nth (xs @ ys) i = nth xs i
+proof
+  ← induct i nat_induct goal=0
+  ← intro xs goal=1
+  cut "0 < length xs --> nth (xs @ ys) 0 = nth xs 0" goal=5
+  ← type_cases xs goal=6
+  ← rewrite length_def_1 goal=7
+  ← rewrite nat_less_def_1 goal=9
+  ← intro goal=10
+  ← rule falseE goal=12 facts=[11]
+  ← intro u,v goal=8
+  ← rewrite append_def_2 goal=17
+  ← rewrite nth_cons_zero goal=18
+  ← apply_prev goal=5 facts=[6,4]
+  ← intro n goal=2
+  ← intro zs goal=22
+  cut "Suc n < length zs --> nth (zs @ ys) (Suc n) = nth zs (Suc n)" goal=25
+  ← type_cases zs goal=26
+  ← rewrite length_def_1 goal=27
+  ← rewrite nat_less_def_1 goal=29
+  accept falseE goal=30
+  ← intro u,v goal=28
+  ← rewrite append_def_2 goal=33
+  ← rewrite nth_cons_suc goal=34
+  → rewrite length_def_2 target=fact goal=35 facts=[32]
+  → rewrite less_Suc_lesseq target=fact goal=35 facts=[36]
+  → rewrite lesseq_Suc_less target=fact goal=35 facts=[37]
+  ← inst v goal=35 facts=[21]
+  → forward goal=35 facts=[39,38]
+  ← apply_prev goal=35 facts=[40]
+  ← apply_prev goal=25 facts=[26,24]
+qed
