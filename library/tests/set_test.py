@@ -26,21 +26,17 @@ NEW_LEMMAS = ['subsetE', 'subset_refl', 'subset_trans', 'subset_diff',
               'finite_induct', 'finite_insert_imp', 'finite_fin_sub',
               'finite_subset', 'finite_insert', 'finite_union_imp',
               'finite_inter', 'finite_image', 'finite_delete', 'finite_diff',
-              'image_insert']
+              'image_insert',
+              'lfp_lowerbound', 'lfp_greatest', 'lfp_fix_upper', 'lfp_fix_lower']
 
 # Still unproved: the deliberate `set_equal_iff` axiom plus the remaining
 # stubs.  Pinned so that proving one of them fails this test loudly and the
 # list gets updated, instead of the debt silently growing.
 EXPECTED_NON_GREEN = {
     'set_equal_iff': 'AXIOM',
-    'lfp_unfold': 'DEP_FAILED',
     'image_combine': 'UNPROVED',
     'card_image_inj': 'UNPROVED',
     'surjective_iff_injective': 'UNPROVED',
-    'lfp_lowerbound': 'UNPROVED',
-    'lfp_greatest': 'UNPROVED',
-    'lfp_fix_upper': 'UNPROVED',
-    'lfp_fix_lower': 'UNPROVED',
 }
 
 

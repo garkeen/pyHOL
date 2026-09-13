@@ -876,18 +876,60 @@ qed
 theorem lfp_lowerbound
   fixes h :: 'a set => 'a set, A :: 'a set
   prop h A Sub A --> lfp h Sub A
+proof
+  ← intro goal=0
+  ← rewrite lfp_def sym=false goal=2
+  ← rewrite subset_def sym=false goal=3
+  ← intro x goal=4
+  → rewrite target=fact member_Inter sym=false goal=7 facts=[6]
+  → inst A goal=7 facts=[8]
+  → rewrite target=fact member_collect sym=false goal=7 facts=[9]
+  ← apply_prev goal=7 facts=[10,1]
+qed
 
 theorem lfp_greatest
   fixes h :: 'a set => 'a set, A :: 'a set
   prop (!X. h X Sub X --> A Sub X) --> A Sub lfp h
+proof
+  ← intro goal=0
+  ← rewrite lfp_def sym=false goal=2
+  ← rewrite subset_def sym=false goal=3
+  ← intro x goal=4
+  ← rewrite member_Inter sym=false goal=7
+  ← intro S goal=8
+  → rewrite target=fact member_collect sym=false goal=11 facts=[10]
+  → inst S goal=11 facts=[1]
+  → forward goal=11 facts=[13,12]
+  ← rule subsetE goal=11 facts=[14,6]
+qed
 
 theorem lfp_fix_upper
   fixes h :: 'a set => 'a set
   prop bnd_mono h --> h (lfp h) Sub lfp h
+proof
+  ← intro goal=0
+  ← rule lfp_greatest goal=2
+  ← intro X goal=3
+  → forward lfp_lowerbound param_h=h param_A=X goal=6 facts=[5]
+  → rewrite target=fact bnd_mono_def sym=false goal=6 facts=[1]
+  → inst "lfp h" goal=6 facts=[8]
+  → inst X goal=6 facts=[9]
+  → forward goal=6 facts=[10,7]
+  ← rule subset_trans goal=6 facts=[11,5]
+qed
 
 theorem lfp_fix_lower
   fixes h :: 'a set => 'a set
   prop bnd_mono h --> lfp h Sub h (lfp h)
+proof
+  ← intro goal=0
+  → forward lfp_fix_upper param_h=h goal=2 facts=[1]
+  → rewrite target=fact bnd_mono_def sym=false goal=2 facts=[1]
+  → inst "h (lfp h)" goal=2 facts=[4]
+  → inst "lfp h" goal=2 facts=[5]
+  → forward goal=2 facts=[6,3]
+  ← rule lfp_lowerbound goal=2 facts=[7]
+qed
 
 theorem lfp_unfold
   fixes h :: 'a set => 'a set
