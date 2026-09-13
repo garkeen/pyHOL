@@ -395,6 +395,21 @@ proof
   ← rewrite source=prev goal=20 facts=[21]
 qed
 
+theorem append_singleton_neq_nil
+  fixes xs :: 'a list, x :: 'a
+  prop ~(xs @ [x] = [])
+  [hint_rewrite]
+proof
+  type_cases xs goal=0
+  ← rewrite append_def_1 sym=false goal=1
+  ← rule ineq_sym goal=3
+  ← rule list_nil_cons_neq goal=4
+  ← intro x1,xs goal=2
+  ← rewrite append_def_2 sym=false goal=7
+  ← rule ineq_sym goal=8
+  ← rule list_nil_cons_neq goal=9
+qed
+
 header "Last element"
 
 fun last :: 'a list ⇒ 'a
@@ -403,6 +418,45 @@ fun last :: 'a list ⇒ 'a
 fun butlast :: 'a list ⇒ 'a list
   | butlast [] = []
   | butlast (x # xs) = (if xs = [] then [] else x # butlast xs)
+
+theorem last_append
+  fixes xs :: 'a list, x :: 'a
+  prop last (xs @ [x]) = x
+  [hint_rewrite]
+proof
+  ← induct xs list_induct goal=0
+  ← rewrite append_def_1 sym=false goal=1
+  ← rewrite last_def_1 sym=false goal=3
+  cut "([]::'a list) = []" goal=4
+  ← refl goal=5
+  ← rewrite if_P goal=4 facts=[5]
+  ← intro x1,xs goal=2
+  ← rewrite append_def_2 sym=false goal=9
+  ← rewrite last_def_1 sym=false goal=10
+  cut "~(xs @ [x] = [])" goal=11
+  → forward append_singleton_neq_nil param_x=x param_xs=xs goal=12
+  ← rewrite if_not_P goal=11 facts=[13]
+qed
+
+theorem butlast_append
+  fixes xs :: 'a list, x :: 'a
+  prop butlast (xs @ [x]) = xs
+  [hint_rewrite]
+proof
+  ← induct xs list_induct goal=0
+  ← rewrite append_def_1 sym=false goal=1
+  ← rewrite butlast_def_2 sym=false goal=3
+  cut "([]::'a list) = []" goal=4
+  ← refl goal=5
+  ← rewrite if_P goal=4 facts=[5]
+  ← intro x1,xs goal=2
+  ← rewrite append_def_2 sym=false goal=9
+  ← rewrite butlast_def_2 sym=false goal=10
+  cut "~(xs @ [x] = [])" goal=11
+  → forward append_singleton_neq_nil param_x=x param_xs=xs goal=12
+  ← rewrite if_not_P goal=11 facts=[13]
+  ← rewrite source=prev goal=14 facts=[8]
+qed
 
 header "Map, filter and folds"
 
@@ -480,11 +534,58 @@ proof
   ← rewrite source=prev goal=11 facts=[7]
 qed
 
+theorem set_map
+  fixes f :: 'a => 'b, xs :: 'a list
+  prop set (map f xs) = image f (set xs)
+  [hint_rewrite]
+proof
+  ← induct xs list_induct goal=0
+  ← rewrite map_def_1 goal=1
+  ← rewrite set_def_1 goal=3
+  ← rewrite image_empty goal=4
+  ← intro x,xs goal=2
+  ← rewrite map_def_2 goal=8
+  ← rewrite set_def_2 goal=9
+  ← rewrite image_insert goal=10
+  ← rewrite source=prev goal=11 facts=[7]
+qed
+
 header "Reverse by accumulation"
 
 fun itrev :: 'a list ⇒ 'a list ⇒ 'a list
   | itrev [] ys = ys
   | itrev (x # xs) ys = itrev xs (x # ys)
+
+theorem itrev_rev_gen
+  fixes xs :: 'a list
+  prop !ys::'a list. itrev xs ys = rev xs @ ys
+proof
+  ← induct xs list_induct goal=0
+  ← intro ys goal=1
+  ← rewrite itrev_def_1 goal=4
+  ← rewrite rev_def_1 goal=5
+  ← rewrite append_def_1 goal=6
+  ← intro x,xs goal=2
+  ← intro ys goal=10
+  ← rewrite itrev_def_2 goal=11
+  → inst "(x # ys)" goal=12 facts=[9]
+  ← rewrite rev_def_2 sym=false goal=12
+  ← rewrite append_assoc sym=false goal=14
+  ← rewrite append_def_2 sym=false goal=15
+  ← rewrite append_def_1 sym=false goal=16
+qed
+
+theorem itrev_eq_rev
+  fixes xs :: 'a list
+  prop itrev xs [] = rev xs
+  [hint_rewrite]
+proof
+  cut "!ys::'a list. itrev xs ys = rev xs @ ys" goal=0
+  accept itrev_rev_gen goal=1
+  → inst "([]::'a list)" goal=0 facts=[1]
+  ← rewrite source=prev goal=0 facts=[2]
+  ← rewrite append_right_neutral sym=false goal=3
+qed
 
 header "Update and swap by index"
 
