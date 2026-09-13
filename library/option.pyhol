@@ -1,0 +1,58 @@
+theory option
+imports logic_base
+description "Option type: partial values as total functions, needed by the auto2 program-verification port (Mapping_Str maps, BST/RBTree search, Dijkstra)"
+
+header "Option type"
+
+datatype option 'a =
+  | None :: 'a option
+  | SomeC (val :: 'a) :: 'a option
+
+fun the :: 'a option ⇒ 'a
+  | the (SomeC x) = x
+
+theorem not_None_iff
+  fixes x :: 'a option
+  prop ~(x = None) <--> (?y. x = SomeC y)
+  [hint_rewrite]
+proof
+  ← rule iffI goal=0
+    #[1] ~(x = None) --> (?y. x = SomeC y)
+    #[2] (?y. x = SomeC y) --> ~(x = None)
+  ← type_cases x goal=1
+    #[3] ~((None::'a option) = None) --> (?y::'a. None = SomeC y)
+    #[4] !val::'a. ~(SomeC val = None) --> (?y. SomeC val = SomeC y)
+  ← intro goal=3
+    #[5] ~((None::'a option) = None)
+    #[6] ?y::'a. None = SomeC y
+  ← rule falseE goal=6
+    #[7] false
+  ← rule negE goal=7 facts=[5]
+    #[8] (None::'a option) = None
+  ← refl goal=8
+    #[9] (None::'a option) = None
+  ← intro val goal=4
+    #[10] _VAR val
+    #[11] ~(SomeC val = None)
+    #[12] ?y. SomeC val = SomeC y
+  ← inst val goal=12
+    #[13] SomeC val = SomeC val
+  ← refl goal=13
+    #[14] SomeC val = SomeC val
+  ← intro goal=2
+    #[15] ?y. x = SomeC y
+    #[16] ~(x = None)
+  elim y goal=16 facts=[15]
+    #[17] _VAR y
+    #[18] x = SomeC y
+    #[19] ~(x = None)
+  ← rule negI goal=19
+    #[20] x = None --> false
+  ← intro goal=20
+    #[21] x = None
+    #[22] false
+  → rewrite source=prev target=fact goal=22 facts=[21,18]
+    #[23] None = SomeC y
+  ← resolve option_None_SomeC_neq goal=22 facts=[23]
+    #[24] false
+qed
