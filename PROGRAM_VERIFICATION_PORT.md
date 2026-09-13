@@ -909,11 +909,15 @@ else 分支要用的「既不等于也不小于就是大于」）。
 里就是这么写的。auto2/Isabelle 原文里的多变量量词照抄会解析失败。
 
 序谓词层已完整：`preorder`/`order`/`linorder`/`linorder_lt` + 层级与投影引理
-+ `nat` 实例（20 条 VALID）。`sorted` 在本仓库无消费方（§8.1：auto2 里 0 次），
-**不做**；`strict_sorted` 与 `ordered_insert` 及其引理已建在 `linorder_lt` 上，
-见 `library/lists_ex.pyhol`（对应 auto2 `Lists_Ex.thy`；该文件里依赖 Mapping_Str
-的 `ordered_insert_pairs`/`remove_elt_pairs` 部分留到阶段 5）。
-实例还缺 `int`/`real` 的 `nat_linorder`/`nat_linorder_lt` 对应物。
++ `nat` 实例（20 条 VALID）。**`sorted`（≤ 版）要做**——它来自 Isabelle 的
+List.thy，auto2 在 `Quicksort.thy`（4 处）、`LinkedList.thy`（4 处，指令式）、
+`Rect_Intersect.thy`（区间序，1 处）里用；§8.1 说的「0 次」是 `insort`，
+本条曾一度被误记成 sorted（2026-09-13 修正）。`strict_sorted` 已完成一半
+（`library/lists_ex.pyhol`，对应 auto2 `Lists_Ex.thy`；该文件里依赖 Mapping_Str
+的 `ordered_insert_pairs`/`remove_elt_pairs`/`map_of_alist_binary` 留到阶段 5，
+`remove_elt_list` 只依赖 list/order，可归本阶段）。
+实例还缺 `int`/`real`：`real` 只差 `real_le_trans`（UNPROVED）与几个 `<` 律；
+`int` 整条序层都是 UNPROVED（该理论 184 条里也几乎全未证），属 P3 数系债。
 
 ## 12. 阶段 3：strict_sorted 层（2026-09-13 续轮，常驻 REPL）
 
@@ -996,7 +1000,15 @@ strict_sorted 拆开」固定下来的析构引理（见 §12.2 第 31 条）。
 `strict_sorted_appendI`（`[backward]`）、`strict_sorted_distinct`（需要 cons 形式的
 析构引理 + `linorder_lt_irrefl` + `negE_gen`，配方已明确）、`ordered_insert` 与
 `ordered_insert_set`（要 `insert_comm`）/`ordered_insert_sorted`（要
-`linorder_lt_gt_of_not_lt`）/`ordered_insert_binary`。
+`linorder_lt_gt_of_not_lt`）、`remove_elt_list` 一组（`_set`/`_sorted`/`_idem`，
+BST 删除要用）。三个 `_binary` 引理（`ordered_insert_binary`、
+`remove_elt_list_binary`、`ordered_insert_pairs_binary`）**在 Lists_Ex 之外无人引用**
+（2026-09-13 实测），是 auto2 自己二分路径用的，属可选的收尾工作。
+
+`sorted`（≤ 版）也要在本阶段补：定义 + Quicksort 用到的引理（
+`sorted (sublist l (r+1) (quicksort xs l r))` 那类陈述要能用，
+说明至少需要 `sorted` 对 `sublist`/`append` 的刻画）。它建在 `linorder`（≤）上，
+与 `strict_sorted` 平行，可复用本轮的全套配方。
 `remove_elt_list` 一组（BST 的删除用）与依赖 Mapping_Str 的
 `ordered_insert_pairs`/`remove_elt_pairs`/`map_of_alist_binary` 归阶段 5。
 
