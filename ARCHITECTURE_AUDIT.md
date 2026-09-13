@@ -4,9 +4,8 @@
 > 任务 A–H 的收尾叙述、已修复偏差的来龙去脉全部删除，只保留对将来有用的部分：目标架构、
 > 铁律与 lint、信任模型、当前债务、以及改代码前必须知道的陷阱。过程对应提交见 `git log`。
 >
-> **文档同步状态（2026-09-12）**：本文件与代码一致。**`manual/` 与 `README.md` 落后于现状**
-> ——仍写着重写前的 `framework`/`domains`/`server`/`app` 结构与旧 API，需要一次专门同步。
-> 本次不动。
+> **文档同步状态（2026-09-13）**：本文件、`manual/`、`README.md` 与代码一致。上一次落后的是本文件
+> 自己——`repl/` 已建成、后端/前端已接入稳定 ID 新管线，本次一并同步（含库状态计数与注册宏数量刷新）。
 
 ---
 
@@ -95,9 +94,15 @@ holpy/
 ├── util/                纯工具：name / typecheck / unionfind（kernel 的合法伙伴）
 ├── imperative/          Hoare 逻辑子模块（theories 的第 7 个垂直切片）
 ├── backend/             HTTP API 层（Flask 薄壳，零逻辑）
-├── frontend/            Vue 前端（不动）
+│   ├── ide.py           文件/理论编辑：find-files / load-json-file / save-file / check-modify /
+│   │                    remove-file / rename-file / validate-theory / theorem-search / theory-status
+│   └── ide_v2.py        稳定 #[N] ID 证明管线：init-saved-proof / apply-method / trust-report /
+│                        backward-search / forward-search（五个端点均接受 trust，缺省用 COMPUTATION_ORACLES）
+├── frontend/            Vue 前端。方法下拉由 proof state 的 method_direction 驱动，会话级 trust 控件
+│                        + Full verify 信任报告，type.abbrev / type.quot 的显示与编辑
 ├── library/             .pyhol 理论数据（不动）
-└── repl/                【未建】自洽 REPL（见 §7.1）
+└── repl/                自洽 REPL（已建）：repl.py（交互 / --script / --serve 常驻）+ client.py
+                         （常驻客户端）+ tests/repl_test.py。只依赖 kernel/core/method/syntax
 ```
 
 ---
@@ -150,8 +155,11 @@ holpy/
   **不得**依赖这些之外的任何可变全局状态，特别是：(1) `context.ctxt` / `context.ctxt.vars`（回放中随
   `intro`/`elim` 增减）；(2) 模块级可变容器、计数器、缓存（除非它只是**加速**，且不缓存时结果逐位
   相同）；(3) 随机数 / 时间 / 环境变量；(4) `self` 上构造后写入的字段。理论对象身份已在键内
-  （见 §7.4 的 z3rec 条目），宏作者无需自行处理；前四类是宏作者的责任。审计（2026-09-12）：58 个
-  注册宏全部满足该契约。审计模式 `--selfcheck` 会重推并复核每个命中，恢复"每行每次都重推"的属性
+  （见 §7.4 的 z3rec 条目），宏作者无需自行处理；前四类是宏作者的责任。审计（2026-09-12）：当时的
+  58 个注册宏全部满足该契约；2026-09-13 实测注册宏 56 个（level 0/1/10/None = 11/32/9/4，
+  `COMPUTATION_ORACLES` 恰好等于 11 个 level-0 宏），静态复核（宏模块内无 `context.ctxt`、无模块级
+  可变状态、无随机数/时间）未见违例。
+  审计模式 `--selfcheck` 会重推并复核每个命中，恢复"每行每次都重推"的属性
   （代价回到记忆化之前）；常规开发默认关。
 
 ---
@@ -203,20 +211,21 @@ axiom 条目（`thm.ax`）没有证明、没有状态。四态是验证管线的
 ### 7.1 待做的工程债
 
 - **"计算即 oracle" 推导化**（最大的一块）。6 个常数折叠/范型 conv——`nat_eval_conv`、`int_eval_conv`、
-  `real_eval_conv`、`real_norm_conv`、`real_const_eq_conv`、`real_power_conv`——内部的 `auto_solve`
-  前提仍在发射 level-0 oracle 宏节点。不是"有推导却用宏包装"（那类已消灭），而是**计算本身没有推导**：
+  `real_eval_conv`、`real_norm_conv`、`real_const_eq_conv`、`real_power_conv`——直接
+  `eval_macro('<oracle>', ...)` 取结果（`nat_eval` / `int_eval` / `real_eval` / `real_norm` /
+  `real_const_eq`；`real_power_conv` 另有 `auto.auto_solve` 一处），发射 level-0 oracle 宏节点。
+  不是"有推导却用宏包装"（那类已消灭），而是**计算本身没有推导**：
   真推导化需先实现数值计算的重写推导（二进制数值计算），属独立机制工程；`norm_conv` 返回的推导里
-  那些折叠节点随之消失。
-- **REPL（repl/）**——未建。验收：不启 backend/frontend，纯交互走 method 通道 + verify 反馈完成一个
-  库级定理的证明与验证。§5.8 定义了它的定位。
-- **frontend/backend 需要一次大的 API 修复**——已明确推迟，本阶段不碰。`backend/tests/test_backend_api.py`
-  目前是知识归档（0 个 test 函数，记录 12 个端点的载荷与断言意图）；原脚本有两病灶（12 个 pytest error；
-  save round-trip 写真实 `library/`）。
+  那些折叠节点随之消失。放行集是 `core/verify.COMPUTATION_ORACLES`（11 个名字，恰好等于注册的全部
+  level-0 宏）；`validate_library.py` 与后端 IDE 端点共用同一个集合。
 
 ### 7.2 内容债（不在架构范围）
 
-`library/` 约 3675 条定理：**VALID 388 / UNPROVED 1813 / DEP_FAILED 1420 / AXIOM 52 / STEP_FAILED 2**
-（仅 `nat.le_1_1`、`prime.distinct_prime_coprime`）。这是原作没证完的库内容，**不是机制 bug**——
+`library/` 44 个理论共约 3659 条条目：**VALID 635 / UNPROVED 1698 / DEP_FAILED 1291 / AXIOM 32 /
+STEP_FAILED 3**（仅 `gcd.ind_euclid`、`gcd.bezout_lemma`、`prime.distinct_prime_coprime`）。
+（2026-09-13 全量 `validate_library --force`：有证明的 1929 条 = OK 635 / DEP_FAILED 1291 / FAIL 3；
+上表是 `.cache` 快照，含未证与公理条目；两者在 VALID/DEP_FAILED/FAIL 上逐项一致。）
+这是原作没证完的库内容，**不是机制 bug**——
 DEP_FAILED 的瀑布正是"依赖失败"状态的正常传播。
 
 验收基线不是"全绿"，而是**快照 + 零缩水**：任何原先 VALID 的定理必须仍 VALID（允许状态更精确，
@@ -229,7 +238,9 @@ DEP_FAILED 的瀑布正是"依赖失败"状态的正常传播。
   （单 Term / 整 tuple 免检 / 两 tuple 跨 tuple 去重 / 原地早退）。hyps 保序且参与 Term 判等与重放校验，
   统一成 set 会给最常见的 `Thm(prop, th.hyps)` 路径凭空加开销并可能改变顺序——**这是设计 feature**。
   前提约束：传 tuple 时调用方保证 tuple 内部已去重（构造函数只做跨 tuple 去重）。
-- **`core/auto.py` 的 `if filename == 'hoare'` 硬编码**激活 imperative 包（它不是 theories/ 包）。
+- **`core/basic.py::load_theory_cache` 的 `if filename == 'hoare'` 硬编码**激活 imperative 包
+  （它不是 theories/ 包）；`method/methods/__init__.py` 也会预加载 `imperative.imp`，以便 IDE 方法
+  列表在任何理论加载前就可用。
 - **`first_order_match` 不做 `t` 无 SVar 的断言**：`auto` 拿定理 schema 去匹配 **schematic 子目标**，
   `t` 合法地含 SVar；加断言会改掉 auto 的 `TacticException` 失败契约。契约写在函数 docstring 里。
 
@@ -239,9 +250,10 @@ DEP_FAILED 的瀑布正是"依赖失败"状态的正常传播。
   `theories/real/simplex*.py` 一起构成 z3 实验链，生产消费者为零；整体放在内容层是因为其"算法"
   本身就是领域证明构造，或跨域不可按域分文件。
 - **`theories/z3rec.py::def_axiom` 会在回放中途替换全局理论**：它在 z3 证明重建里调用
-  `basic.load_theory('sat'/'smt')`（对照 `theories/integer/omega.py` 的同类调用在模块级、导入期执行，
-  无害）。所以增量校验缓存的键必须含理论对象身份（`core/verify.py::_memo_key`，与
-  `core/auto.py::_cache_key` 同理）；理论一旦被换掉，旧条目自动全部失效并重推。
+  `basic.load_theory('sat'/'smt')`（该模块第 49 行另有一次模块级调用；`theories/real/simplex*.py`
+  也各有一处，靠"不被 `theories/real/__init__.py` 引入"的懒装载避免被连带触发）。所以增量校验缓存的
+  键必须含理论对象身份（`core/verify.py::_memo_key`，与 `core/auto.py::_cache_key` 同理）；理论一旦
+  被换掉，旧条目自动全部失效并重推。
 - **omega 的 auto 注册由 `theories/integer/__init__.py` 触发**（core/basic 不再 eager import 它）。
   依据：全库只有 `library/int.pyhol` 使用 omega，且它声明 `domains integer`。将来若有理论用 omega
   却不声明 integer 域，这个假设会被破坏。
@@ -257,6 +269,10 @@ DEP_FAILED 的瀑布正是"依赖失败"状态的正常传播。
   里 `term.is_exists()` 是 z3 方法，不是 holpy 谓词。批量改谓词时必须按 receiver 类型区分。
 - **模块级缓存的键要含理论身份**：`core/auto.py` 的 `norm_record`/`solve_record` 若只以项为键，进程内
   换理论后会复用上一理论的证明项（其行按旧理论语境解析）。键用 `(id(theory.thy), t)`。
+- **不要在导入期调 `basic.load_theory`**：它替换全局 theory，会清空别处（如 imperative）手工合并进来
+  的理论状态。`theories/integer/omega.py` 曾有的一处导入期 `load_theory('int')` 因此在 2026-09-13
+  删除——它清空了 imperative 的 `fun_upd`，并让 omega 用例上下文漂移；omega 的 auto 注册改由
+  `theories/integer/__init__.py` 触发。`theories/real/simplex*.py` 模块级各有一处，靠懒装载规避。
 - **洞语句只在 kernel 之外经命名构造器**：`Thm.sorry`（下层/成洞）、`tactic/goal.py` 的 Goal（tactic 及以上）、
   `oracle_thm`（具名 oracle）、`core/defcheck.mk_axiom`（axiom）。裸 `Thm(` 会被 lint 拒绝。
 - **conv 不得发射宏名、不得搜索**；前提定理永远显式传入（`core/conv/inst.py` 的原语链接助手）。

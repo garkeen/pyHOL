@@ -8,7 +8,7 @@
 kernel/          逻辑内核（Type/Term/Thm/原语/ProofTerm/Theory）
   │   15 条原语是唯一凭空构造定理的入口
   ▼
-core/       逻辑层（Conv/Tactic/Macro/Matcher/Context/Auto/Search）
+core/       逻辑层（Conv/Macro/Matcher/Context/Auto/Search）
   │   组合原语与宏，提供自动化基础设施
   ▼
 method/ + backend/ 应用层（Method/ProofState/Flask API）
