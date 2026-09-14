@@ -1,5 +1,5 @@
 theory int
-imports list
+imports list, order
 domains integer
 description "integers"
 
@@ -22,6 +22,129 @@ def abs :: 'a ⇒ 'a = abs n = (if 0 ≤ n then n else -n) [hint_rewrite]
 const less_eq :: int ⇒ int ⇒ bool
 
 const less :: int ⇒ int ⇒ bool
+
+-- The order layer of `int`, plus the class instances that discharge what
+-- `'a::linorder` injects (mirroring `nat_preorder`/`nat_order`/`nat_linorder`/
+-- `nat_linorder_lt`/`nat_linorder_lt_le` in library/order.pyhol).  `type int`
+-- is abstract and `<=`/`<` are uninterpreted constants, so every item here is
+-- proved by the z3 oracle -- which is exactly the case LIBRARY_ORACLES admits
+-- int/real entries for (PROGRAM_VERIFICATION_PORT.md §13.3).  With these, a
+-- generic lemma stated with `'a::linorder` can be used at `int`.
+
+theorem int_le_refl
+  fixes x :: int
+  prop x <= x
+proof
+  ← z3 goal=0
+qed
+
+theorem int_le_antisym
+  fixes x :: int, y :: int
+  prop x <= y & y <= x <--> x = y
+proof
+  ← z3 goal=0
+qed
+
+theorem int_le_trans
+  fixes x :: int, y :: int, z :: int
+  prop x <= y --> y <= z --> x <= z
+proof
+  ← z3 goal=0
+qed
+
+theorem int_le_total
+  fixes x :: int, y :: int
+  prop x <= y | y <= x
+proof
+  ← z3 goal=0
+qed
+
+theorem int_lt_irrefl
+  fixes x :: int
+  prop ~(x < x)
+proof
+  ← z3 goal=0
+qed
+
+theorem int_lt_trans
+  fixes x :: int, y :: int, z :: int
+  prop x < y --> y < z --> x < z
+proof
+  ← z3 goal=0
+qed
+
+theorem int_lt_cases
+  fixes x :: int, y :: int
+  prop x < y | y < x | x = y
+proof
+  ← z3 goal=0
+qed
+
+theorem int_lt_le
+  fixes x :: int, y :: int
+  prop x < y <--> x <= y & ~(x = y)
+  [hint_rewrite]
+proof
+  ← z3 goal=0
+qed
+
+theorem int_preorder
+  prop preorder (less_eq :: int ⇒ int ⇒ bool)
+proof
+  ← rewrite preorder_def sym=false goal=0
+    #[1] (!x::int. x <= x) & (!x::int. !y. !z. x <= y --> y <= z --> x <= z)
+  ← z3 goal=1
+qed
+
+theorem int_order
+  prop order (less_eq :: int ⇒ int ⇒ bool)
+proof
+  ← rewrite order_def sym=false goal=0
+    #[1] preorder (less_eq::int => int => bool) & (!x::int. !y. x <= y --> y <= x --> x = y)
+  ← rewrite preorder_def sym=false goal=1
+    #[2] ((!x::int. x <= x) & (!x::int. !y. !z. x <= y --> y <= z --> x <= z)) & (!x::int. !y. x <= y --> y <= x --> x = y)
+  ← z3 goal=2
+qed
+
+theorem int_linorder
+  prop linorder (less_eq :: int ⇒ int ⇒ bool)
+proof
+  ← rewrite linorder_def sym=false goal=0
+    #[1] order (less_eq::int => int => bool) & (!x::int. !y. x <= y | y <= x)
+  ← rewrite order_def sym=false goal=1
+    #[2] (preorder (less_eq::int => int => bool) & (!x::int. !y. x <= y --> y <= x --> x = y)) & (!x::int. !y. x <= y | y <= x)
+  ← rewrite preorder_def sym=false goal=2
+    #[3] (((!x::int. x <= x) & (!x::int. !y. !z. x <= y --> y <= z --> x <= z)) & (!x::int. !y. x <= y --> y <= x --> x = y)) & (!x::int. !y. x <= y | y <= x)
+  ← z3 goal=3
+qed
+
+theorem int_linorder_lt
+  prop linorder_lt (less :: int ⇒ int ⇒ bool)
+proof
+  ← rewrite linorder_lt_def sym=false goal=0
+    #[1] (!x::int. ~(x < x)) & (!x::int. !y. !z. x < y --> y < z --> x < z) & (!x::int. !y. x < y | y < x | x = y)
+  ← z3 goal=1
+qed
+
+theorem int_linorder_lt_le
+  prop linorder_lt_le (less_eq :: int ⇒ int ⇒ bool) (less :: int ⇒ int ⇒ bool)
+proof
+  ← rewrite linorder_lt_le_def sym=false goal=0
+    #[1] !x::int. !y. x < y --> x <= y
+  ← z3 goal=1
+qed
+
+-- End-to-end use of the instance (the `nat_le_refl` pattern in
+-- library/order.pyhol): the generic class lemma `linorder_refl` at `int`.
+
+theorem int_le_refl_via_linorder
+  fixes x :: int
+  prop x <= x
+proof
+  → forward int_linorder goal=0
+    #[1] linorder (less_eq::int => int => bool)
+  ← rule linorder_refl goal=0 facts=[1]
+qed
 
 theorem int_add_assoc
   fixes x :: int, y :: int, z :: int

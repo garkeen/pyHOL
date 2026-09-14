@@ -107,6 +107,13 @@ python -m repl.client --port 5599 --stdin < batch.txt
 - `trust` 命令用于**回放**已存 oracle 行的场景。
 - 库验证侧：`validate_library.py` 自己定义 `LIBRARY_ORACLES` 并
   `trust=LIBRARY_ORACLES` 传给 `validate_theory`——这是验证器自己的选择，不涉及内核。
+- **z3 后端在 REPL 启动时已绑定**（`repl/repl.py` 里 import `solvers.z3wrapper`，
+  与 `validate_library.py`/`.cache/validate_one.py` 一致；没有 z3 的检出仍可用）。
+  否则 `← z3` 会报 `Z3 method: not installed`，real/int/hoare 这些 oracle 条目在
+  REPL 里根本证不了。注意 **z3 的可用改写规则取决于"此刻理论里有什么"**
+  （`z3wrapper.norm_term` 走 `has_theorem` 判断），所以在 REPL 里证过的 z3 步骤
+  不一定在库回放时也成立——必须用 `.cache/validate_one.py <理论> --force` 复核
+  （实例见 PROGRAM_VERIFICATION_PORT.md §13.3 的 `real_inv_0`）。
 
 ### 3.2 `#[N]` 注解只是显示，但会强制 sid
 

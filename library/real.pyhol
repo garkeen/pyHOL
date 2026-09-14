@@ -1,5 +1,5 @@
 theory real
-imports rat
+imports rat, order
 domains real
 description "real numbers"
 
@@ -116,6 +116,9 @@ theorem real_le_trans
   fixes x :: real, y :: real, z :: real
   prop x <= y --> y <= z --> x <= z
   [hint_backward,hint_forward,hint_backward1]
+proof
+  ← z3 goal=0
+qed
 
 theorem real_le_total
   fixes x :: real, y :: real
@@ -129,52 +132,180 @@ theorem real_le_ladd_imp
   fixes x :: real, y :: real, z :: real
   prop y <= z --> x + y <= x + z
   [hint_backward,hint_forward]
+proof
+  ← z3 goal=0
+qed
 
 theorem real_le_mul
   fixes x :: real, y :: real
   prop 0 <= x --> 0 <= y --> 0 <= x * y
   [hint_forward,hint_backward,hint_backward1]
+proof
+  ← z3 goal=0
+qed
 
 theorem real_ge_add
   fixes x :: real, y :: real
   prop x >= 0 --> y >= 0 --> x + y >= 0
+proof
+  ← rewrite greater_eq_def sym=false goal=0
+  ← z3 goal=1
+qed
 
 theorem real_ge_mul
   fixes x :: real, y :: real
   prop x >= 0 --> y >= 0 --> x * y >= 0
+proof
+  ← rewrite greater_eq_def sym=false goal=0
+  ← z3 goal=1
+qed
 
 theorem real_ge_divide
   fixes x :: real, y :: real
   prop x >= 0 --> y > 0 --> x / y >= 0
+proof
+  ← rewrite greater_eq_def sym=false goal=0
+  ← rewrite greater_def sym=false goal=1
+  ← rewrite real_less_def sym=false goal=2
+  ← z3 goal=3
+qed
 
 theorem real_gt_add
   fixes x :: real, y :: real
   prop x > 0 --> y > 0 --> x + y > 0
+proof
+  ← rewrite greater_def sym=false goal=0
+  ← rewrite real_less_def sym=false goal=1
+  ← z3 goal=2
+qed
 
 theorem real_gt_mul
   fixes x :: real, y :: real
   prop x > 0 --> y > 0 --> x * y > 0
+proof
+  ← rewrite greater_def sym=false goal=0
+  ← rewrite real_less_def sym=false goal=1
+  ← z3 goal=2
+qed
 
 theorem real_lt_neq
   fixes x :: real, y :: real
   prop x < y --> ~(x = y)
+proof
+  ← rewrite real_less_def sym=false goal=0
+  ← z3 goal=1
+qed
 
 theorem real_gt_neq
   fixes x :: real, y :: real
   prop x > y --> ~(x = y)
+proof
+  ← rewrite greater_def sym=false goal=0
+  ← rewrite real_less_def sym=false goal=1
+  ← z3 goal=2
+qed
 
 theorem real_gt_to_neq
   fixes x :: real
   prop x > 0 --> ~(x = 0)
+proof
+  ← rewrite greater_def sym=false goal=0
+  ← rewrite real_less_def sym=false goal=1
+  ← z3 goal=2
+qed
 
 theorem real_lt_le
   fixes x :: real, y :: real
   prop x < y <--> x <= y & ~(x = y)
   [hint_rewrite]
+proof
+  ← rewrite real_less_def sym=false goal=0
+  ← z3 goal=1
+qed
+
+-- The order instances, the way nat has `nat_preorder`/`nat_order`/
+-- `nat_linorder`/`nat_linorder_lt` in library/order.pyhol: each is proved by
+-- unfolding the class predicate and handing the arithmetic statement to the
+-- z3 oracle, which is how the whole real order layer below is proved (the
+-- type `real` is abstract and `<=` is an uninterpreted constant here, so
+-- none of these facts is derivable without the oracle).  They discharge the
+-- class premises that `'a::linorder` injects (see PROGRAM_VERIFICATION_PORT.md
+-- §11, §14), so a generic lemma about `'a::linorder` can be used at `real`.
+
+theorem real_preorder
+  prop preorder (less_eq :: real ⇒ real ⇒ bool)
+proof
+  ← rewrite preorder_def sym=false goal=0
+    #[1] (!x::real. x <= x) & (!x::real. !y. !z. x <= y --> y <= z --> x <= z)
+  ← z3 goal=1
+qed
+
+theorem real_order
+  prop order (less_eq :: real ⇒ real ⇒ bool)
+proof
+  ← rewrite order_def sym=false goal=0
+    #[1] preorder (less_eq::real => real => bool) & (!x::real. !y. x <= y --> y <= x --> x = y)
+  ← rewrite preorder_def sym=false goal=1
+    #[2] ((!x::real. x <= x) & (!x::real. !y. !z. x <= y --> y <= z --> x <= z)) & (!x::real. !y. x <= y --> y <= x --> x = y)
+  ← z3 goal=2
+qed
+
+theorem real_linorder
+  prop linorder (less_eq :: real ⇒ real ⇒ bool)
+proof
+  ← rewrite linorder_def sym=false goal=0
+    #[1] order (less_eq::real => real => bool) & (!x::real. !y. x <= y | y <= x)
+  ← rewrite order_def sym=false goal=1
+    #[2] (preorder (less_eq::real => real => bool) & (!x::real. !y. x <= y --> y <= x --> x = y)) & (!x::real. !y. x <= y | y <= x)
+  ← rewrite preorder_def sym=false goal=2
+    #[3] (((!x::real. x <= x) & (!x::real. !y. !z. x <= y --> y <= z --> x <= z)) & (!x::real. !y. x <= y --> y <= x --> x = y)) & (!x::real. !y. x <= y | y <= x)
+  ← z3 goal=3
+qed
+
+theorem real_linorder_lt
+  prop linorder_lt (less :: real ⇒ real ⇒ bool)
+proof
+  ← rewrite linorder_lt_def sym=false goal=0
+    #[1] (!x::real. ~(x < x)) & (!x::real. !y. !z. x < y --> y < z --> x < z) & (!x::real. !y. x < y | y < x | x = y)
+  ← rewrite real_less_def sym=false goal=1
+    #[2] (!x::real. ~~(x <= x)) & (!x::real. !y. !z. ~(y <= x) --> ~(z <= y) --> ~(z <= x)) & (!x::real. !y. ~(y <= x) | ~(x <= y) | x = y)
+  ← z3 goal=2
+qed
+
+theorem real_linorder_lt_le
+  prop linorder_lt_le (less_eq :: real ⇒ real ⇒ bool) (less :: real ⇒ real ⇒ bool)
+proof
+  ← rewrite linorder_lt_le_def sym=false goal=0
+    #[1] !x::real. !y. x < y --> x <= y
+  ← rewrite real_less_def sym=false goal=1
+    #[2] !x::real. !y. ~(y <= x) --> x <= y
+  ← z3 goal=2
+qed
+
+-- End-to-end use of the instance (the `nat_le_refl` pattern in
+-- library/order.pyhol): the generic class lemma `linorder_refl` at `real`.
+
+theorem real_le_refl_via_linorder
+  fixes x :: real
+  prop x <= x
+proof
+  → forward real_linorder goal=0
+    #[1] linorder (less_eq::real => real => bool)
+  ← rule linorder_refl goal=0 facts=[1]
+qed
 
 theorem real_inv_0
   prop real_inverse 0 = 0
   [hint_rewrite]
+
+-- NOTE: `real_inv_0` and `real_mul_linv` stay unproved on purpose. Both are
+-- provable by z3 *interactively* (a whole theory is loaded in the REPL), but
+-- not during library replay, where this item is checked before
+-- `real_inverse_divide` (line ~1528) exists: solvers/z3wrapper.py's
+-- `norm_term` rewrites with that theorem only when `has_theorem` says it is
+-- in scope, so the oracle sees a different normal form and fails. Proving
+-- them needs either moving them after `real_inverse_divide` or a
+-- normalization that does not depend on optional context -- not done here.
 
 theorem real_mul_linv
   fixes x :: real

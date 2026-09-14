@@ -1072,11 +1072,12 @@ BST 删除要用）。三个 `_binary` 引理（`ordered_insert_binary`、
 
 ### 13.3 阶段 3 之后仍缺的部分
 
-- **`int`/`real` 实例**：`real` 只差 `real_le_trans` 等几条（UNPROVED）；
-  `int` 整条序层都是 UNPROVED（P3 数系债）。本轮**不做**（按约定记下）。
+- **`int`/`real` 实例**：**已完成（2026-09-14）**，见本节末尾"int/real 实例"
+  一段；`int` 其余 181 条（算术/除法/幂等）仍是 P3 数系债，与本尾巴无关。
 - **三个 `_binary` 引理**与 `ordered_insert_pairs`/`remove_elt_pairs`/
   `map_of_alist_binary`：前者 Lists_Ex 之外无人引用（可选），后者依赖
-  Mapping_Str，归阶段 5。
+  Mapping_Str，归阶段 5。**本轮试做 `ordered_insert_binary`，被机制挡住**，
+  见本节末尾"`_binary` 引理为什么没做"。
 - **`sorted` 与 `sublist`/`append` 的 Quicksort 专用刻画**（`sorted (sublist l r
   (quicksort xs l r))` 那类）：留到阶段 5 与 Quicksort 一起做，那里才知道
   真正需要对 `sublist` 的哪几条重写。
@@ -1117,6 +1118,58 @@ BST 删除要用）。三个 `_binary` 引理（`ordered_insert_binary`、
   `less_lesseqI : ?m ≤ ?n ⟶ ?(m = n) ⟶ ?m < ?n`），所以**按实例**证
   `strict_sorted_imp_sorted` 是能做到的，缺的只是抽象层的类公理。
   两条修法都属于「改类理论」，动之前先报备。
+
+#### int/real 实例（2026-09-14 完成）
+
+- **先要让这两个理论 import `order`**：类注册表只认本理论已载入的 `class` 条目，
+  在此之前 `library/real.pyhol`/`library/int.pyhol` 里**连 `'a::linorder` 记法都
+  解析不了**。改成 `real: imports rat, order`、`int: imports list, order`
+  （`order` 只依赖 `nat`，不成环）。
+- `real`/`int` 的序常量在这里是**未解释常量**（`type real`/`type int` 抽象；real 的
+  `<` 还是 `x < y ⟷ ¬(y ≤ x)` 的定义），所以这一层只能走 z3 oracle——`LIBRARY_ORACLES`
+  正是为 int/real/hoare 放行 z3 的，real 原有的序层（132 处 z3）就是这么证的。
+  所有证明先在常驻 REPL 里证完再写入文件。
+- `library/real.pyhol`：补上 12 条序引理的证明（`real_le_trans`、`real_le_ladd_imp`、
+  `real_le_mul`、`real_ge_add`、`real_ge_mul`、`real_ge_divide`、`real_gt_add`、
+  `real_gt_mul`、`real_lt_neq`、`real_gt_neq`、`real_gt_to_neq`、`real_lt_le`），
+  新增 5 条实例 `real_preorder`/`real_order`/`real_linorder`/`real_linorder_lt`/
+  `real_linorder_lt_le`（每条 2–4 步：展开类谓词定义后交给 z3），外加端到端用例
+  `real_le_refl_via_linorder`（照 `nat_le_refl` 的写法）。
+- `library/int.pyhol`：新增 8 条序引理（`int_le_refl`/`int_le_antisym`/`int_le_trans`/
+  `int_le_total`/`int_lt_irrefl`/`int_lt_trans`/`int_lt_cases`/`int_lt_le`）、5 条实例
+  `int_preorder` … `int_linorder_lt_le` 与用例 `int_le_refl_via_linorder`；int 的
+  `<`/`≤` 同样被 z3 映射到 Int 的序，故连定义都不用展开。
+- 验证：`validate_one real --force` → VALID 110 / DEP_FAILED 120 / UNPROVED 110
+  （改前 VALID 85 / UNPROVED 122 / DEP_FAILED 127——**证掉序层还顺带解开了一批依赖
+  它的 DEP_FAILED 条目**）；`validate_one int --force` → VALID 17 / UNPROVED 181
+  （改前 VALID 3；181 条全是本尾巴之外的老债，未动）。
+- **`real_inv_0`/`real_mul_linv` 故意保持 UNPROVED**：它们在 REPL 里 z3 一步就过，
+  但库回放时这两条 item 排在 `real_inverse_divide`（约 1528 行）之前，而
+  `solvers/z3wrapper.py:norm_term` 只在 `has_theorem` 成立时才用那条定理改写，
+  oracle 看到不同的规范形就失败。**这是 REPL 与库回放的真实分歧**：z3 的可用改写
+  规则取决于"此刻理论里有什么"，所以带 z3 的证明必须在**该 item 在文件中的位置**
+  上验证，不能只在整理论已加载的 REPL 会话里验证。要证这两条得把它们移到
+  `real_inverse_divide` 之后，或让规范化不依赖可选上下文。
+
+#### `_binary` 引理为什么没做（2026-09-14 实测，结论：需要按分支拆引理）
+
+`ordered_insert_binary` 的**基例**已在 REPL 里证完（外层 `cases "x < a"` + 分支内
+`cases "x = a"`，靠 `linorder_lt_neq`/`_irrefl`/`_gt_of_not_lt` 与 `if_P`/`if_not_P`），
+步进例卡在一个**引擎级限制**上，不是证明难度：
+
+- `method/stable_state.py` 的 sid 表是 **Thm → sid**（按命题去重）。某命题一旦在证明里
+  出现过（哪怕是兄弟分支 `forward` 推出来的），**之后把它当 `intro` 假设引入时不再产生
+  独立的 fact 条目**——它只存在于 goal 的 hyps 里。
+- 于是后面的分支里 `← rewrite if_P facts=[<该命题>]` 必然失败：字面 sid 报
+  `apply_method: illegal dependence`；引号命题会被解析到别处（实测 `facts=["x < a"]`
+  解析成基例分支的 `#[16]`，整步变成空转、只留下一条无用条目）。
+- `ordered_insert_binary` 的步进例恰好要求：展开 LHS 的 `ordered_insert` if 链要
+  `x`/`x1` 的比较，RHS 的 if 链又要 `x`/`a` 的比较——**同一个命题会在多个分支里既被
+  推出又被假设**，正是 §12.1.1 记录的那个坑。
+- 出路是按 §12.1.1 的办法把引理**按分支拆开**（`x < a`/`a < x`/`x = a` 各一条，再一条
+  合并），使每条子引理内部的假设命题唯一；代价约 4 条引理 + 各自归纳（≈130 步 REPL
+  步进），对一个"Lists_Ex 之外无人引用"的可选引理不成比例。本轮**没有落盘**：REPL 里
+  的基例半成品既没写进 `.pyhol`，也没提交。
 
 
 ### 13.4 给 `-` 加集合实例（2026-09-14，用户选定方案 A）

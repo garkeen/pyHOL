@@ -85,6 +85,15 @@ from syntax.settings import global_setting
 from syntax import parser, pyhol
 import method.stable_state as ss
 
+# Bind the z3 backend, exactly as validate_library.py / .cache/validate_one.py
+# do: without it a stored `← z3` step fails with "Z3 method: not installed",
+# so the oracle-backed theories (real, int, hoare) could not be developed or
+# replayed here at all.  Optional: a checkout without z3 still runs.
+try:
+    import solvers.z3wrapper  # noqa: F401
+except ImportError:
+    pass
+
 
 def _short(name):
     return name

@@ -92,8 +92,9 @@ STEP_FAILED），实验后要清理。
   都已就位（见 `PROGRAM_VERIFICATION_PORT.md` §11）；auto2 `Lists_Ex.thy` 的列表层
   （`strict_sorted`、`ordered_insert`、`remove_elt_list`）与 Isabelle 的 `sorted`
   （≤ 版）连同各自的成员/集合/保序引理已在 `library/lists_ex.pyhol`（同文档
-  §12–13），只差 Quicksort 专用的 `sublist` 刻画与 `lt`/`le` 桥接引理（§13.3）；
-  `int`/`real` 实例与
+  §12–13）；`lt`/`le` 桥接引理（§14.6）与 `int`/`real` 的序类实例（§13.3，
+  两个理论因此各多一条 `imports order`）都已完成，只差 Quicksort 专用的
+  `sublist` 刻画（§13.3）与
   格（`Lattices.thy`/`Complete_Lattices.thy`/`Conditionally_Complete_Lattices.thy`/
   `Lattices_Big.thy`、Mathlib `Order/Lattice.lean`/`Order/CompleteLattice/`）、
   关系（`Relation.thy`/`Transitive_Closure.thy`/`Equiv_Relations.thy`、
