@@ -18,8 +18,10 @@ description "Lists, examples (auto2 Lists_Ex.thy): strict_sorted, ordered_insert
 -- development uses it in Quicksort (4x), LinkedList (4x) and Rect_Intersect
 -- (1x).  See PROGRAM_VERIFICATION_PORT.md §8.1.
 --
--- Set difference is spelled `diff A B` in holpy -- `-` parses as arithmetic
--- subtraction -- so auto2's `set ys - {x}` is `diff (set ys) {x}` here.
+-- Set difference can be written `A - B` here: `-` is the overloaded arithmetic
+-- operator and library/set.pyhol gives it a set instance (`A - B = diff A B`,
+-- theorem `fun_minus_def`), so auto2's statements transcribe literally.  See
+-- PROGRAM_VERIFICATION_PORT.md §13.4 for the mechanism and its boundary.
 
 fun strict_sorted :: 'a list ⇒ bool
   | strict_sorted ([]::'a list) ⟷ true
@@ -724,18 +726,20 @@ qed
 
 theorem remove_elt_list_set
   fixes x :: 'a, ys :: 'a list
-  prop set (remove_elt_list x ys) = diff (set ys) {x}
+  prop set (remove_elt_list x ys) = set ys - {x}
 proof
   ← rewrite set_equal_iff sym=false goal=0
-    #[1] !x1. x1 Mem set (remove_elt_list x ys) <--> x1 Mem diff (set ys) ({x})
-  ← intro z goal=1
-    #[2] _VAR z
-    #[3] z Mem set (remove_elt_list x ys) <--> z Mem diff (set ys) ({x})
-  ← rewrite member_diff goal=3
-    #[4] z Mem set (remove_elt_list x ys) <--> z Mem set ys & ~(z Mem {x})
-  ← rewrite member_singleton goal=4
-    #[5] z Mem set (remove_elt_list x ys) <--> z Mem set ys & ~(z = x)
-  → forward remove_elt_list_mem param_x=x param_ys=ys param_z=z goal=5
+    #[1] !x1. x1 Mem set (remove_elt_list x ys) <--> x1 Mem set ys - {x}
+  ← rewrite fun_minus_def goal=1
+    #[2] !x1. x1 Mem set (remove_elt_list x ys) <--> x1 Mem diff (set ys) ({x})
+  ← intro z goal=2
+    #[3] _VAR z
+    #[4] z Mem set (remove_elt_list x ys) <--> z Mem diff (set ys) ({x})
+  ← rewrite member_diff goal=4
+    #[5] z Mem set (remove_elt_list x ys) <--> z Mem set ys & ~(z Mem {x})
+  ← rewrite member_singleton goal=5
+    #[6] z Mem set (remove_elt_list x ys) <--> z Mem set ys & ~(z = x)
+  → forward remove_elt_list_mem param_x=x param_ys=ys param_z=z goal=6
 qed
 
 theorem remove_elt_list_sorted
@@ -789,17 +793,19 @@ proof
     #[28] strict_sorted (remove_elt_list x ys)
   ← apply_prev goal=28 facts=[16,14]
   ← rewrite remove_elt_list_set goal=27
-    #[29] !y1. y1 Mem diff (set ys) ({x}) --> y < y1
-  ← rewrite member_diff goal=29
-    #[30] !y1. y1 Mem set ys & ~(y1 Mem {x}) --> y < y1
-  ← intro z goal=30
-    #[31] _VAR z
-    #[32] z Mem set ys & ~(z Mem {x})
-    #[33] y < z
-  → forward conjD1 goal=33 facts=[32]
-    #[34] z Mem set ys
-  ← rule all_mem_elim goal=33 facts=[13,34]
-    #[35] y < z
+    #[29] !y1. y1 Mem set ys - {x} --> y < y1
+  ← rewrite fun_minus_def goal=29
+    #[30] !y1. y1 Mem diff (set ys) ({x}) --> y < y1
+  ← rewrite member_diff goal=30
+    #[31] !y1. y1 Mem set ys & ~(y1 Mem {x}) --> y < y1
+  ← intro z goal=31
+    #[32] _VAR z
+    #[33] z Mem set ys & ~(z Mem {x})
+    #[34] y < z
+  → forward conjD1 goal=34 facts=[33]
+    #[35] z Mem set ys
+  ← rule all_mem_elim goal=34 facts=[13,35]
+    #[36] y < z
 qed
 
 theorem remove_elt_idem

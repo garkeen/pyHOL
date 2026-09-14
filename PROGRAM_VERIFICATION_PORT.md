@@ -1055,9 +1055,12 @@ BST 删除要用）。三个 `_binary` 引理（`ordered_insert_binary`、
     `conj_false_right` 是 `false & P`（`conj_true_left/right` 同理）。写反了
     报的是 `rewrite: unable to apply theorem`，不提示左右之别——查
     `thm <名字>` 再写。
-38. **`-` 不是集合差**：解析器把 `A - B` 解析成算术减法（`syntax/parser.py`
-    的 `minus`），集合差只有前缀写法 `diff A B`。所以 auto2 的
-    `set ys - {x}` 在本移植里写作 `diff (set ys) {x}`。
+38. **`A - B` 在集合上曾经是「静默的通用常量」**：解析器把 `A - B` 解析成
+    重载常量 `minus`（`syntax/parser.py` 的 `minus` 方法），而在加实例之前
+    `'a set` 上没有 `minus` 的方程，于是 `A - B` 能通过类型检查、打印出来也
+    和集合差一模一样，但它是**未解释常量**（`← refl` 关不掉 `A - B = diff A B`，
+    `rewrite member_diff` 也打不上）。集合差因此一度只有前缀写法 `diff A B`。
+    §13.4 给 `minus` 加上了集合实例，现在 `set ys - {x}` 可以照 auto2 原文写。
 39. **定义里的类型注解只是标记**（§11.3 的实践确认）：`fun ordered_insert ::
     'a ⇒ 'a list ⇒ 'a list` 的函数体里可以出现 `x < y`，此时 `<` 解析为通用
     重载常量（`strict_sorted`/`sorted` 同理），不需要也不接受前提注入。
@@ -1082,3 +1085,43 @@ BST 删除要用）。三个 `_binary` 引理（`ordered_insert_binary`、
   前提 `(∀x y. x < y ⟶ x ≤ y)`，要么按实例（nat 有 `less_lesseqI`）分开证。
   阶段 5 需要时再按实例补。
 
+
+### 13.4 给 `-` 加集合实例（2026-09-14，用户选定方案 A）
+
+holpy 的算术算子是**重载常量**：`library/nat.pyhol` 声明
+`const minus :: 'a ⇒ 'a ⇒ 'a overloaded`（`plus`/`times`/`power`/`less`/`less_eq`/
+`zero`/`one`/`of_nat` 同理），实例就是一条**写在实例类型上的普通定义**
+（`fun plus :: nat ⇒ nat ⇒ nat`、`def one :: nat = 1 = Suc 0`、`def of_nat :: nat ⇒ nat`）。
+item 层给实例算一个链接名 `cname = <类型构造子>_<算子>`（`nat_plus`、`int_minus`），
+定义定理叫 `<cname>_def`。
+
+项里**存的是通用名**（实测 `0 + Suc 0` 的常量名就是 `plus`，`has_term_sig('nat_plus')`
+为 False）——holpy 不是「每个实例一个独立常量」，而是**一个通用常量 + 各实例上的方程**，
+重写时按同名同类型匹配。所以给集合差加实例只需要一条：
+
+```
+def minus :: 'a set ⇒ 'a set ⇒ 'a set = A - B = diff A B      -- library/set.pyhol
+```
+
+几点确认（都是实测，不是推断）：
+
+- 装载路径（`basic._apply_item`，会跑 defcheck）接受这条 item：它是对**已存在**常量
+  在更窄类型上的定义，和 `def one :: nat` 是同一机制；注册出的定理是
+  `?A - ?B = diff ?A ?B`。
+- 定理名是 **`fun_minus_def`**（不是 `set_minus_def`）：`set` 是类型缩写
+  （`library/set.pyhol` 的 `typeabbrev set 'a = 'a ⇒ bool`），类型构造子叫 `fun`，
+  `get_overload_const_name` 因此拼出 `fun_minus`。内核/打印都不受影响，只是名字别扭。
+- `def` 条目**不进状态表**（`core/verify.py` 只对 `thm`/`thm.ax` 记状态），所以
+  set 的 `AXIOM 3` 不变（重验：VALID 81 / AXIOM 3 / 0 非绿）。
+- **边界**：实例要求类型是已知的具体构造子（`'a set` = `'a ⇒ bool` ✓、`'a list` ✓）；
+  **裸类型变量没有实例**，`x - y`（x,y :: 'a）仍是未解释的 `minus`——这与
+  §11.3「类型变量上解析类运算」是同一条边界的两个面，也正是类型类糖要把
+  `'a::linorder` 降级成前提 `linorder (less_eq::…)` 的原因。
+- 用法上 `diff` 仍是原语：`← rewrite fun_minus_def` 把 `-` 展开成 `diff`（**故意不加
+  `[hint_rewrite]`**，避免 `simp` 自动展开；要展开就显式写一行）。
+
+落地效果：`remove_elt_list_set` 现在照 auto2 原文写成
+`set (remove_elt_list x ys) = set ys - {x}`（证明只多一行 `rewrite fun_minus_def`），
+`remove_elt_list_sorted` 里用到它的那一步同样多一行。新增陈述可以直接写
+`A - B`，转写 auto2 时不必再改写。测试见 `library/tests/set_test.py`
+（`-` 可用 + 裸类型变量上实例不生效两条）。

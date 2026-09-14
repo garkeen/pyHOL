@@ -148,6 +148,16 @@ class ListsExTheoryTest(unittest.TestCase):
         self.assertFalse(repl.failed)
         self.assertEqual(repl.sps.num_gaps, 0)
 
+    def testRemoveEltListSetUsesMinusNotation(self):
+        """The statement follows auto2 literally (`set ys - {x}`): set.pyhol
+        gives the overloaded operator `minus` a set instance, so `-` is set
+        difference.  See PROGRAM_VERIFICATION_PORT.md §13.4."""
+        basic.load_theory('lists_ex')
+        with global_setting(unicode=False):
+            prop = str(theory.get_theorem('remove_elt_list_set').prop)
+        self.assertIn(' - ', prop)
+        self.assertNotIn('diff', prop)
+
     def testRemoveEltListMemClassifiesMembership(self):
         """`remove_elt_list_mem` unfolds a membership in the deleted list, so
         the two halves of the conjunction become usable facts."""

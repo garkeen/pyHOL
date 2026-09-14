@@ -7,7 +7,9 @@ VALID, and the remaining non-VALID items are pinned to exactly the three
 deliberate axioms.
 Passive: `insert a (delete A a) = A` needs its hypothesis, `finite A` cannot
 be had from the insert lemma alone, `card_insert` needs the non-membership
-hypothesis, and `insert x A Sub B` needs the subset hypothesis.
+hypothesis, `insert x A Sub B` needs the subset hypothesis, and the set instance
+of `minus` (which makes `A - B` set difference) does not fire at a bare type
+variable.
 """
 
 import unittest
@@ -84,6 +86,38 @@ class SetTheoryTest(unittest.TestCase):
         basic.load_theory('set')
         for name in NEW_LEMMAS + CARD_LEMMAS + LIST_SUPPORT_LEMMAS:
             self.assertIsNotNone(theory.get_theorem(name))
+
+    def testSetDifferenceHasMinusInstance(self):
+        """`A - B` is the overloaded arithmetic operator `minus`, and set.pyhol
+        gives it a set instance, so a statement can be transcribed from auto2
+        literally (`set ys - {x}`).  The instance is the definition theorem
+        `fun_minus_def` (named after the type constructor, which is `fun`
+        because `set` is a typeabbrev for `'a ⇒ bool`)."""
+        from repl.repl import Repl
+        basic.load_theory('set')
+        self.assertIsNotNone(theory.get_theorem('fun_minus_def'))
+        repl = Repl()
+        repl.cmd_theory('set')
+        repl.cmd_var("A 'a set")
+        repl.cmd_var("B 'a set")
+        repl.cmd_goal('A - B = diff A B')
+        repl.run_line('← rewrite fun_minus_def goal=0')
+        self.assertFalse(repl.failed)
+        self.assertEqual(repl.sps.num_gaps, 0)
+
+    def testSetDifferenceInstanceIsTypeSpecific(self):
+        """The instance is an equation about `minus` at `'a set`; at a bare
+        type variable there is no instance, so the same rewrite cannot fire."""
+        from repl.repl import Repl
+        repl = Repl()
+        repl.cmd_theory('set')
+        repl.cmd_var("A 'a")
+        repl.cmd_var("B 'a")
+        repl.cmd_goal('A - B = A - B')
+        gaps_before = repl.sps.num_gaps
+        repl.run_line('← rewrite fun_minus_def goal=0')
+        self.assertTrue(repl.failed)
+        self.assertEqual(repl.sps.num_gaps, gaps_before)
 
     def testInsertDeleteNeedsHypothesis(self):
         """`insert a (delete A a) = A` is not definitionally true: without

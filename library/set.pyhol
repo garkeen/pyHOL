@@ -20,6 +20,28 @@ def union :: 'a set ⇒ 'a set ⇒ 'a set = union A B = (λx. A x ∨ B x)
 
 def diff :: 'a set ⇒ 'a set ⇒ 'a set = diff A B = (λx. A x ∧ ¬ B x)
 
+-- The arithmetic operator `-` is an overloaded constant (`library/nat.pyhol`:
+-- `const minus :: 'a ⇒ 'a ⇒ 'a overloaded`), and an instance is just a
+-- definition stated at the instance type -- that is how nat/int/real get their
+-- `-`.  This gives set difference the same spelling, so a statement can be
+-- transcribed from auto2 literally (`set ys - {x}`), which is why the ported
+-- list lemmas are written that way.
+--
+-- Notes on the mechanics (see PROGRAM_VERIFICATION_PORT.md §13.4):
+--  * Terms keep the *generic* constant name (`minus`), so this definition is an
+--    ordinary equation about `minus` restricted to `'a set`; nothing about
+--    nat/int/real is affected.
+--  * The definition theorem is named `fun_minus_def`, not `set_minus_def`: the
+--    item layer derives the name from the type constructor, and `set` is a
+--    typeabbrev for `'a ⇒ bool`, whose constructor is `fun`.
+--  * At a bare type variable there is no instance, so `x - y` stays the
+--    uninterpreted `minus`; that is the same boundary that forces the
+--    `'a::linorder` sugar to inject `linorder (less_eq::…)` as a premise.
+--  * `diff` remains the primitive; unfolding `-` to `diff` is one explicit
+--    `rewrite fun_minus_def` (deliberately not a hint_rewrite).
+
+def minus :: 'a set ⇒ 'a set ⇒ 'a set = A - B = diff A B
+
 def collect :: ('a ⇒ bool) ⇒ 'a set = collect P = (λx. P x)
 
 const countable :: 'a set ⇒ bool
