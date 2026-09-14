@@ -38,16 +38,19 @@ def preorder :: ('a ⇒ 'a ⇒ bool) ⇒ bool = preorder le ⟷ (∀x. le x x) �
 -- every class that has both operations.
 class ord =
 
-class preorder = preorder (less_eq :: 'a ⇒ 'a ⇒ bool)
+class preorder = preorder (less_eq :: 'a ⇒ 'a ⇒ bool),
+                 linorder_lt_le (less_eq :: 'a ⇒ 'a ⇒ bool, less :: 'a ⇒ 'a ⇒ bool)
 
 def order :: ('a ⇒ 'a ⇒ bool) ⇒ bool = order le ⟷ preorder le ∧ (∀x. ∀y. le x y ⟶ le y x ⟶ x = y) [hint_rewrite]
 
-class order = order (less_eq :: 'a ⇒ 'a ⇒ bool)
+class order = order (less_eq :: 'a ⇒ 'a ⇒ bool),
+              linorder_lt_le (less_eq :: 'a ⇒ 'a ⇒ bool, less :: 'a ⇒ 'a ⇒ bool)
 
 def linorder :: ('a ⇒ 'a ⇒ bool) ⇒ bool = linorder le ⟷ order le ∧ (∀x. ∀y. le x y ∨ le y x) [hint_rewrite]
 
 class linorder = linorder (less_eq :: 'a ⇒ 'a ⇒ bool),
-                 linorder_lt (less :: 'a ⇒ 'a ⇒ bool)
+                 linorder_lt (less :: 'a ⇒ 'a ⇒ bool),
+                 linorder_lt_le (less_eq :: 'a ⇒ 'a ⇒ bool, less :: 'a ⇒ 'a ⇒ bool)
 
 -- The strict companion of `linorder` (irreflexive, transitive, trichotomous).
 -- A statement about `<` under `'a::linorder` uses these laws.
@@ -361,9 +364,10 @@ proof
   ← intro goal=0
     #[1] linorder (less_eq::'a => 'a => bool)
     #[2] linorder_lt (less::'a => 'a => bool)
-    #[3] x <= x
-  ← rule linorder_refl goal=3 facts=[1]
+    #[3] linorder_lt_le (less_eq::'a => 'a => bool) less
     #[4] x <= x
+  ← rule linorder_refl goal=4 facts=[1]
+    #[5] x <= x
 qed
 
 theorem nat_le_refl

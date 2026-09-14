@@ -60,9 +60,10 @@ class ListsExTheoryTest(unittest.TestCase):
             self.assertIsNotNone(theory.get_theorem(name),
                                  'missing theorem %s' % name)
 
-    def testItemLayerInjectsBothClassPremises(self):
-        """`'a::linorder list` contributes one premise per operation (`≤` and
-        `<`); a `strict_sorted` statement needs the strict one."""
+    def testItemLayerInjectsAllClassPremises(self):
+        """`'a::linorder list` contributes one premise per law of the class:
+        `linorder less_eq`, `linorder_lt less` and the compatibility law
+        `linorder_lt_le less_eq less` (see library/order.pyhol)."""
         for fn in basic.get_import_order(['lists_ex']):
             basic.load_theory_cache(fn)
         basic.load_theory('lists_ex')
@@ -75,6 +76,7 @@ class ListsExTheoryTest(unittest.TestCase):
             prop = str(obj.prop)
         self.assertIn('linorder (less_eq', prop)
         self.assertIn('linorder_lt (less', prop)
+        self.assertIn('linorder_lt_le (less_eq', prop)
         self.assertEqual(str(obj.vars['xs']), "'a list")
 
     def testLemmaIsUsableAtNat(self):
@@ -89,8 +91,9 @@ class ListsExTheoryTest(unittest.TestCase):
         repl.run_line('← intro goal=0')
         repl.run_line('→ forward nat_linorder goal=@')
         repl.run_line('→ forward nat_linorder_lt goal=@')
-        # #1 the hypothesis, #2 the goal, #3/#4 the two instance facts.
-        repl.run_line('← rule strict_sorted_appendE1 goal=@ facts=[3,4,1]')
+        repl.run_line('→ forward nat_linorder_lt_le goal=@')
+        # #1 the hypothesis, #2 the goal, #3/#4/#5 the instance facts.
+        repl.run_line('← rule strict_sorted_appendE1 goal=@ facts=[3,4,5,1]')
         self.assertFalse(repl.failed)
         self.assertEqual(repl.sps.num_gaps, 0)
 
@@ -109,8 +112,9 @@ class ListsExTheoryTest(unittest.TestCase):
         repl.run_line('← intro goal=0')
         repl.run_line('→ forward nat_linorder goal=@')
         repl.run_line('→ forward nat_linorder_lt goal=@')
-        # #1 the conjunction hypothesis, #2 the goal, #3/#4 the instances.
-        repl.run_line('← rule strict_sorted_appendI goal=@ facts=[3,4,1]')
+        repl.run_line('→ forward nat_linorder_lt_le goal=@')
+        # #1 the conjunction hypothesis, #2 the goal, #3/#4/#5 the instances.
+        repl.run_line('← rule strict_sorted_appendI goal=@ facts=[3,4,5,1]')
         self.assertFalse(repl.failed)
         self.assertEqual(repl.sps.num_gaps, 0)
 
@@ -128,7 +132,8 @@ class ListsExTheoryTest(unittest.TestCase):
             repl.run_line('← intro goal=0')
             repl.run_line('→ forward nat_linorder goal=@')
             repl.run_line('→ forward nat_linorder_lt goal=@')
-            repl.run_line('← rule %s goal=@ facts=[3,4,1]' % lemma)
+            repl.run_line('→ forward nat_linorder_lt_le goal=@')
+            repl.run_line('← rule %s goal=@ facts=[3,4,5,1]' % lemma)
             self.assertFalse(repl.failed, lemma)
             self.assertEqual(repl.sps.num_gaps, 0, lemma)
 
@@ -144,7 +149,8 @@ class ListsExTheoryTest(unittest.TestCase):
         repl.run_line('← intro goal=0')
         repl.run_line('→ forward nat_linorder goal=@')
         repl.run_line('→ forward nat_linorder_lt goal=@')
-        repl.run_line('← rule sorted_appendI goal=@ facts=[3,4,1]')
+        repl.run_line('→ forward nat_linorder_lt_le goal=@')
+        repl.run_line('← rule sorted_appendI goal=@ facts=[3,4,5,1]')
         self.assertFalse(repl.failed)
         self.assertEqual(repl.sps.num_gaps, 0)
 
@@ -198,7 +204,7 @@ class ListsExTheoryTest(unittest.TestCase):
             self.assertFalse(repl.failed, lemma)
             with global_setting(unicode=False):
                 goals = [str(th.prop) for _, th in repl.sps.get_open_goals()]
-            self.assertEqual(len(goals), 2, (lemma, goals))
+            self.assertEqual(len(goals), 3, (lemma, goals))
             self.assertTrue(all('linorder' in prop for prop in goals),
                             (lemma, goals))
 

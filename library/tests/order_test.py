@@ -22,7 +22,9 @@ ORDER_LEMMAS = ['preorder_refl', 'preorder_trans', 'order_preorder',
                 'linorder_refl', 'linorder_trans', 'linorder_antisym',
                 'linorder_lt_irrefl', 'linorder_lt_trans', 'linorder_lt_linear',
                 'linorder_lt_neq', 'linorder_lt_gt_of_not_lt',
+                'linorder_lt_imp_le',
                 'nat_preorder', 'nat_order', 'nat_linorder', 'nat_linorder_lt',
+                'nat_linorder_lt_le',
                 'linorder_le_refl', 'nat_le_refl']
 
 
@@ -43,7 +45,8 @@ class OrderTheoryTest(unittest.TestCase):
         basic.load_theory('order')
         for name in ORDER_LEMMAS:
             self.assertIsNotNone(theory.get_theorem(name))
-        for name in ['preorder', 'order', 'linorder', 'linorder_lt']:
+        for name in ['preorder', 'order', 'linorder', 'linorder_lt',
+                     'linorder_lt_le']:
             self.assertTrue(theory.thy.has_term_sig(name),
                             'missing constant %s' % name)
 
@@ -77,8 +80,9 @@ class OrderTheoryTest(unittest.TestCase):
         repl.cmd_var("x 'a::linorder")
         repl.cmd_goal('~(x < x)')
         repl.run_line('← intro goal=0')
-        # #1 is the `linorder less_eq` premise, #2 the `linorder_lt less` one.
-        repl.run_line('← rule linorder_lt_irrefl goal=3 facts=[2]')
+        # #1 `linorder less_eq`, #2 `linorder_lt less`,
+        # #3 `linorder_lt_le less_eq less`; the goal is #4.
+        repl.run_line('← rule linorder_lt_irrefl goal=4 facts=[2]')
         self.assertFalse(repl.failed)
         self.assertEqual(repl.sps.num_gaps, 0)
 

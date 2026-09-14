@@ -939,7 +939,8 @@ List.thy，auto2 在 `Quicksort.thy`（4 处）、`LinkedList.thy`（4 处，指
 | `library/lists_ex.pyhol`（新） | `fun strict_sorted` + `strict_sorted_appendE1`、两个析构引理 `strict_sorted_append_head/tail`、`strict_sorted_appendE2` | VALID 4 / 0 非绿 |
 
 `strict_sorted` 的定义照 auto2（`∀y. y ∈ set ys ⟶ x < y`），约束写成
-`fixes xs :: 'a::linorder list`——注解注入两条前提，证明里用 `linorder_lt_*`。
+`fixes xs :: 'a::linorder list`——注解注入三条前提（`linorder`、`linorder_lt`、
+`linorder_lt_le`，见 §14），证明里用 `linorder_lt_*` / `linorder_lt_imp_le`。
 `strict_sorted_appendE1`（33 步）与 `strict_sorted_appendE2`（36 步，auto2 的
 `[forward]` 前缀-后缀性质）都已证成；`_head`/`_tail` 是把「`(x # xs) @ ys` 的
 strict_sorted 拆开」固定下来的析构引理（见 §12.2 第 31 条）。
@@ -1199,10 +1200,36 @@ def minus :: 'a set ⇒ 'a set ⇒ 'a set = A - B = diff A B      -- library/set
    前提后，旧注解的数量与新条目数不等，覆盖被整体跳过、退回自动编号。所以
    「加一条前提」这类改动不能只靠编号平移，必须重导出受影响的证明。
 
-### 14.5 尚未做：把相容律挂上去
+### 14.5（已完成，见 §14.6）
 
-`def linorder_lt_le`、定律 `linorder_lt_imp_le`、实例 `nat_linorder_lt_le` 都已写进
-`library/order.pyhol` 并验证（它们是独立条目，不影响任何现有陈述）。但
-**把它加进 `class linorder` 的声明**会让 14 条 `lists_ex` 陈述多一条前提，其中
-每一处「逐条剥 IH 类前提」的证明要多剥一次——需要重导出那批证明（或写一个按
-"创建位置"分段的编号重映射脚本）。这一步单独做，见 §13.3 修法 1。
+`def linorder_lt_le`、定律 `linorder_lt_imp_le`、实例 `nat_linorder_lt_le` 先作为
+独立条目写进 `library/order.pyhol` 并验证；随后把它挂进 `class linorder` 的声明，
+14 条 `lists_ex` 陈述与 `order` 的端到端演示在 REPL 里重证——做法、代价与踩到的坑
+见 §14.6。
+
+### 14.6 相容律挂上类（2026-09-15，REPL 重证）
+
+`library/order.pyhol` 的 `class linorder` 现在带第三条法则
+`linorder_lt_le (less_eq :: …, less :: …)`，于是每条 `'a::linorder` 陈述的命题多一条前提，
+`strict_sorted` / `sorted` 混用 `<` 与 `<=` 的桥接（`linorder_lt_imp_le`）在抽象层可用。
+
+代价与做法（都按 AGENTS §4：**证明只用常驻 REPL**）：
+
+- 受影响的 14 条 `lists_ex` 陈述 + `order` 里那条端到端演示 `linorder_le_refl`，
+  全部在 REPL 里重证后 `item` 导出、整段替换回文件。重证的实质变化是三处：
+  1. 类前提块多一条（每个**分支**各有一份，见下）；
+  2. 消费类前提的 `rule`/`forward`（如 `facts=[3,4,10]`）要多喂那条事实
+     （`facts=[3,4,5,11]`）；
+  3. 「逐条剥 IH 类前提」的证明要多剥一步（`facts=[<imp>, 4]` 之后再
+     `facts=[<imp'>, 5]`），此后编号再 +1。
+- **不要试图用脚本做全局编号平移**：类前提是**每个分支各自引入一份**（同一命题在
+  不同分支有不同 sid，只有引擎的解析会挑分支内那份），所以不存在"一个映射值"；
+  而且 `method/stable_state.py` 的 `new_ids` 覆盖要求「注解条数 == 新建条目数」，
+  多一条前提后旧注解整体失效。要么按创建顺序按段偏移，要么（本轮做法）重证。
+- 踩过的坑：`item NAME` 输出的是**当前证明**的名字为 `NAME` 的条目——如果会话当前
+  停在别的证明上，它会把那条证明写成 `NAME`。导出后要立刻核对 `prop` 行再落盘。
+- 用语义引用（`goal=@`、`facts=["<打印出来的命题>"]`）可以完全绕开编号问题，
+  重证时比手算 sid 稳得多（`ordered_insert_sorted` 的第二个分支就是这么过的）。
+
+验证：`validate_one order --force` → VALID 22 / 0 非绿；
+`validate_one lists_ex --force` → VALID 18 / 0 非绿（两边都是强制重放）。

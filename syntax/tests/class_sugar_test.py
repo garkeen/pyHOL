@@ -42,6 +42,7 @@ class ClassSugarTest(unittest.TestCase):
         self.assertIn('preorder (less_eq :: ', decls['preorder'])
         self.assertIn('linorder (less_eq :: ', decls['linorder'])
         self.assertIn('linorder_lt (less :: ', decls['linorder'])
+        self.assertIn('linorder_lt_le (less_eq :: ', decls['linorder'])
 
     def testTypeGrammarDropsAnnotation(self):
         """`'a::linorder` parses to the type variable `'a`."""
@@ -58,7 +59,9 @@ class ClassSugarTest(unittest.TestCase):
         self.assertEqual(
             prop,
             "linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶ "
-            "linorder_lt (less::'a ⇒ 'a ⇒ bool) ⟶ x <= x")
+            "linorder_lt (less::'a ⇒ 'a ⇒ bool) ⟶ "
+            "linorder_lt_le (less_eq::'a ⇒ 'a ⇒ bool) (less::'a ⇒ 'a ⇒ bool) ⟶ "
+            "x <= x")
 
     def testPremiseTypesFollowTheAnnotatedVariable(self):
         """The declaration writes the operations at the class's own variable;
@@ -70,8 +73,11 @@ class ClassSugarTest(unittest.TestCase):
 
     def testSingleOperationClassInjectsOnePremise(self):
         prop = parser.with_class_premises("x <= x", "'a::order")
-        self.assertEqual(prop,
-                         "order (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= x")
+        self.assertEqual(
+            prop,
+            "order (less_eq::'a ⇒ 'a ⇒ bool) ⟶ "
+            "linorder_lt_le (less_eq::'a ⇒ 'a ⇒ bool) (less::'a ⇒ 'a ⇒ bool) ⟶ "
+            "x <= x")
 
     def testLawlessClassInjectsNothing(self):
         # Isabelle's `ord` states the two constants and no laws; it is
@@ -81,14 +87,20 @@ class ClassSugarTest(unittest.TestCase):
 
     def testPremiseInjectionDedupes(self):
         prop = parser.with_class_premises("x <= y", "'a::order", "'a::order")
-        self.assertEqual(prop, "order (less_eq::'a ⇒ 'a ⇒ bool) ⟶ x <= y")
+        self.assertEqual(
+            prop,
+            "order (less_eq::'a ⇒ 'a ⇒ bool) ⟶ "
+            "linorder_lt_le (less_eq::'a ⇒ 'a ⇒ bool) (less::'a ⇒ 'a ⇒ bool) ⟶ "
+            "x <= y")
 
     def testSeveralConstraintsKeepOrder(self):
         prop = parser.with_class_premises("P", "'a::order", "'b::preorder")
         self.assertEqual(
             prop,
             "order (less_eq::'a ⇒ 'a ⇒ bool) ⟶ "
-            "preorder (less_eq::'b ⇒ 'b ⇒ bool) ⟶ P")
+            "linorder_lt_le (less_eq::'a ⇒ 'a ⇒ bool) (less::'a ⇒ 'a ⇒ bool) ⟶ "
+            "preorder (less_eq::'b ⇒ 'b ⇒ bool) ⟶ "
+            "linorder_lt_le (less_eq::'b ⇒ 'b ⇒ bool) (less::'b ⇒ 'b ⇒ bool) ⟶ P")
 
     def testAddClassRegistersSeveralPremises(self):
         """A registry entry may constrain several operations; the premise is
