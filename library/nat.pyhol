@@ -1,5 +1,5 @@
 theory nat
-imports logic
+imports logic, prod, wf_base
 domains nat
 description "Natural numbers"
 
@@ -8123,3 +8123,109 @@ proof
     #[48] n < p
 qed
 
+theorem nat_less_induct_step
+  fixes P :: nat => bool, n :: nat
+  prop (!x. (!y. y < x --> P y) --> P x) --> (!y. y <= n --> P y)
+proof
+  ← intro goal=0
+    #[1] !x. (!y. y < x --> P y) --> P x
+    #[2] !y. y <= n --> P y
+  ← induct n nat_induct goal=2
+    #[3] !y. y <= 0 --> P y
+    #[4] !n. (!y. y <= n --> P y) --> (!y. y <= Suc n --> P y)
+  ← intro y goal=3
+    #[5] _VAR y
+    #[6] y <= 0
+    #[7] P y
+  cut "!w. w < 0 --> P w" goal=7
+    #[8] !w. w < 0 --> P w
+  ← intro z goal=8
+    #[9] _VAR z
+    #[10] z < 0
+    #[11] P z
+  → rewrite nat_less_def_1 target=fact goal=11 facts=[10]
+    #[12] false
+  ← resolve not_false_res goal=11 facts=[12]
+    #[13] P z
+  → rewrite nat_less_eq_def_1 target=fact goal=7 facts=[6]
+    #[14] y = 0
+  ← rewrite source=prev goal=7 facts=[14]
+    #[15] P 0
+  ← inst "(0::nat)" goal=15 facts=[1]
+    #[16] (!y. y < 0 --> P y) --> P 0
+  ← apply_prev goal=15 facts=[16,8]
+  ← intro k goal=4
+    #[17] _VAR k
+    #[18] !y. y <= k --> P y
+    #[19] !y. y <= Suc k --> P y
+  ← intro m goal=19
+    #[20] _VAR m
+    #[21] m <= Suc k
+    #[22] P m
+  → rewrite nat_less_eq_def_2 target=fact goal=22 facts=[21]
+    #[23] m = Suc k | m <= k
+  ← rule disjE goal=22 facts=[23]
+    #[24] m = Suc k --> P m
+    #[25] m <= k --> P m
+  ← intro goal=25
+    #[26] m <= k
+    #[27] P m
+  ← inst m goal=27 facts=[18]
+    #[28] m <= k --> P m
+  ← apply_prev goal=27 facts=[28,26]
+    #[29] P m
+  ← intro goal=24
+    #[30] m = Suc k
+    #[31] P m
+  ← rewrite source=prev goal=31 facts=[30]
+    #[32] P (Suc k)
+  ← inst "(Suc k)" goal=32 facts=[1]
+    #[33] (!y. y < Suc k --> P y) --> P (Suc k)
+  cut "!w. w < Suc k --> P w" goal=32
+    #[34] !w. w < Suc k --> P w
+  ← intro p goal=34
+    #[35] _VAR p
+    #[36] p < Suc k
+    #[37] P p
+  → rewrite less_Suc_lesseq target=fact goal=37 facts=[36]
+    #[38] p <= k
+  ← inst p goal=37 facts=[18]
+    #[39] p <= k --> P p
+  ← apply_prev goal=37 facts=[39,38]
+    #[40] P p
+  ← apply_prev goal=32 facts=[33,34]
+qed
+
+
+theorem nat_less_induct
+  fixes P :: nat => bool
+  prop (!x. (!y. y < x --> P y) --> P x) --> (!x. P x)
+proof
+  ← intro goal=0
+    #[1] !x. (!y. y < x --> P y) --> P x
+    #[2] !x. P x
+  ← intro a goal=2
+    #[3] _VAR a
+    #[4] P a
+  cut "!y. y <= a --> P y" goal=4
+    #[5] !y. y <= a --> P y
+  ← rule nat_less_induct_step goal=5 facts=[1]
+  → forward lesseq_refl param_n=a goal=4
+    #[6] a <= a
+  ← inst a goal=4 facts=[5]
+    #[7] a <= a --> P a
+  ← apply_prev goal=4 facts=[7,6]
+qed
+
+
+theorem wf_less_nat
+  prop wf (%m::nat. %n::nat. m < n)
+proof
+  ← rewrite wf_def goal=0
+    #[1] !P. (!x::nat. (!y. y < x --> P y) --> P x) --> (!x. P x)
+  ← intro P goal=1
+    #[2] _VAR P
+    #[3] !x. (!y. y < x --> P y) --> P x
+    #[4] !x. P x
+  ← rule nat_less_induct goal=4 facts=[3]
+qed

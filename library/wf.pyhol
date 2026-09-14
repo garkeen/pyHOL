@@ -1,0 +1,31 @@
+theory wf
+imports nat, wf_base
+description "Well-founded relations and general recursion (measure-based part; the nat-free core is wf_base)."
+
+def measure :: ('a ⇒ nat) ⇒ 'a ⇒ 'a ⇒ bool = measure m = (%x. %y. m x < m y) [hint_rewrite]
+
+
+theorem wf_measure
+  fixes m :: 'a => nat
+  prop wf (measure m)
+proof
+  ← rewrite measure_def goal=0
+    #[1] wf (%x. %y. m x < m y)
+  → forward wf_less_nat goal=1
+    #[2] wf (%m::nat. %n. m < n)
+  ← rule wf_measure_gen goal=1 facts=[2]
+qed
+
+header "Subrelations"
+
+
+def mlex_prod :: ('a ⇒ nat) ⇒ ('a ⇒ 'a ⇒ bool) ⇒ 'a ⇒ 'a ⇒ bool = mlex_prod f R = (%x. %y. f x < f y | f x = f y & R x y) [hint_rewrite]
+
+
+theorem wf_mlex
+  fixes f :: 'a => nat, R :: 'a => 'a => bool
+  prop wf R --> wf (mlex_prod f R)
+proof
+qed
+
+header "Well-founded recursion"

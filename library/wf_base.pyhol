@@ -1,0 +1,626 @@
+theory wf_base
+imports logic_base
+description "Well-foundedness and the well-founded recursion combinator (nat-free core; see wf for the measure-based part)."
+
+def wf :: ('a ⇒ 'a ⇒ bool) ⇒ bool = wf R ⟷ (∀P. (∀x. (∀y. R y x ⟶ P y) ⟶ P x) ⟶ (∀x. P x)) [hint_rewrite]
+
+
+theorem wf_induct
+  fixes R :: 'a => 'a => bool, P :: 'a => bool
+  prop wf R --> (!x. (!y. R y x --> P y) --> P x) --> (!x. P x)
+proof
+  ← rewrite wf_def goal=0
+    #[1] (!P1. (!x. (!y. R y x --> P1 y) --> P1 x) --> (!x. P1 x)) --> (!x. (!y. R y x --> P y) --> P x) --> (!x. P x)
+  ← intro goal=1
+    #[2] !P. (!x. (!y. R y x --> P y) --> P x) --> (!x. P x)
+    #[3] !x. (!y. R y x --> P y) --> P x
+    #[4] !x. P x
+  ← inst P goal=4 facts=[2]
+    #[5] (!x. (!y. R y x --> P y) --> P x) --> (!x. P x)
+  ← apply_prev goal=4 facts=[5,3]
+qed
+
+
+theorem wf_minimal
+  fixes R :: 'a => 'a => bool, P :: 'a => bool
+  prop wf R --> (?x. P x) --> (?x. P x & (!y. R y x --> ~P y))
+proof
+  ← intro goal=0
+    #[1] wf R
+    #[2] ?x. P x
+    #[3] ?x. P x & (!y. R y x --> ~(P y))
+  ← cases "?x::'a. P x & (!y. R y x --> ~P y)" goal=3
+    #[4] (?x. P x & (!y. R y x --> ~(P y))) --> (?x. P x & (!y. R y x --> ~(P y)))
+    #[5] ~(?x. P x & (!y. R y x --> ~(P y))) --> (?x. P x & (!y. R y x --> ~(P y)))
+  ← intro goal=5
+    #[6] ~(?x. P x & (!y. R y x --> ~(P y)))
+    #[7] ?x. P x & (!y. R y x --> ~(P y))
+  cut "!x::'a. ~P x" goal=7
+    #[8] !x. ~(P x)
+  ← rule wf_induct goal=8 facts=[1]
+    #[9] !x. (!y. R y x --> ~(P y)) --> ~(P x)
+  ← intro x goal=9
+    #[10] _VAR x
+    #[11] !y. R y x --> ~(P y)
+    #[12] ~(P x)
+  ← rule negI goal=12
+    #[13] P x --> false
+  ← intro goal=13
+    #[14] P x
+    #[15] false
+  cut "?z::'a. P z & (!y. R y z --> ~P y)" goal=15
+    #[16] ?z. P z & (!y. R y z --> ~(P y))
+  ← inst x goal=16
+    #[17] P x & (!y. R y x --> ~(P y))
+  ← rule conjI goal=17
+  ← rule negE_gen goal=15 facts=[6,16]
+  elim a goal=7 facts=[2]
+    #[18] _VAR a
+    #[19] P a
+    #[20] ?x. P x & (!y. R y x --> ~(P y))
+  ← inst a goal=20 facts=[8]
+    #[21] ~(P a)
+  ← rule negE_gen goal=20 facts=[21,19]
+qed
+
+header "Measures"
+
+
+theorem wf_measure_gen
+  fixes R :: 'b => 'b => bool, m :: 'a => 'b
+  prop wf R --> wf (%x::'a. %y::'a. R (m x) (m y))
+proof
+  ← intro goal=0
+    #[1] wf R
+    #[2] wf (%x. %y. R (m x) (m y))
+  ← rewrite wf_def goal=2
+    #[3] !P. (!x. (!y. R (m y) (m x) --> P y) --> P x) --> (!x. P x)
+  ← intro Q goal=3
+    #[4] _VAR Q
+    #[5] !x. (!y. R (m y) (m x) --> Q y) --> Q x
+    #[6] !x. Q x
+  ← intro a goal=6
+    #[7] _VAR a
+    #[8] Q a
+  → rewrite wf_def target=fact goal=7 facts=[1]
+    #[9] !P. (!x. (!y. R y x --> P y) --> P x) --> (!x. P x)
+  cut "!z::'b. (!w. R w z --> (!x::'a. m x = w --> Q x)) --> (!x. m x = z --> Q x)" goal=8
+    #[10] !z. (!w. R w z --> (!x. m x = w --> Q x)) --> (!x. m x = z --> Q x)
+  ← intro z goal=10
+    #[11] _VAR z
+    #[12] !w. R w z --> (!x. m x = w --> Q x)
+    #[13] !x. m x = z --> Q x
+  ← intro b goal=13
+    #[14] _VAR b
+    #[15] m b = z
+    #[16] Q b
+  cut "!y::'a. R (m y) (m b) --> Q y" goal=16
+    #[17] !y. R (m y) (m b) --> Q y
+  ← intro c goal=17
+    #[18] _VAR c
+    #[19] R (m c) (m b)
+    #[20] Q c
+  → rewrite target=fact goal=20 facts=[15,19]
+    #[21] R (m c) z
+  ← inst "(m c)" goal=20 facts=[12]
+    #[22] R (m c) z --> (!x. m x = m c --> Q x)
+  cut "!x::'a. m x = m c --> Q x" goal=20
+    #[23] !x. m x = m c --> Q x
+  ← apply_prev goal=23 facts=[22,21]
+    #[24] !x. m x = m c --> Q x
+  → forward eq_refl param_x="m c" goal=20
+    #[25] m c = m c
+  ← apply_prev goal=20 facts=[24,25]
+    #[26] Q c
+  ← inst b goal=16 facts=[5]
+    #[27] (!y. R (m y) (m b) --> Q y) --> Q b
+  ← apply_prev goal=16 facts=[27,17]
+  ← inst "(%z::'b. !x::'a. m x = z --> Q x)" goal=8 facts=[9]
+    #[28] (!x. (!y. R y x --> (!x1. m x1 = y --> Q x1)) --> (!x1. m x1 = x --> Q x1)) --> (!x. !x1. m x1 = x --> Q x1)
+  cut "!x::'b. !x1::'a. m x1 = x --> Q x1" goal=8
+    #[29] !x. !x1. m x1 = x --> Q x1
+  ← apply_prev goal=29 facts=[28,10]
+  ← inst "(m a)" goal=8 facts=[29]
+    #[30] !x. m x = m a --> Q x
+  ← inst a goal=8 facts=[30]
+    #[31] m a = m a --> Q a
+  → forward eq_refl param_x="m a" goal=8
+    #[32] m a = m a
+  ← apply_prev goal=8 facts=[31,32]
+qed
+
+
+theorem wf_false
+  prop wf (%x::'a. %y::'a. false)
+proof
+  ← rewrite wf_def goal=0
+    #[1] !P. (!x::'a. (!y. false --> P y) --> P x) --> (!x. P x)
+  ← intro P goal=1
+    #[2] _VAR P
+    #[3] !x. (!y. false --> P y) --> P x
+    #[4] !x. P x
+  ← intro a goal=4
+    #[5] _VAR a
+    #[6] P a
+  cut "!y::'a. false --> P y" goal=6
+    #[7] !y. false --> P y
+  ← intro b goal=7
+    #[8] _VAR b
+    #[9] false
+    #[10] P b
+  ← resolve not_false_res goal=10 facts=[9]
+    #[11] P b
+  ← inst a goal=6 facts=[3]
+    #[12] (!y. false --> P y) --> P a
+  ← apply_prev goal=6 facts=[12,7]
+qed
+
+
+theorem wf_subset
+  fixes R :: 'a => 'a => bool, S :: 'a => 'a => bool
+  prop wf S --> (!x. !y. R x y --> S x y) --> wf R
+proof
+  ← intro goal=0
+    #[1] wf S
+    #[2] !x. !y. R x y --> S x y
+    #[3] wf R
+  ← rewrite wf_def goal=3
+    #[4] !P. (!x. (!y. R y x --> P y) --> P x) --> (!x. P x)
+  ← intro P goal=4
+    #[5] _VAR P
+    #[6] !x. (!y. R y x --> P y) --> P x
+    #[7] !x. P x
+  → rewrite wf_def target=fact goal=7 facts=[1]
+    #[8] !P. (!x. (!y. S y x --> P y) --> P x) --> (!x. P x)
+  cut "!z::'a. (!w. S w z --> P w) --> P z" goal=7
+    #[9] !z. (!w. S w z --> P w) --> P z
+  ← intro z goal=9
+    #[10] _VAR z
+    #[11] !w. S w z --> P w
+    #[12] P z
+  cut "!y::'a. R y z --> P y" goal=12
+    #[13] !y. R y z --> P y
+  ← intro c goal=13
+    #[14] _VAR c
+    #[15] R c z
+    #[16] P c
+  ← inst c goal=16 facts=[2]
+    #[17] !y. R c y --> S c y
+  ← inst z goal=16 facts=[17]
+    #[18] R c z --> S c z
+  → forward goal=16 facts=[18,15]
+    #[19] S c z
+  ← inst c goal=16 facts=[11]
+    #[20] S c z --> P c
+  ← apply_prev goal=16 facts=[20,19]
+    #[21] P c
+  ← inst z goal=12 facts=[6]
+    #[22] (!y. R y z --> P y) --> P z
+  ← apply_prev goal=12 facts=[22,13]
+  ← inst P goal=7 facts=[8]
+    #[23] (!x. (!y. S y x --> P y) --> P x) --> (!x. P x)
+  ← apply_prev goal=7 facts=[23,9]
+qed
+
+header "Lexicographic products"
+
+
+def adm_wf :: ('a ⇒ 'a ⇒ bool) ⇒ (('a ⇒ 'b) ⇒ 'a ⇒ 'b) ⇒ bool = adm_wf R H ⟷ (!f. !g. !x. (!z. R z x --> f z = g z) --> H f x = H g x)
+
+-- The graph of the recursion, defined inductively.  The rule carries a
+-- *quantified* premise `∀z. R z x ⟶ …`: core/defcheck.py:409-441 builds
+-- the case rule from the premises verbatim, so the elimination
+-- (`wfrec_rel_elim` below) then hands out the whole function agreeing
+-- with the graph below x, which is what the recursion needs.  Writing
+-- `z` free instead would lift it out of the case hypothesis and lose
+-- that.  The price is that `wfrec_rel_induct` gets no induction
+-- hypothesis; the uniqueness proof below inducts on `wf R` instead.
+
+
+-- The graph of the recursion, defined inductively.  The rule carries a
+-- *quantified* premise `∀z. R z x ⟶ …`: core/defcheck.py:409-441 builds
+-- the case rule from the premises verbatim, so the elimination
+-- (`wfrec_rel_elim` below) then hands out the whole function agreeing
+-- with the graph below x, which is what the recursion needs.  Writing
+-- `z` free instead would lift it out of the case hypothesis and lose
+-- that.  The price is that `wfrec_rel_induct` gets no induction
+-- hypothesis; the uniqueness proof below inducts on `wf R` instead.
+inductive wfrec_rel :: ('a ⇒ 'a ⇒ bool) ⇒ (('a ⇒ 'b) ⇒ 'a ⇒ 'b) ⇒ 'a ⇒ 'b ⇒ bool
+  | wfrec_relI: (∀z. R z x ⟶ wfrec_rel R H z (g z)) ⟶ wfrec_rel R H x (H g x)
+
+-- The forward half of the graph's fixpoint equation, read directly off
+-- the case rule (core/defcheck.py:409-441): every element of the graph
+-- was introduced by the one rule, so it comes with a function agreeing
+-- with the graph below x.
+
+
+-- The forward half of the graph's fixpoint equation, read directly off
+-- the case rule (core/defcheck.py:409-441): every element of the graph
+-- was introduced by the one rule, so it comes with a function agreeing
+-- with the graph below x.
+theorem wfrec_rel_elim
+  fixes R :: 'a => 'a => bool, H :: ('a => 'b) => 'a => 'b, x :: 'a, y :: 'b
+  prop wfrec_rel R H x y --> (?g. (!z. R z x --> wfrec_rel R H z (g z)) & y = H g x)
+proof
+  ← intro goal=0
+    #[1] wfrec_rel R H x y
+    #[2] ?g. (!z. R z x --> wfrec_rel R H z (g z)) & y = H g x
+  ← rule wfrec_rel_cases goal=2 facts=[1]
+    #[3] !R1. !x1. !H1. !g. R = R1 --> H = H1 --> x = x1 --> y = H1 g x1 --> (!z. R1 z x1 --> wfrec_rel R1 H1 z (g z)) --> (?g1. (!z. R z x --> wfrec_rel R H z (g1 z)) & y = H g1 x)
+  ← intro "R1, x1, H1, g" goal=3
+    #[4] _VAR R1
+    #[5] _VAR x1
+    #[6] _VAR H1
+    #[7] _VAR g
+    #[8] R = R1
+    #[9] H = H1
+    #[10] x = x1
+    #[11] y = H1 g x1
+    #[12] !z. R1 z x1 --> wfrec_rel R1 H1 z (g z)
+    #[13] ?g. (!z. R z x --> wfrec_rel R H z (g z)) & y = H g x
+  ← inst g goal=13
+    #[14] (!z. R z x --> wfrec_rel R H z (g z)) & y = H g x
+  ← rule conjI goal=14
+    #[15] !z. R z x --> wfrec_rel R H z (g z)
+    #[16] y = H g x
+  → rewrite eq_sym_eq sym=true target=fact goal=16 facts=[9]
+    #[17] H1 = H
+  → rewrite eq_sym_eq sym=true target=fact goal=16 facts=[10]
+    #[18] x1 = x
+  → rewrite target=fact goal=16 facts=[17,11]
+    #[19] y = H g x1
+  → rewrite target=fact goal=16 facts=[18,19]
+    #[20] y = H g x
+  ← intro z goal=15
+    #[21] _VAR z
+    #[22] R z x
+    #[23] wfrec_rel R H z (g z)
+  → rewrite eq_sym_eq sym=true target=fact goal=15 facts=[8]
+    #[24] R1 = R
+  → rewrite target=fact goal=23 facts=[8,22]
+    #[25] R1 z x
+  → rewrite target=fact goal=23 facts=[10,25]
+    #[26] R1 z x1
+  ← inst z goal=23 facts=[12]
+    #[27] R1 z x1 --> wfrec_rel R1 H1 z (g z)
+  → forward goal=23 facts=[27,26]
+    #[28] wfrec_rel R1 H1 z (g z)
+  → rewrite target=fact goal=23 facts=[24,28]
+    #[29] wfrec_rel R H1 z (g z)
+  ← rewrite source=prev goal=23 facts=[9]
+qed
+
+
+theorem wfrec_rel_unique
+  fixes R :: 'a => 'a => bool, H :: ('a => 'b) => 'a => 'b
+  prop wf R --> adm_wf R H --> (!x. !y. !z. wfrec_rel R H x y --> wfrec_rel R H x z --> y = z)
+proof
+  ← intro goal=0
+    #[1] wf R
+    #[2] adm_wf R H
+    #[3] !x. !y. !z. wfrec_rel R H x y --> wfrec_rel R H x z --> y = z
+  ← rule wf_induct goal=3 facts=[1]
+    #[4] !x. (!y. R y x --> (!y1. !z. wfrec_rel R H y y1 --> wfrec_rel R H y z --> y1 = z)) --> (!y. !z. wfrec_rel R H x y --> wfrec_rel R H x z --> y = z)
+  ← intro x goal=4
+    #[5] _VAR x
+    #[6] !y. R y x --> (!y1. !z. wfrec_rel R H y y1 --> wfrec_rel R H y z --> y1 = z)
+    #[7] !y. !z. wfrec_rel R H x y --> wfrec_rel R H x z --> y = z
+  ← intro "a, b" goal=7
+    #[8] _VAR a
+    #[9] _VAR b
+    #[10] wfrec_rel R H x a
+    #[11] wfrec_rel R H x b
+    #[12] a = b
+  cut "?g. (!z. R z x --> wfrec_rel R H z (g z)) & a = H g x" goal=12
+    #[13] ?g. (!z. R z x --> wfrec_rel R H z (g z)) & a = H g x
+  ← rule wfrec_rel_elim goal=13 facts=[10]
+    #[14] ?g. (!z. R z x --> wfrec_rel R H z (g z)) & a = H g x
+  cut "?g. (!z. R z x --> wfrec_rel R H z (g z)) & b = H g x" goal=12
+    #[15] ?g. (!z. R z x --> wfrec_rel R H z (g z)) & b = H g x
+  ← rule wfrec_rel_elim goal=15 facts=[11]
+    #[16] ?g. (!z. R z x --> wfrec_rel R H z (g z)) & b = H g x
+  elim g1 goal=12 facts=[14]
+    #[17] _VAR g1
+    #[18] (!z. R z x --> wfrec_rel R H z (g1 z)) & a = H g1 x
+    #[19] a = b
+  elim g2 goal=19 facts=[16]
+    #[20] _VAR g2
+    #[21] (!z. R z x --> wfrec_rel R H z (g2 z)) & b = H g2 x
+    #[22] a = b
+  → forward conjD1 goal=22 facts=[18]
+    #[23] !z. R z x --> wfrec_rel R H z (g1 z)
+  → forward conjD2 goal=22 facts=[18]
+    #[24] a = H g1 x
+  → forward conjD1 goal=22 facts=[21]
+    #[25] !z. R z x --> wfrec_rel R H z (g2 z)
+  → forward conjD2 goal=22 facts=[21]
+    #[26] b = H g2 x
+  cut "!w::'a. R w x --> g1 w = g2 w" goal=22
+    #[27] !w. R w x --> g1 w = g2 w
+  ← intro w goal=27
+    #[28] _VAR w
+    #[29] R w x
+    #[30] g1 w = g2 w
+  ← inst w goal=30 facts=[6]
+    #[31] R w x --> (!y. !z. wfrec_rel R H w y --> wfrec_rel R H w z --> y = z)
+  → forward goal=30 facts=[31,29]
+    #[32] !y. !z. wfrec_rel R H w y --> wfrec_rel R H w z --> y = z
+  ← inst w goal=30 facts=[23]
+    #[33] R w x --> wfrec_rel R H w (g1 w)
+  ← inst w goal=30 facts=[25]
+    #[34] R w x --> wfrec_rel R H w (g2 w)
+  → forward goal=30 facts=[33,29]
+    #[35] wfrec_rel R H w (g1 w)
+  → forward goal=30 facts=[34,29]
+    #[36] wfrec_rel R H w (g2 w)
+  ← inst "(g1 w)" goal=30 facts=[32]
+    #[37] !z. wfrec_rel R H w (g1 w) --> wfrec_rel R H w z --> g1 w = z
+  ← inst "(g2 w)" goal=30 facts=[37]
+    #[38] wfrec_rel R H w (g1 w) --> wfrec_rel R H w (g2 w) --> g1 w = g2 w
+  ← apply_prev goal=30 facts=[38,35,36]
+    #[39] g1 w = g2 w
+  → rewrite adm_wf_def target=fact goal=22 facts=[2]
+    #[40] !f. !g. !x. (!z. R z x --> f z = g z) --> H f x = H g x
+  ← inst g1 goal=22 facts=[40]
+    #[41] !g. !x. (!z. R z x --> g1 z = g z) --> H g1 x = H g x
+  ← inst g2 goal=22 facts=[41]
+    #[42] !x. (!z. R z x --> g1 z = g2 z) --> H g1 x = H g2 x
+  ← inst x goal=22 facts=[42]
+    #[43] (!z. R z x --> g1 z = g2 z) --> H g1 x = H g2 x
+  → forward goal=22 facts=[43,27]
+    #[44] H g1 x = H g2 x
+  ← rewrite source=prev goal=22 facts=[24]
+    #[45] H g1 x = b
+  ← rewrite source=prev goal=45 facts=[26]
+qed
+
+
+theorem wf_rec_exists
+  fixes R :: 'a => 'a => bool, H :: ('a => 'b) => 'a => 'b
+  prop wf R --> adm_wf R H --> (?f. !x. f x = H f x)
+proof
+  ← intro goal=0
+    #[1] wf R
+    #[2] adm_wf R H
+    #[3] ?f. !x. f x = H f x
+  cut "!x::'a. ?y::'b. wfrec_rel R H x y" goal=3
+    #[4] !x. ?y. wfrec_rel R H x y
+  ← rule wf_induct param_P="(%x::'a. ?y::'b. wfrec_rel R H x y)" goal=4 facts=[1]
+    #[5] !x. (!y. R y x --> (?y1. wfrec_rel R H y y1)) --> (?y. wfrec_rel R H x y)
+  ← intro x goal=5
+    #[6] _VAR x
+    #[7] !y. R y x --> (?y1. wfrec_rel R H y y1)
+    #[8] ?y. wfrec_rel R H x y
+  cut "!z::'a. R z x --> wfrec_rel R H z (SOME y::'b. wfrec_rel R H z y)" goal=8
+    #[9] !z. R z x --> wfrec_rel R H z (SOME y. wfrec_rel R H z y)
+  ← intro z goal=9
+    #[10] _VAR z
+    #[11] R z x
+    #[12] wfrec_rel R H z (SOME y. wfrec_rel R H z y)
+  ← inst z goal=12 facts=[7]
+    #[13] R z x --> (?y. wfrec_rel R H z y)
+  → forward goal=12 facts=[13,11]
+    #[14] ?y. wfrec_rel R H z y
+  elim w goal=12 facts=[14]
+    #[15] _VAR w
+    #[16] wfrec_rel R H z w
+    #[17] wfrec_rel R H z (SOME y. wfrec_rel R H z y)
+  → forward wfrec_relI goal=8 facts=[9]
+    #[18] wfrec_rel R H x (H (%z. SOME y. wfrec_rel R H z y) x)
+  ← inst "(H (%z::'a. SOME y::'b. wfrec_rel R H z y) x)" goal=8
+  ← rule someI goal=17 facts=[16]
+    #[19] wfrec_rel R H z (SOME y. wfrec_rel R H z y)
+  ← inst "(%v::'a. SOME y::'b. wfrec_rel R H v y)" goal=3
+    #[20] !x. (SOME y. wfrec_rel R H x y) = H (%v. SOME y. wfrec_rel R H v y) x
+  ← intro a goal=20
+    #[21] _VAR a
+    #[22] (SOME y. wfrec_rel R H a y) = H (%v. SOME y. wfrec_rel R H v y) a
+  cut "wfrec_rel R H a (SOME y::'b. wfrec_rel R H a y)" goal=22
+    #[23] wfrec_rel R H a (SOME y. wfrec_rel R H a y)
+  ← inst a goal=23 facts=[4]
+    #[24] ?y. wfrec_rel R H a y
+  elim w3 goal=23 facts=[24]
+    #[25] _VAR w3
+    #[26] wfrec_rel R H a w3
+    #[27] wfrec_rel R H a (SOME y. wfrec_rel R H a y)
+    #[28] (SOME y. wfrec_rel R H a y) = H (%v. SOME y. wfrec_rel R H v y) a
+  ← rule someI goal=27 facts=[26]
+    #[29] wfrec_rel R H a (SOME y. wfrec_rel R H a y)
+  cut "?g::'a => 'b. (!z. R z a --> wfrec_rel R H z (g z)) & (SOME y::'b. wfrec_rel R H a y) = H g a" goal=28
+    #[30] ?g. (!z. R z a --> wfrec_rel R H z (g z)) & (SOME y. wfrec_rel R H a y) = H g a
+  elim g1 goal=28 facts=[30]
+    #[31] _VAR g1
+    #[32] (!z. R z a --> wfrec_rel R H z (g1 z)) & (SOME y. wfrec_rel R H a y) = H g1 a
+    #[33] (SOME y. wfrec_rel R H a y) = H (%v. SOME y. wfrec_rel R H v y) a
+  → forward conjD1 goal=33 facts=[32]
+    #[34] !z. R z a --> wfrec_rel R H z (g1 z)
+  → forward conjD2 goal=33 facts=[32]
+    #[35] (SOME y. wfrec_rel R H a y) = H g1 a
+  cut "!z::'a. R z a --> g1 z = (SOME y::'b. wfrec_rel R H z y)" goal=33
+    #[36] !z. R z a --> g1 z = (SOME y. wfrec_rel R H z y)
+  ← intro z2 goal=36
+    #[37] _VAR z2
+    #[38] R z2 a
+    #[39] g1 z2 = (SOME y. wfrec_rel R H z2 y)
+  ← inst z2 goal=39 facts=[34]
+    #[40] R z2 a --> wfrec_rel R H z2 (g1 z2)
+  → forward goal=39 facts=[40,38]
+    #[41] wfrec_rel R H z2 (g1 z2)
+  cut "wfrec_rel R H z2 (SOME y::'b. wfrec_rel R H z2 y)" goal=39
+    #[42] wfrec_rel R H z2 (SOME y. wfrec_rel R H z2 y)
+  ← inst z2 goal=42 facts=[4]
+    #[43] ?y. wfrec_rel R H z2 y
+  elim w4 goal=42 facts=[43]
+    #[44] _VAR w4
+    #[45] wfrec_rel R H z2 w4
+    #[46] wfrec_rel R H z2 (SOME y. wfrec_rel R H z2 y)
+    #[47] g1 z2 = (SOME y. wfrec_rel R H z2 y)
+  ← rule someI goal=46 facts=[45]
+    #[48] wfrec_rel R H z2 (SOME y. wfrec_rel R H z2 y)
+  → forward wfrec_rel_unique goal=47 facts=[1,2]
+    #[49] !x. !y. !z. wfrec_rel R H x y --> wfrec_rel R H x z --> y = z
+  ← inst z2 goal=47 facts=[49]
+    #[50] !y. !z. wfrec_rel R H z2 y --> wfrec_rel R H z2 z --> y = z
+  ← inst "(g1 z2)" goal=47 facts=[50]
+    #[51] !z. wfrec_rel R H z2 (g1 z2) --> wfrec_rel R H z2 z --> g1 z2 = z
+  ← inst "(SOME y::'b. wfrec_rel R H z2 y)" goal=47 facts=[51]
+    #[52] wfrec_rel R H z2 (g1 z2) --> wfrec_rel R H z2 (SOME y. wfrec_rel R H z2 y) --> g1 z2 = (SOME y. wfrec_rel R H z2 y)
+  ← apply_prev goal=47 facts=[52,41,48]
+    #[53] g1 z2 = (SOME y. wfrec_rel R H z2 y)
+  → rewrite adm_wf_def target=fact goal=33 facts=[2]
+    #[54] !f. !g. !x. (!z. R z x --> f z = g z) --> H f x = H g x
+  ← inst g1 goal=33 facts=[54]
+    #[55] !g. !x. (!z. R z x --> g1 z = g z) --> H g1 x = H g x
+  ← inst "(%v::'a. SOME y::'b. wfrec_rel R H v y)" goal=33 facts=[55]
+    #[56] !x. (!z. R z x --> g1 z = (SOME y. wfrec_rel R H z y)) --> H g1 x = H (%v. SOME y. wfrec_rel R H v y) x
+  ← inst a goal=33 facts=[56]
+    #[57] (!z. R z a --> g1 z = (SOME y. wfrec_rel R H z y)) --> H g1 a = H (%v. SOME y. wfrec_rel R H v y) a
+  → forward goal=33 facts=[57,36]
+    #[58] H g1 a = H (%v. SOME y. wfrec_rel R H v y) a
+  ← rewrite source=prev goal=33 facts=[35]
+  ← rule wfrec_rel_elim goal=30 facts=[29]
+    #[59] ?g. (!z. R z a --> wfrec_rel R H z (g z)) & (SOME y. wfrec_rel R H a y) = H g a
+qed
+
+
+theorem wf_rec_apply
+  fixes R :: 'a => 'a => bool, H :: ('a => 'b) => 'a => 'b, x :: 'a
+  prop wf R --> adm_wf R H --> (SOME g. !z. g z = H g z) x = H (SOME g. !z. g z = H g z) x
+proof
+  ← intro goal=0
+    #[1] wf R
+    #[2] adm_wf R H
+    #[3] ((SOME g. !z. g z = H g z) x) = H (SOME g. !z. g z = H g z) x
+  cut "?g::'a => 'b. !z::'a. g z = H g z" goal=3
+    #[4] ?g. !z. g z = H g z
+  ← rule wf_rec_exists goal=4 facts=[1,2]
+  elim g1 goal=3 facts=[4]
+    #[5] _VAR g1
+    #[6] !x. g1 x = H g1 x
+    #[7] ((SOME g. !z. g z = H g z) x) = H (SOME g. !z. g z = H g z) x
+  → forward some_AX param_P="(%g::'a => 'b. !z::'a. g z = H g z)" param_x=g1 goal=7
+    #[8] (!z. g1 z = H g1 z) --> (!z. ((SOME g. !z1. g z1 = H g z1) z) = H (SOME g. !z1. g z1 = H g z1) z)
+  → forward goal=7 facts=[8,6]
+    #[9] !z. ((SOME g. !z1. g z1 = H g z1) z) = H (SOME g. !z1. g z1 = H g z1) z
+  ← rewrite source=prev goal=7 facts=[9]
+    #[10] ((SOME g. !z. g z = H g z) x) = H (SOME g. !z. g z = H g z) x
+qed
+
+-- The `cut` combinator: restrict a function to the R-predecessors of x,
+-- with an arbitrary fixed value elsewhere.  Composing H with cut makes
+-- admissibility of H automatic (adm_cut below), which is what leaves
+-- `wf R` as the only obligation of a recursive definition.
+
+
+-- The `cut` combinator: restrict a function to the R-predecessors of x,
+-- with an arbitrary fixed value elsewhere.  Composing H with cut makes
+-- admissibility of H automatic (adm_cut below), which is what leaves
+-- `wf R` as the only obligation of a recursive definition.
+def cut :: ('a ⇒ 'b) ⇒ ('a ⇒ 'a ⇒ bool) ⇒ 'a ⇒ 'a ⇒ 'b = cut f R x = (%y. if R y x then f y else SOME z::'b. z = z)
+
+
+theorem cut_apply
+  fixes R :: 'a => 'a => bool, f :: 'a => 'b, x :: 'a, y :: 'a
+  prop R y x --> cut f R x y = f y
+proof
+  ← intro goal=0
+    #[1] R y x
+    #[2] cut f R x y = f y
+  ← rewrite cut_def goal=2
+    #[3] (if R y x then f y else SOME z. z = z) = f y
+  ← rewrite if_P goal=3 facts=[1]
+qed
+
+-- The functional whose fixpoint is the recursive definition: H is only
+-- ever applied to `cut g R x`, i.e. to g restricted to the R-predecessors
+-- of x.  This is what makes admissibility of H automatic (wfrec_H_adm),
+-- leaving `wf R` as the definition's only obligation.
+-- Isabelle counterpart: the anonymous (λf x. F (cut f R x) x) of Wfrec.thy.
+
+
+-- The functional whose fixpoint is the recursive definition: H is only
+-- ever applied to `cut g R x`, i.e. to g restricted to the R-predecessors
+-- of x.  This is what makes admissibility of H automatic (wfrec_H_adm),
+-- leaving `wf R` as the definition's only obligation.
+-- Isabelle counterpart: the anonymous (λf x. F (cut f R x) x) of Wfrec.thy.
+def wfrec_H :: ('a ⇒ 'a ⇒ bool) ⇒ (('a ⇒ 'b) ⇒ 'a ⇒ 'b) ⇒ ('a ⇒ 'b) ⇒ 'a ⇒ 'b = wfrec_H R H g x = H (cut g R x) x
+
+
+theorem wfrec_H_adm
+  fixes R :: 'a => 'a => bool, H :: ('a => 'b) => 'a => 'b
+  prop adm_wf R (wfrec_H R H)
+proof
+  ← unfold adm_wf_def goal=0
+    #[1] !f. !g. !x. (!z. R z x --> f z = g z) --> wfrec_H R H f x = wfrec_H R H g x
+  ← unfold wfrec_H_def goal=1
+    #[2] !f. !g. !x. (!z. R z x --> f z = g z) --> H (cut f R x) x = H (cut g R x) x
+  ← intro "f1, g1, x1" goal=2
+    #[3] _VAR f1
+    #[4] _VAR g1
+    #[5] _VAR x1
+    #[6] !z. R z x1 --> f1 z = g1 z
+    #[7] H (cut f1 R x1) x1 = H (cut g1 R x1) x1
+  cut "cut f1 R x1 = cut g1 R x1" goal=7
+    #[8] cut f1 R x1 = cut g1 R x1
+  ← rule extension goal=8
+    #[9] !x. cut f1 R x1 x = cut g1 R x1 x
+  ← intro y goal=9
+    #[10] _VAR y
+    #[11] cut f1 R x1 y = cut g1 R x1 y
+  ← cases "R y x1" goal=11
+    #[12] R y x1 --> cut f1 R x1 y = cut g1 R x1 y
+    #[13] ~(R y x1) --> cut f1 R x1 y = cut g1 R x1 y
+  ← intro goal=12
+    #[14] R y x1
+    #[15] cut f1 R x1 y = cut g1 R x1 y
+  ← rewrite cut_def goal=15
+    #[16] (if R y x1 then f1 y else SOME z. z = z) = (if R y x1 then g1 y else SOME z. z = z)
+  ← inst y goal=16 facts=[6]
+    #[17] R y x1 --> f1 y = g1 y
+  → forward goal=16 facts=[17,14]
+    #[18] f1 y = g1 y
+  ← rewrite source=prev goal=16 facts=[18]
+  ← intro goal=13
+    #[19] ~(R y x1)
+    #[20] cut f1 R x1 y = cut g1 R x1 y
+  ← rewrite cut_def goal=20
+    #[21] (if R y x1 then f1 y else SOME z. z = z) = (if R y x1 then g1 y else SOME z. z = z)
+  ← rewrite if_not_P goal=21 facts=[19]
+    #[22] (if R y x1 then f1 y else SOME z. z = z) = (if R y x1 then g1 y else SOME z. z = z)
+  ← rewrite source=prev goal=7 facts=[8]
+qed
+
+
+theorem wfrec_some
+  fixes R :: 'a => 'a => bool, H :: ('a => 'b) => 'a => 'b, x :: 'a
+  prop wf R --> (SOME g. !z. g z = wfrec_H R H g z) x = wfrec_H R H (SOME g. !z. g z = wfrec_H R H g z) x
+proof
+  ← intro goal=0
+    #[1] wf R
+    #[2] ((SOME g. !z. g z = wfrec_H R H g z) x) = wfrec_H R H (SOME g. !z. g z = wfrec_H R H g z) x
+  → forward wfrec_H_adm param_H=H param_R=R goal=2
+    #[3] adm_wf R (wfrec_H R H)
+  ← rule wf_rec_apply param_H="wfrec_H R H" goal=2 facts=[1,3]
+qed
+
+-- Fixpoint equation of a definition `f = (SOME g. !z. g z = wfrec_H R H g z)`.
+-- This is the rule a `fun` definition's equation proofs rewrite with: it
+-- turns `f x` into `wfrec_H R H f x`, and `wf R` is its only obligation.
+
+
+-- Fixpoint equation of a definition `f = (SOME g. !z. g z = wfrec_H R H g z)`.
+-- This is the rule a `fun` definition's equation proofs rewrite with: it
+-- turns `f x` into `wfrec_H R H f x`, and `wf R` is its only obligation.
+theorem wfrec_eq
+  fixes R :: 'a => 'a => bool, H :: ('a => 'b) => 'a => 'b, f :: 'a => 'b, x :: 'a
+  prop wf R --> f = (SOME g. !z. g z = wfrec_H R H g z) --> f x = wfrec_H R H f x
+proof
+  ← intro goal=0
+    #[1] wf R
+    #[2] f = (SOME g. !z. g z = wfrec_H R H g z)
+    #[3] f x = wfrec_H R H f x
+  ← rewrite source=prev goal=3 facts=[2]
+    #[4] ((SOME g. !z. g z = wfrec_H R H g z) x) = wfrec_H R H (SOME g. !z. g z = wfrec_H R H g z) x
+  → forward wfrec_some param_H=H param_R=R param_x=x goal=4 facts=[1]
+    #[5] ((SOME g. !z. g z = wfrec_H R H g z) x) = wfrec_H R H (SOME g. !z. g z = wfrec_H R H g z) x
+qed
