@@ -1583,6 +1583,42 @@ class norm(Method):
         state.apply_macro(id, macro_name)
 
 
+@register_method('beta')
+class beta(Method):
+    """Beta-normalize the goal in place.
+
+    A recursion body is an abstraction of the recursive function, so
+    applying it leaves a redex; the matcher does not reduce redexes on
+    its own, so a step that has to see through one needs this.  Uses the
+    kernel's beta conversion (descending into the term) and the shared
+    goal-rewriting tactic, so it expands to primitives like any rewrite.
+    Must-change semantics: fails when the goal is already beta-normal.
+    """
+    def __init__(self):
+        self.sig = []
+        self.limit = None
+
+    def search(self, state, id, prevs):
+        if len(prevs) > 0:
+            return []
+        try:
+            prop = state.get_proof_item(id).th.prop
+        except Exception:
+            return []
+        if prop.beta_norm() == prop:
+            return []
+        return [{}]
+
+    def display_step(self, state, data):
+        return pprint.N("beta")
+
+    def apply(self, state, id, data, prevs):
+        prop = state.get_proof_item(id).th.prop
+        if prop.beta_norm() == prop:
+            raise AssertionError("beta: goal is already beta-normal")
+        state.apply_tactic(id, tactic.rewrite_goal_with_conv(conv.beta_norm_conv()))
+
+
 @register_method('simp')
 class simp(Method):
     """Simplify the goal by rewriting with all hint_rewrite theorems

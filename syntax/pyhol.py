@@ -386,6 +386,7 @@ _METHOD_POSITIONAL = {
     'unfold': ['theorem'],
     'var': ['name', 'type'],
     'simp': [],
+    'beta': [],
 }
 
 # Keys to skip (goal_id and method_name are handled separately)
@@ -402,7 +403,7 @@ _BACKWARD_METHODS = {
     'rule', 'resolve', 'intro', 'cases', 'type_cases', 'rewrite', 'apply_prev',
     'inst', 'induct', 'refl', 'eq_intro', 'trans',
     'unfold', 'simp', 'assumption',
-    'norm', 'z3',
+    'norm', 'z3', 'beta',
     'vcg',
 }
 _FORWARD_METHODS = {

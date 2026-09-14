@@ -37,7 +37,7 @@ BACKWARD = {
     'rule', 'resolve', 'intro', 'cases', 'type_cases', 'rewrite', 'apply_prev',
     'inst', 'induct', 'refl', 'eq_intro', 'trans',
     'unfold', 'simp', 'assumption',
-    'norm', 'z3',
+    'norm', 'z3', 'beta',
     'vcg',
 }
 FORWARD = {
