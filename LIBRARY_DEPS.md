@@ -35,7 +35,7 @@ logic_base
        │    │    └─ (mem 另需 nat)
        │    ├─ class
        │    ├─ order（序谓词 preorder/order/linorder/linorder_lt + nat 实例，见 PROGRAM_VERIFICATION_PORT §11）
-       │    │    └─ lists_ex（strict_sorted；另需 list，见 §12）
+       │    │    └─ lists_ex（strict_sorted / ordered_insert / remove_elt_list / sorted；另需 list，见 §12–13）
        ├─ sat (另需 int)  └─ smt
        └─ hoare (另需 int)
 

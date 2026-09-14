@@ -900,6 +900,30 @@ proof
   ← rewrite disj_false_left sym=false goal=18
 qed
 
+-- An element is a member of its own singleton, and inserting it twice is
+-- inserting it once.  The second is what the `ordered_insert` equation for the
+-- `x = y` case needs (there the right-hand set is `{x} Un set (y # ys)`).
+theorem mem_insert_self
+  fixes x :: 'a, A :: 'a set
+  prop x ∈ insert x A
+proof
+  ← rewrite member_insert sym=false goal=0
+    #[1] x = x | x Mem A
+  ← rule disjI1 goal=1
+    #[2] x = x
+  ← refl goal=2
+qed
+
+theorem insert_idem
+  fixes x :: 'a, A :: 'a set
+  prop insert x (insert x A) = insert x A
+  [hint_rewrite]
+proof
+  → forward mem_insert_self param_x=x param_A=A goal=0
+    #[1] x Mem insert x A
+  ← rule insert_absorb goal=0 facts=[1]
+qed
+
 theorem exists_in_gspec1
   fixes P :: 'a => bool, Q :: 'a => bool
   prop (?x. x Mem {y. P y} & Q x) <--> (?x. P x & Q x)

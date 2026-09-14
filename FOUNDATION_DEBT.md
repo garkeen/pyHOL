@@ -89,8 +89,10 @@ STEP_FAILED），实验后要清理。
   序（Isabelle `Orderings.thy`/`Order_Relation.thy`、Mathlib `Order/Defs/`）——
   **谓词层已完成**：`'a::C` 类型类糖（一个类可贡献多条前提）+ `library/order.pyhol` 的
   `preorder`/`order`/`linorder`/`linorder_lt` 谓词、层级与严格序引理、`nat` 实例
-  都已就位（见 `PROGRAM_VERIFICATION_PORT.md` §11）；`strict_sorted` 与其第一条引理
-  在 `library/lists_ex.pyhol`（同文档 §12），其余列表引理与 `ordered_insert` 待补；
+  都已就位（见 `PROGRAM_VERIFICATION_PORT.md` §11）；auto2 `Lists_Ex.thy` 的列表层
+  （`strict_sorted`、`ordered_insert`、`remove_elt_list`）与 Isabelle 的 `sorted`
+  （≤ 版）连同各自的成员/集合/保序引理已在 `library/lists_ex.pyhol`（同文档
+  §12–13），只差 Quicksort 专用的 `sublist` 刻画与 `lt`/`le` 桥接引理（§13.3）；
   `int`/`real` 实例与
   格（`Lattices.thy`/`Complete_Lattices.thy`/`Conditionally_Complete_Lattices.thy`/
   `Lattices_Big.thy`、Mathlib `Order/Lattice.lean`/`Order/CompleteLattice/`）、

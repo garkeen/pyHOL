@@ -44,11 +44,12 @@ CARD_LEMMAS = ['card_image_inj', 'card_mono', 'card_image_le',
                'surjective_imp_injective', 'surjective_iff_injective']
 
 # Set algebra used when porting list facts (`set (xs @ ys)`, and the
-# `strict_sorted` proofs): union/insert manipulation, plus the bounded-universal
-# elimination that turns `∀z. z ∈ B ⟶ P z` into `P y` in one step.
+# `strict_sorted`/`ordered_insert` proofs): union/insert manipulation, singleton
+# membership, insert idempotence, plus the bounded-universal elimination that
+# turns `∀z. z ∈ B ⟶ P z` into `P y` in one step.
 LIST_SUPPORT_LEMMAS = ['empty_union', 'insert_union', 'insert_comm',
                        'subset_union_left', 'subset_union_right',
-                       'all_mem_elim']
+                       'all_mem_elim', 'mem_insert_self', 'insert_idem']
 
 # What is left over after the cardinality layer: only the deliberate axioms
 # (`set_equal_iff` plus the two `card` recursion axioms).  Pinned so that

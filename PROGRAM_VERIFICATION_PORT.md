@@ -902,7 +902,7 @@ else 分支要用的「既不等于也不小于就是大于」）。
 - **实例解析暂不做自动化**：使用处手写 `rule <law> facts=[<约束事实>]`（约束事实
   来自注解或实例定理）。以后要自动化，加一张实例表让 solver 试即可，不动内核。
 
-### 11.4 阶段 3 剩余
+### 11.4 阶段 3 剩余（已于 §13 收尾）
 
 **转写 auto2 陈述时的一个文法语限制**：holpy 的 `∀` 只吃一个绑定变量，
 `∀x y z. P` 必须写成 `∀x. ∀y. ∀z. P`（`∃` 同理）；`library/order.pyhol` 的定义
@@ -918,6 +918,11 @@ List.thy，auto2 在 `Quicksort.thy`（4 处）、`LinkedList.thy`（4 处，指
 `remove_elt_list` 只依赖 list/order，可归本阶段）。
 实例还缺 `int`/`real`：`real` 只差 `real_le_trans`（UNPROVED）与几个 `<` 律；
 `int` 整条序层都是 UNPROVED（该理论 184 条里也几乎全未证），属 P3 数系债。
+
+以上各项（`strict_sorted_appendI`/`strict_sorted_distinct`/`ordered_insert` 一组/
+`remove_elt_list` 一组/`sorted` 定义 + 基础引理）已在 **§13** 完成；
+`int`/`real` 实例、三个 `_binary` 引理、`sorted` 的 sublist 刻画、以及混合
+`<`/`≤` 的桥接引理仍然缺，边界见 §13.3。
 
 ## 12. 阶段 3：strict_sorted 层（2026-09-13 续轮，常驻 REPL）
 
@@ -994,7 +999,7 @@ strict_sorted 拆开」固定下来的析构引理（见 §12.2 第 31 条）。
     就是 `conjD1` 一步关门），不需要再 `apply_prev`；反之若目标没关（见第 29 条
     的 `all_mem_elim` 场景），才要 `apply_prev`。
 
-### 12.3 阶段 3 剩余（下一步）
+### 12.3 阶段 3 剩余（已于 §13 完成，保留原文以对照）
 
 `library/lists_ex.pyhol` 里还缺 auto2 `Lists_Ex.thy` 的其余陈述：
 `strict_sorted_appendI`（`[backward]`）、`strict_sorted_distinct`（需要 cons 形式的
@@ -1012,4 +1017,68 @@ BST 删除要用）。三个 `_binary` 引理（`ordered_insert_binary`、
 `remove_elt_list` 一组（BST 的删除用）与依赖 Mapping_Str 的
 `ordered_insert_pairs`/`remove_elt_pairs`/`map_of_alist_binary` 归阶段 5。
 
+## 13. 阶段 3 收尾（2026-09-14，常驻 REPL）
+
+### 13.1 交付物
+
+| 位置 | 内容 | 验证 |
+|---|---|---|
+| `library/list.pyhol` | `mem_set_cons_self`（`x ∈ set (x # xs)`）、`mem_set_cons_weak`（`z ∈ set xs ⟹ z ∈ set (x # xs)`） | VALID 44 / 0 非绿 |
+| `library/set.pyhol` | `mem_insert_self`（`x ∈ insert x A`）、`insert_idem`（`insert x (insert x A) = insert x A`） | VALID 81 / AXIOM 3 / 0 非绿 |
+| `library/lists_ex.pyhol` | `strict_sorted_cons_head`/`_cons_tail`（cons 析构）、`strict_sorted_appendI`（backward）、`strict_sorted_distinct` | VALID 18 / 0 非绿 |
+| 同上 | `ordered_insert` 定义（`if x = y then … else if x < y … else …`）+ `ordered_insert_set`、`ordered_insert_sorted` | 同上 |
+| 同上 | `remove_elt_list` 定义 + `remove_elt_list_mem`、`remove_elt_list_set`、`remove_elt_list_sorted`、`remove_elt_idem` | 同上 |
+| 同上 | `sorted`（≤ 版）定义 + `sorted_cons_head`/`_cons_tail`、`sorted_appendI`、`sorted_appendE1` | 同上 |
+
+`library/tests/lists_ex_test.py` 从 5 例扩到 10 例（4 个 nat 使用点主动用例 +
+2 个被动用例）；`list_test.py`/`set_test.py` 的名字表同步。
+
+### 13.2 本轮新发现的机制
+
+33. **`rewrite` 不带 `loc` 时改写目标里*所有*匹配出现**，不是只看最外层一次。
+    基例里 `insert x (set []) = {x} Un set []` 一条 `set_def_1` 就把两处
+    `set []` 同时换成 `{}`；`insert_comm` 一步把等式两边同时交换（因此要
+    `loc=0.1` 只动左边）。与 §8.5 第 3 条（rewrite 抓最外层匹配）合起来就是
+    完整语义：**先定位（最外层优先），再替换全部同形项**。
+34. **目标命题与作用域内某条定理相同时会被自动关闭**。`remove_elt_list_set`
+    的证明在两次重写后正好得到 `remove_elt_list_mem` 的命题，那一步直接
+    "no new items; goal closed"，导出里留下一条 `→ forward remove_elt_list_mem …`
+    作为关门行的记录。库回放（`validate_one`）重现该行为，不是 REPL 特例。
+35. **`intro` 后的目标不总是保持同一个稳定 ID**：同一分支里第二次 `intro`
+    会遇到与已出现命题合并的情况，目标会换 sid。**每步之后看 `all`，
+    用最后一条 `GOAL` 的编号**，不要按"上一步 +1"推算。
+36. **`force_disj_true1`/`_true2` 只吃一种朝向**：`true1 : A | B ⟹ ~B ⟹ A`
+    （消去第二个析取项），`true2 : A | ~B ⟹ B ⟹ A`（消去取反的第二个）。
+    要消去**第一个**析取项时先 `→ rewrite disj_comm … target=fact` 把
+    `A | B` 变成 `B | A`，再用 `true1`（appendI/E2 与 `remove_elt_list_mem` 都这么写）。
+37. **`false` 常量引理的左右形式要看清**：`conj_false_left` 是 `P & false`、
+    `conj_false_right` 是 `false & P`（`conj_true_left/right` 同理）。写反了
+    报的是 `rewrite: unable to apply theorem`，不提示左右之别——查
+    `thm <名字>` 再写。
+38. **`-` 不是集合差**：解析器把 `A - B` 解析成算术减法（`syntax/parser.py`
+    的 `minus`），集合差只有前缀写法 `diff A B`。所以 auto2 的
+    `set ys - {x}` 在本移植里写作 `diff (set ys) {x}`。
+39. **定义里的类型注解只是标记**（§11.3 的实践确认）：`fun ordered_insert ::
+    'a ⇒ 'a list ⇒ 'a list` 的函数体里可以出现 `x < y`，此时 `<` 解析为通用
+    重载常量（`strict_sorted`/`sorted` 同理），不需要也不接受前提注入。
+40. **`remove_elt_list` 的集合刻画走「先证成员刻画、再对集合等式取 `set_equal_iff`」**：
+    归纳步里 `if` 分支与 `delete`/`diff` 的交互（`insert x A - {x} = A - {x}` 之类）
+    如果直接对集合等式归纳，命题级推理会翻倍；先在成员层面归纳（`remove_elt_list_mem`），
+    集合等式就退化成 4 步 `set_equal_iff` + 成员引理重写。
+
+### 13.3 阶段 3 之后仍缺的部分
+
+- **`int`/`real` 实例**：`real` 只差 `real_le_trans` 等几条（UNPROVED）；
+  `int` 整条序层都是 UNPROVED（P3 数系债）。本轮**不做**（按约定记下）。
+- **三个 `_binary` 引理**与 `ordered_insert_pairs`/`remove_elt_pairs`/
+  `map_of_alist_binary`：前者 Lists_Ex 之外无人引用（可选），后者依赖
+  Mapping_Str，归阶段 5。
+- **`sorted` 与 `sublist`/`append` 的 Quicksort 专用刻画**（`sorted (sublist l r
+  (quicksort xs l r))` 那类）：留到阶段 5 与 Quicksort 一起做，那里才知道
+  真正需要对 `sublist` 的哪几条重写。
+- **混合 `<` 与 `≤` 的桥接引理**（Isabelle 的 `strict_sorted_imp_sorted`）：
+  本移植的 `linorder`/`linorder_lt` 是**互相独立**的谓词，缺
+  `lt x y ⟶ le x y` 这条类公理，所以这类引理在抽象层面**不可证**，要么加
+  前提 `(∀x y. x < y ⟶ x ≤ y)`，要么按实例（nat 有 `less_lesseqI`）分开证。
+  阶段 5 需要时再按实例补。
 

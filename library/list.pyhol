@@ -309,6 +309,34 @@ proof
   ← rewrite member_insert sym=false goal=1
 qed
 
+-- Monotonicity of `set` under cons: the head and the tail are members of the
+-- extended list.  Facts stated in this direction because rewriting can only
+-- unfold a membership in a *goal*; a proof holding `Mem set xs` as a
+-- hypothesis needs a fact to derive `Mem set (x # xs)` from.
+
+theorem mem_set_cons_self
+  fixes x :: 'a, xs :: 'a list
+  prop x ∈ set (x # xs)
+proof
+  ← rewrite member_set_cons sym=false goal=0
+    #[1] x = x | x Mem set xs
+  ← rule disjI1 goal=1
+    #[2] x = x
+  ← refl goal=2
+qed
+
+theorem mem_set_cons_weak
+  fixes z :: 'a, x :: 'a, xs :: 'a list
+  prop z ∈ set xs ⟶ z ∈ set (x # xs)
+proof
+  ← intro goal=0
+    #[1] z Mem set xs
+    #[2] z Mem set (x # xs)
+  ← rewrite member_set_cons sym=false goal=2
+    #[3] z = x | z Mem set xs
+  ← rule disjI2 goal=3
+qed
+
 theorem member_set_append_left
   fixes xs :: 'a list, ys :: 'a list, x :: 'a
   prop x Mem set xs ⟶ x Mem set (xs @ ys)
