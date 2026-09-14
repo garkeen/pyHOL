@@ -379,24 +379,54 @@ def load_theory_cache(filename):
             source_text.encode('utf-8')).hexdigest()
         cache['item_hashes'] = []
         cache['content'] = []
-        for index, item in enumerate(data['content']):
-            # Hash the item's exact source block (see syntax.pyhol
-            # `_src`), so the incremental verifier can tell which items
-            # changed instead of invalidating the whole file.
-            src = item.get('_src')
-            if src is not None:
-                block = '\n'.join(source_lines[src[0]:src[1]])
-            else:
-                block = json.dumps(item, sort_keys=True, default=str)
-            cache['item_hashes'].append(
-                hashlib.sha1(block.encode('utf-8')).hexdigest())
-            item = items.parse_item(item)
-            cache['content'].append(item)
-            if item.error is None:
+
+        for index, item_data in enumerate(data['content']):
+            # A `fun` definition expands into its own group of items
+            # (phase 4): its equations are then derived from a
+            # well-foundedness obligation instead of being asserted.
+            # The expansion happens here, where the loader reaches the
+            # block, so the file's earlier items are already registered --
+            # the generator prints terms mentioning them (hd/tl, for
+            # instance) and would otherwise fail to type them.
+            #
+            # Definitions outside what the generator supports keep the
+            # current axiomatization.  Derived items share the parent
+            # block's `_src`, so editing the `fun` block invalidates the
+            # group whole.
+            group = [item_data]
+            if item_data.get('ty') == 'def.ind':
+                from core import fungen
                 try:
-                    theory.thy.unchecked_extend(item.get_extension())
-                except TheoryException:
-                    pass  # Skip duplicates
+                    derived = fungen.expand_item(item_data)
+                except Exception:
+                    # Anything the generator cannot handle -- or fails on
+                    # -- leaves the definition axiomatized, so a file never
+                    # breaks because of the expansion.  The equations it
+                    # still asserts show up as AXIOM in the status table.
+                    derived = None
+                if derived is not None:
+                    for derived_item in derived:
+                        derived_item['_src'] = item_data.get('_src')
+                    group = derived
+
+            for item in group:
+                # Hash the item's exact source block (see syntax.pyhol
+                # `_src`), so the incremental verifier can tell which
+                # items changed instead of invalidating the whole file.
+                src = item.get('_src')
+                if src is not None:
+                    block = '\n'.join(source_lines[src[0]:src[1]])
+                else:
+                    block = json.dumps(item, sort_keys=True, default=str)
+                cache['item_hashes'].append(
+                    hashlib.sha1(block.encode('utf-8')).hexdigest())
+                item = items.parse_item(item)
+                cache['content'].append(item)
+                if item.error is None:
+                    try:
+                        theory.thy.unchecked_extend(item.get_extension())
+                    except TheoryException:
+                        pass  # Skip duplicates
 
     return cache
 

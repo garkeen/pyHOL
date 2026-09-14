@@ -1,0 +1,222 @@
+theory wfrec_example
+imports wf, prod, list
+description "Hand-written sample of the item set a `fun` definition generates (phase 4)."
+
+-- A `fun` definition is desugared into: a measure, the body functional
+-- (applied form, so no beta redexes arise), the function itself as the
+-- SOME-fixpoint of that functional, one `wf` obligation, one equation per
+-- source equation, and an induction rule.  Nothing here asserts the
+-- equations: each one is derived from the `wf` obligation by wfrec_eq.
+--
+-- The relation is a measure on the TUPLED argument (as in Isabelle): the
+-- recursion of a curried n-ary function changes several arguments at
+-- once, so the relation cannot live on a single argument.
+
+def wfx_measure :: nat × nat ⇒ nat = wfx_measure p = fst p [hint_rewrite]
+
+def wfx_H :: ((nat × nat) ⇒ nat) ⇒ (nat × nat) ⇒ nat = wfx_H g p = (if fst p = 0 then snd p else Suc (g (Pre (fst p), snd p))) [hint_rewrite]
+
+def wfx_f :: (nat × nat) ⇒ nat = wfx_f = (SOME g. !z. g z = wfrec_H (measure wfx_measure) wfx_H g z)
+
+theorem wfx_wf
+  prop wf (measure wfx_measure)
+proof
+  ← rule wf_measure goal=0
+qed
+
+theorem wfx_def_1
+  fixes n :: nat
+  prop wfx_f (0, n) = n
+proof
+  → forward wfx_wf goal=0
+    #[1] wf (measure wfx_measure)
+  → forward wfx_f_def goal=0
+    #[2] wfx_f = (SOME g. !z. g z = wfrec_H (measure wfx_measure) wfx_H g z)
+  ← rewrite wfrec_eq goal=0 facts=[1,2]
+    #[3] wfrec_H (measure wfx_measure) wfx_H wfx_f (Pair 0 n) = n
+  ← unfold wfrec_H_def goal=3
+    #[4] wfx_H (cut wfx_f (measure wfx_measure) (Pair 0 n)) (Pair 0 n) = n
+  ← unfold wfx_H_def goal=4
+    #[5] (if fst (Pair (0::nat) n) = 0 then snd (Pair (0::nat) n) else Suc (cut wfx_f (measure wfx_measure) (Pair 0 n) (Pair (Pre (fst (Pair 0 n))) (snd (Pair (0::nat) n))))) = n
+  ← rewrite snd_def_1 goal=5
+    #[6] (if fst (Pair (0::nat) n) = 0 then n else Suc (cut wfx_f (measure wfx_measure) (Pair 0 n) (Pair (Pre (fst (Pair 0 n))) n))) = n
+  cut "fst (Pair (0::nat) n) = 0" goal=6
+    #[7] fst (Pair (0::nat) n) = 0
+  ← rewrite fst_def_1 goal=7
+  ← rewrite if_P goal=6 facts=[7]
+qed
+
+theorem wfx_def_2
+  fixes n :: nat, m :: nat
+  prop wfx_f (Pair (Suc m) n) = Suc (wfx_f (Pair m n))
+proof
+  → forward wfx_wf goal=0
+    #[1] wf (measure wfx_measure)
+  → forward wfx_f_def goal=0
+    #[2] wfx_f = (SOME g. !z. g z = wfrec_H (measure wfx_measure) wfx_H g z)
+  cut "wfx_f (Pair (Suc m) n) = wfrec_H (measure wfx_measure) wfx_H wfx_f (Pair (Suc m) n)" goal=0
+    #[3] wfx_f (Pair (Suc m) n) = wfrec_H (measure wfx_measure) wfx_H wfx_f (Pair (Suc m) n)
+  ← rule wfrec_eq goal=3 facts=[1,2]
+  ← rewrite source=prev goal=0 facts=[3]
+    #[4] wfrec_H (measure wfx_measure) wfx_H wfx_f (Pair (Suc m) n) = Suc (wfx_f (Pair m n))
+  ← unfold wfrec_H_def goal=4
+    #[5] wfx_H (cut wfx_f (measure wfx_measure) (Pair (Suc m) n)) (Pair (Suc m) n) = Suc (wfx_f (Pair m n))
+  ← unfold wfx_H_def goal=5
+    #[6] (if fst (Pair (Suc m) n) = 0 then snd (Pair (Suc m) n) else Suc (cut wfx_f (measure wfx_measure) (Pair (Suc m) n) (Pair (Pre (fst (Pair (Suc m) n))) (snd (Pair (Suc m) n))))) = Suc (wfx_f (Pair m n))
+  ← rewrite snd_def_1 goal=6
+    #[7] (if fst (Pair (Suc m) n) = 0 then n else Suc (cut wfx_f (measure wfx_measure) (Pair (Suc m) n) (Pair (Pre (fst (Pair (Suc m) n))) n))) = Suc (wfx_f (Pair m n))
+  ← rewrite fst_def_1 goal=7
+    #[8] (if Suc m = 0 then n else Suc (cut wfx_f (measure wfx_measure) (Pair (Suc m) n) (Pair (Pre (Suc m)) n))) = Suc (wfx_f (Pair m n))
+  ← rewrite Pre_def_2 goal=8
+    #[9] (if Suc m = 0 then n else Suc (cut wfx_f (measure wfx_measure) (Pair (Suc m) n) (Pair m n))) = Suc (wfx_f (Pair m n))
+  → forward nat_zero_Suc_neq param_n=m goal=9
+    #[10] ~(0 = Suc m)
+  → forward ineq_sym param_x="(0::nat)" param_y="(Suc m)" goal=9 facts=[10]
+    #[11] ~(Suc m = 0)
+  ← rewrite if_not_P goal=9 facts=[11]
+    #[12] Suc (cut wfx_f (measure wfx_measure) (Pair (Suc m) n) (Pair m n)) = Suc (wfx_f (Pair m n))
+  cut "measure wfx_measure (Pair m n) (Pair (Suc m) n)" goal=12
+    #[13] measure wfx_measure (Pair m n) (Pair (Suc m) n)
+  ← rewrite measure_def goal=13
+    #[14] wfx_measure (Pair m n) < wfx_measure (Pair (Suc m) n)
+  ← rewrite wfx_measure_def goal=14
+    #[15] fst (Pair m n) < fst (Pair (Suc m) n)
+  ← rewrite fst_def_1 goal=15
+    #[16] m < Suc m
+  ← rewrite less_Suc_lesseq goal=16
+    #[17] m <= m
+  ← rule lesseq_refl goal=17
+  ← rewrite cut_def goal=12
+    #[18] Suc (if measure wfx_measure (Pair m n) (Pair (Suc m) n) then wfx_f (Pair m n) else SOME z. z = z) = Suc (wfx_f (Pair m n))
+  ← rewrite if_P goal=18 facts=[13]
+qed
+
+-- Branch exhaustiveness: every argument is one of the equation patterns.
+-- This is the holpy form of Isabelle's induction-schema completeness
+-- lemma (Function/induction_schema.ML, prove_completeness): the branch
+-- split is done through the *patterns of the equations*, one summand per
+-- equation, so the argument itself is never split and the hypotheses in
+-- scope stay intact.
+theorem wfx_exhaustive
+  fixes p :: nat × nat
+  prop (?n::nat. p = Pair 0 n) | (?m::nat. ?n::nat. p = Pair (Suc m) n)
+proof
+  ← type_cases p goal=0
+    #[1] !left. !right::nat. (?n. Pair left right = Pair 0 n) | (?m. ?n. Pair left right = Pair (Suc m) n)
+  ← intro "left, right" goal=1
+    #[2] _VAR left
+    #[3] _VAR right
+    #[4] (?n. Pair left right = Pair 0 n) | (?m. ?n. Pair left right = Pair (Suc m) n)
+  ← type_cases left goal=4
+    #[5] (?n. Pair (0::nat) right = Pair 0 n) | (?m. ?n. Pair 0 right = Pair (Suc m) n)
+    #[6] !n. (?n1. Pair (Suc n) right = Pair 0 n1) | (?m. ?n1. Pair (Suc n) right = Pair (Suc m) n1)
+  ← rule disjI1 goal=5
+    #[7] ?n. Pair (0::nat) right = Pair 0 n
+  ← inst right goal=7
+    #[8] Pair (0::nat) right = Pair 0 right
+  ← rule eq_refl goal=8
+  ← intro n goal=6
+    #[9] _VAR n
+    #[10] (?n1. Pair (Suc n) right = Pair 0 n1) | (?m. ?n1. Pair (Suc n) right = Pair (Suc m) n1)
+  ← rule disjI2 goal=10
+    #[11] ?m. ?n1. Pair (Suc n) right = Pair (Suc m) n1
+  ← inst n goal=11
+    #[12] ?n1. Pair (Suc n) right = Pair (Suc n) n1
+  ← inst right goal=12
+    #[13] Pair (Suc n) right = Pair (Suc n) right
+  ← rule eq_refl goal=13
+qed
+
+-- The induction rule, in the pattern shape a `fun_induct` consumer needs:
+-- one branch per equation, each recursive call contributing a premise.
+-- This is the general route, mirroring Isabelle's induction schema
+-- (src/HOL/Tools/Function/induction_schema.ML): wf_induct on the measure
+-- gives the relation induction hypothesis; the branch exhaustive
+-- disjunction supplies the equation `p = <pattern>` in each branch; the
+-- induction hypothesis is then *rewritten* by that equation (Isabelle's
+-- full_simplify over the branch hypotheses), and each recursive call's
+-- R-membership is discharged by the same decrease fact the equation
+-- proofs use.  Nothing here needs the recursive argument to be a
+-- subterm, so this is the shape to generate for non-structural recursion.
+theorem wfx_induct
+  fixes P :: (nat × nat) => bool
+  prop (!n::nat. P (Pair 0 n)) --> (!m::nat. !n::nat. P (Pair m n) --> P (Pair (Suc m) n)) --> (!p::nat × nat. P p)
+proof
+  ← intro goal=0
+    #[1] !n. P (Pair 0 n)
+    #[2] !m. !n. P (Pair m n) --> P (Pair (Suc m) n)
+    #[3] !p. P p
+  → forward wfx_wf goal=3
+    #[4] wf (measure wfx_measure)
+  ← rule wf_induct param_R="(measure wfx_measure)" goal=3 facts=[4]
+    #[5] !p. (!y. measure wfx_measure y p --> P y) --> P p
+  ← intro p goal=5
+    #[6] _VAR p
+    #[7] !y. measure wfx_measure y p --> P y
+    #[8] P p
+  → forward wfx_exhaustive param_p=p goal=8
+    #[9] (?n. p = Pair 0 n) | (?m. ?n. p = Pair (Suc m) n)
+  ← rule disjE goal=8 facts=[9]
+    #[10] (?n. p = Pair 0 n) --> P p
+    #[11] (?m. ?n. p = Pair (Suc m) n) --> P p
+  ← intro goal=10
+    #[12] ?n. p = Pair 0 n
+    #[13] P p
+  elim n1 goal=13 facts=[12]
+    #[14] _VAR n1
+    #[15] p = Pair 0 n1
+    #[16] P p
+  ← rewrite source=prev goal=16 facts=[15]
+    #[17] P (Pair 0 n1)
+  ← inst n1 goal=17 facts=[1]
+    #[18] P (Pair 0 n1)
+  ← rule trivial goal=17 facts=[18]
+  ← intro goal=11
+    #[19] ?m. ?n. p = Pair (Suc m) n
+    #[20] P p
+  elim m1 goal=20 facts=[19]
+    #[21] _VAR m1
+    #[22] ?n. p = Pair (Suc m1) n
+    #[23] P p
+  elim n2 goal=23 facts=[22]
+    #[24] _VAR n2
+    #[25] p = Pair (Suc m1) n2
+    #[26] P p
+  ← rewrite source=prev goal=26 facts=[25]
+    #[27] P (Pair (Suc m1) n2)
+  ← inst "(Pair m1 n2)" goal=27 facts=[7]
+    #[28] measure wfx_measure (Pair m1 n2) p --> P (Pair m1 n2)
+  cut "measure wfx_measure (Pair m1 n2) p" goal=27
+    #[29] measure wfx_measure (Pair m1 n2) p
+  ← rewrite measure_def goal=29
+    #[30] wfx_measure (Pair m1 n2) < wfx_measure p
+  ← rewrite wfx_measure_def goal=30
+    #[31] fst (Pair m1 n2) < fst p
+  ← rewrite fst_def_1 goal=31
+    #[32] m1 < fst p
+  ← rewrite source=prev goal=32 facts=[25]
+    #[33] m1 < fst (Pair (Suc m1) n2)
+  ← rewrite fst_def_1 goal=33
+    #[34] m1 < Suc m1
+  ← rewrite less_Suc_lesseq goal=34
+    #[35] m1 <= m1
+  ← rule lesseq_refl goal=35
+    #[36] m1 <= m1
+  → forward goal=27 facts=[28,29]
+    #[37] P (Pair m1 n2)
+  ← inst m1 goal=27 facts=[2]
+    #[38] !n. P (Pair m1 n) --> P (Pair (Suc m1) n)
+  ← inst n2 goal=27 facts=[38]
+    #[39] P (Pair m1 n2) --> P (Pair (Suc m1) n2)
+  ← apply_prev goal=27 facts=[39,37]
+qed
+
+-- The same recipe, this time written as a source `fun` definition that
+-- the expansion generates: the item set above is what this produces.
+fun wfgen :: nat ⇒ nat ⇒ nat
+  | wfgen 0 n = n
+  | wfgen (Suc m) n = Suc (wfgen m n)
+
+fun wfmap :: ('a ⇒ 'b) ⇒ 'a list ⇒ 'b list
+  | wfmap f [] = []
+  | wfmap f (x # xs) = f x # wfmap f xs
