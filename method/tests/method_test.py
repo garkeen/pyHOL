@@ -991,5 +991,74 @@ class LineModelTest(unittest.TestCase):
         self.assertEqual(len(obtain[0]['prevs']), 1)
 
 
+class NewIdsAlignmentTest(unittest.TestCase):
+    """The `new_ids` annotation is aligned by creation order, not by count.
+
+    A replay can create a different number of items than the export did
+    (a statement that gained a class premise makes `intro` create one
+    more fact; a proposition already in scope is not created twice).
+    Requiring the two counts to be equal dropped the whole annotation
+    over one extra item and silently renumbered that step -- and with it
+    every literal ID a later step references.
+    """
+
+    def _sps(self, prop, vars, steps=()):
+        from method.stable_state import StableProofState
+        sps = StableProofState.create(prop, vars)
+        for s in steps:
+            self.assertTrue(sps.apply_method_dict(s), "step failed: %s" % s)
+        return sps
+
+    def _th_sids(self, sps):
+        """{printed proposition: stable ID} from the exported lines."""
+        return {l['th']: l['sid'] for l in sps._export_proof_lines()}
+
+    def testShortAnnotationAppliesByCreationOrder(self):
+        """`intro` on `A ⟶ B` creates the hypothesis and the new goal; an
+        annotation covering only the first of them is still applied."""
+        context.set_context('logic')
+        sps = self._sps('A --> B', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0,
+                          'new_ids': [10]}])
+        sids = self._th_sids(sps)
+        self.assertEqual(sids['A'], 10)
+        self.assertNotEqual(sids['B'], 10)
+
+    def testLongAnnotationAppliesPrefixInOrder(self):
+        """More recorded IDs than created items: the prefix is applied in
+        creation order and the surplus is ignored."""
+        context.set_context('logic')
+        sps = self._sps('A --> B', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0,
+                          'new_ids': [7, 8, 9]}])
+        sids = self._th_sids(sps)
+        self.assertEqual(sids['A'], 7)
+        self.assertEqual(sids['B'], 8)
+
+    def testUncoveredItemMovesOutOfTheWay(self):
+        """A recorded ID that the uncovered item's auto ID would collide
+        with must push the uncovered item to a fresh ID."""
+        context.set_context('logic')
+        sps = self._sps('A --> B', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0,
+                          'new_ids': [2]}])
+        sids = self._th_sids(sps)
+        self.assertEqual(sids['A'], 2)
+        self.assertEqual(sids['B'], 3)
+        # The real invariant: two distinct items never share an ID.
+        self.assertEqual(len(set(sps.th2sid.values())), len(sps.th2sid))
+
+    def testMatchingCountsUnchanged(self):
+        """The common case (the annotation covers everything the step
+        created) still assigns exactly the recorded IDs."""
+        context.set_context('logic')
+        sps = self._sps('A --> B', {'A': 'bool', 'B': 'bool'},
+                        [{'method_name': 'intro', 'goal': 0,
+                          'new_ids': [4, 5]}])
+        sids = self._th_sids(sps)
+        self.assertEqual(sids['A'], 4)
+        self.assertEqual(sids['B'], 5)
+
+
 if __name__ == "__main__":
     unittest.main()

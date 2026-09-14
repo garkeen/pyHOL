@@ -24,8 +24,10 @@ hundreds of items per file).
 * per-file item hash list -- `basic.theory_cache[f]['item_hashes']`,
   computed at parse time from each item's exact source block, so
   `first_diff_index` finds the first edited item in O(n) comparisons;
-* imports epoch -- `imports_epoch(f)`: a hash over f's imports' epochs,
-  so a change propagates transitively without any per-theorem graph.
+* imports epoch -- `imports_epoch(f)`: a hash over f's imports' names,
+  each imported file's own source hash, and their epochs, so a change
+  to any upstream file propagates transitively without any per-theorem
+  graph.
 """
 from core import basic
 
@@ -61,9 +63,11 @@ def reverse_imports():
 def imports_epoch(filename, _memo=None):
     """Fingerprint of everything `filename` imports, transitively.
 
-    Recomputed from the current in-memory theory cache; a change to any
-    upstream file changes this value, which invalidates the dependent
-    file's cache even when its own source is untouched.
+    Recomputed from the current in-memory theory cache.  The fingerprint
+    covers the import names, each imported file's own source hash, and
+    their epochs, so an edit upstream -- not just a change of the import
+    graph -- changes this value, which invalidates the dependent file's
+    cache even when its own source is untouched.
 
     Deliberately does NOT include `filename`'s own source hash: the
     caller compares the own hash separately, so that a local edit can
@@ -77,7 +81,12 @@ def imports_epoch(filename, _memo=None):
     cache = basic.theory_cache.get(filename)
     parts = []
     for imp in (cache.get('imports', ()) if cache else ()):
-        parts.append('%s:%s' % (imp, imports_epoch(imp, _memo)))
+        imp_cache = basic.theory_cache.get(imp)
+        # `or ''` covers an import whose content has not been loaded
+        # (metadata-only cache entry): the name and the nested epoch are
+        # still in the fingerprint, so the value changes once it loads.
+        imp_source = (imp_cache.get('source_hash') if imp_cache else None) or ''
+        parts.append('%s:%s:%s' % (imp, imp_source, imports_epoch(imp, _memo)))
     value = hashlib.sha1('|'.join(parts).encode('utf-8')).hexdigest()
     _memo[filename] = value
     return value

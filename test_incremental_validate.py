@@ -86,5 +86,52 @@ class IncrementalTest(unittest.TestCase):
         self.assertEqual(incremental.imports_epoch(F), before)
 
 
+class ImportsEpochSourceTest(unittest.TestCase):
+    """An upstream *content* change must move a downstream file's epoch.
+
+    The epoch used to hash the import names only, so editing an upstream
+    .pyhol changed nothing downstream and a single-file validation
+    reported a stale VALID. Real files are never edited here: an upstream
+    edit is simulated by mutating the upstream source hash in the parsed
+    cache, which is exactly what differs after a reload.
+    """
+
+    UP = 'logic_base'
+    DOWN = 'option'
+
+    def _reload(self):
+        basic.load_metadata()
+        for fn in basic.get_import_order([self.DOWN]):
+            basic.load_theory_cache(fn)
+
+    def setUp(self):
+        self._reload()
+
+    def tearDown(self):
+        # Leave the in-memory cache and the .json status cache truthful.
+        self._reload()
+        verify.validate_theory(self.DOWN, force=True, trust=frozenset())
+
+    def testUpstreamSourceChangeMovesEpoch(self):
+        before = incremental.imports_epoch(self.DOWN)
+        old = basic.theory_cache[self.UP]['source_hash']
+        try:
+            basic.theory_cache[self.UP]['source_hash'] = 'mutated-upstream'
+            self.assertNotEqual(incremental.imports_epoch(self.DOWN), before)
+        finally:
+            basic.theory_cache[self.UP]['source_hash'] = old
+
+    def testUpstreamSourceChangeForcesDownstreamReplay(self):
+        verify.validate_theory(self.DOWN, trust=frozenset())
+        old = basic.theory_cache[self.UP]['source_hash']
+        try:
+            basic.theory_cache[self.UP]['source_hash'] = 'mutated-upstream'
+            _, _, info = verify.validate_theory_info(
+                self.DOWN, trust=frozenset())
+            self.assertFalse(info['reused'])
+        finally:
+            basic.theory_cache[self.UP]['source_hash'] = old
+
+
 if __name__ == '__main__':
     unittest.main()

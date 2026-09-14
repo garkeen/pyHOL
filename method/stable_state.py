@@ -191,6 +191,49 @@ class StableProofState:
                 return False
         return True
 
+    def _apply_new_ids(self, new_items, new_ids):
+        """Honor this step's recorded `new_ids` annotation.
+
+        The annotation records the stable IDs the step produced when the
+        proof was exported. A replay can create a different number of
+        items -- a statement that gained a class premise makes `intro`
+        create one more fact, a proposition already in scope is not
+        created twice -- so the recorded IDs are aligned by *creation
+        order*: item i gets the i-th recorded ID. Requiring the two
+        counts to be equal instead would drop the whole annotation over
+        one extra item, and renumber this step (and hence every literal
+        ID a later step references) by accident.
+
+        Items the annotation does not cover keep their auto-assigned ID
+        when it is free; otherwise they get a fresh one above every ID in
+        use, so alignment can never leave two items sharing an ID.
+
+        new_items -- [(auto_sid, th)] in creation order.
+        """
+        if not new_ids:
+            return
+        own = {th for _, th in new_items}
+        if not own:
+            # A step can carry an annotation and still create nothing
+            # (the recorded item is already in scope); there is nothing
+            # to align.
+            return
+        taken = {sid for th, sid in self.th2sid.items() if th not in own}
+        taken.update(new_ids)
+        fresh = max(taken | {self.next_sid - 1}) + 1
+        assign = {}
+        for i, (auto_sid, th) in enumerate(new_items):
+            if i < len(new_ids):
+                assign[th] = new_ids[i]
+            elif auto_sid in taken:
+                assign[th] = fresh
+                fresh += 1
+            else:
+                assign[th] = auto_sid
+        for th, sid in assign.items():
+            self.th2sid[th] = sid
+        self.next_sid = max(self.next_sid, max(assign.values()) + 1)
+
     def apply_method_new(self, ns) -> bool:
         """Apply a single new-format step (stable IDs).
 
@@ -236,13 +279,7 @@ class StableProofState:
         new_items = self._find_new_items(old_ths)
 
         # If new_ids provided, override auto-assigned IDs
-        if ns.new_ids and len(ns.new_ids) == len(new_items):
-            for (old_sid, th), new_sid in zip(new_items, ns.new_ids):
-                # Reassign: move th mapping to the specified ID
-                if old_sid != new_sid:
-                    self.th2sid[th] = new_sid
-                    if new_sid >= self.next_sid:
-                        self.next_sid = new_sid + 1
+        self._apply_new_ids(new_items, ns.new_ids)
 
         return True
 
@@ -311,13 +348,7 @@ class StableProofState:
         new_items = self._find_new_items(old_ths)
 
         # Override IDs if new_ids provided
-        new_ids = step.get('new_ids', [])
-        if new_ids and len(new_ids) == len(new_items):
-            for (old_sid, th), new_sid in zip(new_items, new_ids):
-                if old_sid != new_sid:
-                    self.th2sid[th] = new_sid
-                    if new_sid >= self.next_sid:
-                        self.next_sid = new_sid + 1
+        self._apply_new_ids(new_items, step.get('new_ids', []))
         return True
 
     def _find_insertion_point(self, fact_sids: list) -> Optional[int]:

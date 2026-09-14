@@ -1187,20 +1187,33 @@ def minus :: 'a set ⇒ 'a set ⇒ 'a set = A - B = diff A B      -- library/set
 **49 条全部逐字相同**；`validate_one order --force` → VALID 22 / 0 非绿；
 `validate_one lists_ex --force` → VALID 18 / 0 非绿。
 
-### 14.4 两个工具层面的发现（都还没有修）
+### 14.4 两个工具层面的缺陷（2026-09-14 已修）
 
 1. **`core/incremental.py: imports_epoch` 不含上游内容哈希**：它只把导入图的名字
    递归拼起来，所以**上游文件改了它也不变**，与它自己的 docstring（"a change to any
    upstream file changes this value"）矛盾。后果：只跑 `.cache/validate_one.py
    <下游>`（不带 `--force`）会拿到**假绿**——本轮把 `CLASSES` 搬走时，`lists_ex`
    的 14 条其实已经全挂，非 force 的验证仍然报 `VALID 18 / 非绿 0`，`--force`
-   才暴露。修法很小：`imports_epoch` 里把每个 import 的 `source_hash` 也拼进去
-   （会让全库缓存一次性失效，之后恢复正常）。全库 `validate_incremental` 那条路
-   有「上游判定变了就下推」的补偿，但单文件入口没有。
-2. **`new_ids` 只在数量相等时生效**（`method/stable_state.py:239`
-   `if ns.new_ids and len(ns.new_ids) == len(new_items)`）：给一类陈述多注入一条
-   前提后，旧注解的数量与新条目数不等，覆盖被整体跳过、退回自动编号。所以
-   「加一条前提」这类改动不能只靠编号平移，必须重导出受影响的证明。
+   才暴露。全库 `validate_incremental` 那条路有「上游判定变了就下推」的补偿，
+   但单文件入口没有。
+   **已修**：`imports_epoch` 现在把每个 import 的 `source_hash` 连同名字、嵌套
+   epoch 一起拼进指纹（`or ''` 兜住尚未载入内容的 metadata-only 条目）。代价是
+   全库缓存一次性失效（旧指纹与新指纹天然不同），之后恢复正常。测试
+   `test_incremental_validate.py::ImportsEpochSourceTest` 两例：上游 source_hash
+   一变，下游 epoch 必须变、下游 `validate_theory_info` 必须报 `reused=False`；
+   原有的 `testImportsEpochExcludesOwnSource`（自身 hash 不动 epoch）保持通过。
+2. **`new_ids` 只在数量相等时生效**（`method/stable_state.py`
+   `if len(ns.new_ids) == len(new_items)`，`apply_method_dict` 与
+   `apply_method_new` 两处）：给一类陈述多注入一条前提后，旧注解的数量与新条目数
+   不等，覆盖被整体跳过、退回自动编号——不只影响「加前提」，任何一步新建条目数与
+   注解不等都会让该步（以及后续步骤引用的字面 ID）静默错位。
+   **已修**：新的 `StableProofState._apply_new_ids` **按创建顺序对齐**（第 i 个新建
+   条目拿注解的第 i 个 ID），注解没覆盖到的条目保留自动 ID（若已被占用则顺延到一个
+   全新 ID，保证不会有两条命题共用一个 ID）。测试
+   `method/tests/method_test.py::NewIdsAlignmentTest` 四例：短注解按序生效、长注解
+   取前缀、冲突条目让位、数量相等时行为不变。
+   注意：这修的是「不该整体丢弃」，**不是**「加前提后旧注解自动正确」——类前提是
+   每个分支各一份，加一条前提仍然要按 §14.6 重证（本修复没有也不能取代它）。
 
 ### 14.5（已完成，见 §14.6）
 
