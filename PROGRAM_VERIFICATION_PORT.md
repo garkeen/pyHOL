@@ -1081,9 +1081,35 @@ BST 删除要用）。三个 `_binary` 引理（`ordered_insert_binary`、
   真正需要对 `sublist` 的哪几条重写。
 - **混合 `<` 与 `≤` 的桥接引理**（Isabelle 的 `strict_sorted_imp_sorted`）：
   本移植的 `linorder`/`linorder_lt` 是**互相独立**的谓词，缺
-  `lt x y ⟶ le x y` 这条类公理，所以这类引理在抽象层面**不可证**，要么加
-  前提 `(∀x y. x < y ⟶ x ≤ y)`，要么按实例（nat 有 `less_lesseqI`）分开证。
-  阶段 5 需要时再按实例补。
+  `lt x y ⟶ le x y` 这条类公理，所以这类引理在抽象层面**不可证**。
+  这不是猜测，有机器验证过的反例（2026-09-14，REPL 内证完，未落盘）：
+
+  ```
+  linorder (less_eq::nat ⇒ nat ⇒ bool) & linorder_lt (λa. λb. b < a)
+    & (λa. λb. b < a) 1 0            -- 即 0 < 1
+    & ¬(1 ≤ 0)
+  ```
+
+  即：把第二条前提里的 `less` 解释成**反向严格序**，两条类谓词都成立，而桥接律
+  在该点不成立（`lt 1 0` 真、`le 1 0` 假）。取 `l = [1, 0]`，展开
+  `strict_sorted`/`sorted` 的递归即得「前件真、后件假」，故抽象陈述不成立。
+  关键中间引理 `linorder_lt lt ⟹ linorder_lt (λa. λb. lt b a)`（反向严格序仍是
+  `linorder_lt`）也是在 REPL 里证过的一步，说明反例不是构造错误。
+
+  两条修法（都走同一套糖机制）：
+  1. **加第三条前提**：`syntax/parser.py` 的 `CLASSES['linorder']` 增一条
+     `('linorder_lt_le', (('less_eq', …), ('less', …)))`，配
+     `def linorder_lt_le le lt ⟷ (∀x y. lt x y ⟶ le x y)` 与实例定理
+     （nat 用 `lt_imp_le`）。`linorder_lt_*` 现有引理签名不动。
+  2. **把桥接律并入 `linorder_lt`**（`linorder_lt le lt`，把 `≤` 一起约束）——
+     语义上更贴近 Isabelle 的类（`<` 与 `≤` 本是一对），但 `order.pyhol` 里
+     `linorder_lt_irrefl/trans/linear/neq/gt_of_not_lt` 与 `nat_linorder_lt`
+     的签名全要改。
+
+  注意实例层面不缺这条：nat 有 `lt_imp_le : ?m < ?n ⟶ ?m ≤ ?n`（反方向是
+  `less_lesseqI : ?m ≤ ?n ⟶ ?(m = n) ⟶ ?m < ?n`），所以**按实例**证
+  `strict_sorted_imp_sorted` 是能做到的，缺的只是抽象层的类公理。
+  两条修法都属于「改类理论」，动之前先报备。
 
 
 ### 13.4 给 `-` 加集合实例（2026-09-14，用户选定方案 A）
