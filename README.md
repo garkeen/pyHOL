@@ -87,7 +87,7 @@ python validate_library.py --force    # 忽略缓存，全量重验
 
 信任级别：`None` 永远展开 / `0` oracle（不可展开，需在验证的 `trust` 集中具名放行）/ `1` 标准宏 / `10` 领域计算
 
-`.pyhol` 条目关键字：`header` / `constant` / `type` / `typeabbrev`（类型同义词）/ `quotient`（商类型）/ `datatype` / `definition` / `fun` / `inductive` / `axiom` / `theorem`
+`.pyhol` 条目关键字：`header` / `constant` / `type` / `typeabbrev`（类型同义词）/ `quotient`（商类型）/ `datatype` / `definition` / `fun` / `inductive` / `axiom` / `theorem` / `class`（`'a::C` 注解的类声明，见 `library/order.pyhol`）
 
 ## License
 

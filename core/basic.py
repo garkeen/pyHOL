@@ -364,11 +364,10 @@ def load_theory_cache(filename):
         for prev_name in depend_list:
             prev_cache = load_theory_cache(prev_name)
             for item in prev_cache['content']:
-                if item.error is None:
-                    try:
-                        theory.thy.unchecked_extend(item.get_extension())
-                    except TheoryException:
-                        pass  # Skip duplicates
+                # _apply_item (not a bare unchecked_extend): the imports'
+                # parser-side state -- type abbreviations, class declarations
+                # -- has to be in place before the current file is parsed.
+                _apply_item(item)
 
         # Use this theory to parse the content of current theory
         cache['timestamp'] = timestamp
@@ -405,9 +404,10 @@ def _apply_item(item):
     """Extend the theory with a parsed item, and re-register the
     parser-side state that does not live in the theory.
 
-    Type abbreviations (`typeabbrev`) are parser state rather than
-    theory extensions, so replaying a theory has to restore them
-    alongside the extensions; see syntax.parser.clear_type_abbrevs.
+    Type abbreviations (`typeabbrev`) and class declarations (`class`) are
+    parser state rather than theory extensions, so replaying a theory has to
+    restore them alongside the extensions; see syntax.parser.clear_type_abbrevs
+    and syntax.parser.clear_classes.
 
     """
     if item.error is not None:
@@ -418,6 +418,8 @@ def _apply_item(item):
         pass  # Skip duplicates
     if item.ty == 'type.abbrev':
         parser.add_type_abbrev(item.name, item.args, item.defn)
+    elif item.ty == 'class':
+        parser.add_class(item.name, *item.entries)
 
 
 def load_theory(filename: str, *, limit=None):
@@ -436,6 +438,7 @@ def load_theory(filename: str, *, limit=None):
 
     theory.thy = theory.EmptyTheory()
     parser.clear_type_abbrevs()
+    parser.clear_classes()
     for prev_name in depend_list:
         prev_cache = load_theory_cache(prev_name)
         for item in prev_cache['content']:

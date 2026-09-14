@@ -524,22 +524,18 @@ def clear_type_abbrevs():
 # a marker only: their equations are uniform in the instance (the operation is
 # the generic, overloaded constant), so nothing is injected for them.
 #
-# CLASSES is the syntax-side registry: class name -> entries, where an entry
-# is (predicate name, ops).  One annotation contributes one premise per
-# operation, in the order listed, so a class with several operations
-# contributes all of its laws.  The predicates themselves are library content.
-CLASSES = {
-    'preorder': (('preorder', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),),
-    'order': (('order', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),),
-    # holpy's `less` and `less_eq` are independent overloaded constants (each
-    # instance defines both separately), so a linear order needs a law
-    # predicate for each; `'a::linorder` states both.
-    'linorder': (('linorder', (('less_eq', "'%s ⇒ '%s ⇒ bool"),)),
-                 ('linorder_lt', (('less', "'%s ⇒ '%s ⇒ bool"),))),
-    # Isabelle's `ord` provides the two constants and no laws; so does this
-    # (accepted as a marker, contributes no premise).
-    'ord': (),
-}
+# CLASSES is the syntax-side *registry*, not a table of code: a class and its
+# laws belong to the library that defines them, so the library declares them
+#
+#     class linorder = linorder (less_eq :: 'a ⇒ 'a ⇒ bool),
+#                      linorder_lt (less :: 'a ⇒ 'a ⇒ bool)
+#
+# (a `class` item -- syntax/pyhol.py, core/items.py: Class) and that item
+# registers the entry here, next to the predicates it names.  One annotation
+# contributes one premise per operation, in the order listed.
+# core.basic.load_theory rebuilds the registry on every theory load, so an
+# annotation only sees the classes of the theories it imports.
+CLASSES = {}
 
 
 def add_class(name, *entries):
@@ -547,15 +543,103 @@ def add_class(name, *entries):
 
     name -- class name as written after `::`.
     entries -- one (predicate, ops) per premise the annotation stands for.
-               ops are (constant name, type template) pairs; `%s` in the
-               template is replaced by the annotated type variable.  A class
-               may contribute several premises, or none (`ord`).
+               ops are (constant name, type template) pairs; the template's
+               first type variable stands for the annotated type variable
+               (see inst_class_type).  A class may contribute several
+               premises, or none (`ord`).
+
+    Called by the `class` item; class laws are library content, so they live
+    with the theory that defines them, not with the parser.
 
     """
     CLASSES[name] = tuple((pred, tuple(ops)) for pred, ops in entries)
 
 
+def clear_classes():
+    """Forget all class declarations (see core.basic.load_theory)."""
+    CLASSES.clear()
+
+
 _class_annot_re = re.compile(r"'([A-Za-z_][A-Za-z0-9_']*)::([A-Za-z_][A-Za-z0-9_']*)")
+_class_tvar_re = re.compile(r"'([A-Za-z_][A-Za-z0-9_']*)")
+
+
+def inst_class_type(template, var):
+    """Replace the template's first type variable by the annotated variable.
+
+    The library writes an operation's type as it would for the class's own
+    variable (`less_eq :: 'a ⇒ 'a ⇒ bool`); with the annotation on `'b` the
+    premise has to speak about `'b`, so that first variable is renamed.
+    Further variables in the template are left alone -- they must be concrete
+    for the overloaded operation to resolve.
+
+    `var` is the bare name as written after `'` (class_constraints strips the
+    quote), so it is re-quoted here.
+
+    """
+    m = _class_tvar_re.search(template)
+    if m is None:
+        return template
+    new_var = var if var.startswith("'") else "'" + var
+    return re.sub(r"'%s\b" % re.escape(m.group(1)), new_var, template)
+
+
+def _split_top_level(text, sep=','):
+    """Split on `sep` outside parentheses (type texts contain them)."""
+    parts, depth, cur = [], 0, ''
+    for ch in text:
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        if ch == sep and depth == 0:
+            parts.append(cur)
+            cur = ''
+        else:
+            cur += ch
+    parts.append(cur)
+    return [part.strip() for part in parts]
+
+
+def parse_class_body(body):
+    """Parse a `class` declaration body into [(predicate, [(op, type)])].
+
+    The body is what follows `=`:
+
+        linorder (less_eq :: 'a ⇒ 'a ⇒ bool), linorder_lt (less :: 'a ⇒ 'a ⇒ bool)
+
+    Each entry names a law predicate and, in parentheses, the operations the
+    annotated type variable is instantiated with; the order of the entries is
+    the order of the injected premises.  An empty body declares a class with
+    no laws (Isabelle's `ord`, a marker only).  Raises ParserError for
+    anything else, so a malformed declaration is reported rather than
+    silently dropped.
+
+    """
+    if not body.strip():
+        return []
+    entries = []
+    for chunk in _split_top_level(body):
+        m = re.match(r'^(\S+)\s*\((.*)\)$', chunk, re.S)
+        if m is None:
+            raise ParserError(
+                "class declaration: expected `predicate (op :: type, ...)`, "
+                "got %r" % chunk)
+        predicate, ops_text = m.group(1), m.group(2)
+        ops = []
+        for op_chunk in _split_top_level(ops_text):
+            om = re.match(r'^(\S+)\s*::\s*(.+)$', op_chunk, re.S)
+            if om is None:
+                raise ParserError(
+                    "class declaration: expected `op :: type`, got %r"
+                    % op_chunk)
+            ops.append((om.group(1), om.group(2).strip()))
+        if not ops:
+            raise ParserError(
+                "class declaration: predicate %s takes no operation"
+                % predicate)
+        entries.append((predicate, ops))
+    return entries
 
 
 def class_constraints(*texts, strict=True):
@@ -589,13 +673,24 @@ def class_constraints(*texts, strict=True):
 
 
 def class_premises(constraints):
-    """Premise texts for `(var, class)` constraints, in the given order."""
+    """Premise texts for `(var, class)` constraints, in the given order.
+
+    One premise per registry entry: the law predicate applied to the
+    operations the entry lists (a predicate may constrain several operations,
+    `linorder_lt_le le lt`), in the order the class declaration gives.
+
+    """
     res = []
     for var, cls in constraints:
+        if cls not in CLASSES:
+            raise ParserError(
+                "class %r is not registered (known: %s); the theory that "
+                "declares it (`class %s = ...`) has to be imported"
+                % (cls, ', '.join(sorted(CLASSES)) or 'none', cls))
         for predicate, ops in CLASSES[cls]:
-            for op_name, op_ty in ops:
-                res.append('%s (%s::%s)'
-                           % (predicate, op_name, op_ty % (var, var)))
+            args = ' '.join('(%s::%s)' % (op_name, inst_class_type(op_ty, var))
+                            for op_name, op_ty in ops)
+            res.append('%s %s' % (predicate, args))
     return res
 
 

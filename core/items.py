@@ -942,6 +942,73 @@ class TypeAbbrev(Item):
             'def': self.defn if self.error else printer.print_type(self.defn)
         }
 
+class Class(Item):
+    """A class declaration for the `'a::C` type-class sugar.
+
+    The class and its laws belong to the library that defines the predicates,
+    so the library declares them:
+
+        class linorder = linorder (less_eq :: 'a ⇒ 'a ⇒ bool),
+                         linorder_lt (less :: 'a ⇒ 'a ⇒ bool)
+
+    The statement `fixes x :: 'a::linorder` then has one premise per entry
+    (syntax/parser.py: with_class_premises).  Like `typeabbrev` this item
+    carries no theory extension -- it registers parser-side state, which
+    core.basic re-registers when a theory is replayed.
+
+    """
+    def __init__(self):
+        self.ty = 'class'
+        self.name = None
+        self.body = None      # declaration text after `=`
+        self.entries = []     # [(predicate, [(op, type template)])]
+        self.error = None
+
+    def __eq__(self, other):
+        return self.ty == other.ty and self.name == other.name and \
+            self.body == other.body and self.error == other.error
+
+    def parse(self, data):
+        self.name = data['name']
+        self.body = data.get('body', '')
+
+        try:
+            self.entries = parser.parse_class_body(self.body)
+            for predicate, ops in self.entries:
+                for op_name, op_ty in ops:
+                    parser.parse_type(op_ty, check_type=False)
+            parser.add_class(self.name, *self.entries)
+        except Exception as error:
+            self.error = error
+            self.trace = traceback.format_exc()
+
+    def get_extension(self):
+        # Parser-side state, not a theory extension: see
+        # core.basic._apply_item, which re-registers it on replay.
+        return []
+
+    def get_display(self):
+        return {
+            'ty': 'class',
+            'name': self.name,
+            'body': self.body,
+            'entries': [[pred, [[op, ty] for op, ty in ops]]
+                        for pred, ops in self.entries]
+        }
+
+    def parse_edit(self, edit_data):
+        self.parse(edit_data)
+
+    def export_json(self):
+        return {
+            'ty': 'class',
+            'name': self.name,
+            'body': self.body,
+            'entries': [[pred, [[op, ty] for op, ty in ops]]
+                        for pred, ops in self.entries]
+        }
+
+
 class Header(Item):
     """Header"""
     def __init__(self):
@@ -990,6 +1057,7 @@ item_table = {
     'type.abbrev': TypeAbbrev,
     'type.ind': Datatype,
     'type.quot': Quotient,
+    'class': Class,
     'header': Header
 }
 

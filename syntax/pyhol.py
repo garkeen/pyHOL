@@ -13,6 +13,7 @@ Format specification:
     datatype <name> [<args>] =\n  | <constr> ...
     type <name> [<args>]
     typeabbrev <name> [<args>] = <type>
+    class <name> = <pred> (<op> :: <type>, ...), <pred> (<op> :: <type>, ...)
     quotient <name> (<abs>, <rep>) <relation>
     def <name> :: <type> = <prop> [attrs]
     fun <name> :: <type>\n  | <rule> ...
@@ -22,7 +23,9 @@ Format specification:
 
 A type variable in any type position may carry a class annotation,
 `'a::linorder`; it is sugar for a premise of the statement and is dropped from
-the type itself (see syntax/parser.py: CLASSES / with_class_premises).
+the type itself (see syntax/parser.py: with_class_premises).  Which laws a
+class stands for is library content, declared by a `class` item next to the
+predicates it names (library/order.pyhol declares preorder/order/linorder/ord).
 """
 
 import re
@@ -111,6 +114,8 @@ def _export_item(item):
         return _export_typeabbrev(item)
     elif ty == 'type.quot':
         return _export_quotient(item)
+    elif ty == 'class':
+        return _export_class(item)
     elif ty == 'def':
         return _export_def(item)
     elif ty == 'def.ind':
@@ -252,6 +257,10 @@ def _export_typeabbrev(item):
     if args:
         name = '%s %s' % (name, ' '.join("'%s" % a for a in args))
     return ['typeabbrev %s = %s' % (name, item.get('def', ''))]
+
+
+def _export_class(item):
+    return ['class %s = %s' % (item['name'], item.get('body', ''))]
 
 
 def _export_quotient(item):
@@ -597,6 +606,8 @@ def _parse_item(lines, i):
         return _parse_quotient(lines, i)
     elif line.startswith('typeabbrev '):
         return _parse_typeabbrev(lines, i)
+    elif line.startswith('class '):
+        return _parse_class(lines, i)
     elif line.startswith('type '):
         return _parse_type(lines, i)
     elif line.startswith('def '):
@@ -829,6 +840,25 @@ def _parse_typeabbrev(lines, i):
     args = _parse_type_args(m.group(2).strip())
     return {'ty': 'type.abbrev', 'name': m.group(1), 'args': args,
             'def': _norm_arrows(m.group(3).strip())}, i + 1
+
+
+def _parse_class(lines, i):
+    # class name = pred (op :: type, ...), pred (op :: type, ...)
+    # Continuation lines are indented, like datatype's constructors; an empty
+    # body declares a lawless class (Isabelle's `ord`, a marker only).
+    line = lines[i].rstrip()
+    m = re.match(r'^class\s+(\S+)\s*=(.*)$', line)
+    if not m:
+        return None, i + 1
+    parts = [m.group(2).strip().rstrip(',').strip()]
+    i += 1
+    while (i < len(lines) and lines[i][:1].isspace() and lines[i].strip()
+           and not lines[i].lstrip().startswith('--')):
+        parts.append(lines[i].strip().rstrip(',').strip())
+        i += 1
+    body = ', '.join(part for part in parts if part)
+    return {'ty': 'class', 'name': m.group(1),
+            'body': _norm_arrows(body)}, i
 
 
 def _parse_def(lines, i):

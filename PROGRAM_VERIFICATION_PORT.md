@@ -871,8 +871,8 @@ prop linorder (less_eq::'a ⇒ 'a ⇒ bool) ⟶
 | 位置 | 内容 |
 |---|---|
 | `syntax/parser.py` 文法 | `?typ_atom: "'" CNAME ("::" CNAME)? -> tvar`；transformer 丢掉注解，类型仍是 `'a` |
-| `syntax/parser.py` 表 | `CLASSES`: 类名 → 若干 `(谓词名, 运算表)`；一条 `add_class` 条目 = 一条前提，所以多运算类（`linorder`）写两条 |
-| `syntax/parser.py` 函数 | `class_constraints()`（收集 + 报错）、`class_premises()`、`with_class_premises()` |
+| `syntax/parser.py` 表 | `CLASSES`：**注册表**（初值为空，由库条目填充）。类的法则不在代码里：`library/order.pyhol` 用 `class` 条目声明「类名 → 若干 (谓词, 运算)」（见 §13.5） |
+| `syntax/parser.py` 函数 | `class_constraints()`（收集 + 报错）、`class_premises()`（一条注册项 = 一条前提）、`with_class_premises()`、`add_class()` / `clear_classes()`（供 item 层与加载器调用） |
 | `core/items.py` | `Axiom.parse`（`Theorem` 继承）里注入前提；`data` 是原始文本，所以 `'a::linorder` 留在源码里、导出回环保留 |
 | `repl/repl.py` | `cmd_goal` 用同一条规则注入，所以 `var x 'a::linorder` + `goal x <= x` 与 item 的陈述一致 |
 | `library/order.pyhol` | 新理论：`preorder`/`order`/`linorder`/`linorder_lt` 四个谓词、投影引理、`nat` 实例（`nat_linorder_lt` 由 `less_irrefl`/`lt_trans`/`lt_cases` 组成）、两条糖的端到端演示 |
@@ -931,7 +931,7 @@ List.thy，auto2 在 `Quicksort.thy`（4 处）、`LinkedList.thy`（4 处，指
 | 位置 | 内容 | 验证 |
 |---|---|---|
 | `library/order.pyhol` | `linorder_lt` 谓词（非自反/传递/三歧）+ `linorder_lt_irrefl/trans/linear` + 派生 `linorder_lt_neq`、`linorder_lt_gt_of_not_lt` + 实例 `nat_linorder_lt` | VALID 20 / 0 非绿 |
-| `syntax/parser.py` | `CLASSES` 改为「类名 → 若干 (谓词, 运算)」：`'a::linorder` 现在注入**两条**前提（`linorder less_eq` + `linorder_lt less`）；新增无公理的 `ord` 类 | 回归 349 → 见 §12.4 |
+| `syntax/parser.py` | `CLASSES` 改为「类名 → 若干 (谓词, 运算)」：`'a::linorder` 注入**两条**前提（`linorder less_eq` + `linorder_lt less`）；无公理的 `ord` 类 | 回归 349 → 见 §12.4（该表 2026-09-15 已搬进库，见 §13.5） |
 | `library/logic.pyhol` | `disj_left_comm`（`A ∨ (B ∨ C) ⟷ B ∨ (A ∨ C)`） | VALID 92 / 0 非绿 |
 | `library/set.pyhol` | `empty_union`、`insert_union`、`insert_comm`、`subset_union_left`、`subset_union_right`、`all_mem_elim` | VALID 79 / AXIOM 3 / 0 非绿 |
 | `library/list.pyhol` | `set_append`、`member_set_append`、`member_set_append_left/right` | VALID 41 / 0 非绿 |
@@ -1097,10 +1097,14 @@ BST 删除要用）。三个 `_binary` 引理（`ordered_insert_binary`、
   `linorder_lt`）也是在 REPL 里证过的一步，说明反例不是构造错误。
 
   两条修法（都走同一套糖机制）：
-  1. **加第三条前提**：`syntax/parser.py` 的 `CLASSES['linorder']` 增一条
-     `('linorder_lt_le', (('less_eq', …), ('less', …)))`，配
+  1. **加第三条前提**：在 `library/order.pyhol` 的 `class linorder` 声明里增一条
+     `linorder_lt_le (less_eq :: …, less :: …)`（**不是**改 `syntax/parser.py`，
+     类数据已归库，见 §13.5），配
      `def linorder_lt_le le lt ⟷ (∀x y. lt x y ⟶ le x y)` 与实例定理
      （nat 用 `lt_imp_le`）。`linorder_lt_*` 现有引理签名不动。
+     代价：所有 `'a::linorder` 陈述多一条前提；现有 14 条 lists_ex 陈述的证明里
+     每处「逐条剥 IH 的类前提」要多剥一次（结构性改动，不是编号问题），
+     所以要先重导出那批证明。
   2. **把桥接律并入 `linorder_lt`**（`linorder_lt le lt`，把 `≤` 一起约束）——
      语义上更贴近 Isabelle 的类（`<` 与 `≤` 本是一对），但 `order.pyhol` 里
      `linorder_lt_irrefl/trans/linear/neq/gt_of_not_lt` 与 `nat_linorder_lt`
@@ -1151,3 +1155,54 @@ def minus :: 'a set ⇒ 'a set ⇒ 'a set = A - B = diff A B      -- library/set
 `remove_elt_list_sorted` 里用到它的那一步同样多一行。新增陈述可以直接写
 `A - B`，转写 auto2 时不必再改写。测试见 `library/tests/set_test.py`
 （`-` 可用 + 裸类型变量上实例不生效两条）。
+
+## 14. 领域数据搬出核心：`class` 条目类型（2026-09-15）
+
+### 14.1 动机与规则
+
+规则（用户 2026-09-15 定）：**核心（`kernel/` + `syntax/`）只准通用；领域扩展可以随便
+硬编码。** 判据：改一条库法则/一个记法，只该动 `.pyhol`，不该动 `.py`。
+
+按这条规则，`CLASSES`（类名 → 法则）当初写成 `syntax/parser.py` 里的 Python 常量就是
+违例：数据的归属地是库（谓词住在 `library/order.pyhol`），映射却锁在核心代码里。
+
+### 14.2 做法（照 `typeabbrev` 的现成模式）
+
+| 位置 | 内容 |
+|---|---|
+| 语法 | 新条目 `class <name> = <pred> (<op> :: <type>, ...), ...`；续行按缩进（同 `datatype`），空体 = 无法则的类（`ord`） |
+| `syntax/pyhol.py` | `_parse_class` / `_export_class` / 分派 + 文档行 |
+| `syntax/parser.py` | `CLASSES` 变**注册表**（初值空）；`add_class()` / `clear_classes()`；`parse_class_body()`、`inst_class_type()`；`class_premises` 一条注册项生成**一条**前提（谓词应用到该项列出的全部运算），并把声明里的首个类型变量改写成被注解变量 |
+| `core/items.py` | `Class` 条目：解析并注册，`get_extension()` 返回空（parser 侧状态，与 `typeabbrev` 同类） |
+| `core/basic.py` | `_apply_item` 重放时重新注册 `class`；`load_theory` 开头 `clear_classes()`；**导入循环改用 `_apply_item`**（原来是裸 `unchecked_extend`，导入侧的 parser 状态——`typeabbrev` 与 `class`——不会登记，冷启动解析下游文件就会缺） |
+| `library/order.pyhol` | 四个声明：`class ord =`、`class preorder = …`、`class order = …`、`class linorder = linorder (less_eq :: …), linorder_lt (less :: …)` |
+| `syntax/tests/class_sugar_test.py` | 17 例：数据来源改为**装载库**（不再手造表），新增声明回环、多运算谓词、变量改写、畸形声明报错等 |
+
+### 14.3 验证（这一步必须逐字等价）
+
+改动前把 `order`/`lists_ex` 全部条目的解析命题存了一份快照，重构后逐条比对：
+**49 条全部逐字相同**；`validate_one order --force` → VALID 22 / 0 非绿；
+`validate_one lists_ex --force` → VALID 18 / 0 非绿。
+
+### 14.4 两个工具层面的发现（都还没有修）
+
+1. **`core/incremental.py: imports_epoch` 不含上游内容哈希**：它只把导入图的名字
+   递归拼起来，所以**上游文件改了它也不变**，与它自己的 docstring（"a change to any
+   upstream file changes this value"）矛盾。后果：只跑 `.cache/validate_one.py
+   <下游>`（不带 `--force`）会拿到**假绿**——本轮把 `CLASSES` 搬走时，`lists_ex`
+   的 14 条其实已经全挂，非 force 的验证仍然报 `VALID 18 / 非绿 0`，`--force`
+   才暴露。修法很小：`imports_epoch` 里把每个 import 的 `source_hash` 也拼进去
+   （会让全库缓存一次性失效，之后恢复正常）。全库 `validate_incremental` 那条路
+   有「上游判定变了就下推」的补偿，但单文件入口没有。
+2. **`new_ids` 只在数量相等时生效**（`method/stable_state.py:239`
+   `if ns.new_ids and len(ns.new_ids) == len(new_items)`）：给一类陈述多注入一条
+   前提后，旧注解的数量与新条目数不等，覆盖被整体跳过、退回自动编号。所以
+   「加一条前提」这类改动不能只靠编号平移，必须重导出受影响的证明。
+
+### 14.5 尚未做：把相容律挂上去
+
+`def linorder_lt_le`、定律 `linorder_lt_imp_le`、实例 `nat_linorder_lt_le` 都已写进
+`library/order.pyhol` 并验证（它们是独立条目，不影响任何现有陈述）。但
+**把它加进 `class linorder` 的声明**会让 14 条 `lists_ex` 陈述多一条前提，其中
+每一处「逐条剥 IH 类前提」的证明要多剥一次——需要重导出那批证明（或写一个按
+"创建位置"分段的编号重映射脚本）。这一步单独做，见 §13.3 修法 1。

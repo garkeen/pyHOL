@@ -25,13 +25,78 @@ description "Orders as explicit relations (phase 3 of the auto2 port)."
 
 def preorder :: ('a ⇒ 'a ⇒ bool) ⇒ bool = preorder le ⟷ (∀x. le x x) ∧ (∀x. ∀y. ∀z. le x y ⟶ le y z ⟶ le x z) [hint_rewrite]
 
+-- Which laws a class stands for is library content, declared here next to the
+-- predicates: a `class` item registers the entries into the parser's class
+-- registry, and a statement's `'a::C` annotation becomes one premise per
+-- entry (syntax/parser.py: with_class_premises).  The declaration's operation
+-- types are written for the class's own variable `'a`; at an annotation on
+-- `'b` that variable is renamed.
+--
+-- The class hierarchy mirrors Isabelle's: `ord` fixes the two operations and
+-- states no law, `preorder` is the lowest class with laws, and the law tying
+-- `<` to `<=` (the compatibility axiom of Isabelle's `preorder`) belongs to
+-- every class that has both operations.
+class ord =
+
+class preorder = preorder (less_eq :: 'a ⇒ 'a ⇒ bool)
+
 def order :: ('a ⇒ 'a ⇒ bool) ⇒ bool = order le ⟷ preorder le ∧ (∀x. ∀y. le x y ⟶ le y x ⟶ x = y) [hint_rewrite]
 
+class order = order (less_eq :: 'a ⇒ 'a ⇒ bool)
+
 def linorder :: ('a ⇒ 'a ⇒ bool) ⇒ bool = linorder le ⟷ order le ∧ (∀x. ∀y. le x y ∨ le y x) [hint_rewrite]
+
+class linorder = linorder (less_eq :: 'a ⇒ 'a ⇒ bool),
+                 linorder_lt (less :: 'a ⇒ 'a ⇒ bool)
 
 -- The strict companion of `linorder` (irreflexive, transitive, trichotomous).
 -- A statement about `<` under `'a::linorder` uses these laws.
 def linorder_lt :: ('a ⇒ 'a ⇒ bool) ⇒ bool = linorder_lt lt ⟷ (∀x. ¬(lt x x)) ∧ (∀x. ∀y. ∀z. lt x y ⟶ lt y z ⟶ lt x z) ∧ (∀x. ∀y. lt x y ∨ lt y x ∨ x = y) [hint_rewrite]
+
+-- The law tying the two operations together: `lt` really is the strict part of
+-- `le`.  In Isabelle this is an *axiom* of the class `preorder`
+-- (`less_le_not_le: x < y ⟷ x ≤ y ∧ ¬(y ≤ x)`), inherited by `order`/`linorder`;
+-- holpy's kernel has no class axioms, so the sugar injects it as a premise just
+-- like `linorder` and `linorder_lt` (see the `class` declarations above).
+--
+-- It is not redundant: `linorder` and `linorder_lt` alone are satisfied by the
+-- reversed strict order as well, which breaks the bridge (`lt 1 0` holds while
+-- `1 ≤ 0` fails on nat, with `le` the usual `<=`).  So any lemma that mixes `<`
+-- and `≤` (e.g. Isabelle's `strict_sorted_imp_sorted`) needs this premise.
+def linorder_lt_le :: ('a ⇒ 'a ⇒ bool) ⇒ ('a ⇒ 'a ⇒ bool) ⇒ bool = linorder_lt_le le lt ⟷ (∀x. ∀y. lt x y ⟶ le x y) [hint_rewrite]
+
+-- The law in the form a proof mixing `<` and `<=` needs, and the nat instance
+-- (from nat's own bridge `lt_imp_le`).
+
+theorem linorder_lt_imp_le
+  fixes le :: 'a ⇒ 'a ⇒ bool, lt :: 'a ⇒ 'a ⇒ bool, x :: 'a, y :: 'a
+  prop linorder_lt_le le lt ⟶ lt x y ⟶ le x y
+proof
+  ← intro goal=0
+    #[1] linorder_lt_le le lt
+    #[2] lt x y
+    #[3] le x y
+  → rewrite linorder_lt_le_def sym=false target=fact goal=3 facts=[1]
+    #[4] !x. !y. lt x y --> le x y
+  ← inst x goal=3 facts=[4]
+    #[5] !y. lt x y --> le x y
+  ← inst y goal=3 facts=[5]
+    #[6] lt x y --> le x y
+  ← apply_prev goal=3 facts=[6,2]
+qed
+
+theorem nat_linorder_lt_le
+  prop linorder_lt_le (less_eq :: nat ⇒ nat ⇒ bool) (less :: nat ⇒ nat ⇒ bool)
+proof
+  ← rewrite linorder_lt_le_def sym=false goal=0
+    #[1] !x::nat. !y. x < y --> x <= y
+  ← intro x,y goal=1
+    #[2] _VAR x
+    #[3] _VAR y
+    #[4] x < y
+    #[5] x <= y
+  ← rule lt_imp_le goal=5 facts=[4]
+qed
 
 theorem preorder_refl
   fixes le :: 'a ⇒ 'a ⇒ bool, x :: 'a
