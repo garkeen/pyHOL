@@ -1081,6 +1081,8 @@ BST 删除要用）。三个 `_binary` 引理（`ordered_insert_binary`、
   (quicksort xs l r))` 那类）：留到阶段 5 与 Quicksort 一起做，那里才知道
   真正需要对 `sublist` 的哪几条重写。
 - **混合 `<` 与 `≤` 的桥接引理**（Isabelle 的 `strict_sorted_imp_sorted`）：
+  **已完成（2026-09-15，见 §14.6）：`class linorder` 现在带 `linorder_lt_le`。**
+  下面保留"为什么缺了它就不可证"的反例与两条修法，供参考：
   本移植的 `linorder`/`linorder_lt` 是**互相独立**的谓词，缺
   `lt x y ⟶ le x y` 这条类公理，所以这类引理在抽象层面**不可证**。
   这不是猜测，有机器验证过的反例（2026-09-14，REPL 内证完，未落盘）：
