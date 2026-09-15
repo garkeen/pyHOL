@@ -63,6 +63,113 @@ proof
   ← rule negE_gen goal=20 facts=[21,19]
 qed
 
+header "Transitive closure"
+
+-- Transitive closure, in the "cons" orientation: the step rule recurses
+-- on the *first* pair, so a case analysis of `trancl R a b` leaves either
+-- `R a b` or an intermediate element (Isabelle
+-- `Transitive_Closure.thy:trancl_into_trancl`).  Well-foundedness of the
+-- closure is what the multiset order (Isabelle `mult = mult1^+`) needs.
+inductive trancl :: ('a ⇒ 'a ⇒ bool) ⇒ 'a ⇒ 'a ⇒ bool
+  | trancl_base: R x y ⟶ trancl R x y
+  | trancl_step: trancl R x y ⟶ R y z ⟶ trancl R x z
+
+theorem wf_trancl
+  fixes R :: 'a => 'a => bool
+  prop wf R --> wf (trancl R)
+proof
+  ← intro goal=0
+    #[1] wf R
+    #[2] wf (trancl R)
+  ← rewrite wf_def goal=2
+    #[3] !P. (!x. (!y. trancl R y x --> P y) --> P x) --> (!x. P x)
+  ← intro P goal=3
+    #[4] _VAR P
+    #[5] !x. (!y. trancl R y x --> P y) --> P x
+    #[6] !x. P x
+  cut "!x::'a. !y::'a. trancl R y x --> P y" goal=6
+    #[7] !x. !y. trancl R y x --> P y
+  ← rule wf_induct goal=7 facts=[1]
+    #[8] !x. (!y. R y x --> (!y1. trancl R y1 y --> P y1)) --> (!y. trancl R y x --> P y)
+  ← intro x goal=8
+    #[9] _VAR x
+    #[10] !y. R y x --> (!y1. trancl R y1 y --> P y1)
+    #[11] !y. trancl R y x --> P y
+  ← intro y goal=11
+    #[12] _VAR y
+    #[13] trancl R y x
+    #[14] P y
+  ← rule trancl_cases goal=14 facts=[13]
+    #[15] !R1. !x1. !y1. R = R1 --> y = x1 --> x = y1 --> R1 x1 y1 --> P y
+    #[16] !R1. !x1. !y1. !z. R = R1 --> y = x1 --> x = z --> trancl R1 x1 y1 --> R1 y1 z --> P y
+  ← intro "R1, x1, y1" goal=15
+    #[17] _VAR R1
+    #[18] _VAR x1
+    #[19] _VAR y1
+    #[20] R = R1
+    #[21] y = x1
+    #[22] x = y1
+    #[23] R1 x1 y1
+    #[24] P y
+  → rewrite eq_sym_eq sym=true target=fact goal=24 facts=[20]
+    #[25] R1 = R
+  → rewrite target=fact goal=24 facts=[25,23]
+    #[26] R x1 y1
+  → rewrite eq_sym_eq sym=true target=fact goal=24 facts=[21]
+    #[27] x1 = y
+  → rewrite target=fact goal=24 facts=[27,26]
+    #[28] R y y1
+  → rewrite eq_sym_eq sym=true target=fact goal=24 facts=[22]
+    #[29] y1 = x
+  → rewrite target=fact goal=24 facts=[29,28]
+    #[30] R y x
+  ← inst y goal=24 facts=[10]
+    #[31] R y x --> (!y1. trancl R y1 y --> P y1)
+  → forward goal=24 facts=[31,30]
+    #[32] !y1. trancl R y1 y --> P y1
+  ← apply_prev goal=24 facts=[5]
+  ← intro "R3, x3, y3, z3" goal=16
+    #[33] _VAR R3
+    #[34] _VAR x3
+    #[35] _VAR y3
+    #[36] _VAR z3
+    #[37] R = R3
+    #[38] y = x3
+    #[39] x = z3
+    #[40] trancl R3 x3 y3
+    #[41] R3 y3 z3
+    #[42] P y
+  → rewrite eq_sym_eq sym=true target=fact goal=42 facts=[37]
+    #[43] R3 = R
+  → rewrite target=fact goal=42 facts=[43,40]
+    #[44] trancl R x3 y3
+  → rewrite eq_sym_eq sym=true target=fact goal=42 facts=[38]
+    #[45] x3 = y
+  → rewrite target=fact goal=42 facts=[45,44]
+    #[46] trancl R y y3
+  → rewrite target=fact goal=42 facts=[43,41]
+    #[47] R y3 z3
+  → rewrite eq_sym_eq sym=true target=fact goal=42 facts=[39]
+    #[48] z3 = x
+  → rewrite target=fact goal=42 facts=[48,47]
+    #[49] R y3 x
+  ← inst y3 goal=42 facts=[10]
+    #[50] R y3 x --> (!y. trancl R y y3 --> P y)
+  → forward goal=42 facts=[50,49]
+    #[51] !y. trancl R y y3 --> P y
+  ← inst y goal=42 facts=[51]
+    #[52] trancl R y y3 --> P y
+  → forward goal=42 facts=[52,46]
+    #[53] P y
+  ← rule trivial goal=42 facts=[53]
+  ← intro x goal=6
+    #[54] P x
+  ← inst x goal=54 facts=[7]
+    #[55] !y. trancl R y x --> P y
+  ← apply_prev goal=54 facts=[5]
+qed
+
+
 header "Measures"
 
 

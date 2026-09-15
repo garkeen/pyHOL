@@ -400,6 +400,47 @@ fun drop :: nat ⇒ 'a list ⇒ 'a list
 
 def sublist :: nat ⇒ nat ⇒ 'a list ⇒ 'a list = sublist l r xs = drop l (take r xs) [hint_rewrite]
 
+
+-- Isabelle's `replicate` (List.thy).  Needed to turn a multiplicity into a
+-- list: every finitely supported counting function is the `mset` of a list
+-- built from `repeat` (see `library/multiset.pyhol`).
+fun repeat :: 'a ⇒ nat ⇒ 'a list
+  | repeat x 0 = []
+  | repeat x (Suc n) = x # repeat x n
+
+theorem mem_repeat
+  fixes x :: 'a, y :: 'a, n :: nat
+  prop y ∈ set (repeat x n) --> y = x
+  [hint_backward]
+proof
+  ← induct n nat_induct goal=0
+    #[1] y Mem set (repeat x 0) --> y = x
+    #[2] !n. (y Mem set (repeat x n) --> y = x) --> y Mem set (repeat x (Suc n)) --> y = x
+  ← rewrite repeat_def_1 goal=1
+    #[3] y Mem set [] --> y = x
+  ← rewrite set_def_1 goal=3
+    #[4] y Mem {} --> y = x
+  ← intro goal=4
+    #[5] y Mem {}
+    #[6] y = x
+  → rewrite member_empty_simp target=fact goal=6 facts=[5]
+    #[7] false
+  ← rule falseE goal=6 facts=[7]
+  ← intro n1 goal=2
+    #[8] _VAR n1
+    #[9] y Mem set (repeat x n1) --> y = x
+    #[10] y Mem set (repeat x (Suc n1))
+    #[11] y = x
+  → rewrite repeat_def_2 target=fact goal=11 facts=[10]
+    #[12] y Mem set (x # repeat x n1)
+  → rewrite set_def_2 target=fact goal=11 facts=[12]
+    #[13] y Mem insert x (set (repeat x n1))
+  → rewrite member_insert target=fact goal=11 facts=[13]
+    #[14] y = x | y Mem set (repeat x n1)
+  ← rule disjE goal=11 facts=[14]
+    #[15] y = x --> y = x
+qed
+
 theorem take_nil
   fixes n :: nat
   prop take n ([]::'a list) = []

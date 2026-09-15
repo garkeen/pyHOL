@@ -16,11 +16,156 @@ def count :: 'a multiset ⇒ 'a ⇒ nat = count M x = M x [hint_rewrite]
 
 def set_mset :: 'a multiset ⇒ 'a set = set_mset M = {x::'a. 0 < M x}
 
+header "Finite multisets"
+
+-- Isabelle's `'a multiset` is a *finitely supported* counting function
+-- (`Multiset.thy:18`: `typedef {f. finite {x. f x > 0}}`).  Here the type is
+-- the bare function space, so finiteness has to be a separate predicate, and
+-- the multiset order has to carry it.  Without it `mult1` is not well founded:
+-- take `R = (<)` on nat and `M k = (%x. if k <= x then 1 else 0)`; then
+-- `M k = M (Suc k) + 0`, so `(M (Suc k), M k)` is in `mult1 R` for every k --
+-- an infinite descending chain, although `<` is well founded.
+def finite_mset :: 'a multiset ⇒ bool = finite_mset M ⟷ finite (set_mset M) [hint_rewrite]
+
+theorem set_mset_empty_mset
+  fixes x :: 'a
+  prop set_mset empty_mset = ({}::'a set)
+  [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+    #[1] !x::'a. x Mem set_mset empty_mset <--> x Mem {}
+  ← intro x goal=1
+    #[2] _VAR x
+    #[3] x Mem set_mset empty_mset <--> x Mem {}
+  ← rewrite member_empty_simp sym=false goal=3
+    #[4] x Mem set_mset empty_mset <--> false
+  ← rewrite set_mset_def sym=false goal=4
+    #[5] x Mem {x1. 0 < empty_mset x1} <--> false
+  ← rewrite member_collect sym=false goal=5
+    #[6] 0 < empty_mset x <--> false
+  ← rewrite empty_mset_def sym=false goal=6
+    #[7] (0::nat) < 0 <--> false
+  ← rewrite eq_false sym=true goal=7
+    #[8] ~((0::nat) < 0)
+  ← rule less_irrefl goal=8
+qed
+
+theorem set_mset_union_single
+  fixes M :: 'a multiset, a :: 'a, x :: 'a
+  prop set_mset (union_mset M (single_mset a)) = insert a (set_mset M)
+  [hint_rewrite]
+proof
+  ← rewrite set_equal_iff sym=false goal=0
+    #[1] !x. x Mem set_mset (union_mset M (single_mset a)) <--> x Mem insert a (set_mset M)
+  ← intro x goal=1
+    #[2] _VAR x
+    #[3] x Mem set_mset (union_mset M (single_mset a)) <--> x Mem insert a (set_mset M)
+  ← rewrite member_insert sym=false goal=3
+    #[4] x Mem set_mset (union_mset M (single_mset a)) <--> x = a | x Mem set_mset M
+  ← rewrite set_mset_def sym=false goal=4
+    #[5] x Mem {x1. 0 < union_mset M (single_mset a) x1} <--> x = a | x Mem {x1. 0 < M x1}
+  ← rewrite member_collect sym=false goal=5
+    #[6] 0 < union_mset M (single_mset a) x <--> x = a | 0 < M x
+  ← rewrite union_mset_def sym=false goal=6
+    #[7] 0 < M x + single_mset a x <--> x = a | 0 < M x
+  ← rewrite single_mset_def sym=false goal=7
+    #[8] 0 < M x + (if x = a then 1 else 0) <--> x = a | 0 < M x
+  ← cases "x = a" goal=8
+    #[9] x = a --> 0 < M x + (if x = a then 1 else 0) <--> x = a | 0 < M x
+    #[10] ~(x = a) --> 0 < M x + (if x = a then 1 else 0) <--> x = a | 0 < M x
+  ← intro goal=10
+    #[11] ~(x = a)
+    #[12] 0 < M x + (if x = a then 1 else 0) <--> x = a | 0 < M x
+  ← rewrite if_not_P goal=12 facts=[11]
+    #[13] 0 < M x + 0 <--> x = a | 0 < M x
+  ← rewrite add_0_right goal=13
+    #[14] 0 < M x <--> x = a | 0 < M x
+  cut "x = a <--> false" goal=14
+    #[15] x = a <--> false
+  ← rewrite eq_false sym=true goal=15
+  ← rewrite source=prev goal=14 facts=[15]
+    #[16] 0 < M x <--> false | 0 < M x
+  ← rewrite disj_false_left goal=16
+    #[17] 0 < M x <--> false | 0 < M x
+  ← intro goal=9
+    #[18] x = a
+    #[19] 0 < M x + (if x = a then 1 else 0) <--> x = a | 0 < M x
+  cut "x = a <--> true" goal=19
+    #[20] x = a <--> true
+  ← rewrite eq_true sym=true goal=20
+  ← rewrite if_P goal=19 facts=[18]
+    #[21] 0 < M x + 1 <--> x = a | 0 < M x
+  ← rewrite source=prev goal=21 facts=[20]
+    #[22] 0 < M x + 1 <--> true | 0 < M x
+  ← rewrite disj_true_left goal=22
+    #[23] 0 < M x + 1 <--> true
+  ← rewrite eq_true sym=true goal=23
+    #[24] 0 < M x + 1
+  cut "M x + 1 = Suc (M x)" goal=24
+    #[25] M x + 1 = Suc (M x)
+  nat_norm goal=25
+    #[26] M x + 1 = Suc (M x)
+  ← rewrite source=prev goal=24 facts=[26]
+    #[27] 0 < Suc (M x)
+  ← rule less_0 goal=27
+    #[28] 0 < Suc (M x)
+qed
+
+header "Filtering and single copies"
+
+-- The two operations the representation lemma needs.  `filter_mset` is
+-- Isabelle's `filter_mset` (`Multiset.thy`); `remove_one_mset` is "take
+-- away one copy of `a`", the predecessor used by the count induction that
+-- builds a list out of a finitely supported counting function.
+def filter_mset :: ('a ⇒ bool) ⇒ 'a multiset ⇒ 'a multiset = filter_mset P M = (%x::'a. if P x then M x else 0) [hint_rewrite]
+
+def remove_one_mset :: 'a multiset ⇒ 'a ⇒ 'a multiset = remove_one_mset M a = (%x::'a. if x = a then Pre (M x) else M x) [hint_rewrite]
+
+theorem count_filter_mset
+  fixes P :: 'a => bool, M :: 'a multiset, x :: 'a
+  prop count (filter_mset P M) x = (if P x then count M x else 0)
+  [hint_rewrite]
+proof
+  ← rewrite count_def goal=0
+    #[1] filter_mset P M x = (if P x then M x else 0)
+  ← rewrite filter_mset_def goal=1
+qed
+
+theorem count_remove_one_mset_same
+  fixes M :: 'a multiset, a :: 'a
+  prop count (remove_one_mset M a) a = Pre (count M a)
+  [hint_rewrite]
+proof
+  ← rewrite count_def goal=0
+    #[1] remove_one_mset M a a = Pre (M a)
+  ← rewrite remove_one_mset_def goal=1
+    #[2] (if a = a then Pre (M a) else M a) = Pre (M a)
+  cut "a = a" goal=2
+    #[3] a = a
+  ← refl goal=3
+  ← rewrite if_P goal=2 facts=[3]
+qed
+
+theorem count_remove_one_mset_other
+  fixes M :: 'a multiset, a :: 'a, x :: 'a
+  prop ~(x = a) --> count (remove_one_mset M a) x = count M x
+proof
+  ← intro goal=0
+    #[1] ~(x = a)
+    #[2] count (remove_one_mset M a) x = count M x
+  ← rewrite count_def goal=2
+    #[3] remove_one_mset M a x = M x
+  ← rewrite remove_one_mset_def goal=3
+    #[4] (if x = a then Pre (M x) else M x) = M x
+  ← rewrite if_not_P goal=4 facts=[1]
+qed
+
 header "mset of a list"
 
 fun mset :: 'a list ⇒ 'a multiset
   | mset ([]::'a list) = empty_mset
   | mset (x # xs) = union_mset (single_mset x) (mset xs)
+
 
 header "Counting lemmas"
 
@@ -63,6 +208,67 @@ proof
   ← rewrite single_mset_def goal=3
   ← rewrite if_not_P goal=4 facts=[1]
 qed
+
+header "Multisets built from a repeated element"
+
+theorem mset_repeat
+  fixes a :: 'a, x :: 'a, k :: nat
+  prop mset (repeat a k) x = (if x = a then k else 0)
+  [hint_rewrite]
+proof
+  ← induct k nat_induct goal=0
+    #[1] mset (repeat a 0) x = (if x = a then 0 else 0)
+    #[2] !n. mset (repeat a n) x = (if x = a then n else 0) --> mset (repeat a (Suc n)) x = (if x = a then Suc n else 0)
+  ← rewrite repeat_def_1 goal=1
+    #[3] mset [] x = (if x = a then 0 else 0)
+  ← rewrite mset_def_1 goal=3
+    #[4] empty_mset x = (if x = a then 0 else 0)
+  ← rewrite empty_mset_def goal=4
+    #[5] (0::nat) = (if x = a then 0 else 0)
+  ← cases "x = a" goal=5
+    #[6] x = a --> (0::nat) = (if x = a then 0 else 0)
+    #[7] ~(x = a) --> (0::nat) = (if x = a then 0 else 0)
+  ← intro goal=6
+    #[8] x = a
+    #[9] (0::nat) = (if x = a then 0 else 0)
+  ← rewrite if_P goal=9 facts=[8]
+  ← intro goal=7
+    #[10] ~(x = a)
+    #[11] (0::nat) = (if x = a then 0 else 0)
+  ← rewrite if_not_P goal=11 facts=[10]
+  ← intro n1 goal=2
+    #[12] _VAR n1
+    #[13] mset (repeat a n1) x = (if x = a then n1 else 0)
+    #[14] mset (repeat a (Suc n1)) x = (if x = a then Suc n1 else 0)
+  ← rewrite repeat_def_2 goal=14
+    #[15] mset (a # repeat a n1) x = (if x = a then Suc n1 else 0)
+  ← rewrite mset_def_2 goal=15
+    #[16] union_mset (single_mset a) (mset (repeat a n1)) x = (if x = a then Suc n1 else 0)
+  ← rewrite union_mset_def goal=16
+    #[17] single_mset a x + mset (repeat a n1) x = (if x = a then Suc n1 else 0)
+  ← rewrite single_mset_def goal=17
+    #[18] (if x = a then 1 else 0) + mset (repeat a n1) x = (if x = a then Suc n1 else 0)
+  ← cases "x = a" goal=18
+    #[19] x = a --> (if x = a then 1 else 0) + mset (repeat a n1) x = (if x = a then Suc n1 else 0)
+    #[20] ~(x = a) --> (if x = a then 1 else 0) + mset (repeat a n1) x = (if x = a then Suc n1 else 0)
+  ← intro goal=19
+    #[21] (if x = a then 1 else 0) + mset (repeat a n1) x = (if x = a then Suc n1 else 0)
+  ← rewrite source=prev goal=21 facts=[13]
+    #[22] (if x = a then 1 else 0) + (if x = a then n1 else 0) = (if x = a then Suc n1 else 0)
+  ← rewrite if_P goal=22 facts=[8]
+    #[23] 1 + n1 = Suc n1
+  ← rewrite add_1_left goal=23
+    #[24] 1 + n1 = Suc n1
+  ← intro goal=20
+    #[25] (if x = a then 1 else 0) + mset (repeat a n1) x = (if x = a then Suc n1 else 0)
+  ← rewrite source=prev goal=25 facts=[13]
+    #[26] (if x = a then 1 else 0) + (if x = a then n1 else 0) = (if x = a then Suc n1 else 0)
+  ← rewrite if_not_P goal=26 facts=[10]
+    #[27] (0::nat) + 0 = 0
+  ← rewrite nat_plus_def_1 goal=27
+    #[28] (0::nat) + 0 = 0
+qed
+
 
 header "Union is commutative, associative, and has empty_mset as unit"
 
@@ -147,4 +353,515 @@ proof
   ← rewrite mset_def_1 goal=10
   ← rewrite union_mset_empty_right goal=11
   ← rewrite union_mset_comm loc=1 goal=12
+qed
+
+theorem mset_finite
+  fixes xs :: 'a list
+  prop finite_mset (mset xs)
+proof
+  ← induct xs list_induct goal=0
+    #[1] finite_mset (mset ([]::'a list))
+    #[2] !x::'a. !xs. finite_mset (mset xs) --> finite_mset (mset (x # xs))
+  ← rewrite mset_def_1 goal=1
+    #[3] finite_mset (empty_mset::'a => nat)
+  ← rewrite finite_mset_def goal=3
+    #[4] finite (set_mset (empty_mset::'a => nat))
+  ← rewrite set_mset_empty_mset goal=4
+    #[5] finite ({}::'a => bool)
+  ← rule finite_empty goal=5
+  ← intro "x1, xs1" goal=2
+    #[6] _VAR x1
+    #[7] _VAR xs1
+    #[8] finite_mset (mset xs1)
+    #[9] finite_mset (mset (x1 # xs1))
+  ← rewrite mset_def_2 goal=9
+    #[10] finite_mset (union_mset (single_mset x1) (mset xs1))
+  ← rewrite finite_mset_def goal=10
+    #[11] finite (set_mset (union_mset (single_mset x1) (mset xs1)))
+  ← rewrite union_mset_comm goal=11
+    #[12] finite (set_mset (union_mset (mset xs1) (single_mset x1)))
+  ← rewrite set_mset_union_single goal=12
+    #[13] finite (insert x1 (set_mset (mset xs1)))
+  ← rewrite finite_insert goal=13
+    #[14] finite (set_mset (mset xs1))
+  ← rewrite finite_mset_def sym=true goal=14
+qed
+
+header "Finitely supported multisets are list images"
+
+-- The multiset order below is well founded only on the multisets Isabelle's
+-- type denotes, i.e. the finitely supported ones.  Well-foundedness is proved
+-- by induction over a list that represents the multiset, so the representation
+-- has to be a theorem here (Isabelle gets it from the quotient of lists).
+
+theorem filter_mset_union
+  fixes P :: 'a => bool, M :: 'a multiset
+  prop union_mset (filter_mset P M) (filter_mset (%x. ~P x) M) = M
+  [hint_rewrite]
+proof
+  ← rule extension goal=0
+    #[1] !x. union_mset (filter_mset P M) (filter_mset (%x1. ~(P x1)) M) x = M x
+  ← intro y goal=1
+    #[2] _VAR y
+    #[3] union_mset (filter_mset P M) (filter_mset (%x. ~(P x)) M) y = M y
+  ← rewrite union_mset_def goal=3
+    #[4] filter_mset P M y + filter_mset (%x. ~(P x)) M y = M y
+  ← rewrite filter_mset_def goal=4
+    #[5] (if P y then M y else 0) + (if ~(P y) then M y else 0) = M y
+  ← cases "P y" goal=5
+    #[6] P y --> (if P y then M y else 0) + (if ~(P y) then M y else 0) = M y
+    #[7] ~(P y) --> (if P y then M y else 0) + (if ~(P y) then M y else 0) = M y
+  ← intro goal=6
+    #[8] P y
+    #[9] (if P y then M y else 0) + (if ~(P y) then M y else 0) = M y
+  ← rewrite if_P goal=9 facts=[8]
+    #[10] M y + (if ~(P y) then M y else 0) = M y
+  ← rewrite if_not_P2 goal=10 facts=[8]
+    #[11] M y + 0 = M y
+  ← rewrite add_0_right goal=11
+    #[12] M y + 0 = M y
+  ← intro goal=7
+    #[13] ~(P y)
+    #[14] (if P y then M y else 0) + (if ~(P y) then M y else 0) = M y
+  ← rewrite if_not_P goal=14 facts=[13]
+    #[15] 0 + (if ~(P y) then M y else 0) = M y
+  ← rewrite if_P goal=15 facts=[13]
+    #[16] 0 + M y = M y
+  ← rewrite nat_plus_def_1 goal=16
+    #[17] 0 + M y = M y
+qed
+
+theorem union_mset_remove_one
+  fixes M :: 'a multiset, a :: 'a
+  prop 0 < count M a --> union_mset (single_mset a) (remove_one_mset M a) = M
+proof
+  ← intro goal=0
+    #[1] 0 < count M a
+    #[2] union_mset (single_mset a) (remove_one_mset M a) = M
+  ← rule extension goal=2
+    #[3] !x. union_mset (single_mset a) (remove_one_mset M a) x = M x
+  ← intro y goal=3
+    #[4] _VAR y
+    #[5] union_mset (single_mset a) (remove_one_mset M a) y = M y
+  ← rewrite union_mset_def goal=5
+    #[6] single_mset a y + remove_one_mset M a y = M y
+  ← rewrite single_mset_def goal=6
+    #[7] (if y = a then 1 else 0) + remove_one_mset M a y = M y
+  ← rewrite remove_one_mset_def goal=7
+    #[8] (if y = a then 1 else 0) + (if y = a then Pre (M y) else M y) = M y
+  ← cases "y = a" goal=8
+    #[9] y = a --> (if y = a then 1 else 0) + (if y = a then Pre (M y) else M y) = M y
+    #[10] ~(y = a) --> (if y = a then 1 else 0) + (if y = a then Pre (M y) else M y) = M y
+  ← intro goal=9
+    #[11] y = a
+    #[12] (if y = a then 1 else 0) + (if y = a then Pre (M y) else M y) = M y
+  ← rewrite if_P goal=12 facts=[11]
+    #[13] 1 + Pre (M y) = M y
+  ← rewrite add_1_left goal=13
+    #[14] Suc (Pre (M y)) = M y
+  → rewrite count_def target=fact goal=14 facts=[1]
+    #[15] 0 < M a
+  → rewrite eq_sym_eq sym=true target=fact goal=14 facts=[11]
+    #[16] a = y
+  → rewrite target=fact goal=14 facts=[16,15]
+    #[17] 0 < M y
+  ← rule Suc_Pre goal=14 facts=[17]
+  ← intro goal=10
+    #[18] ~(y = a)
+    #[19] (if y = a then 1 else 0) + (if y = a then Pre (M y) else M y) = M y
+  ← rewrite if_not_P goal=19 facts=[18]
+    #[20] 0 + M y = M y
+  ← rewrite nat_plus_def_1 goal=20
+    #[21] 0 + M y = M y
+qed
+
+theorem multiset_empty_of_zero
+  fixes M :: 'a multiset
+  prop (!x::'a. count M x = 0) --> M = empty_mset
+proof
+  ← intro goal=0
+    #[1] !x. count M x = 0
+    #[2] M = empty_mset
+  ← rule extension goal=2
+    #[3] !x. M x = empty_mset x
+  ← intro y goal=3
+    #[4] _VAR y
+    #[5] M y = empty_mset y
+  ← rewrite empty_mset_def goal=5
+    #[6] M y = 0
+  ← inst y goal=6 facts=[1]
+    #[7] count M y = 0
+  → rewrite count_def target=fact goal=6 facts=[7]
+qed
+
+-- Peeling one copy of `a` out of the `a`-part: the count induction below
+-- rewrites the singleton support case with this.
+theorem filter_single_remove_one
+  fixes M :: 'a multiset, a :: 'a
+  prop 0 < count M a --> filter_mset (%x. x = a) M = union_mset (single_mset a) (filter_mset (%x. x = a) (remove_one_mset M a))
+proof
+  ← intro goal=0
+    #[1] 0 < count M a
+    #[2] filter_mset (%x. x = a) M = union_mset (single_mset a) (filter_mset (%x. x = a) (remove_one_mset M a))
+  ← rule extension goal=2
+    #[3] !x. filter_mset (%x1. x1 = a) M x = union_mset (single_mset a) (filter_mset (%x1. x1 = a) (remove_one_mset M a)) x
+  ← intro y goal=3
+    #[4] _VAR y
+    #[5] filter_mset (%x. x = a) M y = union_mset (single_mset a) (filter_mset (%x. x = a) (remove_one_mset M a)) y
+  ← rewrite union_mset_def goal=5
+    #[6] filter_mset (%x. x = a) M y = single_mset a y + filter_mset (%x. x = a) (remove_one_mset M a) y
+  ← rewrite filter_mset_def goal=6
+    #[7] (if y = a then M y else 0) = single_mset a y + (if y = a then remove_one_mset M a y else 0)
+  ← cases "y = a" goal=7
+    #[8] y = a --> (if y = a then M y else 0) = single_mset a y + (if y = a then remove_one_mset M a y else 0)
+    #[9] ~(y = a) --> (if y = a then M y else 0) = single_mset a y + (if y = a then remove_one_mset M a y else 0)
+  ← intro goal=8
+    #[10] y = a
+    #[11] (if y = a then M y else 0) = single_mset a y + (if y = a then remove_one_mset M a y else 0)
+  ← rewrite if_P goal=11 facts=[10]
+    #[12] M y = single_mset a y + remove_one_mset M a y
+  ← rewrite single_mset_def goal=12
+    #[13] M y = (if y = a then 1 else 0) + remove_one_mset M a y
+  ← rewrite if_P goal=13 facts=[10]
+    #[14] M y = 1 + remove_one_mset M a y
+  ← rewrite remove_one_mset_def goal=14
+    #[15] M y = 1 + (if y = a then Pre (M y) else M y)
+  ← rewrite if_P goal=15 facts=[10]
+    #[16] M y = 1 + Pre (M y)
+  ← rewrite add_1_left goal=16
+    #[17] M y = Suc (Pre (M y))
+  ← rewrite eq_sym_eq goal=17
+    #[18] Suc (Pre (M y)) = M y
+  → rewrite count_def target=fact goal=18 facts=[1]
+    #[19] 0 < M a
+  → rewrite eq_sym_eq sym=true target=fact goal=18 facts=[10]
+    #[20] a = y
+  → rewrite target=fact goal=18 facts=[20,19]
+    #[21] 0 < M y
+  ← rule Suc_Pre goal=18 facts=[21]
+  ← intro goal=9
+    #[22] ~(y = a)
+    #[23] (if y = a then M y else 0) = single_mset a y + (if y = a then remove_one_mset M a y else 0)
+  ← rewrite if_not_P goal=23 facts=[22]
+    #[24] 0 = single_mset a y + 0
+  ← rewrite single_mset_def goal=24
+    #[25] (0::nat) = (if y = a then 1 else 0) + 0
+  ← rewrite if_not_P goal=25 facts=[22]
+    #[26] (0::nat) = 0 + 0
+  ← rewrite nat_plus_def_1 goal=26
+    #[27] (0::nat) = 0 + 0
+qed
+
+-- Every multiset whose support is contained in a singleton is a list image:
+-- the list holds `count M a` copies of `a`.  No finiteness hypothesis is
+-- needed, the support is one point.
+theorem filter_single_eq_count
+  fixes M :: 'a multiset, a :: 'a
+  prop filter_mset (%x. x = a) M = (%x::'a. if x = a then count M a else 0)
+  [hint_rewrite]
+proof
+  ← rule extension goal=0
+    #[1] !x. filter_mset (%x1. x1 = a) M x = (if x = a then count M a else 0)
+  ← intro y goal=1
+    #[2] _VAR y
+    #[3] filter_mset (%x. x = a) M y = (if y = a then count M a else 0)
+  ← rewrite filter_mset_def goal=3
+    #[4] (if y = a then M y else 0) = (if y = a then count M a else 0)
+  ← rewrite count_def goal=4
+    #[5] (if y = a then M y else 0) = (if y = a then M a else 0)
+  ← cases "y = a" goal=5
+    #[6] y = a --> (if y = a then M y else 0) = (if y = a then M a else 0)
+    #[7] ~(y = a) --> (if y = a then M y else 0) = (if y = a then M a else 0)
+  ← intro goal=6
+    #[8] y = a
+    #[9] (if y = a then M y else 0) = (if y = a then M a else 0)
+  ← rewrite if_P goal=9 facts=[8]
+    #[10] M y = M a
+  ← rewrite source=prev goal=10 facts=[8]
+  ← intro goal=7
+    #[11] ~(y = a)
+    #[12] (if y = a then M y else 0) = (if y = a then M a else 0)
+  ← rewrite if_not_P goal=12 facts=[11]
+qed
+
+theorem mset_filter_single
+  fixes M :: 'a multiset, a :: 'a
+  prop ?xs::'a list. mset xs = filter_mset (%x. x = a) M & (!y. y ∈ set xs --> y = a)
+proof
+  ← inst "(repeat a (count M a))" goal=0
+    #[1] mset (repeat a (count M a)) = filter_mset (%x. x = a) M & (!y. y Mem set (repeat a (count M a)) --> y = a)
+  ← rule conjI goal=1
+    #[2] mset (repeat a (count M a)) = filter_mset (%x. x = a) M
+    #[3] !y. y Mem set (repeat a (count M a)) --> y = a
+  ← rule extension goal=2
+    #[4] !x. mset (repeat a (count M a)) x = filter_mset (%x1. x1 = a) M x
+  ← intro x goal=4
+    #[5] _VAR x
+    #[6] mset (repeat a (count M a)) x = filter_mset (%x1. x1 = a) M x
+  ← rewrite mset_repeat goal=6
+    #[7] (if x = a then count M a else 0) = filter_mset (%x1. x1 = a) M x
+  ← rewrite filter_single_eq_count goal=7
+  ← intro y goal=3
+    #[8] _VAR y
+    #[9] y Mem set (repeat a (count M a))
+    #[10] y = a
+  ← rule mem_repeat goal=10 facts=[9]
+qed
+
+-- `finite` is a Church encoding (`library/set.pyhol`), so it can only be
+-- instantiated with a predicate stated on the *constructed* set of possible
+-- support -- the same idiom as `fin_sub` there.  `mset_cover` is that
+-- predicate: any multiset whose support sits inside `S` is a list image.
+def mset_cover :: 'a set ⇒ bool = mset_cover S ⟷ (!M::'a multiset. finite_mset M --> set_mset M Sub S --> (?xs::'a list. M = mset xs))
+
+theorem mset_cover_empty
+  fixes S :: 'a set
+  prop mset_cover ({}::'a set)
+proof
+  ← rewrite mset_cover_def goal=0
+    #[1] !M. finite_mset M --> set_mset M Sub {} --> (?xs::'a list. M = mset xs)
+  ← intro M1 goal=1
+    #[2] _VAR M1
+    #[3] finite_mset M1
+    #[4] set_mset M1 Sub {}
+    #[5] ?xs. M1 = mset xs
+  cut "!x::'a. count M1 x = 0" goal=5
+    #[6] !x. count M1 x = 0
+  ← intro x goal=6
+    #[7] _VAR x
+    #[8] count M1 x = 0
+  → rewrite subset_def target=fact goal=8 facts=[4]
+    #[9] !x. x Mem set_mset M1 --> x Mem {}
+  ← inst x goal=8 facts=[9]
+    #[10] x Mem set_mset M1 --> x Mem {}
+  → rewrite member_empty_simp target=fact goal=8 facts=[10]
+    #[11] x Mem set_mset M1 --> false
+  → rewrite set_mset_def target=fact goal=8 facts=[11]
+    #[12] x Mem {x1. 0 < M1 x1} --> false
+  → rewrite member_collect target=fact goal=8 facts=[12]
+    #[13] 0 < M1 x --> false
+  → rewrite count_def sym=true target=fact goal=8 facts=[13]
+    #[14] 0 < count M1 x --> false
+  ← cases "0 = count M1 x" goal=8
+    #[15] 0 = count M1 x --> count M1 x = 0
+    #[16] ~(0 = count M1 x) --> count M1 x = 0
+  ← intro goal=15
+    #[17] 0 = count M1 x
+    #[18] count M1 x = 0
+  ← rewrite source=prev goal=18 facts=[17]
+    #[19] count M1 x = 0
+  ← intro goal=16
+    #[20] ~(0 = count M1 x)
+    #[21] count M1 x = 0
+  cut "0 < count M1 x" goal=21
+    #[22] 0 < count M1 x
+  ← rewrite less_lesseq goal=22
+    #[23] 0 <= count M1 x & ~(0 = count M1 x)
+  ← rule conjI goal=23
+    #[24] 0 <= count M1 x
+  ← rule lesseq_zero goal=24
+    #[25] 0 <= count M1 x
+  → forward goal=21 facts=[14,22]
+    #[26] false
+  ← rule falseE goal=21 facts=[26]
+  ← inst "([]::'a list)" goal=5
+    #[27] M1 = mset []
+  ← rewrite mset_def_1 goal=27
+    #[28] M1 = empty_mset
+  ← rule multiset_empty_of_zero goal=28 facts=[6]
+qed
+
+theorem mset_cover_insert
+  fixes S :: 'a set, a :: 'a
+  prop mset_cover S --> mset_cover (insert a S)
+proof
+  ← rewrite mset_cover_def goal=0
+    #[1] (!M. finite_mset M --> set_mset M Sub S --> (?xs. M = mset xs)) --> (!M. finite_mset M --> set_mset M Sub insert a S --> (?xs. M = mset xs))
+  ← intro goal=1
+    #[2] !M. finite_mset M --> set_mset M Sub S --> (?xs. M = mset xs)
+    #[3] !M. finite_mset M --> set_mset M Sub insert a S --> (?xs. M = mset xs)
+  ← intro M1 goal=3
+    #[4] _VAR M1
+    #[5] finite_mset M1
+    #[6] set_mset M1 Sub insert a S
+    #[7] ?xs. M1 = mset xs
+  cut "set_mset (filter_mset (%x. ~(x = a)) M1) Sub S" goal=7
+    #[8] set_mset (filter_mset (%x. ~(x = a)) M1) Sub S
+  ← rewrite subset_def goal=8
+    #[9] !x. x Mem set_mset (filter_mset (%x1. ~(x1 = a)) M1) --> x Mem S
+  ← intro x goal=9
+    #[10] _VAR x
+    #[11] x Mem set_mset (filter_mset (%x1. ~(x1 = a)) M1)
+    #[12] x Mem S
+  → rewrite set_mset_def target=fact goal=12 facts=[11]
+    #[13] x Mem {x1. 0 < filter_mset (%x2. ~(x2 = a)) M1 x1}
+  → rewrite member_collect target=fact goal=12 facts=[13]
+    #[14] 0 < filter_mset (%x1. ~(x1 = a)) M1 x
+  → rewrite filter_mset_def target=fact goal=12 facts=[14]
+    #[15] 0 < (if ~(x = a) then M1 x else 0)
+  → rewrite subset_def target=fact goal=12 facts=[6]
+    #[16] !x. x Mem set_mset M1 --> x Mem insert a S
+  ← inst x goal=12 facts=[16]
+    #[17] x Mem set_mset M1 --> x Mem insert a S
+  → rewrite member_insert target=fact goal=12 facts=[17]
+    #[18] x Mem set_mset M1 --> x = a | x Mem S
+  ← cases "x = a" goal=12
+    #[19] x = a --> x Mem S
+    #[20] ~(x = a) --> x Mem S
+  ← intro goal=19
+    #[21] x = a
+    #[22] x Mem S
+  → forward less_irrefl param_n="(0::nat)" goal=19
+    #[23] ~((0::nat) < 0)
+  → rewrite if_not_P2 target=fact goal=22 facts=[15,21]
+    #[24] (0::nat) < 0
+  ← rule negE_gen goal=22 facts=[23,24]
+    #[25] x Mem S
+  ← intro goal=20
+    #[26] ~(x = a)
+    #[27] x Mem S
+  → rewrite set_mset_def target=fact goal=27 facts=[18]
+    #[28] x Mem {x1. 0 < M1 x1} --> x = a | x Mem S
+  → rewrite member_collect target=fact goal=27 facts=[28]
+    #[29] 0 < M1 x --> x = a | x Mem S
+  → rewrite count_def sym=true target=fact goal=27 facts=[29]
+    #[30] 0 < count M1 x --> x = a | x Mem S
+  → rewrite if_P target=fact goal=27 facts=[15,26]
+    #[31] 0 < M1 x
+  → forward goal=27 facts=[29,31]
+    #[32] x = a | x Mem S
+  ← rule disjE goal=27 facts=[32]
+    #[33] x Mem S --> x Mem S
+  cut "finite_mset (filter_mset (%x. ~(x = a)) M1)" goal=7
+    #[34] finite_mset (filter_mset (%x. ~(x = a)) M1)
+  ← rewrite finite_mset_def goal=34
+    #[35] finite (set_mset (filter_mset (%x. ~(x = a)) M1))
+  → rewrite finite_mset_def target=fact goal=35 facts=[5]
+    #[36] finite (set_mset M1)
+  ← inst "(filter_mset (%x. ~(x = a)) M1)" goal=7 facts=[2]
+    #[37] finite_mset (filter_mset (%x. ~(x = a)) M1) --> set_mset (filter_mset (%x. ~(x = a)) M1) Sub S --> (?xs. filter_mset (%x. ~(x = a)) M1 = mset xs)
+  cut "set_mset (filter_mset (%x. ~(x = a)) M1) Sub set_mset M1" goal=35
+    #[38] set_mset (filter_mset (%x. ~(x = a)) M1) Sub set_mset M1
+  ← rewrite subset_def goal=38
+    #[39] !x. x Mem set_mset (filter_mset (%x1. ~(x1 = a)) M1) --> x Mem set_mset M1
+  ← intro x1 goal=39
+    #[40] _VAR x1
+    #[41] x1 Mem set_mset (filter_mset (%x. ~(x = a)) M1)
+    #[42] x1 Mem set_mset M1
+  → rewrite filter_mset_def target=fact goal=42 facts=[41]
+    #[43] x1 Mem set_mset (%x. if ~(x = a) then M1 x else 0)
+  ← rewrite set_mset_def goal=42
+    #[44] x1 Mem {x. 0 < M1 x}
+  ← rewrite member_collect goal=44
+    #[45] 0 < M1 x1
+  → rewrite set_mset_def target=fact goal=45 facts=[43]
+    #[46] x1 Mem {x. 0 < (if ~(x = a) then M1 x else 0)}
+  → rewrite member_collect target=fact goal=45 facts=[46]
+    #[47] 0 < (if ~(x1 = a) then M1 x1 else 0)
+  ← cases "~(x1 = a)" goal=45
+    #[48] ~(x1 = a) --> 0 < M1 x1
+    #[49] ~~(x1 = a) --> 0 < M1 x1
+  ← intro goal=48
+    #[50] ~(x1 = a)
+    #[51] 0 < M1 x1
+  ← intro goal=49
+    #[52] ~~(x1 = a)
+    #[53] 0 < M1 x1
+  → forward less_irrefl param_n="(0::nat)" goal=49
+  → rewrite if_P target=fact goal=51 facts=[47,50]
+    #[54] 0 < M1 x1
+  → rewrite if_not_P target=fact goal=53 facts=[47,52]
+    #[55] (0::nat) < 0
+  → forward less_irrefl param_n="(0::nat)" goal=53
+  → forward less_irrefl param_n="(0::nat)" goal=53
+  cut "~((0::nat) < 0)" goal=53
+    #[56] ~((0::nat) < 0)
+  ← rule less_irrefl goal=56
+  cut "~((0::nat) < 0)" goal=53
+    #[56] ~((0::nat) < 0)
+  ← rule less_irrefl goal=56
+  → forward less_irrefl param_n="(0::nat)" goal=53
+  → forward less_irrefl param_n="(0::nat)" goal=53
+  ← rule falseE goal=53
+    #[57] false
+  ← resolve less_irrefl goal=57 facts=[55]
+    #[58] false
+  ← rule finite_subset goal=35 facts=[38,36]
+  → forward goal=7 facts=[37,34,8]
+    #[59] ?xs. filter_mset (%x. ~(x = a)) M1 = mset xs
+  elim xs goal=7 facts=[59]
+    #[60] _VAR xs
+    #[61] filter_mset (%x. ~(x = a)) M1 = mset xs
+    #[62] ?xs. M1 = mset xs
+  → forward mset_filter_single param_M=M1 param_a=a goal=62
+    #[63] ?xs. mset xs = filter_mset (%x. x = a) M1 & (!y. y Mem set xs --> y = a)
+  elim ys goal=62 facts=[63]
+    #[64] _VAR ys
+    #[65] mset ys = filter_mset (%x. x = a) M1 & (!y. y Mem set ys --> y = a)
+    #[66] ?xs. M1 = mset xs
+  → forward conjD1 goal=66 facts=[65]
+    #[67] mset ys = filter_mset (%x. x = a) M1
+  cut "M1 = union_mset (filter_mset (%x. x = a) M1) (filter_mset (%x. ~(x = a)) M1)" goal=66
+    #[68] M1 = union_mset (filter_mset (%x. x = a) M1) (filter_mset (%x. ~(x = a)) M1)
+  ← rewrite eq_sym_eq goal=68
+    #[69] union_mset (filter_mset (%x. x = a) M1) (filter_mset (%x. ~(x = a)) M1) = M1
+  ← rule filter_mset_union param_M=M1 param_P="(%x::'a. x = a)" goal=69
+    #[70] union_mset (filter_mset (%x. x = a) M1) (filter_mset (%x. ~(x = a)) M1) = M1
+  ← inst "(xs @ ys)" goal=66
+    #[71] M1 = mset (xs @ ys)
+  ← rewrite mset_append goal=71
+    #[72] M1 = union_mset (mset xs) (mset ys)
+  ← rewrite source=prev goal=72 facts=[68]
+    #[73] union_mset (filter_mset (%x. x = a) M1) (filter_mset (%x. ~(x = a)) M1) = union_mset (mset xs) (mset ys)
+  → rewrite eq_sym_eq sym=true target=fact goal=73 facts=[67]
+    #[74] filter_mset (%x. x = a) M1 = mset ys
+  ← rewrite source=prev goal=73 facts=[74]
+    #[75] union_mset (mset ys) (filter_mset (%x. ~(x = a)) M1) = union_mset (mset xs) (mset ys)
+  ← rewrite source=prev goal=75 facts=[61]
+    #[76] union_mset (mset ys) (mset xs) = union_mset (mset xs) (mset ys)
+  ← rewrite union_mset_comm goal=76
+    #[77] union_mset (mset xs) (mset ys) = union_mset (mset ys) (mset xs)
+  ← rule union_mset_comm goal=77
+    #[78] union_mset (mset xs) (mset ys) = union_mset (mset ys) (mset xs)
+qed
+
+theorem mset_rep
+  fixes M :: 'a multiset
+  prop finite_mset M --> (?xs::'a list. M = mset xs)
+proof
+  ← intro goal=0
+    #[1] finite_mset M
+    #[2] ?xs. M = mset xs
+  → rewrite finite_mset_def target=fact goal=2 facts=[1]
+    #[3] finite (set_mset M)
+  → rewrite finite_def target=fact goal=2 facts=[3]
+    #[4] !P. P {} & (!x. !B. P B --> P (insert x B)) --> P (set_mset M)
+  ← inst "(mset_cover::'a set => bool)" goal=2 facts=[4]
+    #[5] mset_cover ({}::'a => bool) & (!x::'a. !B. mset_cover B --> mset_cover (insert x B)) --> mset_cover (set_mset M)
+  cut "mset_cover ({}::'a set)" goal=2
+    #[6] mset_cover ({}::'a => bool)
+  ← rule mset_cover_empty goal=6
+    #[7] mset_cover ({}::'a => bool)
+  cut "!x::'a. !B::'a set. mset_cover B --> mset_cover (insert x B)" goal=2
+    #[8] !x::'a. !B. mset_cover B --> mset_cover (insert x B)
+  ← intro "x, B" goal=8
+    #[9] _VAR x
+    #[10] _VAR B
+    #[11] mset_cover B
+    #[12] mset_cover (insert x B)
+  ← rule mset_cover_insert goal=12 facts=[11]
+    #[13] mset_cover (insert x B)
+  → forward conjI goal=2 facts=[7,8]
+    #[14] mset_cover ({}::'a => bool) & (!x::'a. !B. mset_cover B --> mset_cover (insert x B))
+  → forward goal=2 facts=[5,14]
+    #[15] mset_cover (set_mset M)
+  → rewrite mset_cover_def target=fact goal=2 facts=[15]
+    #[16] !M1. finite_mset M1 --> set_mset M1 Sub set_mset M --> (?xs. M1 = mset xs)
+  ← inst M goal=2 facts=[16]
+    #[17] finite_mset M --> set_mset M Sub set_mset M --> (?xs. M = mset xs)
+  → forward subset_refl param_A="(set_mset M)" goal=2
+    #[18] set_mset M Sub set_mset M
+  → forward goal=2 facts=[16,1,18]
+  → forward goal=2 facts=[17,1,18]
+  ← apply_prev goal=2 facts=[17,1,18]
 qed
