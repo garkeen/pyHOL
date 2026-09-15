@@ -298,40 +298,119 @@ def _dedupe(names):
 # ---------------------------------------------------------------------------
 # Relation, for the recursion-position type.
 #
-# The well-founded relation lives on the *component* the equations
-# pattern-match on and is lifted to the tupled argument through the
-# projection.  Two datatypes have one so far:
+# Every datatype has one: `<ty>_wf_subterm`, stated on the bare component
+# relation, generated from the constructor list by `core/datgen.py` when the
+# block is loaded.  nat and list state the same lemma in their own file --
+# they predate that module -- and nothing distinguishes them here: the
+# generator rebuilds the relation from the registered constructors, which is
+# the construction the lemma was generated from, and uses the lemma itself
+# only as the well-foundedness fact the emitted `wf` obligation is
+# discharged with (`_rel_wf_entry`).  A file that states some other relation
+# for its datatype shows up as a failing `rule <ty>_wf_subterm` when the
+# item is replayed -- a failed item, never a silent mismatch.
 #
-#   nat   -- "the argument of Suc", `%a b. b = Suc a`, whose
-#            well-foundedness (`nat_wf_subterm`) is proved from
-#            nat_induct.  The order `<` is not usable: it is defined by a
-#            `fun` later in nat.pyhol, so the first definitions cannot
-#            see it.
-#   list  -- the proper-tail relation `%a b. EX z. b = z # a`, whose
-#            well-foundedness (`list_wf_subterm`) is proved from
-#            list_induct the same way
+# The relation lives on the component the equations pattern-match on and is
+# lifted to the tupled argument through the projection, so the lift is
+# exactly `wf_measure_gen`.
 #
-# Both lemmas are stated on the bare component, so the lift is exactly
-# `wf_measure_gen`, and the scheme extends to any datatype that has such
-# a lemma (gcl's scalarValue, expr's aexp) once it is proved.
+# The *destructor* side is still per datatype (`destructor`, `_RULE_OF`, and
+# the witness for an existential obligation): a datatype outside nat and
+# list needs its constructor-argument destructors first, which is the other
+# half of this increment.
 # ---------------------------------------------------------------------------
 
-_SUBTERM = {
-    'nat': ('(%a::nat. %b::nat. b = Suc a)', 'nat_wf_subterm'),
-    'list': ("(%a::'a list. %b::'a list. ?z::'a. b = z # a)",
-             'list_wf_subterm'),
-}
+def _type_inst(pat, T, tyinst):
+    """Extend tyinst so that the type `pat` becomes `T`; False if it cannot."""
+    if pat.is_tvar():
+        if pat.name in tyinst:
+            return tyinst[pat.name] == T
+        tyinst[pat.name] = T
+        return True
+    if (pat.is_tconst() and T.is_tconst() and pat.name == T.name
+            and len(pat.args) == len(T.args)):
+        return all(_type_inst(p, t, tyinst)
+                   for p, t in zip(pat.args, T.args))
+    return False
+
+
+def _inst_type(ty, tyinst):
+    """Replace the type variables of `ty` by their instances.
+
+    `Type.subst` only instantiates *schematic* variables (kernel/type.py),
+    and the registered constructors carry rigid ones; replacing a variable
+    by a compound type (`'a := 'a list`, as recursion through `'a list
+    list` needs) is not something a rigid variable can hold anyway, so the
+    tree is rebuilt here.
+    """
+    if ty.is_tvar() or ty.is_stvar():
+        return tyinst.get(ty.name, ty)
+    if ty.is_tconst():
+        return TConst(ty.name, *[_inst_type(a, tyinst) for a in ty.args])
+    return ty
+
+
+def _registered_constrs(T):
+    """The datatype's constructors, instantiated at T's type arguments.
+
+    The registry holds them at the datatype's own type variables
+    (`cons : 'a => 'a list => 'a list`).  The recursion position can carry
+    type arguments of its own -- `concat : 'a list list => 'a list`
+    descends through `'a list list`, whose constructor argument is
+    `'a list` -- so the constructor's result type is matched against T to
+    get the instantiation, and the relation and its witness types come out
+    at the right instance.
+    """
+    from kernel import theory
+    constrs = theory.thy.get_datatype_constrs(T.name)
+    if not constrs:
+        return None
+    res = []
+    for c in constrs:
+        cT = c.get_type()
+        _, resT = cT.strip_type()
+        tyinst = {}
+        if not _type_inst(resT, T, tyinst):
+            return None
+        res.append({'name': c.name, 'type': _inst_type(cT, tyinst)})
+    return res
+
+
+def _relation(T):
+    """The datatype's subterm relation, built from its constructors."""
+    from core import datgen
+    constrs = _registered_constrs(T)
+    if constrs is None:
+        raise FunGenError(
+            'no well-founded relation is known for recursion on %s: the '
+            'datatype is not registered' % printer.print_type(T))
+    pairs = datgen.subterm_pairs(T, constrs)
+    if not pairs:
+        raise FunGenError(
+            'recursion on %s: no constructor takes the datatype itself'
+            % printer.print_type(T))
+    return datgen.relation_term(T, constrs, pairs)
 
 
 def _subterm(T):
-    """(relation on the component, its well-foundedness lemma)."""
-    if T == NatType:
-        return _SUBTERM['nat']
-    if T.is_tconst() and T.name in _SUBTERM:
-        return _SUBTERM[T.name]
-    raise FunGenError(
-        "no well-founded relation is known for recursion on %s"
-        % printer.print_type(T))
+    """(relation on the component, its well-foundedness lemma).
+
+    The lemma is looked for rather than assumed: a datatype block states it
+    at load time, and a definition whose imports do not carry that block
+    cannot discharge the obligation.
+    """
+    from kernel import theory
+    if not T.is_tconst():
+        raise FunGenError(
+            'no well-founded relation is known for recursion on %s'
+            % printer.print_type(T))
+    lemma = '%s_wf_subterm' % T.name
+    try:
+        theory.get_theorem(lemma)
+    except Exception:
+        raise FunGenError(
+            '%s is not in scope, so recursion on %s has no well-founded '
+            'relation to descend through' % (lemma, printer.print_type(T)))
+    return '(%s)' % _prints(_relation(T)), lemma
 
 
 # ---------------------------------------------------------------------------
@@ -375,13 +454,6 @@ def _arg_text(t):
     """A term used as an argument: applications need parentheses."""
     text = _prints(t)
     return "(%s)" % text if t.is_comb() else text
-
-
-def _proj_text(arg_types, r, text):
-    """The recursion component of a term written as text."""
-    if len(arg_types) == 1:
-        return text
-    return "%s %s" % ('fst' if r == 0 else 'snd', text)
 
 
 def _eq_args(eq):
@@ -607,40 +679,33 @@ def _proj_const(arg_types, r):
 def _decrease_prop(arg_types, r, tcall, t):
     """The decrease obligation, in the shape the goal's condition has.
 
-    The relation is a lambda and its projections are left un-reduced
-    here: that is exactly the form the goal's relation condition takes,
-    and the projection rules are applied inside the obligation's own
-    proof.  Unfolding the relation inside the goal instead would leave a
-    beta redex the later rewrites cannot see through.
+    The relation is applied to the projection terms without reducing them:
+    that is exactly the form the goal's relation condition takes, and the
+    projection rules are applied inside the obligation's own proof.
+    Unfolding the relation inside the goal instead would leave a beta redex
+    the later rewrites cannot see through.
     """
     T = arg_types[r]
     call = _proj_term(arg_types, r, tcall)
     pat = _proj_term(arg_types, r, t)
-    with global_setting(unicode=True):
-        if T == NatType:
-            return "%s = Suc %s" % (_prints(pat), _arg_text(call))
-        if T.is_tconst() and T.name == 'list':
-            return "(?z::%s. %s = z # %s)" % (
-                _printt(T.args[0]), _prints(pat), _arg_text(call))
-    raise FunGenError('no decrease obligation known for recursion on %s'
-                      % printer.print_type(T))
+    return _prints(_relation(T)(call)(pat).beta_norm())
 
 
 def _decrease_closes(arg_types, r, tcall, t):
     """Whether the projection rules themselves close the obligation.
 
-    For nat the obligation is an equality that the rules resolve to an
-    identity (`Suc m = Suc m`), so the last rule closes the goal.  For
-    list it is an existential, which no rewrite can close.  This is the
-    one place the emitted counter depends on the method layer's automatic
-    closing, and it is decided here from the terms, not by asking.
+    The obligation is the relation applied to the recursive call and the
+    pattern; for nat that is an equality the rules resolve to an identity
+    (`Suc m = Suc m`), so the last rule closes the goal.  For list it is an
+    existential, which no rewrite can close.  This is the one place the
+    emitted counter depends on the method layer's automatic closing, and it
+    is decided here from the terms, not by asking: the reduced obligation is
+    reflexive.
     """
     T = arg_types[r]
-    if T != NatType:
-        return False
-    return _reduce(_proj_term(arg_types, r, t)) == \
-        Const('Suc', TFun(NatType, NatType))(
-            _reduce(_proj_term(arg_types, r, tcall)))
+    call = _proj_term(arg_types, r, tcall)
+    pat = _proj_term(arg_types, r, t)
+    return _reduce(_relation(T)(call)(pat).beta_norm()).is_reflexive()
 
 
 def _body_term(name, arg_types, res_type, eqs, r, p=None):
@@ -676,21 +741,17 @@ def _rel_body(arg_types, r):
 
     The def's right hand side is the whole lambda: `wf <c>_rel` is
     unfolded by rewriting the unapplied constant, which only works if the
-    definitional equation is `c_rel = (%p. %q. ...)`.
+    definitional equation is `c_rel = (%p. %q. ...)`.  The body is the
+    datatype's component relation applied to the projected tuple
+    components, so it is the same proposition the lifted condition is.
     """
     T = arg_types[r]
     Tup = _printt(tupled_type(arg_types))
-    p = _proj_text(arg_types, r, 'p')
-    q = _proj_text(arg_types, r, 'q')
-    with global_setting(unicode=True):
-        if T == NatType:
-            body = "%s = Suc (%s)" % (q, p)
-        elif T.is_tconst() and T.name == 'list':
-            body = "?z::%s. %s = z # %s" % (_printt(T.args[0]), q, p)
-        else:
-            raise FunGenError('no relation known for recursion on %s'
-                              % printer.print_type(T))
-        return "%%p::%s. %%q::%s. %s" % (Tup, Tup, body)
+    p = Var('p', tupled_type(arg_types))
+    q = Var('q', tupled_type(arg_types))
+    body = _relation(T)(_proj_term(arg_types, r, p))(
+        _proj_term(arg_types, r, q)).beta_norm()
+    return "%%p::%s. %%q::%s. %s" % (Tup, Tup, _prints(body))
 
 
 def _wf_fact(prover, cname, arg_types, g):

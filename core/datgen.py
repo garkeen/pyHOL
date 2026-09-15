@@ -67,9 +67,15 @@ from core import fungen
 
 
 def constr_args(constr):
-    """(argument types, argument names) of a constructor."""
+    """(argument types, argument names) of a constructor.
+
+    The names are empty when the constructor comes from the theory's
+    registry rather than from a datatype block: they are only needed to
+    name the proof's variables, which the generated lemma does from the
+    block.
+    """
     argT, _ = constr['type'].strip_type()
-    return list(argT), list(constr['args'])
+    return list(argT), list(constr.get('args', []))
 
 
 def subterm_pairs(T, constrs):
