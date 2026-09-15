@@ -605,6 +605,94 @@ def expand_item(data, content):
         return None
 
 
+def size_fun_lines(name, args, nullary, recursive, rec_pos):
+    """The `<ty>_size` definition, as `fun` item lines.
+
+    One equation per constructor, the nullary constructor first (the
+    emitter's branch structure requires it): 1 for the constructor plus
+    the sizes of its recursive arguments.  This is a source definition on
+    purpose -- the equations are then derived from the relation's
+    well-foundedness like any other `fun`, instead of being asserted, and
+    the destructor family the emitter needs is part of the same block.
+    """
+    T = TConst(name, *[TVar(a) for a in args])
+    sz = '%s_size' % name
+    lines = ['fun %s :: %s ⇒ nat' % (sz, fungen._printt(T))]
+    for constr, rec in ((nullary, None), (recursive, rec_pos)):
+        argT, argnames = constr_args(constr)
+        pat = Const(constr['name'], constr['type'])(
+            *[Var(nm, Ty) for nm, Ty in zip(argnames, argT)])
+        rhs = ' + '.join(['1'] + (['%s %s' % (sz, argnames[rec])]
+                                  if rec is not None else []))
+        lines.append('  | %s %s = %s'
+                     % (sz, fungen._arg_text(pat) if argnames else fungen._prints(pat),
+                        rhs))
+    return lines
+
+
+def size_less_lines(name, args, recursive, rec_pos):
+    """`<ty>_size` strictly decreases from a constructor argument.
+
+    The one fact a size is for: the recursive argument of the pattern is
+    smaller than the pattern.  With the generated equation that is
+    `size x < 1 + size x`, i.e. `size x < Suc (size x)`, i.e. `size x ≤
+    size x`.
+    """
+    T = TConst(name, *[TVar(a) for a in args])
+    argT, argnames = constr_args(recursive)
+    vars_ = [Var(nm, Ty) for nm, Ty in zip(argnames, argT)]
+    pat = Const(recursive['name'], recursive['type'])(*vars_)
+    prover = _Proof()
+    sz = '%s_size' % name
+    g = prover.step('\u2190 rewrite %s_def_2 goal=0' % sz)
+    g = prover.step('\u2190 rewrite add_1_left goal=%d' % g)
+    g = prover.step('\u2190 rewrite less_Suc_lesseq goal=%d' % g)
+    prover.step('\u2190 rule lesseq_refl goal=%d' % g, new=0)
+    return ['theorem %s_size_less' % name,
+            '  fixes %s' % ', '.join('%s :: %s' % (v.name, fungen._printt(v.T))
+                                     for v in vars_),
+            '  prop %s %s < %s %s' % (sz, argnames[rec_pos], sz,
+                                      fungen._arg_text(pat)),
+            'proof'] + prover.text() + ['qed']
+
+
+def expand_size(data):
+    """The datatype's size family, or None.
+
+    `<ty>_size` is a generated `fun`: its equations are derived by the
+    emitter, which means this is exactly where that emitter's shape limits
+    show -- two constructors, a nullary one, and a single recursive
+    argument.  Where they do not hold nothing is emitted, and an
+    axiomatized size function is what this phase exists to remove.
+
+    `<ty>_size_less` is emitted with it: a size whose only use is the
+    decrease obligation is worth having only together with the fact that
+    argument is smaller than the pattern it came from.
+    """
+    name = data['name']
+    constrs = _parsed_constrs(data)
+    if len(constrs) != 2:
+        return None
+    nullary = [c for c in constrs if not constr_args(c)[0]]
+    recursive = [c for c in constrs if constr_args(c)[0]]
+    if len(nullary) != 1 or len(recursive) != 1:
+        return None
+    T = TConst(name, *[TVar(a) for a in data['args']])
+    argT, _ = constr_args(recursive[0])
+    rec_positions = [j for j, Ty in enumerate(argT) if Ty == T]
+    if len(rec_positions) != 1:
+        return None
+    rec_pos = rec_positions[0]
+    item = fungen._entry(size_fun_lines(name, data['args'], nullary[0],
+                                        recursive[0], rec_pos))
+    derived = fungen.expand_item(item)
+    if derived is None:
+        return None
+    derived.append(fungen._entry(size_less_lines(name, data['args'],
+                                                 recursive[0], rec_pos)))
+    return derived
+
+
 def _expand(data, content):
     name = data['name']
     constrs = _parsed_constrs(data)

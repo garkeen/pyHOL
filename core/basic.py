@@ -381,8 +381,36 @@ def load_theory_cache(filename):
         cache['content'] = []
 
         def _load_group(group):
-            """Hash, parse and register a group of consecutive items."""
+            """Hash, parse and register a group of consecutive items.
+
+            A `fun` definition in the group expands into its own group
+            (phase 4): its equations are then derived from a
+            well-foundedness obligation instead of being asserted.  The
+            expansion happens here, where the loader reaches the block, so
+            the items before it are already registered -- the generator
+            prints terms mentioning them (hd/tl, the datatype's own
+            destructors) and would otherwise fail to type them.  Derived
+            items share the parent block's `_src`, so editing the `fun`
+            block invalidates the group whole.
+
+            Definitions outside what the generator supports keep the
+            current axiomatization: their equations show up as AXIOM in the
+            status table.  Set HOLPY_FUNGEN_DEBUG to see the exception.
+            """
             for item in group:
+                if item.get('ty') == 'def.ind':
+                    from core import fungen
+                    try:
+                        derived = fungen.expand_item(item)
+                    except Exception:
+                        if os.environ.get('HOLPY_FUNGEN_DEBUG'):
+                            raise
+                        derived = None
+                    if derived is not None:
+                        for derived_item in derived:
+                            derived_item['_src'] = item.get('_src')
+                        _load_group(derived)
+                        continue
                 # Hash the item's exact source block (see syntax.pyhol
                 # `_src`), so the incremental verifier can tell which
                 # items changed instead of invalidating the whole file.
@@ -402,51 +430,35 @@ def load_theory_cache(filename):
                         pass  # Skip duplicates
 
         for index, item_data in enumerate(data['content']):
-            # A `fun` definition expands into its own group of items
-            # (phase 4): its equations are then derived from a
-            # well-foundedness obligation instead of being asserted.
-            # The expansion happens here, where the loader reaches the
-            # block, so the file's earlier items are already registered --
-            # the generator prints terms mentioning them (hd/tl, for
-            # instance) and would otherwise fail to type them.
-            #
-            # Definitions outside what the generator supports keep the
-            # current axiomatization.  Derived items share the parent
-            # block's `_src`, so editing the `fun` block invalidates the
-            # group whole.
-            group = [item_data]
-            if item_data.get('ty') == 'def.ind':
-                from core import fungen
-                try:
-                    derived = fungen.expand_item(item_data)
-                except Exception:
-                    # Anything the generator cannot handle -- or fails on
-                    # -- leaves the definition axiomatized, so a file never
-                    # breaks because of the expansion.  The equations it
-                    # still asserts show up as AXIOM in the status table.
-                    # HOLPY_FUNGEN_DEBUG surfaces the exception instead.
-                    if os.environ.get('HOLPY_FUNGEN_DEBUG'):
-                        raise
-                    derived = None
+            # A datatype expands into the well-foundedness of its subterm
+            # relation, which `fun` recursion on it descends through, and
+            # into its destructor family (datgen).  The block itself is
+            # registered first -- it is what declares the type and the
+            # constructor axioms the generated proofs cite; the relation
+            # and the destructors are generated next, and the size family
+            # last, since its equations are themselves a generated `fun`
+            # and are expanded by the machinery above.  A file that states
+            # the lemma itself gets nothing generated.  Set
+            # HOLPY_DATGEN_DEBUG to see a generator exception instead of
+            # the silent fallback.
+            _load_group([item_data])
+            if item_data.get('ty') == 'type.ind':
+                from core import datgen
+                derived = datgen.expand_item(item_data, data['content'])
                 if derived is not None:
                     for derived_item in derived:
                         derived_item['_src'] = item_data.get('_src')
-                    group = derived
+                    _load_group(derived)
 
-            # A datatype expands into the well-foundedness of its subterm
-            # relation, which `fun` recursion on it descends through
-            # (datgen).  The block itself is registered first -- it is what
-            # declares the type and the constructor axioms the generated
-            # proof cites -- and the generated items are appended to it.  A
-            # file that states the lemma itself gets nothing generated.
-            # Set HOLPY_DATGEN_DEBUG to see a generator exception instead
-            # of the silent fallback.
-            gen_datatype = item_data if item_data.get('ty') == 'type.ind' else None
-
-            _load_group(group)
-            if gen_datatype is not None:
+        # A datatype's size family is a generated `fun`, and its equations
+        # use the destructor family; a file may declare those destructors
+        # anywhere (nat's `Pre` and list's `hd`/`tl` come after their
+        # datatypes), so the size family is generated once the file is
+        # whole.
+        for item_data in data['content']:
+            if item_data.get('ty') == 'type.ind':
                 from core import datgen
-                derived = datgen.expand_item(gen_datatype, data['content'])
+                derived = datgen.expand_size(item_data)
                 if derived is not None:
                     for derived_item in derived:
                         derived_item['_src'] = item_data.get('_src')
