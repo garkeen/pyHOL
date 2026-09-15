@@ -113,25 +113,63 @@ class FunGenTest(unittest.TestCase):
             fungen._expand({'name': 'g', 'type': printer_type(ty),
                             'rules': [{'prop': 'g (Suc n) = Suc n'}]})
 
-    def test_rejects_unwritable_items(self):
-        """What the emitted text cannot carry is not emitted at all.
+    def test_writes_out_types_an_equation_cannot_carry(self):
+        """An equation is emitted with the types it cannot carry written out.
 
-        The loader drops an item it cannot parse, so a group whose text
-        does not type -- an equation with no variable to carry the
-        item's type variables, or a type the printer writes in a way the
-        parser reads back differently -- must keep the axioms instead of
-        being emitted.
+        The item parser types an equation from the item's `fixes`
+        variables, so a variable-free equation has to name the
+        definition's type variables in its own text; otherwise the loader
+        drops the item, and with it the definition it belongs to.  The
+        types written out are the printed ones, which read back as
+        themselves (`('a × 'b) list` used to print as `'a × ('b list)`).
         """
         basic.load_theory('list')
-        ta, tb = TVar('a'), TVar('b')
+        ta = TVar('a')
         ty = TFun(TConst('list', ta), TConst('list', ta))
-        with self.assertRaises(fungen.FunGenError):
-            fungen._expand({'name': 'g2', 'type': printer_type(ty),
-                            'rules': [{'prop': 'g2 [] = []'},
-                                      {'prop': 'g2 (x # xs) = g2 xs'}]})
-        # `('a × 'b) list` prints as `'a × 'b list`, i.e. `'a × ('b list)`.
-        with self.assertRaises(fungen.FunGenError):
-            fungen._printt(TConst('list', TConst('prod', ta, tb)))
+        entries = fungen._expand(
+            {'name': 'g2', 'type': printer_type(ty),
+             'rules': [{'prop': 'g2 [] = []'},
+                       {'prop': 'g2 (x # xs) = g2 xs'}]})
+        by_name = {entry['name']: entry for entry in entries}
+        self.assertEqual(by_name['g2_def_1']['prop'],
+                         "g2 ([]::'a list) = ([]::'a list)")
+        # The source's own text is kept whenever it carries the types.
+        self.assertEqual(by_name['g2_def_2']['prop'], 'g2 (x # xs) = g2 xs')
+        self.assertEqual(fungen._printt(TConst('list', TConst('prod', ta, TVar('b')))),
+                         "('a × 'b) list")
+
+    def test_equation_text_names_its_types(self):
+        """An equation that cannot carry its types is written out with them.
+
+        The item parser types an equation from the item's `fixes`
+        variables, so a variable-free equation has to name the
+        definition's type variables in its own text or the loader drops
+        the item -- and with it the definition it belongs to.
+        """
+        basic.load_theory('list')
+        ta = TVar('a')
+        ty = TFun(TConst('list', ta), TConst('list', ta))
+        with context.fresh_context(defs={'butlast': ty}):
+            eq = context.parse_term('butlast [] = []')
+        self.assertEqual(
+            fungen._equation_text('butlast', ty, 'butlast [] = []', eq),
+            "butlast ([]::'a list) = ([]::'a list)")
+        # The source's own text is kept whenever it can carry them.
+        self.assertEqual(
+            fungen._equation_text('butlast', ty, "butlast ([]::'a list) = []",
+                                  eq),
+            "butlast ([]::'a list) = []")
+
+    def test_body_kept_whole(self):
+        """A body ending in a list literal is bracketed.
+
+        A `def` item is a single line and its parser reads a trailing
+        `[...]` group as that item's attribute list, which would leave
+        the body truncated at the operator before it.
+        """
+        self.assertEqual(fungen._kept_whole('g (tl p) @ [hd p]'),
+                         '(g (tl p) @ [hd p])')
+        self.assertEqual(fungen._kept_whole('g (tl p)'), 'g (tl p)')
 
 
 def printer_type(ty):

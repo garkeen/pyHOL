@@ -331,6 +331,27 @@ class PrinterTest(unittest.TestCase):
         for t, s in test_data:
             self.assertEqual(printer.print_term(t), s)
 
+    def testPrintTypeBrackets(self):
+        """An argument that prints with an operator takes its own brackets.
+
+        The grammar reads a type constructor's argument as an atom, so
+        `('a × 'a) list` without brackets reads as `'a × ('a list)`, and
+        the printed form of a type has to read back as that type.
+        """
+        from syntax import parser
+        prod = TConst('prod', Ta, Ta)
+        lst = TConst('list', prod)
+        test_data = [
+            (lst, "('a × 'a) list"),
+            (TConst('list', TFun(Ta, Ta)), "('a ⇒ 'a) list"),
+            (TFun(lst, lst), "('a × 'a) list ⇒ ('a × 'a) list"),
+        ]
+
+        with global_setting(unicode=True):
+            for T, s in test_data:
+                self.assertEqual(printer.print_type(T), s)
+                self.assertEqual(parser.parse_type(s), T)
+
     def testPrintWithType(self):
         test_data = [
             (list.nil(Ta), "([]::'a list)"),

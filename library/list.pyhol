@@ -37,15 +37,15 @@ proof
   ← apply_prev goal=22 facts=[23,24]
 qed
 
-fun length :: 'a list ⇒ nat
-  | length ([]::'a list) = 0
-  | length (x # xs) = Suc (length xs)
-
 fun hd :: 'a list ⇒ 'a
   | hd (x # xs) = x
 
 fun tl :: 'a list ⇒ 'a list
   | tl (x # xs) = xs
+
+fun length :: 'a list ⇒ nat
+  | length ([]::'a list) = 0
+  | length (x # xs) = Suc (length xs)
 
 fun nth :: 'a list ⇒ nat ⇒ 'a
   | nth l 0 = hd l

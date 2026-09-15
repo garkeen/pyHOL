@@ -10,14 +10,10 @@ theory is left unparsed.
 Passive: the shapes still outside the increment stay as `def.ind` items,
 i.e. axiomatized.  In `nat` and `prod` those are the datatype's own
 projections (`Pre`, `fst`, `snd` -- they cannot use themselves as
-destructors).  In `list` they are the definitions whose *emitted text*
-does not survive being written as an item: `rev`/`butlast`/`concat`
-because their first equation has no variable to carry the item's type
-variables (`rev [] = []`) and `butlast`/`concat` do not name them,
-`zip` because the printer writes its result type `('a × 'b) list` as
-`'a × 'b list` (i.e. `'a × ('b list)`), plus the definitions with more
-than two arguments, more than one recursive call or a single equation.
-That boundary is asserted here so it cannot widen unnoticed.
+destructors).  In `list` they are the definitions with a single
+equation, more than two arguments or more than one recursive call, the
+projections `hd`/`tl`, and `set` (whose rules do not parse where it
+stands).  That boundary is asserted here so it cannot widen unnoticed.
 """
 
 import unittest
@@ -33,9 +29,9 @@ EXPANDED = ['plus', 'times', 'power', 'Sigma', 'less_eq', 'less', 'minus',
 STILL_AXIOMATIZED = {'nat': ['Pre'], 'prod': ['fst', 'snd']}
 # list.pyhol's recursive definitions: the ones the generator emits, and
 # the ones it leaves axiomatized.
-LIST_EXPANDED = ['append', 'distinct', 'drop', 'itrev', 'map', 'nth', 'take']
-LIST_STILL_AXIOMATIZED = ['rev', 'butlast', 'concat', 'zip', 'length', 'set',
-                          'filter', 'remdups', 'foldr', 'foldl',
+LIST_EXPANDED = ['append', 'butlast', 'concat', 'distinct', 'drop', 'itrev',
+                 'length', 'map', 'nth', 'rev', 'take', 'zip']
+LIST_STILL_AXIOMATIZED = ['set', 'filter', 'remdups', 'foldr', 'foldl',
                           'list_update', 'last', 'hd', 'tl']
 
 
@@ -85,16 +81,21 @@ class FunGenLibraryTest(unittest.TestCase):
         One per shape the emitted proofs branch on: recursion on the
         first and on the second argument of a two-argument definition,
         recursion on a single argument (the decrease obligation is
-        already an identity there), and the list's existential
-        obligation, whose proof ends on an instance rather than on the
-        obligation itself.
+        already an identity there), the list's existential obligation,
+        whose proof ends on an instance rather than on the obligation
+        itself, and the equations whose types the emitter has to write
+        out (`length`'s first equation), whose body has to be kept whole
+        (`rev`, whose body ends in a list literal) or whose result type
+        the printer used to mangle (`zip`).
         """
         from core import context
         from core.verify import COMPUTATION_ORACLES, _replay
         from kernel import theory
         for thy, name in [('nat', 'nat_plus_def_2'), ('nat', 'nat_less_def_2'),
                           ('nat', 'fact_def_2'), ('nat', 'nat_plus_rel_wf'),
-                          ('list', 'map_def_2'), ('list', 'itrev_def_2')]:
+                          ('list', 'map_def_2'), ('list', 'itrev_def_2'),
+                          ('list', 'length_def_1'), ('list', 'rev_def_2'),
+                          ('list', 'zip_def_2')]:
             item = self._by_name(name, thy)
             self.assertIsNotNone(item, 'no generated item %s' % name)
             with theory.fresh_theory():

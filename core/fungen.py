@@ -515,6 +515,17 @@ def _in_def_prop(cname, arg_types, res_type):
             % (cname, in_ty, cname, cname))
 
 
+def _kept_whole(body_prop):
+    """A definition's right-hand side, in a form the item parser keeps whole.
+
+    A `def` item is one line, and the item parser reads a trailing
+    `[...]` group as that item's attribute list.  A body ending in a
+    list literal (`... @ [hd p]`) would lose it to the attributes and be
+    left truncated at the `@`; the parentheses make the line end on `)`.
+    """
+    return '(%s)' % body_prop if body_prop.endswith(']') else body_prop
+
+
 def _def_entries(name, cname, arg_types, res_type, body_prop, rel_prop):
     """The definitional entries: H, rel, in, and the curried constant."""
     Tup = tupled_type(arg_types)
@@ -522,7 +533,8 @@ def _def_entries(name, cname, arg_types, res_type, body_prop, rel_prop):
     h_ty = _printt(TFun(TFun(Tup, res_type), TFun(Tup, res_type)))
     in_ty = _printt(TFun(Tup, res_type))
     f_ty = _printt(TFun(*(list(arg_types) + [res_type])))
-    res = ['def %s_H :: %s = %s_H g p = %s' % (cname, h_ty, cname, body_prop),
+    res = ['def %s_H :: %s = %s_H g p = %s'
+           % (cname, h_ty, cname, _kept_whole(body_prop)),
            'def %s_rel :: %s = %s_rel = (%s)' % (cname, _rel_ty_text(arg_types),
                                                  cname, rel_prop),
            'def %s_in :: %s = %s_in = (SOME g. !z. g z = wfrec_H %s_rel %s_H '
@@ -836,8 +848,6 @@ def _expand(data):
     if len(eqs) != 2:
         raise FunGenError('fun %s: %d equations; the emitter handles two '
                           'branches so far' % (name, len(eqs)))
-    for i, eq in enumerate(eqs):
-        _require_parsable_prop(name, ty, data['rules'][i]['prop'], eq)
     _, nullary_args = lhs[0][r].strip_comb()
     if nullary_args:
         raise FunGenError('fun %s: the nullary-constructor equation must come '
@@ -860,16 +870,16 @@ def _expand(data):
         _body_prop(name, arg_types, res_type, eqs, r), _rel_body(arg_types, r))]
     entries.append(_entry(_rel_wf_entry(cname, arg_types, r)))
     for i, eq in enumerate(eqs):
+        eq_text = _equation_text(name, ty, data['rules'][i]['prop'], eq)
         text = ['theorem %s_def_%d' % (cname, i + 1),
                 '  fixes %s' % _typenames(sorted(eq.get_vars(),
                                                  key=lambda v: v.name)),
-                '  prop %s' % data['rules'][i]['prop'],
+                '  prop %s' % eq_text,
                 '  [hint_rewrite]',
                 'proof']
         if i == 0:
             text.extend(_def_base_entry(name, cname, arg_types, res_type, eq,
-                                        r, cond, data['rules'][0]['prop'],
-                                        rules[0]))
+                                        r, cond, eq_text, rules[0]))
         else:
             text.extend(_def_rec_entry(name, cname, arg_types, res_type, eq, r,
                                        lhs[0], tupled_arg(calls[0]),
@@ -884,23 +894,83 @@ def _require_parsable_prop(name, ty, text, eq):
     """Refuse an equation whose text cannot be typed as an item.
 
     The emitted equations are the source's own text, parsed by the item
-    parser with the definition's constant already in the theory.  A
-    variable-free equation has nothing to carry the item's type
-    variables, so they only survive if the text names them itself
-    (`distinct ([]::'a list) ⟷ true` does; `butlast [] = []` does not,
-    and its `[]` stays untyped).  The loader drops an item it cannot
-    parse, which would leave the file with a definition whose first
-    equation is missing, so the definition keeps its axioms instead.
+    parser with the definition's constant already in the theory.  It is
+    typed from the item's `fixes` variables, so every type variable of
+    the definition has to be pinned by one of them or named in the text
+    itself (`butlast [] = []` pins nothing and its `[]` stays untyped;
+    `distinct ([]::'a list) ⟷ true` names its variable and parses).
+    The loader drops an item it cannot parse, which would leave the file
+    with a definition whose first equation is missing, so the definition
+    keeps its axioms instead.
     """
-    if eq.get_vars():
-        return
     named = set(re.findall(r"'[A-Za-z_][A-Za-z0-9_]*", text))
-    missing = [v.name for v in ty.get_tvars() if "'" + v.name not in named]
+    carried = set()
+    for v in eq.get_vars():
+        for tv in v.T.get_tvars():
+            carried.add("'" + tv.name)
+    missing = [tv.name for tv in ty.get_tvars()
+               if "'" + tv.name not in named | carried]
     if missing:
         raise FunGenError(
-            'fun %s: the equation %s has no variable to carry the type '
-            'variable %s, so the emitted item cannot be typed'
+            'fun %s: the equation %s carries neither the type variable %s '
+            'nor anything to pin it down, so the emitted item cannot be typed'
             % (name, text, ", ".join("'" + m for m in missing)))
+
+
+def _equation_text(name, ty, text, eq):
+    """The text of an emitted equation, in a form the item parser keeps.
+
+    It is the source's own text whenever that can be typed, and the
+    equation with the types the source left implicit written out
+    otherwise: a variable-free equation has nothing else to carry the
+    definition's type variables (`butlast [] = []` becomes
+    `butlast ([]::'a list) = ([]::'a list)`), and an item the loader
+    cannot type is dropped, which would leave the file with a definition
+    whose first equation is missing.
+    """
+    missing = _missing_type_vars(ty, text, eq)
+    if not missing:
+        return text
+    printed = _ascribed_eq(name, eq, set(missing))
+    if _missing_type_vars(ty, printed, eq):
+        _require_parsable_prop(name, ty, text, eq)
+    return printed
+
+
+def _ascribed_eq(name, eq, missing):
+    """The equation written out with the given type variables named.
+
+    The item parser types an equation from the item's `fixes` variables
+    and from the definition's own type, and it is the latter that is
+    instantiated with fresh *anonymous* variables there: a type variable
+    no `fixes` variable mentions stays untyped and the item does not
+    parse.  Naming it in the text is what fixes it.  The head is written
+    as the plain name, so printing never has to look up the constant
+    being defined, which is not in the theory yet.
+    """
+    _, args = eq.lhs.strip_comb()
+    parts = [name] + [_ascribed_term(a, missing) for a in args]
+    return "%s = %s" % (" ".join(parts), _ascribed_term(eq.rhs, missing))
+
+
+def _ascribed_term(t, missing):
+    """A term, ascribed with its own type when that names a missing one."""
+    text = _prints(t)
+    Ty = t.get_type()
+    if any("'" + tv.name in missing for tv in Ty.get_tvars()):
+        text = "(%s::%s)" % (text, _printt(Ty))
+    return text
+
+
+def _missing_type_vars(ty, text, eq):
+    """The definition's type variables the given text cannot pin down."""
+    named = set(re.findall(r"'[A-Za-z_][A-Za-z0-9_]*", text))
+    carried = set()
+    for v in eq.get_vars():
+        for tv in v.T.get_tvars():
+            carried.add("'" + tv.name)
+    return [tv.name for tv in ty.get_tvars()
+            if "'" + tv.name not in named | carried]
 
 
 def _require_parsable_defs(entries, name):

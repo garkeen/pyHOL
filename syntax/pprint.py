@@ -218,6 +218,17 @@ def get_ast_type(T):
     """Obtain the abstract syntax tree for a type."""
     typecheck.checkinstance('get_ast_type', T, Type)
 
+    def is_infix(U):
+        """Whether U prints with an operator rather than as an atom.
+
+        Such an argument needs its own parentheses wherever it appears as
+        the argument of a type constructor: the grammar reads a
+        constructor's argument as an atom, so `list ('a × 'b)` written
+        without them means `'a × ('b list)`.
+        """
+        return U.is_fun() or (settings.unicode and U.is_tconst()
+                              and U.name == 'prod' and len(U.args) == 2)
+
     def helper(T):
         if T.is_stvar():
             return STVarName(T.name)
@@ -228,8 +239,9 @@ def get_ast_type(T):
                 return TypeConstr(T.name, [])
             elif len(T.args) == 1:
                 arg_ast = helper(T.args[0])
-                # Insert parenthesis if the single argument is a function.
-                if T.args[0].is_fun():
+                # Insert parenthesis if the single argument is a function
+                # or a product (both print with an operator).
+                if is_infix(T.args[0]):
                     arg_ast = Bracket(arg_ast)
                 return TypeConstr(T.name, [arg_ast])
             elif T.is_fun():
@@ -243,7 +255,8 @@ def get_ast_type(T):
                 return FunType(arg1_ast, fun_op, arg2_ast)
             elif T.name == 'prod' and len(T.args) == 2 and settings.unicode:
                 # Product type prints as 'a × 'b in unicode mode; ascii
-                # mode falls back to ('a,'b) prod.
+                # mode falls back to ('a,'b) prod.  The product associates
+                # to the right, so a product on the left takes brackets.
                 arg1_ast = helper(T.args[0])
                 if T.args[0].is_fun() or (T.args[0].is_tconst() and
                                           T.args[0].name == 'prod'):
@@ -253,7 +266,13 @@ def get_ast_type(T):
                     arg2_ast = Bracket(arg2_ast)
                 return FunType(arg1_ast, " × ", arg2_ast)
             else:
-                return TypeConstr(T.name, [helper(arg) for arg in T.args])
+                arg_asts = []
+                for arg in T.args:
+                    arg_ast = helper(arg)
+                    if is_infix(arg):
+                        arg_ast = Bracket(arg_ast)
+                    arg_asts.append(arg_ast)
+                return TypeConstr(T.name, arg_asts)
         else:
             raise TypeError
 
