@@ -380,6 +380,27 @@ def load_theory_cache(filename):
         cache['item_hashes'] = []
         cache['content'] = []
 
+        def _load_group(group):
+            """Hash, parse and register a group of consecutive items."""
+            for item in group:
+                # Hash the item's exact source block (see syntax.pyhol
+                # `_src`), so the incremental verifier can tell which
+                # items changed instead of invalidating the whole file.
+                src = item.get('_src')
+                if src is not None:
+                    block = '\n'.join(source_lines[src[0]:src[1]])
+                else:
+                    block = json.dumps(item, sort_keys=True, default=str)
+                cache['item_hashes'].append(
+                    hashlib.sha1(block.encode('utf-8')).hexdigest())
+                item = items.parse_item(item)
+                cache['content'].append(item)
+                if item.error is None:
+                    try:
+                        theory.thy.unchecked_extend(item.get_extension())
+                    except TheoryException:
+                        pass  # Skip duplicates
+
         for index, item_data in enumerate(data['content']):
             # A `fun` definition expands into its own group of items
             # (phase 4): its equations are then derived from a
@@ -409,24 +430,24 @@ def load_theory_cache(filename):
                         derived_item['_src'] = item_data.get('_src')
                     group = derived
 
-            for item in group:
-                # Hash the item's exact source block (see syntax.pyhol
-                # `_src`), so the incremental verifier can tell which
-                # items changed instead of invalidating the whole file.
-                src = item.get('_src')
-                if src is not None:
-                    block = '\n'.join(source_lines[src[0]:src[1]])
-                else:
-                    block = json.dumps(item, sort_keys=True, default=str)
-                cache['item_hashes'].append(
-                    hashlib.sha1(block.encode('utf-8')).hexdigest())
-                item = items.parse_item(item)
-                cache['content'].append(item)
-                if item.error is None:
-                    try:
-                        theory.thy.unchecked_extend(item.get_extension())
-                    except TheoryException:
-                        pass  # Skip duplicates
+            # A datatype expands into the well-foundedness of its subterm
+            # relation, which `fun` recursion on it descends through
+            # (datgen).  The block itself is registered first -- it is what
+            # declares the type and the constructor axioms the generated
+            # proof cites -- and the generated items are appended to it.  A
+            # file that states the lemma itself gets nothing generated.
+            # Set HOLPY_DATGEN_DEBUG to see a generator exception instead
+            # of the silent fallback.
+            gen_datatype = item_data if item_data.get('ty') == 'type.ind' else None
+
+            _load_group(group)
+            if gen_datatype is not None:
+                from core import datgen
+                derived = datgen.expand_item(gen_datatype, data['content'])
+                if derived is not None:
+                    for derived_item in derived:
+                        derived_item['_src'] = item_data.get('_src')
+                    _load_group(derived)
 
     return cache
 
