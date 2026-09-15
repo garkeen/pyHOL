@@ -13,33 +13,10 @@ datatype nat =
   | zero :: nat
   | Suc (n :: nat) :: nat
 
--- The well-founded relation `fun` definitions recurse with: the argument
--- of Suc.  It is proved straight from the datatype's own induction
--- principle, so the first definitions in this file can already use it
--- (the order `<` below is itself a `fun`, and cannot be used before it
--- exists).  `b = Suc a` is the same relation as `a < b`, stated in the
--- shape the Suc equations reduce to.
-theorem nat_wf_subterm
-  prop wf (%a::nat. %b::nat. b = Suc a)
-proof
-  ← rewrite wf_def goal=0
-  ← intro P goal=1
-  ← intro a goal=4
-  ← induct a nat_induct goal=6
-  ← inst "(0::nat)" goal=7 facts=[3]
-  cut "!y::nat. 0 = Suc y --> P y" goal=7
-    ← intro y goal=10
-    → forward nat_zero_Suc_neq param_n=y goal=13
-    ← rule negE_gen goal=13 facts=[14,12]
-  ← apply_prev goal=7 facts=[9,10]
-  ← intro n goal=8
-  → inst "(Suc n)" goal=18 facts=[3]
-  cut "!y::nat. Suc n = Suc y --> P y" goal=18
-    ← intro y goal=20
-    → forward nat_Suc_inject param_n=n param_n1=y goal=22 facts=[21]
-    → rewrite target=fact goal=22 facts=[23,17]
-  ← apply_prev goal=18 facts=[19,20]
-qed
+-- The subterm relation's well-foundedness (`nat_wf_subterm`) is generated
+-- from the datatype block above (core/datgen.py): `wf (%a b. b = Suc a)`,
+-- in the shape the Suc equations reduce to.  The order `<` is itself a
+-- `fun` below, so the first definitions cannot see it.
 
 def one :: nat = 1 = Suc 0 [hint_rewrite]
 
