@@ -168,6 +168,10 @@ class _Names:
     def __init__(self):
         self.used = set(['a', 'b'])
 
+    def reserve(self, names):
+        """Mark names as taken (they are written into the item verbatim)."""
+        self.used.update(names)
+
     def alloc(self, base):
         nm = base
         k = 1
@@ -343,6 +347,235 @@ def _parsed_constrs(data):
             for constr in data['constrs']]
 
 
+# ---------------------------------------------------------------------------
+# Destructor family.
+#
+# A `fun` body is built over the tupled argument, so the pattern's variables
+# have to be recovered from that tuple: `f (x # xs)` needs `hd p` and
+# `tl p`.  Those destructors are what the emitter's projection rules rewrite
+# against the literal pattern (`hd_def_1`, `Pre_def_2`), and they are the
+# reason a definition over a datatype outside nat and list cannot be
+# emitted at all.
+#
+# For every (constructor, argument) position whose destructor the library
+# does not already name, this module generates
+#
+#   def      T_C_n t = (THE v. <other args as one witness>. t = C (... v ...))
+#   theorem  T_C_n_rule  fixes x_1 .. x_k  prop  T_C_n (C x_1 .. x_k) = x_n
+#
+# The definition is total (no default value is needed for the other
+# constructors, unlike a `fun` with one equation per constructor), and the
+# rule is `the_equality`: existence is the pattern itself, uniqueness is
+# the datatype's injectivity.  `THE` rather than `SOME`: `the_equality`
+# states exactly the two obligations, so the rule needs no separate
+# uniqueness argument.
+# ---------------------------------------------------------------------------
+
+# The destructors the library already has, under its own names -- nat's
+# `Pre` (the argument of Suc), list's `hd`/`tl`, prod's `fst`/`snd`.  They
+# are API: library proofs cite them, so the generator leaves those
+# positions alone and everything else is generated as `T_C_n`.
+_LIB_DESTRUCTORS = {
+    ('nat', 'Suc', 0): ('Pre', 'Pre_def_2'),
+    ('list', 'cons', 0): ('hd', 'hd_def_1'),
+    ('list', 'cons', 1): ('tl', 'tl_def_1'),
+    ('prod', 'Pair', 0): ('fst', 'fst_def_1'),
+    ('prod', 'Pair', 1): ('snd', 'snd_def_1'),
+}
+
+
+def destructor_names(tyname, constr_name, j):
+    """(destructor constant, its rule theorem) for argument j."""
+    key = (tyname, constr_name, j)
+    if key in _LIB_DESTRUCTORS:
+        return _LIB_DESTRUCTORS[key]
+    nm = '%s_%s_%d' % (tyname, constr_name, j + 1)
+    return nm, '%s_rule' % nm
+
+
+def _destructor_term(dname, T, Aj, t):
+    """`<d> t`, the destructor applied to a term."""
+    return Const(dname, TFun(T, Aj))(t)
+
+
+def _destructor_body(T, constr, j, var, lhs=None, wname='w', witness=None):
+    """`<other args as one witness> <lhs> = C (... var ...)`, as a term.
+
+    `lhs` defaults to the def's own variable `t`; the rule passes the
+    constructor pattern instead, so that the same construction gives the
+    predicate `the_equality` is applied to.  Both binders are named by the
+    caller when the body carries the pattern: a constructor argument can
+    be called `v` or `w` (`varType`'s `Para (v, x)`), and a binder that
+    captures it would change the term -- or, when the types differ, make
+    the abstraction ill-typed.  `witness` substitutes a term for the
+    witness, giving the instance `inst` produces.
+    """
+    argT, _ = constr_args(constr)
+    others = [t for t in range(len(argT)) if t != j]
+    if others:
+        otherT = [argT[t] for t in others]
+        if witness is None:
+            w = Var(wname, fungen.tupled_type(otherT))
+            parts = iter(fungen.projection(w, otherT, k)
+                         for k in range(len(otherT)))
+        else:
+            w = None
+            parts = iter(fungen.projection(witness, otherT, k)
+                         for k in range(len(otherT)))
+    else:
+        w, parts = None, iter(())
+    args = [var if t == j else next(parts) for t in range(len(argT))]
+    body = Eq(Var('t', T) if lhs is None else lhs,
+              Const(constr['name'], constr['type'])(*args))
+    return Exists(w, body) if w is not None else body
+
+
+def _the(ty, body):
+    """`THE x :: ty. body` as a term."""
+    return Const('The', TFun(TFun(ty, BoolType), ty))(
+        Lambda(Var('v', ty), body))
+
+
+def destructor_lines(T, tyname, constrs, i, j):
+    """The `<ty>_<C>_<n>` definition, as item lines."""
+    constr = constrs[i]
+    argT, _ = constr_args(constr)
+    Aj = argT[j]
+    dname, _ = destructor_names(tyname, constr['name'], j)
+    with global_setting(unicode=True):
+        body = printer.print_term(
+            _the(Aj, _destructor_body(T, constr, j, Var('v', Aj))))
+    return ['def %s :: %s = %s t = %s'
+            % (dname, fungen._printt(TFun(T, Aj)), dname, body)]
+
+
+def destructor_rule_lines(T, tyname, constrs, i, j):
+    """The `<ty>_<C>_<n>_rule` theorem, generated from the constructors."""
+    constr = constrs[i]
+    argT, argnames = constr_args(constr)
+    dname, rule = destructor_names(tyname, constr['name'], j)
+    vars_ = [Var(nm, Ty) for nm, Ty in zip(argnames, argT)]
+    prover = _Proof()
+    namer = _Names()
+    namer.reserve(argnames)
+    pat = Const(constr['name'], constr['type'])(*vars_)
+    bv = namer.alloc('v')
+    wname = namer.alloc('w')
+
+    g = prover.step('\u2190 unfold %s_def goal=0' % dname)
+    # The instantiation is passed explicitly: the axiom's `P (THE x. P x)`
+    # pattern is higher order, and matching it against the goal's body
+    # needs the abstraction named.
+    lam = Lambda(Var(bv, argT[j]),
+                 _destructor_body(T, constr, j, Var(bv, argT[j]), lhs=pat,
+                                  wname=wname))
+    prem = prover.ids('\u2190 rule the_equality param_P="%s" goal=%d'
+                      % (fungen._prints(lam), g), 2)
+
+    # Existence: the pattern's own arguments witness the other positions;
+    # with no other argument the instance is the pattern itself.  A tuple
+    # witness leaves projections behind, which the projection rules reduce
+    # (`_reduce_used` gives exactly the rules the instance needs, in
+    # order); the last one closes the goal, since the instance is
+    # `pattern = pattern`.  That closing step is decided here, from the
+    # reduced term -- it is one of the two places the emitted counter
+    # depends on the method layer closing on its own.
+    others = [t for t in range(len(argT)) if t != j]
+    if others:
+        witness = fungen.tupled_arg([vars_[t] for t in others])
+        g = prover.step('\u2192 inst "%s" goal=%d' % (fungen._arg_text(witness),
+                                                      prem[0]))
+        instance = _destructor_body(T, constr, j, vars_[j], lhs=pat,
+                                    witness=witness)
+        reduced, rules = fungen._reduce_used(
+            instance, fungen._destructor_map(fungen.tupled_type(
+                [argT[t] for t in others])))
+        for n, lemma in enumerate(rules):
+            if n == len(rules) - 1 and reduced.is_reflexive():
+                prover.step('\u2190 rewrite %s goal=%d' % (lemma, g), new=0)
+            else:
+                g = prover.step('\u2190 rewrite %s goal=%d' % (lemma, g))
+        if not rules:
+            prover.step('\u2190 rule eq_refl goal=%d' % g, new=0)
+    else:
+        prover.step('\u2190 rule eq_refl goal=%d' % prem[0], new=0)
+
+    # Uniqueness: an equation between two applications of the same
+    # constructor gives the argument equations; the j-th is `x_j = y`.
+    # Only a constructor with another argument has an exists to take apart.
+    ids = prover.ids('\u2190 intro %s goal=%d' % (namer.alloc('y'), prem[1]), 3)
+    hyp, g = ids[1], ids[2]
+    if others:
+        ids = prover.ids('\u2192 elim "%s" goal=%d facts=[%d]' % (wname, g, hyp), 3)
+        eq, g = ids[1], ids[2]
+    else:
+        eq = hyp
+    cj = prover.step('\u2192 forward %s_%s_inject goal=%d facts=[%d]'
+                     % (tyname, constr['name'], g, eq))
+    for lemma in _conjunct_steps(j, len(argT)):
+        cj = prover.step('\u2192 forward %s goal=%d facts=[%d]' % (lemma, g, cj))
+    # The j-th argument equation flipped is `y = x_j`, which *is* the
+    # uniqueness goal (`v = x_j` with `v` named `y`), so this step closes
+    # the subgoal; there is nothing left to discharge afterwards.
+    prover.step('\u2192 rewrite target=fact eq_sym_eq sym=false '
+                'goal=%d facts=[%d]' % (g, cj), new=1)
+
+    return ['theorem %s' % rule,
+            '  fixes %s' % ', '.join('%s :: %s' % (v.name, fungen._printt(v.T))
+                                     for v in vars_),
+            # The pattern is an application, so it needs parentheses: a
+            # bare `d C x y` reads as `((d C) x) y`.
+            '  prop %s %s = %s' % (dname, fungen._arg_text(pat), vars_[j].name),
+            'proof'] + prover.text() + ['qed']
+
+
+def _printable_application(constr, vars_):
+    """Whether `C x_1 .. x_k` can be written down in this theory.
+
+    A constructor can share its name with another constant of the same
+    arity (`state`'s `Pair` against prod's): the printed application is
+    then ambiguous, and the printer's type inference refuses it.  Such a
+    position gets no destructor -- a definition that needs it keeps
+    failing with the honest destructor message -- instead of an item that
+    cannot be written.
+    """
+    try:
+        fungen._prints(Const(constr['name'], constr['type'])(*vars_))
+    except Exception:
+        return False
+    return True
+
+
+def _destructor_items(T, name, constrs):
+    """Every destructor the library does not already name.
+
+    A position whose items cannot be built is left out rather than
+    failing the whole datatype block: the destructors are independent of
+    each other and of the relation, and the definition that needs the
+    missing one reports it.  Set HOLPY_DATGEN_DEBUG to see the exception.
+    """
+    res = []
+    for i, constr in enumerate(constrs):
+        argT, argnames = constr_args(constr)
+        vars_ = [Var(nm, Ty) for nm, Ty in zip(argnames, argT)]
+        for j in range(len(argT)):
+            if (name, constr['name'], j) in _LIB_DESTRUCTORS:
+                continue
+            try:
+                res.append(fungen._entry(
+                    destructor_lines(T, name, constrs, i, j)))
+                res.append(fungen._entry(
+                    destructor_rule_lines(T, name, constrs, i, j)))
+            except Exception as error:
+                if os.environ.get('HOLPY_DATGEN_DEBUG'):
+                    print('datgen: %s %s %d skipped: %s: %s'
+                          % (name, constr['name'], j + 1,
+                             error.__class__.__name__, error))
+                    continue
+                continue
+    return res
+
+
 def _wf_in_scope():
     """The lemma is stated with `wf` and proved from these."""
     for th_name in ('wf_def', 'wf_induct', 'disjE', 'eq_sym_eq',
@@ -374,18 +607,22 @@ def expand_item(data, content):
 
 def _expand(data, content):
     name = data['name']
-    if any(item.get('name') == '%s_wf_subterm' % name for item in content):
+    constrs = _parsed_constrs(data)
+    T = TConst(name, *[TVar(a) for a in data['args']])
+    items = []
+    if (_wf_in_scope()
+            and not any(item.get('name') == '%s_wf_subterm' % name
+                        for item in content)):
         # The file wrote the lemma itself (nat and list predate this
         # module).  Its statement is the one the rest of the file was
         # verified against, so it wins and nothing is generated.
-        return None
-    if not _wf_in_scope():
-        return None
-    constrs = _parsed_constrs(data)
-    T = TConst(name, *[TVar(a) for a in data['args']])
-    pairs = subterm_pairs(T, constrs)
-    if not pairs:
-        # No constructor takes the datatype itself: no recursion position,
-        # so there is nothing to descend through.
-        return None
-    return [fungen._entry(wf_subterm_lines(name, data['args'], constrs))]
+        pairs = subterm_pairs(T, constrs)
+        if pairs:
+            # No constructor takes the datatype itself: no recursion
+            # position, so there is nothing to descend through.
+            items.append(fungen._entry(
+                wf_subterm_lines(name, data['args'], constrs)))
+    # The destructor family does not depend on the relation: a definition
+    # that only pattern-matches needs the destructors too.
+    items.extend(_destructor_items(T, name, constrs))
+    return items or None

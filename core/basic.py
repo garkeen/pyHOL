@@ -424,6 +424,9 @@ def load_theory_cache(filename):
                     # -- leaves the definition axiomatized, so a file never
                     # breaks because of the expansion.  The equations it
                     # still asserts show up as AXIOM in the status table.
+                    # HOLPY_FUNGEN_DEBUG surfaces the exception instead.
+                    if os.environ.get('HOLPY_FUNGEN_DEBUG'):
+                        raise
                     derived = None
                 if derived is not None:
                     for derived_item in derived:

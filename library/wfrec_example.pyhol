@@ -220,3 +220,16 @@ fun wfgen :: nat ⇒ nat ⇒ nat
 fun wfmap :: ('a ⇒ 'b) ⇒ 'a list ⇒ 'b list
   | wfmap f [] = []
   | wfmap f (x # xs) = f x # wfmap f xs
+
+-- A datatype of this file's own: its subterm relation and its destructors
+-- are generated from the block (core/datgen.py).  `srev_list` is the sample
+-- that exercises the generated destructor of a non-recursive constructor
+-- argument (`SCons`'s second one) end to end.
+datatype seq 'a =
+  | SEmpty :: 'a seq
+  | SCons (s :: 'a seq) (x :: 'a) :: 'a seq
+
+fun srev_list :: 'a seq ⇒ 'a list
+  | srev_list SEmpty = []
+  | srev_list (SCons s x) = x # srev_list s
+

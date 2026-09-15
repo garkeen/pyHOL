@@ -50,7 +50,7 @@ import re
 from kernel.type import TFun, TConst, BoolType
 from kernel.term import Var, Const, Eq
 from syntax import printer
-from syntax.logicops import Exists
+from syntax.logicops import Exists, is_exists
 from syntax.settings import global_setting
 
 NatType = TConst('nat')
@@ -228,36 +228,29 @@ def branch_condition(lhs_args, r, p):
 
 # --- symbolic computation of the projection/destructor rewrites -------------
 
-_RULE_OF = {'fst': 'fst_def_1', 'snd': 'snd_def_1', 'Pre': 'Pre_def_2',
-            'hd': 'hd_def_1', 'tl': 'tl_def_1'}
+def _reduce_step(t, dmap):
+    """One destructor/projection reduction on a literal constructor.
 
-
-def _reduce_step(t):
-    """One destructor/projection reduction on a literal constructor."""
+    `dmap` is `_destructor_maps`'s map from a destructor constant to the
+    constructor and position it takes apart, so this works for every
+    datatype that has destructors -- not just the three whose names the
+    library fixed by hand.
+    """
     if not t.is_comb():
         return t
     h, args = t.strip_comb()
-    if not (h.is_const() and len(args) == 1 and h.name in _RULE_OF):
+    if not (h.is_const() and len(args) == 1 and h.name in dmap):
         return t
     inner, iargs = args[0].strip_comb()
     if not inner.is_const():
         return t
-    if inner.name == 'Pair' and len(iargs) == 2:
-        if h.name == 'fst':
-            return iargs[0]
-        if h.name == 'snd':
-            return iargs[1]
-    if inner.name == 'Suc' and len(iargs) == 1 and h.name == 'Pre':
-        return iargs[0]
-    if inner.name == 'cons' and len(iargs) == 2:
-        if h.name == 'hd':
-            return iargs[0]
-        if h.name == 'tl':
-            return iargs[1]
+    cname, j, _ = dmap[h.name]
+    if inner.name == cname and len(iargs) > j:
+        return iargs[j]
     return t
 
 
-def _reduce_used(t):
+def _reduce_used(t, dmap):
     """(fully reduced term, the rewrite rules it takes, in application order).
 
     The emitted propositions must be textually equal to the goal after the
@@ -272,9 +265,9 @@ def _reduce_used(t):
             return x
         if x.is_comb():
             x = rec(x.fun)(rec(x.arg))
-            y = _reduce_step(x)
+            y = _reduce_step(x, dmap)
             if y is not x:
-                used.append(_RULE_OF[x.strip_comb()[0].name])
+                used.append(dmap[x.strip_comb()[0].name][2])
                 return rec(y)
             return x
         return x
@@ -282,9 +275,9 @@ def _reduce_used(t):
     return rec(t), _dedupe(used)
 
 
-def _reduce(t):
+def _reduce(t, dmap):
     """The fully reduced form of t."""
-    return _reduce_used(t)[0]
+    return _reduce_used(t, dmap)[0]
 
 
 def _dedupe(names):
@@ -313,10 +306,12 @@ def _dedupe(names):
 # lifted to the tupled argument through the projection, so the lift is
 # exactly `wf_measure_gen`.
 #
-# The *destructor* side is still per datatype (`destructor`, `_RULE_OF`, and
-# the witness for an existential obligation): a datatype outside nat and
-# list needs its constructor-argument destructors first, which is the other
-# half of this increment.
+# The destructor side is data-driven too: `destructor` and the projection
+# rules come from `_destructor_maps`, which the datatype layer's naming
+# feeds (`core/datgen.py`), so a constructor argument is taken apart the
+# same way for every datatype.  Fixed by hand are only the library's own
+# names for nat, list and prod -- `Pre`, `hd`, `tl`, `fst`, `snd` -- which
+# library proofs cite.
 # ---------------------------------------------------------------------------
 
 def _type_inst(pat, T, tyinst):
@@ -676,6 +671,72 @@ def _proj_const(arg_types, r):
     return Const('fst' if r == 0 else 'snd', TFun(Tup, T))
 
 
+def _destructor_map(T):
+    """{destructor constant: (constructor, position, rule theorem)} for T.
+
+    Built from the constructors the theory registered plus the naming the
+    datatype layer uses (`core/datgen.py`): the library's own destructors
+    for nat, list and prod, and the generated `T_C_n` for everything else.
+    A position whose rule theorem is not in the theory contributes
+    nothing, so the emitter reports the missing destructor at the
+    constructor that needs it instead of citing a name that is not there.
+    """
+    from core import datgen
+    from kernel import theory
+    res = {}
+    constrs = _registered_constrs(T)
+    if constrs is None:
+        return res
+    for constr in constrs:
+        argT = datgen.constr_args(constr)[0]
+        for j in range(len(argT)):
+            dname, rule = datgen.destructor_names(T.name, constr['name'], j)
+            try:
+                theory.get_theorem(rule)
+            except Exception:
+                continue
+            res[dname] = (constr['name'], j, rule)
+    return res
+
+
+def _destructor_maps(arg_types, r):
+    """The destructor map for a definition's arguments.
+
+    Both ends are needed: the recursion component's (`Pre`, `hd`, ...) and
+    the tuple's (`fst`, `snd`), since the emitted bodies mention both.
+    """
+    T = arg_types[r]
+    res = _destructor_map(T)
+    if len(arg_types) > 1:
+        res.update(_destructor_map(tupled_type(arg_types)))
+    return res
+
+
+def destructor(constr_name, j, t):
+    """The j-th argument of a constructor pattern, as a term in t."""
+    from core import datgen
+    from kernel import theory
+    T = t.get_type()
+    dname, rule = datgen.destructor_names(T.name, constr_name, j)
+    try:
+        theory.get_theorem(rule)
+    except Exception:
+        raise FunGenError(
+            "no destructor for argument %d of constructor %s on %s; the "
+            "datatype layer generates one per constructor argument "
+            "(core/datgen.py) unless the constructor cannot be written "
+            "unambiguously in the theory"
+            % (j + 1, constr_name, printer.print_type(T)))
+    argT = None
+    for constr in (_registered_constrs(T) or []):
+        if constr['name'] == constr_name:
+            argT = datgen.constr_args(constr)[0]
+    if argT is None:
+        raise FunGenError('constructor %s is not registered for %s'
+                          % (constr_name, printer.print_type(T)))
+    return Const(dname, TFun(T, argT[j]))(t)
+
+
 def _decrease_prop(arg_types, r, tcall, t):
     """The decrease obligation, in the shape the goal's condition has.
 
@@ -705,7 +766,37 @@ def _decrease_closes(arg_types, r, tcall, t):
     T = arg_types[r]
     call = _proj_term(arg_types, r, tcall)
     pat = _proj_term(arg_types, r, t)
-    return _reduce(_relation(T)(call)(pat).beta_norm()).is_reflexive()
+    return _reduce(_relation(T)(call)(pat).beta_norm(),
+                   _destructor_maps(arg_types, r)).is_reflexive()
+
+
+def _decrease_witness(arg_types, r, tcall, t, eq):
+    """The pattern variable that witnesses an existential obligation.
+
+    The obligation is the relation applied to the recursive call and the
+    pattern.  Where the pattern's constructor has an argument that is not
+    the datatype itself (`x # xs`, `SCons s x`), the obligation is an
+    existential, and the witness is the pattern's own variable at that
+    position -- the very term the equation's right hand side is written
+    with.  A constructor with several such arguments would need a tuple of
+    them, which is not emitted yet; an equality obligation (nat's `Suc`)
+    needs no witness at all.
+    """
+    T = arg_types[r]
+    call = _proj_term(arg_types, r, tcall)
+    pat = _proj_term(arg_types, r, t)
+    obl = _reduce(_relation(T)(call)(pat).beta_norm(),
+                  _destructor_maps(arg_types, r))
+    if not is_exists(obl):
+        return None
+    _, pargs = _eq_args(eq)[r].strip_comb()
+    free = [k for k, a in enumerate(pargs) if a.get_type() != T]
+    if len(free) != 1:
+        raise FunGenError(
+            'the decrease obligation is an existential with %d pattern '
+            'variables other than the recursive one; the witness would be '
+            'a tuple of them' % len(free))
+    return pargs[free[0]].name
 
 
 def _body_term(name, arg_types, res_type, eqs, r, p=None):
@@ -834,8 +925,10 @@ def _def_rec_entry(name, cname, arg_types, res_type, eq, r, lhs_null, tcall,
     g = prover.step('← rewrite if_not_P goal=%d facts=[%d]' % (g, neg))
     c_cut = prover.step('cut "%s" goal=%d'
                         % (_decrease_prop(arg_types, r, tcall, _tuple_of(eq)), g))
-    proj = _dedupe(_reduce_used(_proj_term(arg_types, r, _tuple_of(eq)))[1]
-                   + _reduce_used(_proj_term(arg_types, r, tcall))[1])
+    dmap = _destructor_maps(arg_types, r)
+    proj = _dedupe(_reduce_used(_proj_term(arg_types, r, _tuple_of(eq)),
+                                dmap)[1]
+                   + _reduce_used(_proj_term(arg_types, r, tcall), dmap)[1])
     closes = _decrease_closes(arg_types, r, tcall, _tuple_of(eq))
     c3 = c_cut
     for i, rule in enumerate(proj):
@@ -845,8 +938,9 @@ def _def_rec_entry(name, cname, arg_types, res_type, eq, r, lhs_null, tcall,
         else:
             c3 = prover.step('← rewrite %s goal=%d' % (rule, c3))
     if not closes:
-        if T.is_tconst() and T.name == 'list':
-            c3 = prover.step('← inst %s goal=%d' % (_pattern_vars(eq, r)[0], c3))
+        witness = _decrease_witness(arg_types, r, tcall, _tuple_of(eq), eq)
+        if witness is not None:
+            c3 = prover.step('← inst %s goal=%d' % (witness, c3))
         prover.step('← rule eq_refl goal=%d' % c3, new=0)
     elif not proj:
         # Recursion on a single argument: the projections are the
@@ -923,9 +1017,10 @@ def _expand(data):
                           'emitter handles one so far' % (name, len(calls)))
     _require_in_scope(arg_types, r)
 
-    cond = _reduce(branch_condition(lhs[0], r, _tuple_of(eqs[0])))
+    dmap = _destructor_maps(arg_types, r)
+    cond = _reduce(branch_condition(lhs[0], r, _tuple_of(eqs[0])), dmap)
     rules = [_reduce_used(_body_term(name, arg_types, res_type, eqs, r,
-                                     _tuple_of(eq)))[1] for eq in eqs]
+                                     _tuple_of(eq)), dmap)[1] for eq in eqs]
     entries = [_entry([text]) for text in _def_entries(
         name, cname, arg_types, res_type,
         _body_prop(name, arg_types, res_type, eqs, r), _rel_body(arg_types, r))]
