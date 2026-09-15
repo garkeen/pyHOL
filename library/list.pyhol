@@ -8,6 +8,35 @@ datatype list 'a =
   | nil :: 'a list
   | cons (x :: 'a) (xs :: 'a list) :: 'a list
 
+-- The well-founded relation `fun` definitions recurse with: the tail of
+-- a cons.  Proved straight from the datatype own induction principle, so
+-- the definitions below can already use it (the size function `length`
+-- is itself one of them, and cannot be used before it exists).
+theorem list_wf_subterm
+  prop wf (%xs::'a list. %ys::'a list. ?z::'a. ys = z # xs)
+proof
+  ← rewrite wf_def goal=0
+  ← intro P goal=1
+  ← intro a goal=4
+  ← induct a list_induct goal=6
+  ← inst "([]::'a list)" goal=7 facts=[3]
+  cut "!y::'a list. (?z::'a. ([]::'a list) = z # y) --> P y" goal=7
+    ← intro y goal=10
+    elim z goal=13 facts=[12]
+    → forward list_nil_cons_neq param_x=z param_xs=y goal=16
+    ← rule negE_gen goal=16 facts=[17,15]
+  ← apply_prev goal=7 facts=[9,10]
+  ← intro "x, xs" goal=8
+  → inst "(x # xs)" goal=22 facts=[3]
+  cut "!y::'a list. (?z::'a. x # xs = z # y) --> P y" goal=22
+    ← intro y goal=24
+    elim z goal=26 facts=[25]
+    → forward list_cons_inject param_x=x param_x1=z param_xs=xs param_xs1=y goal=28 facts=[27]
+    → forward conjD2 goal=28 facts=[29]
+    → rewrite target=fact goal=28 facts=[30,21]
+  ← apply_prev goal=22 facts=[23,24]
+qed
+
 fun length :: 'a list ⇒ nat
   | length ([]::'a list) = 0
   | length (x # xs) = Suc (length xs)

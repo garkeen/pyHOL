@@ -310,7 +310,10 @@ class StructRecursionTest(unittest.TestCase):
     def testFunBadParamNotVar(self):
         # A non-recursion argument with a non-variable pattern must be
         # rejected.
-        basic.load_theory('nat', limit=('def.ind', 'plus'))
+        # A plain theorem: the `fun` items around it are expanded by
+        # the generator whenever the method layer is loaded, so a
+        # limit naming one of them would depend on that.
+        basic.load_theory('nat', limit=('thm', 'add_0_right'))
         item = items.parse_item({
             "name": "bad",
             "rules": [
