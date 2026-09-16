@@ -721,12 +721,20 @@ def _proj_const(arg_types, r):
 
     Two arguments is the emitter's limit.  The relation side is
     arity-generic (the `wf` obligations of three-argument definitions
-    replay), but the equation proofs are not: the projection rewrites are
-    taken from the *body*'s reduction, while the goal at that point also
-    contains the condition, whose projections can need one more level
-    (`snd (snd p)`), so a step lands with no redex to fire on
-    (`fst_def_1`).  Fixing it means computing the steps for the goal's own
-    term per equation, not for the body.
+    replay VALID), but the equation proofs are not.  Measured on
+    `foldr_def_1` with the guard off, the goal after the emitted sweeps is
+
+        if [] = [] then z
+        else f (hd []) (cut foldr_in foldr_rel ... (Pair f (Pair z (tl [])))) = z
+
+    -- the condition is reduced, but the else branch carries `hd []` and
+    `tl []`, which nothing reduces (`hd`/`tl` are the library's partial
+    destructors: one equation each, none for `nil`), and the emitted
+    sequence asks for one `fst_def_1` more than the goal still offers.  So
+    the remaining work is to make `_sweep_once` match the tactic exactly --
+    including the `beta_norm_conv` that follows every sweep
+    (`tactic/steps.py:264`) -- and to settle what the sequence does with
+    the parts of the branch that `if_P`/`if_not_P` is about to discard.
     """
     Tup = tupled_type(arg_types)
     T = arg_types[r]
