@@ -389,6 +389,20 @@ def destructor_names(tyname, constr_name, j):
     key = (tyname, constr_name, j)
     if key in _LIB_DESTRUCTORS:
         return _LIB_DESTRUCTORS[key]
+    return generated_destructor_names(tyname, constr_name, j)
+
+
+def generated_destructor_names(tyname, constr_name, j):
+    """The generated destructor of argument j, whatever the library names.
+
+    Every position has one of these, including the five the library names
+    itself (`Pre`, `hd`/`tl`, `fst`/`snd`, `the`).  Those names are API and
+    stay what other definitions use, but the definition of that very
+    function cannot be written with its own rule -- while `tl` is being
+    emitted, `tl_def_1` does not exist yet -- so it is written with the
+    generated destructor of the same position, which is defined by THE and
+    does not mention the function at all.
+    """
     nm = '%s_%s_%d' % (tyname, constr_name, j + 1)
     return nm, '%s_rule' % nm
 
@@ -436,12 +450,13 @@ def _the(ty, body):
         Lambda(Var('v', ty), body))
 
 
-def destructor_lines(T, tyname, constrs, i, j):
+def destructor_lines(T, tyname, constrs, i, j, generated=False):
     """The `<ty>_<C>_<n>` definition, as item lines."""
     constr = constrs[i]
     argT, _ = constr_args(constr)
     Aj = argT[j]
-    dname, _ = destructor_names(tyname, constr['name'], j)
+    dname, _ = (generated_destructor_names(tyname, constr['name'], j)
+                if generated else destructor_names(tyname, constr['name'], j))
     with global_setting(unicode=True):
         body = printer.print_term(
             _the(Aj, _destructor_body(T, constr, j, Var('v', Aj))))
@@ -449,11 +464,13 @@ def destructor_lines(T, tyname, constrs, i, j):
             % (dname, fungen._printt(TFun(T, Aj)), dname, body)]
 
 
-def destructor_rule_lines(T, tyname, constrs, i, j):
+def destructor_rule_lines(T, tyname, constrs, i, j, generated=False):
     """The `<ty>_<C>_<n>_rule` theorem, generated from the constructors."""
     constr = constrs[i]
     argT, argnames = constr_args(constr)
-    dname, rule = destructor_names(tyname, constr['name'], j)
+    dname, rule = (generated_destructor_names(tyname, constr['name'], j)
+                   if generated else destructor_names(tyname, constr['name'],
+                                                      j))
     vars_ = [Var(nm, Ty) for nm, Ty in zip(argnames, argT)]
     prover = _Proof()
     namer = _Names()
@@ -559,13 +576,17 @@ def _destructor_items(T, name, constrs):
         argT, argnames = constr_args(constr)
         vars_ = [Var(nm, Ty) for nm, Ty in zip(argnames, argT)]
         for j in range(len(argT)):
-            if (name, constr['name'], j) in _LIB_DESTRUCTORS:
-                continue
+            # The library's own destructors are API and stay what other
+            # definitions use, but their positions get the generated one
+            # as well: the definition of that very function is written
+            # with it (see `generated_destructor_names`).
+            lib = (name, constr['name'], j) in _LIB_DESTRUCTORS
             try:
                 res.append(fungen._entry(
-                    destructor_lines(T, name, constrs, i, j)))
+                    destructor_lines(T, name, constrs, i, j, generated=lib)))
                 res.append(fungen._entry(
-                    destructor_rule_lines(T, name, constrs, i, j)))
+                    destructor_rule_lines(T, name, constrs, i, j,
+                                          generated=lib)))
             except Exception as error:
                 if os.environ.get('HOLPY_DATGEN_DEBUG'):
                     print('datgen: %s %s %d skipped: %s: %s'

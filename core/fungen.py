@@ -1398,6 +1398,16 @@ def _proj_const(arg_types, r):
     return Lambda(p, _proj_term(arg_types, r, p))
 
 
+def _has_theorem(name):
+    """Whether a theorem is in the theory yet (generated names may not be)."""
+    from kernel import theory
+    try:
+        theory.get_theorem(name)
+        return True
+    except Exception:
+        return False
+
+
 def _destructor_map(T):
     """{destructor constant: (constructor, position, rule theorem)} for T.
 
@@ -1418,10 +1428,15 @@ def _destructor_map(T):
         argT = datgen.constr_args(constr)[0]
         for j in range(len(argT)):
             dname, rule = datgen.destructor_names(T.name, constr['name'], j)
-            try:
-                theory.get_theorem(rule)
-            except Exception:
-                continue
+            if not _has_theorem(rule):
+                # The library names this position with the function being
+                # defined (`tl`, `Pre`, `fst`): while that function is
+                # emitted its rule is not in the theory yet, and the body
+                # is written with the generated destructor instead.
+                dname, rule = datgen.generated_destructor_names(
+                    T.name, constr['name'], j)
+                if not _has_theorem(rule):
+                    continue
             res[dname] = (constr['name'], j, rule)
     return res
 
@@ -1448,6 +1463,11 @@ def destructor(constr_name, j, t):
     from kernel import theory
     T = t.get_type()
     dname, rule = datgen.destructor_names(T.name, constr_name, j)
+    if not _has_theorem(rule):
+        # Same case as in `_destructor_map`: the library's name for this
+        # position is the function being defined, whose rule does not
+        # exist yet; the generated destructor does.
+        dname, rule = datgen.generated_destructor_names(T.name, constr_name, j)
     try:
         theory.get_theorem(rule)
     except Exception:
@@ -1856,7 +1876,10 @@ def _def_entry(name, cname, arg_types, res_type, eqs, positions, i, conds,
                 prover.step('← rewrite %s goal=%d' % (rule, c3), new=0)
             else:
                 c3 = prover.step('← rewrite %s goal=%d' % (rule, c3))
-        if not rest:
+        if not rest and not closes_early:
+            # With `closes_early` the last sweep rule already closed the
+            # goal (the branch body *is* the right hand side), so the
+            # reflexivity step would be emitted against a closed goal.
             prover.step('← rule eq_refl goal=%d' % c3, new=0)
         return prover.text()
     eq = eqs[i]
@@ -1949,7 +1972,14 @@ def _require_in_scope(arg_types, r, order=None):
     """
     from kernel import theory
     needed = ['wfrec_eq', 'wfrec_H_def', 'cut_def', 'if_P', 'if_not_P',
-              'eq_refl', 'snd_def_1', 'fst_def_1']
+              'eq_refl']
+    if len(arg_types) > 1:
+        # A definition with several arguments is built over the tupled
+        # argument and reads the components back through the projections,
+        # whose proofs reduce with prod's own rules.  A single-argument
+        # definition has no tuple: requiring them there is a false gate,
+        # and for prod itself, which defines them, a circular one.
+        needed += ['fst_def_1', 'snd_def_1']
     if order is None:
         needed.append('wf_measure_gen')
         needed.append('ineq_sym')

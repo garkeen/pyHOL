@@ -1,5 +1,5 @@
 theory option
-imports logic_base
+imports logic_base, wf_base
 description "Option type: partial values as total functions, needed by the auto2 program-verification port (Mapping_Str maps, BST/RBTree search, Dijkstra)"
 
 header "Option type"

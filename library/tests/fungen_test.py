@@ -28,13 +28,20 @@ EXPANDED = ['plus', 'times', 'power', 'Sigma', 'less_eq', 'less', 'minus',
 # The projections are still axiomatized: their destructor would be the very
 # function being defined (`Pre (Suc n) = n`, `fst (Pair a b) = a`), and a
 # file below them cannot import the wf machinery either.
-STILL_AXIOMATIZED = {'nat': ['Pre'], 'prod': ['fst', 'snd']}
+# Every `fun` of these four theories is derived now, the datatype's own
+# projections included: their destructor is the generated one of the same
+# position (`nat_Suc_1`, `list_cons_2`, `prod_Pair_1`, `option_SomeC_1`),
+# which is defined by THE and does not mention the function being defined
+# (see core/datgen.py `generated_destructor_names`).
+STILL_AXIOMATIZED = {}
 # list.pyhol's recursive definitions: the ones the generator emits, and the
 # ones it leaves axiomatized.
 LIST_EXPANDED = ['append', 'butlast', 'concat', 'distinct', 'drop', 'filter',
                  'foldl', 'foldr', 'itrev', 'last', 'length', 'list_update',
                  'map', 'nth', 'remdups', 'rev', 'set', 'take', 'zip']
-LIST_STILL_AXIOMATIZED = ['hd', 'tl']
+LIST_STILL_AXIOMATIZED = []
+DERIVED_PROJECTIONS = [('nat', 'Pre'), ('list', 'hd'), ('list', 'tl'),
+                       ('prod', 'fst'), ('prod', 'snd'), ('option', 'the')]
 # Definitions whose recursion is not on a datatype's subterm relation: the
 # four projections from `scalarValue` recurse nowhere, so their relation is
 # the empty one, and `tsum`/`tleaf` are the three-constructor samples of
@@ -189,14 +196,22 @@ class FunGenLibraryTest(unittest.TestCase):
                 self.assertNotRegex(item.name, r'_def_\d+$',
                                     '%s is still asserted' % item.name)
 
-    def test_projection_layer_still_axiomatized(self):
-        """The datatype's own projections are outside the increment."""
-        for thy, names in STILL_AXIOMATIZED.items():
-            for name in names:
-                items = [it for it in basic.theory_cache[thy]['content']
-                         if it.name == name]
-                self.assertIn('def.ind', [it.ty for it in items],
-                              '%s in %s unexpectedly expanded' % (name, thy))
+    def test_projection_layer_is_derived(self):
+        """The datatype's own projections are derived too.
+
+        Their destructor is the function being defined, so the body is
+        written with the generated destructor of the same position: for
+        `tl` that is `list_cons_2`, for `Pre` it is `nat_Suc_1`, and
+        neither mentions the function.
+        """
+        for thy, name in DERIVED_PROJECTIONS:
+            self._by_name('dummy', thy)  # load the theory
+            items = [it for it in basic.theory_cache[thy]['content']
+                     if it.name == name]
+            self.assertEqual([it.ty for it in items], ['def'],
+                             '%s in %s is still an axiomatized fun' % (name, thy))
+            self.assertIsNotNone(self._by_name('%s_rel_wf' % name, thy),
+                                 'no %s_rel_wf in %s' % (name, thy))
 
     def test_list_expansion_boundary(self):
         """Which list definitions are derived, and which keep their axioms."""
