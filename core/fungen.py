@@ -1181,16 +1181,6 @@ def _proj_const(arg_types, r):
     return Lambda(p, _proj_term(arg_types, r, p))
 
 
-def _has_theorem(name):
-    """Whether a theorem is in the theory yet (not every generated name is)."""
-    from kernel import theory
-    try:
-        theory.get_theorem(name)
-        return True
-    except Exception:
-        return False
-
-
 def _destructor_map(T):
     """{destructor constant: (constructor, position, rule theorem)} for T.
 
@@ -1211,7 +1201,9 @@ def _destructor_map(T):
         argT = datgen.constr_args(constr)[0]
         for j in range(len(argT)):
             dname, rule = datgen.destructor_names(T.name, constr['name'], j)
-            if not _has_theorem(rule):
+            try:
+                theory.get_theorem(rule)
+            except Exception:
                 continue
             res[dname] = (constr['name'], j, rule)
     return res
@@ -1686,15 +1678,7 @@ def _require_in_scope(arg_types, r, order=None):
     """
     from kernel import theory
     needed = ['wfrec_eq', 'wfrec_H_def', 'cut_def', 'if_P', 'if_not_P',
-              'eq_refl']
-    if len(arg_types) > 1:
-        # The body of a definition with several arguments is built over
-        # the tupled argument, so it reads the components back through the
-        # projections and its proofs reduce them with prod's own rules.  A
-        # single-argument definition has no tuple, and requiring the rules
-        # there would be a false gate -- for prod itself, which defines
-        # them, a circular one.
-        needed += ['fst_def_1', 'snd_def_1']
+              'eq_refl', 'snd_def_1', 'fst_def_1']
     if order is None:
         needed.append('wf_measure_gen')
         needed.append('ineq_sym')
