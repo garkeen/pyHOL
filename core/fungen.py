@@ -946,9 +946,23 @@ def _def_rec_entry(name, cname, arg_types, res_type, eq, r, lhs_null, tcall,
     neg = _negate_condition(prover, th, th_name, _pattern_vars(eq, r), g,
                             lhs_null[r], _eq_args(eq)[r])
     g = prover.step('← rewrite if_not_P goal=%d facts=[%d]' % (g, neg))
+    dmap = _destructor_maps(arg_types, r)
+    if tcall is None:
+        # No recursive call in this equation: the else branch is the right
+        # hand side itself, with the pattern's variables taken apart by
+        # destructors, and no obligation (and no `cut`) arises.  The
+        # projections still have to be reduced for the goal to read as the
+        # equation does.
+        proj = _reduce_used(_proj_term(arg_types, r, _tuple_of(eq)), dmap)[1]
+        for n, rule in enumerate(proj):
+            if n == len(proj) - 1:
+                prover.step('← rewrite %s goal=%d' % (rule, g), new=0)
+            else:
+                g = prover.step('← rewrite %s goal=%d' % (rule, g))
+        prover.step('← rule eq_refl goal=%d' % g, new=0)
+        return prover.text()
     c_cut = prover.step('cut "%s" goal=%d'
                         % (_decrease_prop(arg_types, r, tcall, _tuple_of(eq)), g))
-    dmap = _destructor_maps(arg_types, r)
     proj = _dedupe(_reduce_used(_proj_term(arg_types, r, _tuple_of(eq)),
                                 dmap)[1]
                    + _reduce_used(_proj_term(arg_types, r, tcall), dmap)[1])
@@ -1041,9 +1055,20 @@ def _expand(data):
         raise FunGenError('fun %s: the nullary-constructor equation must not '
                           'be recursive' % name)
     calls = _calls(eqs[1].rhs, f_const, len(arg_types))
-    if len(calls) != 1:
-        raise FunGenError('fun %s: %d recursive calls in one equation; the '
-                          'emitter handles one so far' % (name, len(calls)))
+    # Several recursive calls are fine as long as they ask for the same
+    # thing: the body then mentions one `g (...)` term rather than several,
+    # so one obligation covers them all (`filter` and `remdups` recurse on
+    # the same tail in both branches).  No call at all is fine too -- the
+    # equation needs no decrease -- which is the shape of a definition over
+    # a datatype such as nat's `Pre`.
+    tuples = []
+    for c in calls:
+        if c not in tuples:
+            tuples.append(c)
+    if len(tuples) > 1:
+        raise FunGenError(
+            'fun %s: %d distinct recursive calls in one equation; the '
+            'emitter handles one so far' % (name, len(tuples)))
     _require_in_scope(arg_types, r)
 
     dmap = _destructor_maps(arg_types, r)
@@ -1067,7 +1092,8 @@ def _expand(data):
                                         r, cond, eq_text, rules[0]))
         else:
             text.extend(_def_rec_entry(name, cname, arg_types, res_type, eq, r,
-                                       lhs[0], tupled_arg(calls[0]),
+                                       lhs[0],
+                                       tupled_arg(calls[0]) if calls else None,
                                        rules[1]))
         text.append('qed')
         entries.append(_entry(text))
