@@ -191,7 +191,17 @@ def variable_env(lhs_args, r, p=None):
 
 
 def replace(t, f_const, n, env, g):
-    """Substitute source variables; replace `f a1 .. an` by `g (a1 .. an)`."""
+    """Substitute source variables; replace `f a1 .. an` by `g (a1 .. an)`.
+
+    A binder in the right hand is refused: substituting under it is easy
+    (drop the bound name from the environment -- `sorted`'s
+    `%y. y Mem set xs --> x <= y` mentions both the bound `y` and the
+    pattern's `xs`), but the emitted proof then has to rewrite the
+    destructors *inside* the body, and `rewrite` sweeps the goal without
+    entering binders: the equation proof ends with an open goal.  Lifting
+    this needs a rewrite that descends under binders (or a `loc`-targeted
+    sequence), which is a method-layer addition rather than an emitter one.
+    """
     if t.is_comb():
         h, args = t.strip_comb()
         if h == f_const and len(args) == n:
