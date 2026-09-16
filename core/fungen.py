@@ -261,17 +261,17 @@ def _reduce_step(t, dmap):
     return t
 
 
-def _sweep_once(t, dmap):
-    """One sweep: (term, rules) as `rewrite`'s own conv would leave them.
+def _sweep_rules(t, dmap):
+    """(term, rules): the rules a sweep could take, and the term it leaves.
 
     `rewrite` in goal mode goes through `top_sweep_conv` (core/conv/
-    core.py), which tries the rule at a node and, *when it fires there*,
-    stops on that path; it descends into function, argument and binder
-    body only where nothing fired.  So one step rewrites the top-most
-    redexes and leaves a redex nested under another one for the next step
-    -- which is why the emitted step sequence is one rule per *pass*, and
-    why the same rule can appear twice in a row when the projections are
-    nested (`snd (snd p)`, as three-argument definitions have).
+    core.py): the rule is tried at a node and, *where it fires*, that path
+    is not descended into; function, argument and binder body are entered
+    only where nothing fired.  So one step rewrites the top-most redexes of
+    one rule, and a redex nested under another is left for a later step --
+    which is why the emitted sequence is one rule per step and the same
+    rule can appear twice in a row when the projections are nested
+    (`snd (snd p)`, as three-argument definitions have).
     """
     rules = []
 
@@ -288,23 +288,47 @@ def _sweep_once(t, dmap):
             return x if body is x.body else Abs(x.var_name, x.var_T, body)
         return x
 
-    res = rec(t)
-    return res, _dedupe(rules)
+    return rec(t), _dedupe(rules)
+
+
+def _sweep_with(t, rule, dmap):
+    """The term after one `rewrite <rule>` step."""
+
+    def rec(x):
+        if dmap.get(x.strip_comb()[0].name, (None, None, None))[2] == rule                 if x.is_comb() else False:
+            y = _reduce_step(x, dmap)
+            if y is not x:
+                return y
+        if x.is_comb():
+            f, a = rec(x.fun), rec(x.arg)
+            return x if (f is x.fun and a is x.arg) else f(a)
+        if x.is_abs():
+            body = rec(x.body)
+            return x if body is x.body else Abs(x.var_name, x.var_T, body)
+        return x
+
+    return rec(t)
 
 
 def _reduce_used(t, dmap):
     """(fully reduced term, the rewrite steps the goal needs, in order).
 
-    A step is one `rewrite`, which sweeps; each pass takes the rules the
-    top-most redexes need, and the term is swept again for the next level.
+    One rule per step, each chosen from a fresh sweep: a step is a whole
+    sweep, so it clears every top-most redex of its rule -- including the
+    ones the previous step uncovered.  Choosing the next rule without
+    re-sweeping would emit a step with nothing to rewrite, which
+    `rewrite` refuses.
     """
     steps = []
     while True:
-        t2, rules = _sweep_once(t, dmap)
+        t2, rules = _sweep_rules(t, dmap)
         if not rules:
             return t, steps
-        steps.extend(rules)
-        t = t2
+        steps.append(rules[0])
+        t = _sweep_with(t, rules[0], dmap)
+
+
+
 
 
 def _reduce(t, dmap):
@@ -681,9 +705,19 @@ def _rel_wf_entry(cname, arg_types, r):
     g = prover.step('← rewrite %s_rel_def goal=0' % cname)
     if len(arg_types) > 1:
         m_ty = _printt(TFun(tupled_type(arg_types), T))
-        g = prover.step('← rule wf_measure_gen param_R="%s" param_m="(%s::%s)" '
-                        'goal=%d' % (Rr, _prints(_proj_const(arg_types, r)),
-                                     m_ty, g))
+        # A lambda has to be ascribed as a whole: `(λp. fst (snd p)::T)`
+        # attaches the type to the body.  With one or two arguments the
+        # projection is a constant and the short form is kept, so the
+        # emitted text of existing definitions does not change.
+        # The printed lambda ascribes its own binder, and the result type
+        # follows from the body, so it needs no outer ascription -- which
+        # the parser would not take after the closing parenthesis anyway.
+        if len(arg_types) <= 2:
+            m_text = '(%s::%s)' % (_prints(_proj_const(arg_types, r)), m_ty)
+        else:
+            m_text = '(%s)' % _prints(_proj_const(arg_types, r))
+        g = prover.step('← rule wf_measure_gen param_R="%s" param_m="%s" '
+                        'goal=%d' % (Rr, m_text, g))
     prover.step('← rule %s goal=%d' % (lemma, g), new=0)
     return ['theorem %s_rel_wf' % cname, '  prop %s' % prop,
             'proof'] + prover.text() + ['qed']
@@ -736,9 +770,11 @@ def _proj_const(arg_types, r):
     (`tactic/steps.py:264`) -- and to settle what the sequence does with
     the parts of the branch that `if_P`/`if_not_P` is about to discard.
     """
-    Tup = tupled_type(arg_types)
-    T = arg_types[r]
-    return Const('fst' if r == 0 else 'snd', TFun(Tup, T))
+    if len(arg_types) <= 2:
+        return Const('fst' if r == 0 else 'snd',
+                     TFun(tupled_type(arg_types), arg_types[r]))
+    p = Var('p', tupled_type(arg_types))
+    return Lambda(p, _proj_term(arg_types, r, p))
 
 
 def _destructor_map(T):
@@ -1010,9 +1046,15 @@ def _def_rec_entry(name, cname, arg_types, res_type, eq, r, lhs_null, tcall,
         return prover.text()
     c_cut = prover.step('cut "%s" goal=%d'
                         % (_decrease_prop(arg_types, r, tcall, _tuple_of(eq)), g))
-    proj = _dedupe(_reduce_used(_proj_term(arg_types, r, _tuple_of(eq)),
-                                dmap)[1]
-                   + _reduce_used(_proj_term(arg_types, r, tcall), dmap)[1])
+    # The rules are taken from the obligation's own term -- the one the
+    # cut above states, with the projections of both the call and the
+    # pattern -- because that is what the goal has: computing them from
+    # the two projections separately emits steps the sweep has already
+    # cleared, and deduping them loses a level when the projection is
+    # nested (`snd (snd p)`, three arguments and up).
+    obligation = _relation(arg_types[r])(_proj_term(arg_types, r, tcall))(
+        _proj_term(arg_types, r, _tuple_of(eq))).beta_norm()
+    proj = _reduce_used(obligation, dmap)[1]
     closes = _decrease_closes(arg_types, r, tcall, _tuple_of(eq))
     c3 = c_cut
     for i, rule in enumerate(proj):
@@ -1082,9 +1124,6 @@ def _expand(data):
     # then looked for at the wrong arity and not found.
     arity = len(_eq_args(eqs[0]))
     arg_types, res_type = _strip_type(ty, arity)
-    if len(arg_types) > 2:
-        raise FunGenError('fun %s: %d arguments; the emitter handles two so '
-                          'far' % (name, len(arg_types)))
     lhs = [_eq_args(eq) for eq in eqs]
     r = recursion_position(arg_types, lhs)
     if r is None:
