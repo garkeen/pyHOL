@@ -210,9 +210,14 @@ def replace(t, f_const, n, env, g):
         return replace(t.fun, f_const, n, env, g)(
             replace(t.arg, f_const, n, env, g))
     if t.is_abs():
-        raise FunGenError(
-            "a binder in an equation's right hand is not supported: %s" %
-            printer.print_term(t))
+        # A binder is entered: the source variables are substituted under
+        # it except the name it binds, which shadows them (`sorted`'s
+        # `%y. y Mem set xs --> x <= y` mentions the bound `y` and the
+        # pattern's `xs`).  The substituted terms are projections and
+        # destructors over the tuple variable, so they cannot be captured.
+        inner = dict((k, v) for k, v in env.items() if k != t.var_name)
+        return Abs(t.var_name, t.var_T,
+                   replace(t.body, f_const, n, inner, g))
     if t.is_var() and t.name in env:
         return env[t.name]
     return t
