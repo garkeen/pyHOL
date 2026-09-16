@@ -1,5 +1,5 @@
 theory prod
-imports logic_base
+imports logic_base, wf_base
 description "Product type: pairing, projections, extensionality"
 
 header "Product type"
