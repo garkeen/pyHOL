@@ -947,8 +947,10 @@ def _condition_negation(prover, names, arg_types, r, eqs, i, j, g, cond):
         fwd = prover.step(
             '→ forward ineq_sym param_x="%s" param_y="%s" goal=%d facts=[%d]'
             % (l_txt, r_txt, g2, fwd))
-    prover.step('← rule negE_gen goal=%d facts=[%d,%d]' % (g2, fwd, eq),
-                new=0)
+    # `negE_gen` closes the goal and leaves one item behind (the goal with
+    # the rewritten hypothesis), so the counter moves on even though
+    # nothing is left to prove.
+    prover.step('← rule negE_gen goal=%d facts=[%d,%d]' % (g2, fwd, eq))
     return c
 
 
@@ -1292,10 +1294,6 @@ def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
         c = prover.step('cut "%s" goal=%d' % (fp, g))
         prover.step('← rule wfrec_eq goal=%d facts=[%d,%d]' % (c, a, d), new=0)
         g = prover.step('← rewrite source=prev goal=%d facts=[%d]' % (g, c))
-    g = prover.step('← unfold wfrec_H_def goal=%d' % g)
-    g = prover.step('← unfold %s_H_def goal=%d' % (cname, g))
-    for rule in rules:
-        g = prover.step('← rewrite %s goal=%d' % (rule, g))
     # What the branch's body reads once the sweeps have reduced it, against
     # the equation's own right hand side: with the branch selected, the goal
     # is exactly this equality, so the step that selects it closes the goal
@@ -1307,6 +1305,22 @@ def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
     rest = _reduce_used(after, dmap)[1]
     final = _reduce(after, dmap)
     closes_now = final.is_reflexive() and not rest
+    # A branch with no test of its own (a single equation) and no call has
+    # no step left to close the goal: the body *is* the right hand side,
+    # so the last step that touched the goal did it -- the last sweep, or
+    # the unfolding of the body functional when nothing was swept.
+    closes_early = closes_now and not tcalls and i == 0 and len(eqs) == 1
+    g = prover.step('← unfold wfrec_H_def goal=%d' % g)
+    if closes_early and not rules:
+        prover.step('← unfold %s_H_def goal=%d' % (cname, g), new=0)
+        return prover.text()
+    g = prover.step('← unfold %s_H_def goal=%d' % (cname, g))
+    for k, rule in enumerate(rules):
+        last = (k == len(rules) - 1)
+        if last and closes_early:
+            prover.step('← rewrite %s goal=%d' % (rule, g), new=0)
+        else:
+            g = prover.step('← rewrite %s goal=%d' % (rule, g))
     for j in range(i):
         neg = _condition_negation(prover, names, arg_types, r, eqs, i, j, g,
                                   conds[i][j])
