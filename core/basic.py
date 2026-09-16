@@ -429,6 +429,60 @@ def load_theory_cache(filename):
                     except TheoryException:
                         pass  # Skip duplicates
 
+        # The datatypes whose size family is not generated yet.  A size
+        # family is a generated `fun`, and its equations use the
+        # destructor family and state a comparison (`<ty>_size_less`), so
+        # in the file that defines those itself (nat's `less`, list's
+        # `hd`/`tl`) it can only be generated once they are there.  It is
+        # therefore attempted after every item, until it goes through:
+        # generating it at the first point it can be is what lets the
+        # file's *own* definitions use it as a measure -- with the family
+        # left to the end of the file, `map` and `filter` over the
+        # datatype declared above it find no size for that argument and
+        # fall back to the subterm relation.
+        pending_sizes = [item_data for item_data in data['content']
+                         if item_data.get('ty') == 'type.ind']
+
+        def _size_family_ready():
+            """Whether a size family can be stated in the theory yet.
+
+            The family's one fact compar
+es two sizes (`<ty>_size_less`),
+            so it needs the comparison on nat.  In the file that defines
+            that itself (nat) it comes later than the datatype, and
+            generating the family before it would register an item that
+            does not type; everywhere else nat is an import and this is
+            true from the start.
+            """
+            from core import context
+            for probe in ('(%x::nat. %y::nat. x < y)',
+                          '(%x::nat. %y::nat. x <= y)'):
+                try:
+                    context.parse_term(probe)
+                except Exception:
+                    return False
+            return True
+
+        def _generate_sizes():
+            from core import datgen
+            still = []
+            if not _size_family_ready():
+                return list(pending_sizes)
+            for datatype in pending_sizes:
+                try:
+                    derived = datgen.expand_size(datatype)
+                except Exception:
+                    if os.environ.get('HOLPY_DATGEN_DEBUG'):
+                        raise
+                    derived = None
+                if derived is None or not _size_family_ready():
+                    still.append(datatype)
+                    continue
+                for derived_item in derived:
+                    derived_item['_src'] = datatype.get('_src')
+                _load_group(derived)
+            return still
+
         for index, item_data in enumerate(data['content']):
             # A datatype expands into the well-foundedness of its subterm
             # relation, which `fun` recursion on it descends through, and
@@ -449,20 +503,8 @@ def load_theory_cache(filename):
                     for derived_item in derived:
                         derived_item['_src'] = item_data.get('_src')
                     _load_group(derived)
-
-        # A datatype's size family is a generated `fun`, and its equations
-        # use the destructor family; a file may declare those destructors
-        # anywhere (nat's `Pre` and list's `hd`/`tl` come after their
-        # datatypes), so the size family is generated once the file is
-        # whole.
-        for item_data in data['content']:
-            if item_data.get('ty') == 'type.ind':
-                from core import datgen
-                derived = datgen.expand_size(item_data)
-                if derived is not None:
-                    for derived_item in derived:
-                        derived_item['_src'] = item_data.get('_src')
-                    _load_group(derived)
+            if pending_sizes:
+                pending_sizes = _generate_sizes()
 
     return cache
 
