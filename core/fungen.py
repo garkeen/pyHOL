@@ -52,6 +52,7 @@ from kernel.term import Lambda, Var, Const, Eq, Abs
 from syntax import printer
 from syntax.logicops import Exists, is_exists, Not, is_not
 from syntax.settings import global_setting
+from core import measure
 
 NatType = TConst('nat')
 
@@ -518,6 +519,145 @@ def _relation(T):
     return datgen.relation_term(T, constrs, pairs)
 
 
+# ---------------------------------------------------------------------------
+# Measures: the general path (Isabelle's lexicographic_order).
+#
+# `fun`'s first relation prover is the measure matrix: candidate measure
+# functions on the tupled argument, a cell per (recursive call, measure)
+# saying what the call does there, and a right-nested `mlex_prod` chain
+# over the columns the search kept.  `core/measure.py` decides all of it
+# and hands back the cells with their proofs.  The datatype's own subterm
+# relation above is what is left when no measure applies -- most
+# importantly for the size function itself, whose only measure would be
+# the very constant being defined.
+# ---------------------------------------------------------------------------
+
+def _size_name(T):
+    """The datatype's generated size function, or None."""
+    from kernel import theory
+    if not T.is_tconst():
+        return None
+    name = '%s_size' % T.name
+    return name if theory.thy.has_term_sig(name) else None
+
+
+def _size_rule(sz, T, k):
+    """The size function's equation for the k-th constructor, or None."""
+    from kernel import theory
+    names = ['%s_def_%d' % (sz, k)]
+    try:
+        names.append('%s_def_%d'
+                     % (theory.thy.get_overload_const_name(sz, TFun(T, NatType)),
+                        k))
+    except Exception:
+        pass
+    for name in names:
+        try:
+            theory.get_theorem(name)
+            return name
+        except Exception:
+            continue
+    return None
+
+
+def _size_tables(arg_types, def_names):
+    """The size information the measure engine needs.
+
+    Returns `(sizes, size_of)`.  `sizes` maps a size function's name to
+    its constructors' equations and recursive positions -- what the
+    normalization unfolds `size (C ...)` with; `size_of` answers a type
+    with its size function, or None.  A datatype whose equations do not
+    all exist contributes no column, and the size function's own
+    definition is left out: its measure would be the constant being
+    defined.
+    """
+    sizes, size_of = {}, {}
+    for T in arg_types:
+        sz = _size_name(T)
+        if sz is None or sz in def_names:
+            continue
+        constrs = _registered_constrs(T)
+        if not constrs:
+            continue
+        table = {}
+        for k, c in enumerate(constrs):
+            arg_types_c = c['type'].strip_type()[0]
+            rule = _size_rule(sz, T, k + 1)
+            if rule is None:
+                table = None
+                break
+            pos = [j for j, Ty in enumerate(arg_types_c) if Ty == T]
+            table[c['name']] = (rule, pos)
+        if table:
+            sizes[sz] = table
+            size_of[T] = sz
+    return sizes, size_of
+
+
+def _measure_defs(cname, arg_types, order):
+    """The measure constants' definitions, as `def` item lines.
+
+    The relation and the obligations both write a measure as a constant
+    (`<c>_m1`) and never as a lambda: the rules that consume the cells
+    (`mlex_less`, `mlex_leq`) state their premises as `f x`, the matcher
+    is first-order and does not beta reduce, so `f` has to be a constant
+    whose application one `rewrite <c>_m1_def` unfolds.  The defining
+    equation is written with the tuple variable free, so that rewrite
+    substitutes the tuple into the body in one step.
+    """
+    Tup = tupled_type(arg_types)
+    p = Var('p', Tup)
+    return ['def %s :: %s ⇒ nat = %s p = %s'
+            % (m.def_name, _printt(Tup), m.def_name, _prints(m.body(p)))
+            for m in (order or [])]
+
+
+def _measure_chain_text(arg_types, order, start=0):
+    """The relation chain from column `start` on, as text.
+
+    The chain ends at the empty relation, which is what makes it well
+    founded without any further work (`wf_false`): the measures before
+    the last are compared by `mlex_prod` and the calls that reach the
+    end have all strictly decreased by then.  The text is the one the
+    relation definition and the obligation proofs both use, so the terms
+    they parse are the same term.
+    """
+    Tup = _printt(tupled_type(arg_types))
+    p = Var('p', tupled_type(arg_types))
+    body = '(%%x::%s. %%y::%s. false)' % (Tup, Tup)
+    for m in reversed(order[start:]):
+        body = 'mlex_prod %s (%s)' % (measure.measure_text(m, p), body)
+    return body
+
+
+def _measure_order(arg_types, def_names, cname, eqs, calls, dmap):
+    """The measures the definition descends through, or None.
+
+    None means the measure search found no order: the caller then keeps
+    the datatype's subterm relation, which is the relation rule that
+    applies to definitions the measures cannot express (the size
+    function's own recursion above all).  Also returns the size tables
+    and the measure constants' defining equations, which are what the
+    cells are proved with.
+
+    Every candidate is named by the argument position it measures, before
+    the search runs: the name has to be known while the cells are built
+    (`<c>_m2` is what the relation and the obligations both write), and
+    naming by position keeps it the same whether the search keeps the
+    measure or not.
+    """
+    sizes, size_of = _size_tables(arg_types, def_names)
+    measures = measure.candidate_measures(arg_types, size_of.get)
+    for m in measures:
+        m.def_name = '%s_m%d' % (cname, m.pos + 1)
+    mdefs = {}
+    for m in measures:
+        mdefs.update(m.tables())
+    rows = [(tupled_arg(c), _tuple_of(eqs[i]))
+            for i, cs in enumerate(calls) for c in cs]
+    return measure.infer(measures, rows, dmap, sizes, mdefs), sizes, mdefs
+
+
 def _subterm(T):
     """(relation on the component, its well-foundedness lemma).
 
@@ -787,14 +927,23 @@ def _def_entries(name, cname, arg_types, res_type, body_prop, rel_prop):
     return res
 
 
-def _rel_wf_entry(cname, arg_types, r, recursive=True):
+def _rel_wf_entry(cname, arg_types, r, order=None):
     """The `wf` obligation: the relation is well-founded.
 
-    The relation def is a lambda, so `rewrite` unfolds it in the
-    unapplied goal `wf <c>_rel` without a beta redex; the lift through
-    the projection is `wf_measure_gen`, instantiated explicitly because
-    its pattern `?R (?m x) (?m y)` does not match a projection
-    application on its own.
+    With a measure order the relation is the `mlex_prod` chain, so its
+    well-foundedness is `wf_mlex` once per column -- each use takes the
+    tail's well-foundedness as its premise, which is why the chain's
+    obligations are cut from the tail backwards and closed on the way
+    back -- down to `wf_false`, the empty relation at the end.  The
+    chain's tail `wf` obligations are the ones `wf_mlex` states, so they
+    are stated here with the same text the chain is written with.
+
+    Without one the relation is the datatype's subterm relation lifted
+    through the projection.  The relation def is a lambda, so `rewrite`
+    unfolds it in the unapplied goal `wf <c>_rel` without a beta redex;
+    the lift is `wf_measure_gen`, instantiated explicitly because its
+    pattern `?R (?m x) (?m y)` does not match a projection application on
+    its own.
 
     The empty relation of a definition without recursive calls is the one
     case that needs no lift: `wf_false` is its well-foundedness directly.
@@ -802,8 +951,19 @@ def _rel_wf_entry(cname, arg_types, r, recursive=True):
     prop = _rel_wf_prop(cname, arg_types)
     prover = _Proof()
     g = prover.step('← rewrite %s_rel_def goal=0' % cname)
-    if not recursive:
-        prover.step('← rule wf_false goal=%d' % g, new=0)
+    if order is not None:
+        if not order:
+            prover.step('← rule wf_false goal=%d' % g, new=0)
+            return ['theorem %s_rel_wf' % cname, '  prop %s' % prop,
+                    'proof'] + prover.text() + ['qed']
+        cuts = []
+        for j in range(1, len(order) + 1):
+            chain = _measure_chain_text(arg_types, order, j)
+            cuts.append(prover.step('cut "wf (%s)" goal=%d' % (chain, g)))
+        prover.step('← rule wf_false goal=%d' % cuts[-1], new=0)
+        for j in range(len(order) - 1, -1, -1):
+            prover.step('← rule wf_mlex goal=%d facts=[%d]'
+                        % (g if j == 0 else cuts[j - 1], cuts[j]), new=0)
         return ['theorem %s_rel_wf' % cname, '  prop %s' % prop,
                 'proof'] + prover.text() + ['qed']
     T = arg_types[r]
@@ -1217,24 +1377,32 @@ def _body_prop(name, arg_types, res_type, eqs, r, p=None):
     return _prints(_body_term(name, arg_types, res_type, eqs, r, p))
 
 
-def _rel_body(arg_types, r, recursive=True):
+def _rel_body(arg_types, r, order=None):
     """The relation as a lambda over the tuple variables p and q.
 
     The def's right hand side is the whole lambda: `wf <c>_rel` is
     unfolded by rewriting the unapplied constant, which only works if the
-    definitional equation is `c_rel = (%p. %q. ...)`.  The body is the
-    datatype's component relation applied to the projected tuple
-    components, so it is the same proposition the lifted condition is.
+    definitional equation is `c_rel = (%p. %q. ...)`.
 
-    A definition without a recursive call descends nowhere: its relation is
-    the empty one, which is well founded (`wf_false`) and makes every
-    obligation vacuous.  The datatype's own projections have no subterm
-    relation to use -- their destructor is the function being defined --
-    so this is the only relation available to them.
+    `order` is the measure chain the search kept: the body is then the
+    `mlex_prod` chain over it, ending at the empty relation.  An empty
+    order is a definition with no recursive call, which descends nowhere;
+    its relation is the empty one, well founded by `wf_false`, and every
+    obligation is vacuous -- the only relation its own projections (`the`,
+    `fst`, `snd`) can have, since their destructor is the function being
+    defined.  None keeps the datatype's subterm relation, lifted through
+    the projection, which is what a definition the measures cannot express
+    descends through.
     """
     Tup = _printt(tupled_type(arg_types))
-    if not recursive:
-        return "%%p::%s. %%q::%s. false" % (Tup, Tup)
+    if order is not None:
+        # The chain is already a function of the two tuples, so it is the
+        # definitional right hand side as it stands.  Wrapping it in
+        # `%p. %q. ... p q` would leave the unfoldings with a lambda where
+        # the rules state `mlex_prod f R` (`wf_mlex`) or a plain
+        # application (the equation's condition), and neither matcher sees
+        # through that: `rule` compares the conclusion with the goal.
+        return _measure_chain_text(arg_types, order)
     T = arg_types[r]
     p = Var('p', tupled_type(arg_types))
     q = Var('q', tupled_type(arg_types))
@@ -1265,8 +1433,68 @@ def _in_def_fact(prover, cname, arg_types, res_type, g):
     return c
 
 
+def _emit_closing(prover, closing, g):
+    """Write the last steps of a comparison: a tree of cuts and rules."""
+    if closing.kind == 'rule':
+        prover.step('← rule %s goal=%d' % (closing.theorem, g), new=0)
+        return
+    c = prover.step('cut "%s" goal=%d' % (closing.prop, g))
+    _emit_closing(prover, closing.sub, c)
+    prover.step('← rule %s goal=%d facts=[%d]' % (closing.theorem, g, c),
+                new=0)
+
+
+def _measure_obligation(prover, order, arg_types, call, pat, dmap, sizes, mdefs,
+                        g, name, i):
+    """One recursive call's decrease, walked through the measure chain.
+
+    The call is discharged at the first column where it strictly
+    decreases, so the walk is the columns up to and including that one.
+    Each column's cell is stated and proved first -- the cell is what the
+    rule for that column takes as a premise, and it has to be the very
+    proposition the rule states (`mlex_leq`'s `f x <= f y`), so it is cut
+    with the measure applied the way the relation applies it and the
+    proof starts by beta-reducing that application.
+
+    The chain is then built from the strict column outward: `mlex_less`
+    needs only the strict cell, and every weaker column before it needs
+    its cell plus the relation of the tail.  The outermost cut is the
+    equation's own obligation, which is what discharges the condition
+    `cut_def` leaves in the equation's goal.
+    """
+    walk = measure.row(order, call, pat, dmap, sizes, mdefs)
+    if walk is None:
+        raise FunGenError(
+            'fun %s: the measure order does not discharge the recursive '
+            'call of equation %d' % (name, i + 1))
+    cell_facts = []
+    for _, c in walk:
+        cell = prover.step('cut "%s" goal=%d' % (c.prop, g))
+        cur = cell
+        if c.beta:
+            cur = prover.step('← beta goal=%d' % cur)
+        for step in c.steps:
+            cur = prover.step('← rewrite %s goal=%d' % (step, cur))
+        _emit_closing(prover, c.closing, cur)
+        cell_facts.append(cell)
+    call_text, pat_text = _arg_text(call), _arg_text(pat)
+    tail = None
+    for j in range(len(walk) - 1, -1, -1):
+        chain = _measure_chain_text(arg_types, order, j)
+        c = prover.step('cut "%s %s %s" goal=%d'
+                        % (chain, call_text, pat_text, g))
+        if j == len(walk) - 1:
+            prover.step('← rule mlex_less goal=%d facts=[%d]'
+                        % (c, cell_facts[j]), new=0)
+        else:
+            prover.step('← rule mlex_leq goal=%d facts=[%d,%d]'
+                        % (c, cell_facts[j], tail), new=0)
+        tail = c
+    return tail
+
+
 def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
-               tcalls, dmap):
+               tcalls, dmap, order=None, sizes=None, mdefs=None):
     """Proof of equation i, whichever branch of the chain it is.
 
     The body functional is the if-chain over the equations in source
@@ -1361,6 +1589,11 @@ def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
     eq = eqs[i]
     facts = []
     for tcall in tcalls:
+        if order is not None:
+            facts.append(_measure_obligation(prover, order, arg_types, tcall,
+                                             _tuple_of(eq), dmap, sizes, mdefs,
+                                             g, name, i))
+            continue
         obligation_prop = _decrease_prop(arg_types, r, tcall, _tuple_of(eq))
         if i < len(eqs) - 1 and is_exists(conds[i][i]):
             # Both this branch's test (once its witness is given) and the
@@ -1419,7 +1652,7 @@ def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
     return prover.text()
 
 
-def _require_in_scope(arg_types, r, recursive=True):
+def _require_in_scope(arg_types, r, order=None):
     """Names the emitted items and proofs depend on.
 
     A definition is only expanded when the file can actually see them:
@@ -1434,16 +1667,25 @@ def _require_in_scope(arg_types, r, recursive=True):
     `fst`, `snd`) and the pattern-matching predicates expandable at all --
     their destructor is the very function being defined, so no subterm
     relation over them exists.
+
+    A measure chain additionally needs the mlex machinery and the nat
+    comparison lemmas its cells are closed with; the size functions of the
+    argument datatypes are checked as the columns are built, since a
+    datatype without one contributes no column instead.
     """
     from kernel import theory
     needed = ['wfrec_eq', 'wfrec_H_def', 'cut_def', 'if_P', 'if_not_P',
               'eq_refl', 'snd_def_1', 'fst_def_1']
-    if recursive:
+    if order is None:
         needed.append('wf_measure_gen')
         needed.append('ineq_sym')
         needed.append(_subterm(arg_types[r])[1])
-    else:
+    elif not order:
         needed.append('wf_false')
+    else:
+        needed += ['wf_false', 'wf_mlex', 'mlex_prod_def', 'mlex_less',
+                   'mlex_leq']
+        needed += measure.ARITH + measure.CLOSING_LEMMAS
     for th_name in needed:
         try:
             theory.get_theorem(th_name)
@@ -1512,8 +1754,7 @@ def _expand(data):
             if c not in tuples:
                 tuples.append(c)
         calls.append(tuples)
-    recursive = any(calls)
-    _require_in_scope(arg_types, r, recursive)
+    _require_in_scope(arg_types, r, None if any(calls) else [])
 
     dmap = _destructor_maps(arg_types, r)
     rules = [_reduce_used(_body_term(name, arg_types, res_type, eqs, r,
@@ -1524,11 +1765,26 @@ def _expand(data):
                                _proj_term(arg_types, r, _tuple_of(eqs[i])), j),
                       dmap)
               for j in range(i + 1)] for i in range(len(eqs))]
-    entries = [_entry([text]) for text in _def_entries(
+    order, sizes, mdefs = _measure_order(arg_types, (name, cname), cname, eqs,
+                                         calls, dmap)
+    try:
+        _require_in_scope(arg_types, r, order)
+    except FunGenError:
+        # The measure machinery is not in scope in this file (the nat
+        # comparisons its cells are closed with, most often).  The
+        # datatype's own subterm relation is the relation rule left, the
+        # same one that was used before the measures existed: a file that
+        # cannot see them keeps the items it always had, instead of losing
+        # the definition to an axiom.
+        order, sizes, mdefs = None, {}, {}
+        _require_in_scope(arg_types, r, order)
+    entries = [_entry([text]) for text in _measure_defs(cname, arg_types,
+                                                        order)]
+    entries += [_entry([text]) for text in _def_entries(
         name, cname, arg_types, res_type,
         _body_prop(name, arg_types, res_type, eqs, r),
-        _rel_body(arg_types, r, recursive))]
-    entries.append(_entry(_rel_wf_entry(cname, arg_types, r, recursive)))
+        _rel_body(arg_types, r, order))]
+    entries.append(_entry(_rel_wf_entry(cname, arg_types, r, order)))
     for i, eq in enumerate(eqs):
         eq_text = _equation_text(name, ty, data['rules'][i]['prop'], eq)
         text = ['theorem %s_def_%d' % (cname, i + 1),
@@ -1539,10 +1795,15 @@ def _expand(data):
                 'proof']
         text.extend(_def_entry(name, cname, arg_types, res_type, eqs, r, i,
                                conds, rules[i],
-                               [tupled_arg(c) for c in calls[i]], dmap))
+                               [tupled_arg(c) for c in calls[i]], dmap,
+                               order, sizes, mdefs))
         text.append('qed')
         entries.append(_entry(text))
-    _require_parsable_defs(entries[:2], name)
+    # The relation item names the measure constants defined in this group,
+    # so it can only be parsed after them -- the loader does exactly that.
+    # What is checked here is everything up to and including the body
+    # functional: the items that name nothing inside the group.
+    _require_parsable_defs(entries[:len(order or []) + 1], name)
     return entries
 
 

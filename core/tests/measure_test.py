@@ -1,151 +1,143 @@
 """Unit tests for the recursion-relation inference (core/measure.py).
 
-The properties asserted here are the inference's, not the library's: which
-measures a definition's argument types admit, what a call does at each of
-them, and which order of columns the search ends up with.  The samples are
-written for the test -- a definition that needs one measure, one that needs
-two (the second only for the calls the first leaves untouched), one that
-has no order at all, and one whose measure is a datatype's size.
+The properties asserted here are the ones the emitter consumes: what a
+call does at a measure (the cell's proposition, the rewrite steps that
+normalize it, and the last steps that close it), and which order of
+columns the search ends up with.  The measures are written the way the
+emitter writes them -- as named constants, whose defining equation is the
+cell's first step.
+
+The size measure and the whole emitted proof are covered end to end by
+`library/measure_example.pyhol` (a datatype of the file's own, so a size
+function exists) and by library/tests/fungen_test.py.
 """
 
 import unittest
 
 from kernel.term import Const, Var
-from kernel.type import TFun, TConst, TVar
+from kernel.type import TFun, TConst
 from core import basic
-from core import context
 from core import fungen
 from core import measure
 
 NatType = TConst('nat')
 
 
-def nat_size_map(xs):
-    """The size equations of `list`, as the inference wants them."""
-    return {'list_size': {'nil': ('list_size_def_1', []),
-                          'cons': ('list_size_def_2', [xs])}}
-
-
 class MeasureTest(unittest.TestCase):
     def setUp(self):
-        basic.load_theory('list')
+        basic.load_theory('nat')
+        self.arg_types = [NatType, NatType]
+        self.dmap = fungen._destructor_maps(self.arg_types, 0)
 
-    def _plan(self, name, ty, props):
-        """(arg_types, r, eqs, calls, dmap) for the given equations."""
-        with context.fresh_context(defs={name: ty}):
-            eqs = [context.parse_term(prop) for prop in props]
-        arity = len(fungen._eq_args(eqs[0]))
-        arg_types, res_type = fungen._strip_type(ty, arity)
-        lhs = [fungen._eq_args(eq) for eq in eqs]
-        r = fungen.recursion_position(arg_types, lhs)
-        f_const = Const(name, TFun(*(list(arg_types) + [res_type])))
-        calls = []
-        for eq in eqs:
-            for c in fungen._calls(eq.rhs, f_const, arity):
-                calls.append((fungen.tupled_arg(c), fungen._tuple_of(eq)))
-        return arg_types, r, eqs, calls, fungen._destructor_maps(arg_types, r)
+    def _named(self, pos, name='m1'):
+        """A measure at `pos`, named the way the emitter names one."""
+        m = measure.Measure(pos, self.arg_types, 'nat', def_name=name)
+        self.assertTrue(m.is_named())
+        return m, m.tables()
 
-    def _infer(self, name, ty, props, size_of=lambda T: None, sizes=None):
-        arg_types, r, eqs, calls, dmap = self._plan(name, ty, props)
-        ms = measure.candidate_measures(arg_types, size_of)
-        return measure.infer(ms, calls, dmap, sizes), (arg_types, calls, dmap, ms)
+    def _cell(self, pos, call, lhs):
+        m, mdefs = self._named(pos)
+        return measure.cell(m, call, lhs, self.dmap, {}, mdefs)
+
+    def _pair(self, a, b):
+        return fungen.tupled_arg([a, b])
 
     def test_one_measure_suffices(self):
-        """Two natural-number arguments, recursion on the first.
-
-        The second position gives a column too (`n <= n`), but a column
-        needs a strict cell somewhere and that one has none, so the search
-        keeps the first.
-        """
-        ty = TFun(NatType, TFun(NatType, NatType))
-        order, (arg_types, calls, dmap, ms) = self._infer('wfgen', ty, [
-            'wfgen 0 n = n',
-            'wfgen (Suc m) n = Suc (wfgen m n)'])
-        self.assertEqual(len(ms), 2)
-        self.assertEqual([m.pos for m in order], [0])
-        cells = [measure.cell(m, call, lhs, dmap) for m in order
-                 for call, lhs in calls]
-        self.assertEqual([c.kind for c in cells], ['lt'])
-        # The cell is stated with the projections still unreduced:
-        # that is the shape the goal's condition has, and the
-        # projections are opened inside the cell's own proof.
-        self.assertEqual(cells[0].prop,
-                         'fst (Pair m n) < fst (Pair (Suc m) n)')
-        self.assertEqual(cells[0].steps,
-                         ['fst_def_1', 'less_Suc_lesseq', 'lesseq_refl'])
-
-    def test_lexicographic_order_needs_two(self):
-        """No single measure covers both calls, so the chain has two.
-
-        The first call moves to a bigger first argument (no measure can
-        take it as non-increasing there) while the second argument grows
-        too; the second call keeps the first argument and decreases the
-        second.  The second column alone cannot take the first call, so
-        the first column has to come first and the rest is left to the
-        second -- which is the chain `m_1 <*mlex*> m_2`.
-        """
-        ty = TFun(NatType, TFun(NatType, NatType))
-        arg_types, res_type = fungen._strip_type(ty, 2)
-        m, n = Var('m', NatType), Var('n', NatType)
+        # A call on the predecessor of the first argument: the measure is
+        # that argument, and the cell is one `Suc` apart.
+        m_var, n_var = Var('m', NatType), Var('n', NatType)
         suc = Const('Suc', TFun(NatType, NatType))
-        # The two rows a definition with a call of each shape produces.
-        rows = [(fungen.tupled_arg([m, suc(n)]),
-                 fungen.tupled_arg([suc(m), n])),
-                (fungen.tupled_arg([suc(m), n]),
-                 fungen.tupled_arg([suc(m), suc(n)]))]
-        dmap = fungen._destructor_maps(arg_types, 0)
-        ms = measure.candidate_measures(arg_types, lambda T: None)
-        self.assertEqual(sorted(m.pos for m in ms), [0, 1])
-        order = measure.infer(ms, rows, dmap)
-        self.assertEqual([m.pos for m in order], [0, 1])
-        first = [measure.cell(m, rows[0][0], rows[0][1], dmap) for m in order]
-        second = [measure.cell(m, rows[1][0], rows[1][1], dmap) for m in order]
-        self.assertEqual([c.kind if c else None for c in first], ['lt', None])
-        self.assertEqual([c.kind if c else None for c in second], ['le', 'lt'])
-
-    def test_no_order_is_reported_as_such(self):
-        """A call that grows its own argument has no measure to offer."""
-        ty = TFun(NatType, NatType)
-        order, _ = self._infer('grow', ty, [
-            'grow 0 = 0',
-            'grow (Suc m) = grow (Suc (Suc m))'])
-        self.assertIsNone(order)
-
-    def test_datatype_size_is_a_measure(self):
-        """A list argument is measured by its generated size."""
-        ta, tb = TVar('a'), TVar('b')
-        ty = TFun(TFun(ta, tb), TFun(TConst('list', ta), TConst('list', tb)))
-        with context.fresh_context(defs={'wfmap': ty}):
-            eqs = [context.parse_term(p) for p in [
-                'wfmap f [] = []',
-                'wfmap f (x # xs) = f x # wfmap f xs']]
-        arg_types, res_type = fungen._strip_type(ty, 2)
-        lhs = [fungen._eq_args(eq) for eq in eqs]
-        r = fungen.recursion_position(arg_types, lhs)
-        dmap = fungen._destructor_maps(arg_types, r)
-        f_const = Const('wfmap', ty)
-        calls = [(fungen.tupled_arg(c), fungen._tuple_of(eq))
-                 for eq in eqs for c in fungen._calls(eq.rhs, f_const, 2)]
-        xs = fungen._pattern_vars(eqs[1], r)[1]
-        sizes = nat_size_map(fungen.Var(xs, TConst('list', ta)))
-
-        def size_of(T):
-            return 'list_size' if (T.is_tconst() and T.name == 'list') else None
-
-        ms = measure.candidate_measures(arg_types, size_of)
-        # The function argument has no measure; the list position has one.
-        self.assertEqual([m.pos for m in ms], [1])
-        order = measure.infer(ms, calls, dmap, sizes)
-        self.assertEqual([m.pos for m in order], [1])
-        c = measure.cell(order[0], calls[0][0], calls[0][1], dmap, sizes)
+        c = self._cell(0, self._pair(m_var, n_var),
+                       self._pair(suc(m_var), n_var))
         self.assertEqual(c.kind, 'lt')
-        self.assertEqual(c.prop, 'list_size (snd (Pair f xs))'
-                         ' < list_size (snd (Pair f (x # xs)))')
-        # Both sides are reduced for the comparison: `tl` by its rule, the
-        # size by its equation, `1 + _` by `add_1_left`.
-        self.assertEqual(c.steps, ['snd_def_1', 'list_size_def_2',
-                                   'add_1_left', 'less_Suc_lesseq',
-                                   'lesseq_refl'])
+        # The cell is stated with the measure applied and not reduced:
+        # that is the proposition `mlex_less` matches as its premise (the
+        # matcher is first-order and does not reduce a redex).
+        self.assertEqual(c.prop, '(m1) (Pair m n) < (m1) (Pair (Suc m) n)')
+        # The measure's defining equation first, then the projection, then
+        # the comparison itself.
+        self.assertEqual(c.steps,
+                         ['m1_def', 'fst_def_1', 'less_Suc_lesseq'])
+        self.assertEqual(c.closing.kind, 'rule')
+        self.assertEqual(c.closing.theorem, 'lesseq_refl')
+        self.assertFalse(c.beta)
+
+    def test_equal_measure_is_not_increasing(self):
+        # The call keeps the measured argument: the cell is the weak one,
+        # and `lesseq_refl` closes it after the projections are reduced.
+        m_var, n_var = Var('m', NatType), Var('n', NatType)
+        c = self._cell(0, self._pair(m_var, n_var), self._pair(m_var, n_var))
+        self.assertEqual(c.kind, 'le')
+        self.assertEqual(c.steps, ['m1_def', 'fst_def_1'])
+        self.assertEqual(c.closing.theorem, 'lesseq_refl')
+
+    def test_extra_suc_on_the_right_is_absorbed(self):
+        # A call two constructors down (the cell is `n <= Suc n` after the
+        # peel): the surplus `Suc` comes off through `le_suc_right`, whose
+        # sub-comparison is the reflexive one.
+        n_var = Var('n', NatType)
+        suc = Const('Suc', TFun(NatType, NatType))
+        call = fungen.tupled_arg([n_var])
+        lhs = fungen.tupled_arg([suc(suc(n_var))])
+        m = measure.Measure(0, [NatType], 'nat', def_name='dbl_m1')
+        c = measure.cell(m, call, lhs, fungen._destructor_maps([NatType], 0),
+                         {}, m.tables())
+        self.assertEqual(c.kind, 'lt')
+        self.assertEqual(c.steps, ['dbl_m1_def', 'less_Suc_lesseq'])
+        self.assertEqual(c.closing.kind, 'cut')
+        self.assertEqual(c.closing.theorem, 'le_suc_right')
+        # The sub-comparison is what is left once the `Suc` is off.
+        self.assertEqual(c.closing.prop, 'n <= n')
+        self.assertEqual(c.closing.sub.theorem, 'lesseq_refl')
+
+    def test_atom_added_on_the_left(self):
+        # A sum on the right that does not start with the left side's atom:
+        # `le_add_left_mono` adds it, and the sub-comparison is proved
+        # first.
+        a_var, b_var = Var('a', NatType), Var('b', NatType)
+        plus = Const('plus', TFun(NatType, NatType, NatType))
+        c = self._cell(0, self._pair(a_var, b_var),
+                       self._pair(plus(b_var, a_var), a_var))
+        self.assertEqual(c.kind, 'le')
+        self.assertEqual(c.closing.kind, 'cut')
+        self.assertEqual(c.closing.theorem, 'le_add_left_mono')
+        # The atom the left side does not start with (`b`) is dropped
+        # from the right end, and what is left is the reflexive one.
+        self.assertEqual(c.closing.prop, 'a <= a')
+        self.assertEqual(c.closing.sub.theorem, 'lesseq_refl')
+
+    def test_no_order_reported(self):
+        # `f (Suc m) n = f (n + 1) m` descends nowhere: neither measure can
+        # be shown not to increase, so the search reports nothing and the
+        # caller keeps the subterm relation.
+        measures = [measure.Measure(pos, self.arg_types, 'nat')
+                    for pos in range(2)]
+        plus = Const('plus', TFun(NatType, NatType, NatType))
+        suc = Const('Suc', TFun(NatType, NatType))
+        call = self._pair(plus(Var('n', NatType), Const('one', NatType)),
+                          Var('m', NatType))
+        lhs = self._pair(suc(Var('m', NatType)), Var('n', NatType))
+        self.assertIsNone(measure.infer(measures, [(call, lhs)], self.dmap))
+
+    def test_the_second_measure_carries_the_first_one_s_leftovers(self):
+        # The order is the pair: the first column is strictly decreasing
+        # for the call on the first argument, and the call that keeps it
+        # (only `<=` there) is left to the second column.
+        m1 = measure.Measure(0, self.arg_types, 'nat', def_name='c_m1')
+        m2 = measure.Measure(1, self.arg_types, 'nat', def_name='c_m2')
+        mdefs = dict(m1.tables(), **m2.tables())
+        m_var, n_var = Var('m', NatType), Var('n', NatType)
+        suc = Const('Suc', TFun(NatType, NatType))
+        calls = [(self._pair(m_var, n_var), self._pair(suc(m_var), n_var)),
+                 (self._pair(m_var, n_var), self._pair(m_var, suc(n_var)))]
+        order = measure.infer([m1, m2], calls, self.dmap, {}, mdefs)
+        self.assertEqual(order, [m1, m2])
+        # The second call walks the first column (weak) and stops at the
+        # second, which is strict.
+        walk = measure.row(order, calls[1][0], calls[1][1], self.dmap, {},
+                           mdefs)
+        self.assertEqual([c.kind for _, c in walk], ['le', 'lt'])
+        self.assertEqual(walk[0][1].steps, ['c_m1_def', 'fst_def_1'])
 
 
 if __name__ == '__main__':

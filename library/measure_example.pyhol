@@ -1,0 +1,79 @@
+theory measure_example
+imports nat, wf
+description "Samples for the measure engine (fun's relation inference): self-written definitions whose decrease is a measure, not the datatype's subterm relation."
+
+-- The four comparisons the measure engine's cells are closed with.  They
+-- are nat lemmas and belong in nat; they sit here while the engine is
+-- being wired, so the library is not revalidated twice.
+
+theorem add_Suc_left
+  fixes x :: nat, y :: nat
+  prop Suc x + y = Suc (x + y)
+proof
+  ← rewrite nat_plus_def_2 goal=0
+qed
+
+theorem le_suc_right
+  fixes m :: nat, n :: nat
+  prop m <= n --> m <= Suc n
+proof
+  ← intro goal=0
+  cut "n <= Suc n" goal=2
+  ← rewrite add_1_right sym=true goal=3
+  ← rule le_add param_m=n param_n="(1::nat)" goal=4
+  ← rule less_eq_trans goal=2 facts=[1,3]
+qed
+
+theorem le_add_front
+  fixes m :: nat, n :: nat, p :: nat
+  prop m <= n --> p + m <= p + n
+proof
+  ← intro goal=0
+  ← induct p nat_induct goal=2
+  ← rewrite nat_plus_def_1 sym=false goal=3
+  ← intro p goal=4
+  ← rewrite nat_plus_def_2 sym=false goal=7
+  ← rewrite le_suc goal=8
+qed
+
+theorem le_add_left_mono
+  fixes m :: nat, n :: nat, p :: nat
+  prop m <= n --> m <= p + n
+proof
+  ← intro goal=0
+  ← induct p nat_induct goal=2
+  ← rewrite nat_plus_def_1 sym=false goal=3
+  ← intro p goal=4
+  ← rewrite nat_plus_def_2 sym=false goal=7
+  cut "p + n <= Suc (p + n)" goal=8
+  ← rewrite add_1_right sym=true goal=9
+  ← rule le_add param_m="p + n" param_n="(1::nat)" goal=10
+  ← rule less_eq_trans goal=8 facts=[6,9]
+qed
+
+header "Samples"
+
+-- The measure is the argument itself: the call is on the predecessor.
+
+fun wfgen :: nat ⇒ nat ⇒ nat
+  | wfgen 0 n = n
+  | wfgen (Suc m) n = Suc (wfgen m n)
+
+-- The bare "two constructors down" sample (dbl with the pattern
+-- `Suc (Suc n)`) is left out on purpose: its cell (`n < Suc (Suc n)`, the
+-- two-`Suc` peel) is covered by core/tests/measure_test.py, but the item
+-- cannot be replayed yet -- the branch negation of a *nested* pattern
+-- instantiates the distinctness axiom with the pattern's variables, not
+-- with the pattern's argument terms, so `if_not_P` never fires.  That is
+-- the emitter's nested-pattern gap, not the measure engine's.
+
+-- A datatype of the file's own: the descent is measured by the generated
+-- size function, so the cell is a size comparison.
+
+datatype tri =
+  | TriZ :: tri
+  | TriS (t :: tri) :: tri
+
+fun tsum :: tri ⇒ nat
+  | tsum TriZ = 0
+  | tsum (TriS t) = Suc (tsum t)
