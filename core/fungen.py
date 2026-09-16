@@ -1063,7 +1063,10 @@ def _condition_negation(prover, names, arg_types, r, eqs, i, j, g, cond):
     # A schematic variable prints as `?n` and its `param_` argument is
     # spelled without the question mark, so the two are built apart.
     inst = dict((v.name, t) for v, t in pairs)
-    params = ' '.join('param_%s=%s' % (v.name.lstrip('?'), _arg_text(t))
+    # Quoted, because the value can be a compound term (`Suc n`, `p + n`):
+    # the step parser keeps a quoted value together and without the quotes
+    # it would split at the first space.
+    params = ' '.join('param_%s="%s"' % (v.name.lstrip('?'), _arg_text(t))
                       for v, t in pairs)
     # `ineq_sym` takes the two sides of the instantiated axiom, in its own
     # order, so they are substituted here rather than left schematic.

@@ -15,13 +15,13 @@ fun wfgen :: nat ⇒ nat ⇒ nat
   | wfgen 0 n = n
   | wfgen (Suc m) n = Suc (wfgen m n)
 
--- The bare "two constructors down" sample (dbl with the pattern
--- `Suc (Suc n)`) is left out on purpose: its cell (`n < Suc (Suc n)`, the
--- two-`Suc` peel) is covered by core/tests/measure_test.py, but the item
--- cannot be replayed yet -- the branch negation of a *nested* pattern
--- instantiates the distinctness axiom with the pattern's variables, not
--- with the pattern's argument terms, so `if_not_P` never fires.  That is
--- the emitter's nested-pattern gap, not the measure engine's.
+-- Not structural: the call is two constructors down, so the subterm
+-- relation does not apply and the measure has to cover the gap.  The cell
+-- is `n <= Suc n` after the peel (`less_Suc_lesseq` then `le_suc_right`).
+
+fun dbl :: nat ⇒ nat
+  | dbl 0 = 0
+  | dbl (Suc (Suc n)) = Suc (dbl n)
 
 -- A datatype of the file's own: the descent is measured by the generated
 -- size function, so the cell is a size comparison.
