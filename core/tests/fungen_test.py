@@ -84,7 +84,7 @@ class FunGenTest(unittest.TestCase):
         self.assertEqual(
             fungen._rel_body(arg_types, r),
             '%p::(\'a ⇒ \'b) × \'a list. %q::(\'a ⇒ \'b) × \'a list.'
-            ' ?z::\'a. snd q = z # snd p')
+            ' ∃w. snd q = w # snd p')
 
     def test_decrease_reduction(self):
         """The projection/destructor rules the emitted propositions need."""
@@ -94,7 +94,7 @@ class FunGenTest(unittest.TestCase):
             'wfgen (Suc m) n = Suc (wfgen m n)'])
         body = fungen._body_term('wfgen', arg_types, res_type, eqs, r,
                                  fungen._tuple_of(eqs[1]))
-        red, rules = fungen._reduce_used(body)
+        red, rules = fungen._reduce_used(body, fungen._destructor_maps(arg_types, r))
         # Pre (Suc m) reduces to m, so Pre's second rule is needed; the
         # projections in the condition and in the recursive call's tuple
         # are computed away with fst/snd.
@@ -102,16 +102,52 @@ class FunGenTest(unittest.TestCase):
         self.assertEqual(fungen._prints(red),
                          'if Suc m = 0 then n else Suc (g (Pair m n))')
 
-    def test_rejects_unsupported_shapes(self):
-        """Shapes outside the increment raise instead of being guessed."""
-        ty3 = TFun(NatType, TFun(NatType, TFun(NatType, NatType)))
-        with self.assertRaises(fungen.FunGenError):
-            fungen._expand({'name': 'f', 'type': printer_type(ty3),
-                            'rules': [{'prop': 'f 0 n k = n'}]})
+    def test_chain_over_three_equations(self):
+        """The body is the equations' chain, in source order.
+
+        Every equation's pattern becomes a test; a test with variables is
+        an existential over one witness tuple, so `elim` takes it apart in
+        one step whichever way the pattern is nested.
+        """
         ty = TFun(NatType, NatType)
+        arg_types, res_type, r, eqs = self._plan('g3', ty, [
+            'g3 0 = 0',
+            'g3 (Suc 0) = 1',
+            'g3 (Suc (Suc n)) = 2'])
+        # A pattern without a variable of its own is an equality -- the
+        # nested `Suc 0` included -- and one with variables is an
+        # existential over their tuple.
+        self.assertEqual(
+            fungen._prints(fungen.branch_condition(fungen._eq_args(eqs[0]), 0,
+                                                   fungen.Var('p', NatType))),
+            'p = 0')
+        self.assertEqual(
+            fungen._prints(fungen.branch_condition(fungen._eq_args(eqs[1]), 0,
+                                                   fungen.Var('p', NatType))),
+            'p = Suc 0')
+        self.assertEqual(
+            fungen._prints(fungen.branch_condition(fungen._eq_args(eqs[2]), 0,
+                                                   fungen.Var('p', NatType))),
+            '∃_w. p = Suc (Suc _w)')
+        self.assertEqual(
+            fungen._body_prop('g3', arg_types, res_type, eqs, 0),
+            'if p = 0 then (0::nat) else if p = Suc 0 then 1 else 2')
+
+    def test_rejects_shapes_it_cannot_emit(self):
+        """Shapes the emitter cannot prove its items for raise instead."""
+        ty = TFun(NatType, NatType)
+        # No argument carries a constructor pattern: there is nothing to
+        # branch on and no recursion to justify.
+        with self.assertRaises(fungen.FunGenError):
+            fungen._expand({'name': 'f', 'type': printer_type(ty),
+                            'rules': [{'prop': 'f n = n'}]})
+        # Two equations with the same constructor root: the chain decides
+        # by `t = C _` alone, so the more specific pattern would have to be
+        # subtracted from the more general one.
         with self.assertRaises(fungen.FunGenError):
             fungen._expand({'name': 'g', 'type': printer_type(ty),
-                            'rules': [{'prop': 'g (Suc n) = Suc n'}]})
+                            'rules': [{'prop': 'g (Suc n) = n'},
+                                      {'prop': 'g (Suc m) = m'}]})
 
     def test_writes_out_types_an_equation_cannot_carry(self):
         """An equation is emitted with the types it cannot carry written out.

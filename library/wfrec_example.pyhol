@@ -233,3 +233,27 @@ fun srev_list :: 'a seq ⇒ 'a list
   | srev_list SEmpty = []
   | srev_list (SCons s x) = x # srev_list s
 
+-- Three constructors, and the recursive equation is *not* the last one:
+-- the chain of tests the body emits is then a real chain.  The middle
+-- equation has to be reached by refuting the first test and then proving
+-- its own -- a test with variables, which is an existential over the
+-- pattern's variables -- and the last equation by refuting both.
+datatype tri =
+  | TriZ :: tri
+  | TriS (t :: tri) :: tri
+  | TriO :: tri
+
+fun tsum :: tri ⇒ nat
+  | tsum TriZ = 0
+  | tsum TriO = 1
+  | tsum (TriS t) = Suc (tsum t)
+
+-- The chain is only interesting when a test with variables is not the
+-- last one: this one proves `∃w. p = TriS w` in its middle equation and
+-- refutes it in its last, and has no recursive call at all, so its
+-- relation is the empty one (`wf_false`).
+fun tleaf :: tri ⇒ bool
+  | tleaf TriZ ⟷ true
+  | tleaf (TriS t) ⟷ false
+  | tleaf TriO ⟷ true
+

@@ -50,7 +50,7 @@ import re
 from kernel.type import TFun, TConst, BoolType
 from kernel.term import Lambda, Var, Const, Eq, Abs
 from syntax import printer
-from syntax.logicops import Exists, is_exists
+from syntax.logicops import Exists, is_exists, Not, is_not
 from syntax.settings import global_setting
 
 NatType = TConst('nat')
@@ -144,6 +144,83 @@ def destructor(constr_name, j, t):
         % (j + 1, constr_name))
 
 
+def _subst(t, env):
+    """Replace the variables named in env throughout t.
+
+    Patterns and right hand sides carry no binder that could capture a
+    bound name (a right hand side that does is refused by `replace`), so a
+    plain traversal is enough here.
+    """
+    if t.is_comb():
+        h, args = t.strip_comb()
+        return h(*[_subst(a, env) for a in args])
+    if t.is_var() and t.name in env:
+        return env[t.name]
+    return t
+
+
+def _pattern_leaves(pat):
+    """The variables of a (possibly nested) constructor pattern, in order."""
+    h, args = pat.strip_comb()
+    if not h.is_const():
+        raise FunGenError('the pattern %s is not a constructor pattern'
+                          % _prints(pat))
+    leaves = []
+    for a in args:
+        if a.is_var():
+            leaves.append(a)
+        elif a.is_const() and not a.strip_comb()[1]:
+            continue              # a nullary constructor inside the pattern
+        else:
+            leaves.extend(_pattern_leaves(a))
+    return leaves
+
+
+def _leaf_tuple(leaves):
+    """The tuple term over the pattern's variables."""
+    return tupled_arg(leaves)
+
+
+def _bind_pattern(pat, t, env):
+    """Bind every variable of a pattern to its destructor path from t.
+
+    Nested patterns are followed down: the variable under `x # y # xs` is
+    `tl` applied to the pattern's tail, and a nested constructor's own
+    arguments are reached through the destructors of that constructor.
+    """
+    h, args = pat.strip_comb()
+    if not h.is_const():
+        raise FunGenError('the pattern %s is not a constructor pattern'
+                          % _prints(pat))
+    for j, a in enumerate(args):
+        sub = destructor(h.name, j, t)
+        if a.is_var():
+            env[a.name] = sub
+        elif a.is_const() and not a.strip_comb()[1]:
+            continue
+        else:
+            _bind_pattern(a, sub, env)
+
+
+def _cond_of(pat, proj):
+    """The test that `proj` matches `pat`.
+
+    A pattern with no variable of its own is an equality.  Otherwise the
+    variables are bound by one existential over their tuple, so the test
+    is exactly as strong as the pattern and can be discharged (or refuted)
+    with a single `elim` -- no pattern subtraction is needed for a set of
+    equations whose patterns have distinct constructor roots.
+    """
+    leaves = _pattern_leaves(pat)
+    if not leaves:
+        return Eq(proj, pat)
+    types = [a.get_type() for a in leaves]
+    w = Var('_w', tupled_type(types))
+    env = dict((a.name, projection(w, types, k))
+               for k, a in enumerate(leaves))
+    return Exists(w, Eq(proj, _subst(pat, env)))
+
+
 def plain_env(lhs_args, p=None):
     """Term for each source variable, all of them projections."""
     arg_types = [a.get_type() for a in lhs_args]
@@ -163,9 +240,10 @@ def variable_env(lhs_args, r, p=None):
     """Term for each source variable in terms of the tuple term p.
 
     Plain arguments become projections; the pattern variables at the
-    recursion position become destructor applications.  Passing the
-    literal tuple of an equation gives the body in exactly the shape the
-    goal has after the corresponding rewrites.
+    recursion position become destructor applications, following a nested
+    pattern down to its leaves.  Passing the literal tuple of an equation
+    gives the body in exactly the shape the goal has after the
+    corresponding rewrites.
     """
     arg_types = [a.get_type() for a in lhs_args]
     if p is None:
@@ -179,14 +257,7 @@ def variable_env(lhs_args, r, p=None):
                 "argument %d is not a plain variable; only argument %d may "
                 "carry patterns" % (i + 1, r + 1))
         env[a.name] = projection(p, arg_types, i)
-    pattern = lhs_args[r]
-    head, args = pattern.strip_comb()
-    for j, a in enumerate(args):
-        if not a.is_var():
-            raise FunGenError(
-                "nested pattern in %s is not supported" %
-                printer.print_term(pattern))
-        env[a.name] = destructor(head.name, j, projection(p, arg_types, r))
+    _bind_pattern(lhs_args[r], projection(p, arg_types, r), env)
     return env
 
 
@@ -227,19 +298,11 @@ def branch_condition(lhs_args, r, p):
     """Condition testing the recursion argument against a pattern.
 
     A nullary constructor is tested by equality; a constructor with
-    arguments by an existential, since the pattern's variables are not in
-    scope in the condition.
+    arguments by an existential over its pattern variables, since those are
+    not in scope in the condition.
     """
     arg_types = [a.get_type() for a in lhs_args]
-    proj = projection(p, arg_types, r)
-    head, args = lhs_args[r].strip_comb()
-    if not args:
-        return Eq(proj, lhs_args[r])
-    binders = [Var("_a%d" % (j + 1), a.get_type()) for j, a in enumerate(args)]
-    res = Eq(proj, head(*binders))
-    for v in reversed(binders):
-        res = Exists(v, res)
-    return res
+    return _cond_of(lhs_args[r], projection(p, arg_types, r))
 
 
 # --- symbolic computation of the projection/destructor rewrites -------------
@@ -629,6 +692,31 @@ class _Proof:
     def text(self):
         return self.lines
 
+    def ids(self, text, new):
+        """Append a step creating `new` items; return all their IDs."""
+        self.lines.append('  ' + text)
+        res = list(range(self.n, self.n + new))
+        self.n += new
+        return res
+
+
+class _Names:
+    """Unique names for the items one emitted proof introduces.
+
+    A variable line's theorem is `Thm.mk_VAR(name, type)` and carries no
+    hypothesis, so two lines with the same name and type are the same
+    stable id: the second `intro`/`elim` of a name would create nothing and
+    every literal ID after it would be off by one.  Every template that
+    introduces a name allocates it here.
+    """
+
+    def __init__(self):
+        self.used = {}
+
+    def alloc(self, base):
+        self.used[base] = self.used.get(base, 0) + 1
+        return '%s%d' % (base, self.used[base])
+
 
 def _typenames(vars_):
     return ", ".join("%s :: %s" % (v.name, _printt(v.T)) for v in vars_)
@@ -694,7 +782,7 @@ def _def_entries(name, cname, arg_types, res_type, body_prop, rel_prop):
     return res
 
 
-def _rel_wf_entry(cname, arg_types, r):
+def _rel_wf_entry(cname, arg_types, r, recursive=True):
     """The `wf` obligation: the relation is well-founded.
 
     The relation def is a lambda, so `rewrite` unfolds it in the
@@ -702,12 +790,19 @@ def _rel_wf_entry(cname, arg_types, r):
     the projection is `wf_measure_gen`, instantiated explicitly because
     its pattern `?R (?m x) (?m y)` does not match a projection
     application on its own.
+
+    The empty relation of a definition without recursive calls is the one
+    case that needs no lift: `wf_false` is its well-foundedness directly.
     """
-    T = arg_types[r]
-    Rr, lemma = _subterm(T)
     prop = _rel_wf_prop(cname, arg_types)
     prover = _Proof()
     g = prover.step('← rewrite %s_rel_def goal=0' % cname)
+    if not recursive:
+        prover.step('← rule wf_false goal=%d' % g, new=0)
+        return ['theorem %s_rel_wf' % cname, '  prop %s' % prop,
+                'proof'] + prover.text() + ['qed']
+    T = arg_types[r]
+    Rr, lemma = _subterm(T)
     if len(arg_types) > 1:
         m_ty = _printt(TFun(tupled_type(arg_types), T))
         # A lambda has to be ascribed as a whole: `(λp. fst (snd p)::T)`
@@ -728,26 +823,95 @@ def _rel_wf_entry(cname, arg_types, r):
             'proof'] + prover.text() + ['qed']
 
 
-def _negate_condition(prover, th, th_name, pattern_vars, goal_id, nullary_pat,
-                      rec_pat):
-    """Derive the negation of the computed condition of a nullary pattern.
+def _neq_sides(th):
+    """The two constructor applications a distinctness axiom compares."""
+    prop = th.prop
+    if not is_not(prop):
+        raise FunGenError('the distinctness axiom is not a negation')
+    body = prop.arg
+    return body.lhs, body.rhs
 
-    The first branch's condition is `proj = <nullary constructor>`; the
-    recursive branch needs its negation.  The datatype's distinctness
-    axiom gives `not (nullary = C args)`; ineq_sym flips it.  The axiom's
-    schematic variables (named `param_<x>` for each `?x` in its
-    statement) are instantiated with the pattern's bound variables in
-    order.
+
+def _exists_var(t):
+    """The variable an existential binds."""
+    return t.arg.var_name
+
+
+def _condition_negation(prover, names, arg_types, r, eqs, i, j, g, cond):
+    """A fact that equation j's test fails in branch i.
+
+    The cut states exactly the test as the goal has it -- the branch's own
+    pattern on the left, the constructor of equation j on the right -- so
+    `if_not_P` can rewrite with it.  It is refuted from the datatype's
+    distinctness axiom, whose conclusion is the negation of an equation
+    between the two constructors: when the axiom already reads the way the
+    test does, `rule` closes the cut with it directly; otherwise the test
+    (an existential when the pattern has variables, an equality otherwise)
+    is taken apart, its equation flipped to the axiom's own order, and
+    `resolve` closes the goal with the axiom and that equation.  Nothing
+    here depends on how many arguments either constructor takes.
     """
-    svars = sorted(set(re.findall(r"\?([A-Za-z_][A-Za-z0-9_']*)",
-                                  _prints(th.prop))))
-    args = " ".join("param_%s=%s" % (
-        v, pattern_vars[j] if j < len(pattern_vars) else v)
-        for j, v in enumerate(svars))
-    f1 = prover.step("→ forward %s %s goal=%d" % (th_name, args, goal_id))
-    return prover.step(
-        '→ forward ineq_sym param_x="%s" param_y="%s" goal=%d facts=[%d]'
-        % (_arg_text(nullary_pat), _arg_text(rec_pat), goal_id, f1))
+    cj = _constr_name(_eq_args(eqs[j]), r)
+    ci = _constr_name(_eq_args(eqs[i]), r)
+    th_name, th = _distinct_neq(arg_types[r].name, cj, ci)
+    if th is None:
+        raise FunGenError(
+            'no distinctness axiom for the constructors %s and %s of %s; '
+            'without one the branch of %s cannot be ruled out'
+            % (cj, ci, _printt(arg_types[r]), cj))
+    left, right = _neq_sides(th)
+    # The axiom states the pair in its own order; the test's own order is
+    # the branch's pattern on the left.
+    matches = left.strip_comb()[0].name == ci
+    c = prover.step('cut "%s" goal=%d' % (_prints(Not(cond)), g))
+    if not is_exists(cond) and matches:
+        prover.step('← rule %s goal=%d' % (th_name, c), new=0)
+        return c
+    c1 = prover.step('← rule negI goal=%d' % c)
+    # `negI` leaves `cond ==> false`: the hypothesis it creates is the
+    # test itself (an implication introduces no variable, so it has no
+    # name), and taking the existential apart turns it into an equation.
+    ids = prover.ids('← intro goal=%d' % c1, 2)
+    eq, g2 = ids[0], ids[1]
+    if is_exists(cond):
+        ids = prover.ids('→ elim "%s" goal=%d facts=[%d]'
+                         % (_exists_var(cond), g2, eq), 3)
+        eq, g2 = ids[1], ids[2]
+    if not matches:
+        eq = prover.step('→ rewrite target=fact eq_sym_eq sym=false '
+                         'goal=%d facts=[%d]' % (g2, eq))
+    prover.step('← resolve %s goal=%d facts=[%d]' % (th_name, g2, eq), new=0)
+    return c
+
+
+def _condition_fact(prover, arg_types, r, eqs, i, cond, g, dmap):
+    """Cut the branch's own test and prove it from the pattern.
+
+    The test is the pattern against itself: an equality when the pattern
+    has no variable, and an existential over the variables otherwise,
+    which `inst` turns into that equality with the witness tuple of the
+    pattern's own variables.  The reduce closes it exactly when its last
+    rewrite leaves an identity.
+    """
+    c = prover.step('cut "%s" goal=%d' % (_prints(cond), g))
+    if not is_exists(cond):
+        prover.step('← rule eq_refl goal=%d' % c, new=0)
+        return c
+    pat = _eq_args(eqs[i])[r]
+    leaves = _pattern_leaves(pat)
+    wit = _leaf_tuple(leaves)
+    c2 = prover.step('← inst %s goal=%d' % (_arg_text(wit), c))
+    body = _subst(cond.arg.body, {_exists_var(cond): wit})
+    reduced = _reduce(body, dmap)
+    rules = _reduce_used(body, dmap)[1]
+    for k, rule in enumerate(rules):
+        if k == len(rules) - 1 and reduced.is_reflexive():
+            prover.step('← rewrite %s goal=%d' % (rule, c2), new=0)
+        else:
+            c2 = prover.step('← rewrite %s goal=%d' % (rule, c2))
+    if not rules or not reduced.is_reflexive():
+        prover.step('← rule eq_refl goal=%d' % c2, new=0)
+    return c
 
 
 def _proj_term(arg_types, r, t):
@@ -910,8 +1074,25 @@ def _decrease_witness(arg_types, r, tcall, t, eq):
     return pargs[free[0]].name
 
 
+def _branch_body(name, arg_types, res_type, eq, r, tup):
+    """One equation's right hand side as the body functional writes it."""
+    g = Var('g', TFun(tupled_type(arg_types), res_type))
+    f_const = Const(name, TFun(*(list(arg_types) + [res_type])))
+    return replace(eq.rhs, f_const, len(arg_types),
+                   variable_env(_eq_args(eq), r, tup), g)
+
+
 def _body_term(name, arg_types, res_type, eqs, r, p=None):
     """The `<c>_H g p = ...` right hand side, as a term.
+
+    The equations are read in source order, so the body is the chain
+
+        if c_1 then b_1 else (if c_2 then b_2 else ... else b_n)
+
+    where `c_i` tests the pattern of equation i and `b_i` is its right hand
+    side.  With one equation there is no test at all, and the chain is
+    built from the last equation backwards so the two-equation case reads
+    exactly as it always did.
 
     With p omitted the body is built over the tuple variable (the def
     item); passing a literal tuple gives the shape the goal takes for
@@ -921,16 +1102,14 @@ def _body_term(name, arg_types, res_type, eqs, r, p=None):
     Tup = tupled_type(arg_types)
     if p is None:
         p = Var('p', Tup)
-    g = Var('g', TFun(Tup, res_type))
-    f_const = Const(name, TFun(*(list(arg_types) + [res_type])))
     lhs = [_eq_args(eq) for eq in eqs]
-    b1 = replace(eqs[0].rhs, f_const, len(arg_types),
-                 variable_env(lhs[0], r, p), g)
-    b2 = replace(eqs[1].rhs, f_const, len(arg_types),
-                 variable_env(lhs[1], r, p), g)
-    cond = branch_condition(lhs[0], r, p)
-    return Const('IF', TFun(BoolType, TFun(
-        res_type, TFun(res_type, res_type))))(cond)(b1)(b2)
+    body = _branch_body(name, arg_types, res_type, eqs[-1], r, p)
+    for i in range(len(eqs) - 2, -1, -1):
+        b = _branch_body(name, arg_types, res_type, eqs[i], r, p)
+        cond = branch_condition(lhs[i], r, p)
+        body = Const('IF', TFun(BoolType, TFun(
+            res_type, TFun(res_type, res_type))))(cond)(b)(body)
+    return body
 
 
 def _body_prop(name, arg_types, res_type, eqs, r, p=None):
@@ -938,7 +1117,7 @@ def _body_prop(name, arg_types, res_type, eqs, r, p=None):
     return _prints(_body_term(name, arg_types, res_type, eqs, r, p))
 
 
-def _rel_body(arg_types, r):
+def _rel_body(arg_types, r, recursive=True):
     """The relation as a lambda over the tuple variables p and q.
 
     The def's right hand side is the whole lambda: `wf <c>_rel` is
@@ -946,9 +1125,17 @@ def _rel_body(arg_types, r):
     definitional equation is `c_rel = (%p. %q. ...)`.  The body is the
     datatype's component relation applied to the projected tuple
     components, so it is the same proposition the lifted condition is.
+
+    A definition without a recursive call descends nowhere: its relation is
+    the empty one, which is well founded (`wf_false`) and makes every
+    obligation vacuous.  The datatype's own projections have no subterm
+    relation to use -- their destructor is the function being defined --
+    so this is the only relation available to them.
     """
-    T = arg_types[r]
     Tup = _printt(tupled_type(arg_types))
+    if not recursive:
+        return "%%p::%s. %%q::%s. false" % (Tup, Tup)
+    T = arg_types[r]
     p = Var('p', tupled_type(arg_types))
     q = Var('q', tupled_type(arg_types))
     body = _relation(T)(_proj_term(arg_types, r, p))(
@@ -978,79 +1165,108 @@ def _in_def_fact(prover, cname, arg_types, res_type, g):
     return c
 
 
-def _def_base_entry(name, cname, arg_types, res_type, eq, r, cond, prop,
-                    rules):
-    """Proof of the nullary-constructor equation (the if-true branch).
+def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
+               tcall, dmap):
+    """Proof of equation i, whichever branch of the chain it is.
 
-    Everything is computed before the condition is cut, so the cut's
-    proposition is exactly the goal's condition and the branch body is
-    already in the source's shape when `if_P` selects it.
+    The body functional is the if-chain over the equations in source
+    order, so the branch is reached by refuting the tests of the equations
+    before it and then taking its own -- except the last equation, which is
+    the chain's else branch and has no test of its own.
+
+    Once the branch is selected, a right hand side without a recursive call
+    is the source's own term, with the pattern's variables taken apart by
+    the destructors and every projection reduced; one with a call instead
+    carries the decrease obligation, which `cut_def` turns into the
+    condition selecting the call.
     """
     prover = _Proof()
+    names = _Names()
+    t = _arg_text(_tuple_of(eqs[i]))
     g = prover.step('← unfold %s_def goal=0' % cname)
     a = _wf_fact(prover, cname, arg_types, g)
     d = _in_def_fact(prover, cname, arg_types, res_type, g)
-    g = prover.step('← rewrite wfrec_eq goal=%d facts=[%d,%d]' % (g, a, d))
-    g = prover.step('← unfold wfrec_H_def goal=%d' % g)
-    g = prover.step('← unfold %s_H_def goal=%d' % (cname, g))
-    for rule in rules:
-        g = prover.step('← rewrite %s goal=%d' % (rule, g))
-    c = prover.step('cut "%s" goal=%d' % (_prints(cond), g))
-    prover.step('← rule eq_refl goal=%d' % c, new=0)
-    prover.step('← rewrite if_P goal=%d facts=[%d]' % (g, c), new=0)
-    return prover.text()
-
-
-def _def_rec_entry(name, cname, arg_types, res_type, eq, r, lhs_null, tcall,
-                   rules):
-    """Proof of the recursive equation (the else branch).
-
-    The wfrec equation is instantiated in its own cut: rewriting the main
-    goal with it directly would also rewrite the right hand side, where
-    the same constant occurs with different arguments.
-    """
-    T = arg_types[r]
-    t = _arg_text(_tuple_of(eq))
-    prover = _Proof()
-    g = prover.step('← unfold %s_def goal=0' % cname)
-    a = _wf_fact(prover, cname, arg_types, g)
-    d = _in_def_fact(prover, cname, arg_types, res_type, g)
-    fp = "%s_in %s = wfrec_H %s_rel %s_H %s_in %s" % (
-        cname, t, cname, cname, cname, t)
-    c = prover.step('cut "%s" goal=%d' % (fp, g))
-    prover.step('← rule wfrec_eq goal=%d facts=[%d,%d]' % (c, a, d), new=0)
-    g = prover.step('← rewrite source=prev goal=%d facts=[%d]' % (g, c))
-    g = prover.step('← unfold wfrec_H_def goal=%d' % g)
-    g = prover.step('← unfold %s_H_def goal=%d' % (cname, g))
-    for rule in rules:
-        g = prover.step('← rewrite %s goal=%d' % (rule, g))
-
-    th_name, th = _distinct_neq(
-        arg_types[r].name, _constr_name(lhs_null, r),
-        _constr_name(_eq_args(eq), r))
-    if th is None:
-        raise FunGenError('fun %s: no distinctness axiom found for the two '
-                          'constructors' % name)
-    neg = _negate_condition(prover, th, th_name, _pattern_vars(eq, r), g,
-                            lhs_null[r], _eq_args(eq)[r])
-    g = prover.step('← rewrite if_not_P goal=%d facts=[%d]' % (g, neg))
-    dmap = _destructor_maps(arg_types, r)
     if tcall is None:
-        # No recursive call in this equation: the else branch is the right
-        # hand side itself, with the pattern's variables taken apart by
-        # destructors, and no obligation (and no `cut`) arises.  The
-        # projections still have to be reduced for the goal to read as the
-        # equation does.
-        proj = _reduce_used(_proj_term(arg_types, r, _tuple_of(eq)), dmap)[1]
-        for n, rule in enumerate(proj):
-            if n == len(proj) - 1:
-                prover.step('← rewrite %s goal=%d' % (rule, g), new=0)
+        g = prover.step('← rewrite wfrec_eq goal=%d facts=[%d,%d]' % (g, a, d))
+    else:
+        fp = "%s_in %s = wfrec_H %s_rel %s_H %s_in %s" % (
+            cname, t, cname, cname, cname, t)
+        c = prover.step('cut "%s" goal=%d' % (fp, g))
+        prover.step('← rule wfrec_eq goal=%d facts=[%d,%d]' % (c, a, d), new=0)
+        g = prover.step('← rewrite source=prev goal=%d facts=[%d]' % (g, c))
+    g = prover.step('← unfold wfrec_H_def goal=%d' % g)
+    g = prover.step('← unfold %s_H_def goal=%d' % (cname, g))
+    for rule in rules:
+        g = prover.step('← rewrite %s goal=%d' % (rule, g))
+    # What the branch's body reads once the sweeps have reduced it, against
+    # the equation's own right hand side: with the branch selected, the goal
+    # is exactly this equality, so the step that selects it closes the goal
+    # when the two sides are already the same term, and `rest` is the
+    # reduction the sweeps did not cover (a redex inside the right hand
+    # side, which only the source mentions).
+    after = Eq(_reduce(_branch_body(name, arg_types, res_type, eqs[i], r,
+                                    _tuple_of(eqs[i])), dmap), eqs[i].rhs)
+    rest = _reduce_used(after, dmap)[1]
+    final = _reduce(after, dmap)
+    closes_now = final.is_reflexive() and not rest
+    for j in range(i):
+        neg = _condition_negation(prover, names, arg_types, r, eqs, i, j, g,
+                                  conds[i][j])
+        # The last of these is the step that selects the branch when the
+        # equation is the chain's else (the last one); it closes the goal
+        # when the branch's body is already the equation's right hand side.
+        last_nav = (j == i - 1) and (i == len(eqs) - 1) and closes_now
+        g = prover.step('← rewrite if_not_P goal=%d facts=[%d]' % (g, neg),
+                        new=0 if last_nav else 1) or g
+    if i < len(eqs) - 1:
+        c2 = _condition_fact(prover, arg_types, r, eqs, i, conds[i][i], g, dmap)
+        g = prover.step('← rewrite if_P goal=%d facts=[%d]' % (g, c2),
+                        new=0 if closes_now else 1) or g
+    # Which step selected the branch: the chain's last equation has no test
+    # of its own, and a single-equation definition has no chain at all.
+    selected_by_step = (i < len(eqs) - 1) or i > 0
+    if tcall is None:
+        if closes_now and selected_by_step:
+            return prover.text()
+        # The branch is the right hand side itself, and no obligation (and
+        # no `cut`) arises; what is left is the reduction the sweeps did
+        # not cover, which closes the goal when it ends on an identity.
+        if not final.is_reflexive():
+            raise FunGenError(
+                'fun %s: equation %d does not reduce to its own right hand '
+                'side (%s against %s)'
+                % (name, i + 1, _prints(_reduce(after.lhs, dmap)),
+                   _prints(after.rhs)))
+        c3 = g
+        for k, rule in enumerate(rest):
+            if k == len(rest) - 1:
+                prover.step('← rewrite %s goal=%d' % (rule, c3), new=0)
             else:
-                g = prover.step('← rewrite %s goal=%d' % (rule, g))
-        prover.step('← rule eq_refl goal=%d' % g, new=0)
+                c3 = prover.step('← rewrite %s goal=%d' % (rule, c3))
+        if not rest:
+            prover.step('← rule eq_refl goal=%d' % c3, new=0)
         return prover.text()
-    c_cut = prover.step('cut "%s" goal=%d'
-                        % (_decrease_prop(arg_types, r, tcall, _tuple_of(eq)), g))
+    eq = eqs[i]
+    obligation_prop = _decrease_prop(arg_types, r, tcall, _tuple_of(eq))
+    if i < len(eqs) - 1 and is_exists(conds[i][i]):
+        # Both this branch's test (once its witness is given) and the
+        # decrease obligation would state the same proposition, and the
+        # stable-ID layer keys items by proposition: the second one reuses
+        # the first one's ID, which no emitted `goal=` can name.  A
+        # one-argument datatype reaches this whenever a recursive equation
+        # with a constructor pattern stands before the chain's end -- its
+        # obligation is the identity `C t = C t`.  The way out is to test
+        # with a generated discriminator per constructor instead of the
+        # existential, which is what `case` compiles to.
+        wit = _leaf_tuple(_pattern_leaves(_eq_args(eq)[r]))
+        test = _subst(conds[i][i].arg.body, {_exists_var(conds[i][i]): wit})
+        if _prints(test) == obligation_prop:
+            raise FunGenError(
+                'fun %s: equation %d tests its pattern with an existential '
+                'and then states the same proposition as its decrease '
+                'obligation (%s); the two would share a stable ID'
+                % (name, i + 1, obligation_prop))
+    c_cut = prover.step('cut "%s" goal=%d' % (obligation_prop, g))
     # The rules are taken from the obligation's own term -- the one the
     # cut above states, with the projections of both the call and the
     # pattern -- because that is what the goal has: computing them from
@@ -1062,8 +1278,8 @@ def _def_rec_entry(name, cname, arg_types, res_type, eq, r, lhs_null, tcall,
     proj = _reduce_used(obligation, dmap)[1]
     closes = _decrease_closes(arg_types, r, tcall, _tuple_of(eq))
     c3 = c_cut
-    for i, rule in enumerate(proj):
-        last = (i == len(proj) - 1)
+    for i3, rule in enumerate(proj):
+        last = (i3 == len(proj) - 1)
         if last and closes:
             prover.step('← rewrite %s goal=%d' % (rule, c3), new=0)
         else:
@@ -1091,7 +1307,7 @@ def _def_rec_entry(name, cname, arg_types, res_type, eq, r, lhs_null, tcall,
     return prover.text()
 
 
-def _require_in_scope(arg_types, r):
+def _require_in_scope(arg_types, r, recursive=True):
     """Names the emitted items and proofs depend on.
 
     A definition is only expanded when the file can actually see them:
@@ -1099,11 +1315,23 @@ def _require_in_scope(arg_types, r):
     (from the `wf` theory) and, through the relation, the datatype's
     well-foundedness lemma.  A file that imports neither keeps the current
     axiomatization instead of getting items that cannot even be parsed.
+
+    A definition without a recursive call needs no relation to descend
+    through: its relation is the empty one, whose well-foundedness is
+    `wf_false`.  That is what makes the datatype's own projections (`the`,
+    `fst`, `snd`) and the pattern-matching predicates expandable at all --
+    their destructor is the very function being defined, so no subterm
+    relation over them exists.
     """
     from kernel import theory
     needed = ['wfrec_eq', 'wfrec_H_def', 'cut_def', 'if_P', 'if_not_P',
-              'wf_measure_gen', 'ineq_sym', 'eq_refl', 'snd_def_1',
-              'fst_def_1', _subterm(arg_types[r])[1]]
+              'eq_refl', 'snd_def_1', 'fst_def_1']
+    if recursive:
+        needed.append('wf_measure_gen')
+        needed.append('ineq_sym')
+        needed.append(_subterm(arg_types[r])[1])
+    else:
+        needed.append('wf_false')
     for th_name in needed:
         try:
             theory.get_theorem(th_name)
@@ -1134,42 +1362,65 @@ def _expand(data):
     if r is None:
         raise FunGenError('fun %s: a definition without constructor patterns '
                           'is not emitted yet' % name)
-    if len(eqs) != 2:
-        raise FunGenError('fun %s: %d equations; the emitter handles two '
-                          'branches so far' % (name, len(eqs)))
-    _, nullary_args = lhs[0][r].strip_comb()
-    if nullary_args:
-        raise FunGenError('fun %s: the nullary-constructor equation must come '
-                          'first' % name)
-    f_const = Const(name, TFun(*(list(arg_types) + [res_type])))
-    if _calls(eqs[0].rhs, f_const, len(arg_types)):
-        raise FunGenError('fun %s: the nullary-constructor equation must not '
-                          'be recursive' % name)
-    calls = _calls(eqs[1].rhs, f_const, len(arg_types))
-    # Several recursive calls are fine as long as they ask for the same
-    # thing: the body then mentions one `g (...)` term rather than several,
-    # so one obligation covers them all (`filter` and `remdups` recurse on
-    # the same tail in both branches).  No call at all is fine too -- the
-    # equation needs no decrease -- which is the shape of a definition over
-    # a datatype such as nat's `Pre`.
-    tuples = []
-    for c in calls:
-        if c not in tuples:
-            tuples.append(c)
-    if len(tuples) > 1:
+    # Each equation matches one constructor at the recursion position, and
+    # the roots have to be pairwise distinct: the branch chain decides by
+    # `t = C _` alone, so two equations with the same root would need the
+    # more specific pattern to be subtracted from the more general one
+    # (Isabelle's sequential mode does exactly that).  The tests of the
+    # earlier branches are refuted with the datatype's distinctness axioms,
+    # which is why a non-nullary pattern's test is an existential over one
+    # witness tuple: `elim` takes it apart in one step.
+    roots = []
+    for i, args in enumerate(lhs):
+        cname_i = _constr_name(args, r)
+        constrs = _constr_names(arg_types[r])
+        if constrs is None or cname_i not in constrs:
+            raise FunGenError(
+                'fun %s: the pattern %s at argument %d is not a constructor '
+                'pattern of %s' % (name, _prints(args[r]), r + 1,
+                                   _printt(arg_types[r])))
+        roots.append(cname_i)
+    if len(set(roots)) != len(roots):
+        dup = [c for c in roots if roots.count(c) > 1][0]
         raise FunGenError(
-            'fun %s: %d distinct recursive calls in one equation; the '
-            'emitter handles one so far' % (name, len(tuples)))
-    _require_in_scope(arg_types, r)
+            'fun %s: %s is the constructor of more than one equation; '
+            'overlapping patterns need pattern subtraction, which this '
+            'emitter does not do' % (name, dup))
+    f_const = Const(name, TFun(*(list(arg_types) + [res_type])))
+    # A recursive call may stand in any equation, and several calls in one
+    # equation are fine as long as they ask for the same thing: the body
+    # then mentions one `g (...)` term rather than several, so one
+    # obligation covers them all (`filter` and `remdups` recurse on the
+    # same tail in both branches).  No call at all is fine too -- that
+    # equation needs no decrease.
+    calls = []
+    for eq in eqs:
+        tuples = []
+        for c in _calls(eq.rhs, f_const, len(arg_types)):
+            if c not in tuples:
+                tuples.append(c)
+        if len(tuples) > 1:
+            raise FunGenError(
+                'fun %s: %d distinct recursive calls in one equation; the '
+                'emitter handles one so far' % (name, len(tuples)))
+        calls.append(tuples[0] if tuples else None)
+    recursive = any(c is not None for c in calls)
+    _require_in_scope(arg_types, r, recursive)
 
     dmap = _destructor_maps(arg_types, r)
-    cond = _reduce(branch_condition(lhs[0], r, _tuple_of(eqs[0])), dmap)
     rules = [_reduce_used(_body_term(name, arg_types, res_type, eqs, r,
                                      _tuple_of(eq)), dmap)[1] for eq in eqs]
+    # `conds[i][j]` is the test of equation j as this branch's goal has it:
+    # the projection already reduced to the branch's own pattern.
+    conds = [[_reduce(_cond_of(lhs[j][r],
+                               _proj_term(arg_types, r, _tuple_of(eqs[i]))),
+                      dmap)
+              for j in range(i + 1)] for i in range(len(eqs))]
     entries = [_entry([text]) for text in _def_entries(
         name, cname, arg_types, res_type,
-        _body_prop(name, arg_types, res_type, eqs, r), _rel_body(arg_types, r))]
-    entries.append(_entry(_rel_wf_entry(cname, arg_types, r)))
+        _body_prop(name, arg_types, res_type, eqs, r),
+        _rel_body(arg_types, r, recursive))]
+    entries.append(_entry(_rel_wf_entry(cname, arg_types, r, recursive)))
     for i, eq in enumerate(eqs):
         eq_text = _equation_text(name, ty, data['rules'][i]['prop'], eq)
         text = ['theorem %s_def_%d' % (cname, i + 1),
@@ -1178,14 +1429,10 @@ def _expand(data):
                 '  prop %s' % eq_text,
                 '  [hint_rewrite]',
                 'proof']
-        if i == 0:
-            text.extend(_def_base_entry(name, cname, arg_types, res_type, eq,
-                                        r, cond, eq_text, rules[0]))
-        else:
-            text.extend(_def_rec_entry(name, cname, arg_types, res_type, eq, r,
-                                       lhs[0],
-                                       tupled_arg(calls[0]) if calls else None,
-                                       rules[1]))
+        text.extend(_def_entry(name, cname, arg_types, res_type, eqs, r, i,
+                               conds, rules[i],
+                               tupled_arg(calls[i]) if calls[i] else None,
+                               dmap))
         text.append('qed')
         entries.append(_entry(text))
     _require_parsable_defs(entries[:2], name)

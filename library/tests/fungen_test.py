@@ -25,14 +25,24 @@ from core import basic
 # nat.pyhol except the projections (Pre, fst, snd).
 EXPANDED = ['plus', 'times', 'power', 'Sigma', 'less_eq', 'less', 'minus',
             'even', 'odd', 'fact']
-# `fst`/`snd` are prod's own projections; `Pre` is nat's.
+# The projections are still axiomatized: their destructor would be the very
+# function being defined (`Pre (Suc n) = n`, `fst (Pair a b) = a`), and a
+# file below them cannot import the wf machinery either.
 STILL_AXIOMATIZED = {'nat': ['Pre'], 'prod': ['fst', 'snd']}
-# list.pyhol's recursive definitions: the ones the generator emits, and
-# the ones it leaves axiomatized.
-LIST_EXPANDED = ['append', 'butlast', 'concat', 'distinct', 'drop', 'itrev',
-                 'length', 'map', 'nth', 'rev', 'take', 'zip']
-LIST_STILL_AXIOMATIZED = ['set', 'filter', 'remdups', 'foldr', 'foldl',
-                          'list_update', 'last', 'hd', 'tl']
+# list.pyhol's recursive definitions: the ones the generator emits, and the
+# ones it leaves axiomatized.
+LIST_EXPANDED = ['append', 'butlast', 'concat', 'distinct', 'drop', 'filter',
+                 'foldl', 'foldr', 'itrev', 'last', 'length', 'list_update',
+                 'map', 'nth', 'remdups', 'rev', 'set', 'take', 'zip']
+LIST_STILL_AXIOMATIZED = ['hd', 'tl']
+# Definitions whose recursion is not on a datatype's subterm relation: the
+# four projections from `scalarValue` recurse nowhere, so their relation is
+# the empty one, and `tsum`/`tleaf` are the three-constructor samples of
+# wfrec_example (the chain of tests, with a test that carries variables in
+# the middle and no recursion at all in `tleaf`).
+NONSTRUCTURAL = [('gcl', 'scalar_is_nat'), ('gcl', 'scalar_is_bool'),
+                 ('gcl', 'scalar_of_nat'), ('gcl', 'scalar_of_bool'),
+                 ('wfrec_example', 'tsum'), ('wfrec_example', 'tleaf')]
 
 
 class FunGenLibraryTest(unittest.TestCase):
@@ -158,6 +168,26 @@ class FunGenLibraryTest(unittest.TestCase):
             items = [it for it in content if it.name == name]
             self.assertIn('def.ind', [it.ty for it in items],
                           '%s in list unexpectedly expanded' % name)
+
+    def test_nonstructural_definitions_are_derived(self):
+        """Definitions whose relation is not a subterm relation.
+
+        `scalarValue` has no recursive constructor at all, so no subterm
+        relation over it exists; `tleaf` matches on three constructors
+        without recursing.  Both expand with the empty relation, whose
+        well-foundedness is `wf_false`, and `tsum` recurses over the third
+        constructor of a datatype of three.
+        """
+        for thy, name in NONSTRUCTURAL:
+            for fn in basic.get_import_order([thy]):
+                basic.load_theory_cache(fn)
+            items = [it for it in basic.theory_cache[thy]['content']
+                     if it.name == name]
+            self.assertEqual([it.ty for it in items], ['def'],
+                             '%s in %s is still axiomatized' % (name, thy))
+            rel_wf = self._by_name('%s_rel_wf' % name, thy)
+            self.assertEqual(rel_wf.ty, 'thm', '%s_rel_wf is not a theorem' % name)
+            self.assertTrue(rel_wf.steps, '%s_rel_wf has no proof' % name)
 
 
 if __name__ == '__main__':
