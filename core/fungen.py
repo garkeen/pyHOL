@@ -48,7 +48,7 @@ import os
 import re
 
 from kernel.type import TFun, TConst, BoolType
-from kernel.term import Var, Const, Eq
+from kernel.term import Lambda, Var, Const, Eq, Abs
 from syntax import printer
 from syntax.logicops import Exists, is_exists
 from syntax.settings import global_setting
@@ -193,14 +193,15 @@ def variable_env(lhs_args, r, p=None):
 def replace(t, f_const, n, env, g):
     """Substitute source variables; replace `f a1 .. an` by `g (a1 .. an)`.
 
-    A binder in the right hand is refused: substituting under it is easy
-    (drop the bound name from the environment -- `sorted`'s
-    `%y. y Mem set xs --> x <= y` mentions both the bound `y` and the
-    pattern's `xs`), but the emitted proof then has to rewrite the
-    destructors *inside* the body, and `rewrite` sweeps the goal without
-    entering binders: the equation proof ends with an open goal.  Lifting
-    this needs a rewrite that descends under binders (or a `loc`-targeted
-    sequence), which is a method-layer addition rather than an emitter one.
+    A binder in the right hand is refused.  Substituting under it is easy
+    (drop the bound name from the environment), and the sweep of `rewrite`
+    does descend into binder bodies (`top_sweep_conv`, core/conv/core.py:
+    it stops only where a rule fired), so the reason is *not* the method
+    layer.  With the substitution in place the equation proof still ends
+    with an open goal, which needs re-diagnosing: the likely cause is the
+    same one as the three-argument case -- the emitted projection rewrites
+    are computed for the equation's body, while the goal carries the
+    destructors under the binder as well.
     """
     if t.is_comb():
         h, args = t.strip_comb()
@@ -260,34 +261,58 @@ def _reduce_step(t, dmap):
     return t
 
 
-def _reduce_used(t, dmap):
-    """(fully reduced term, the rewrite rules it takes, in application order).
+def _sweep_once(t, dmap):
+    """One sweep: (term, rules) as `rewrite`'s own conv would leave them.
 
-    The emitted propositions must be textually equal to the goal after the
-    corresponding rewrites, since `if_P` / `if_not_P` match on the
-    condition; reducing here gives that form by construction.  The rule
-    list is what the goal needs, in an order that makes each rule match.
+    `rewrite` in goal mode goes through `top_sweep_conv` (core/conv/
+    core.py), which tries the rule at a node and, *when it fires there*,
+    stops on that path; it descends into function, argument and binder
+    body only where nothing fired.  So one step rewrites the top-most
+    redexes and leaves a redex nested under another one for the next step
+    -- which is why the emitted step sequence is one rule per *pass*, and
+    why the same rule can appear twice in a row when the projections are
+    nested (`snd (snd p)`, as three-argument definitions have).
     """
-    used = []
+    rules = []
 
     def rec(x):
-        if x.is_abs():
-            return x
+        y = _reduce_step(x, dmap)
+        if y is not x:
+            rules.append(dmap[x.strip_comb()[0].name][2])
+            return y
         if x.is_comb():
-            x = rec(x.fun)(rec(x.arg))
-            y = _reduce_step(x, dmap)
-            if y is not x:
-                used.append(dmap[x.strip_comb()[0].name][2])
-                return rec(y)
-            return x
+            f, a = rec(x.fun), rec(x.arg)
+            return x if (f is x.fun and a is x.arg) else f(a)
+        if x.is_abs():
+            body = rec(x.body)
+            return x if body is x.body else Abs(x.var_name, x.var_T, body)
         return x
 
-    return rec(t), _dedupe(used)
+    res = rec(t)
+    return res, _dedupe(rules)
+
+
+def _reduce_used(t, dmap):
+    """(fully reduced term, the rewrite steps the goal needs, in order).
+
+    A step is one `rewrite`, which sweeps; each pass takes the rules the
+    top-most redexes need, and the term is swept again for the next level.
+    """
+    steps = []
+    while True:
+        t2, rules = _sweep_once(t, dmap)
+        if not rules:
+            return t, steps
+        steps.extend(rules)
+        t = t2
 
 
 def _reduce(t, dmap):
     """The fully reduced form of t."""
     return _reduce_used(t, dmap)[0]
+
+
+
 
 
 def _dedupe(names):
@@ -694,10 +719,14 @@ def _proj_term(arg_types, r, t):
 def _proj_const(arg_types, r):
     """The projection as a plain function, for `wf_measure_gen`'s map.
 
-    Two arguments is the emitter's limit: the projection of component r of
-    a longer tuple is a composition (`fst (snd p)`), and the equation
-    proofs' projection rewrites are emitted one rule per step, which a
-    nested projection does not fit yet.
+    Two arguments is the emitter's limit.  The relation side is
+    arity-generic (the `wf` obligations of three-argument definitions
+    replay), but the equation proofs are not: the projection rewrites are
+    taken from the *body*'s reduction, while the goal at that point also
+    contains the condition, whose projections can need one more level
+    (`snd (snd p)`), so a step lands with no redex to fire on
+    (`fst_def_1`).  Fixing it means computing the steps for the goal's own
+    term per equation, not for the body.
     """
     Tup = tupled_type(arg_types)
     T = arg_types[r]
