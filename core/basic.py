@@ -444,21 +444,21 @@ def load_theory_cache(filename):
                          if item_data.get('ty') == 'type.ind']
 
         def _size_family_ready():
-            """Whether a size family can be stated in the theory yet.
+            """Whether a size family can be proved in the theory yet.
 
-            The family's one fact compar
-es two sizes (`<ty>_size_less`),
-            so it needs the comparison on nat.  In the file that defines
-            that itself (nat) it comes later than the datatype, and
-            generating the family before it would register an item that
-            does not type; everywhere else nat is an import and this is
-            true from the start.
+            Its one fact compares two sizes and is proved by the same
+            rewrites a measure cell uses (see datgen's `size_less_lines`),
+            so the family can only be generated once those lemmas are in
+            scope.  In the file that states them itself (nat) that is
+            later than the datatype -- and later than the comparison --
+            and generating the family before it would register an item
+            whose proof does not replay.
             """
-            from core import context
-            for probe in ('(%x::nat. %y::nat. x < y)',
-                          '(%x::nat. %y::nat. x <= y)'):
+            from core import datgen
+            from kernel import theory
+            for name in datgen.SIZE_LESS_DEPS:
                 try:
-                    context.parse_term(probe)
+                    theory.get_theorem(name)
                 except Exception:
                     return False
             return True

@@ -630,6 +630,14 @@ def size_fun_lines(name, args, constrs, rec_pos):
     return lines
 
 
+# The theorems `<ty>_size_less`'s proof cites (see `size_less_lines`).
+# A caller that generates the size family at the earliest point it can --
+# so the file's own definitions can use it as a measure -- has to wait for
+# these to be in scope, which in the file that defines them (nat) is later
+# than the datatype and even than the comparison itself.
+SIZE_LESS_DEPS = ['add_1_left', 'less_Suc_lesseq', 'lesseq_refl']
+
+
 def size_less_lines(name, args, recursive, rec_pos, suffix=''):
     """`<ty>_size` strictly decreases from a constructor argument.
 
