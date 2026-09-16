@@ -113,4 +113,51 @@ proof
     #[50] f x = f x
 qed
 
+
+-- The two introduction rules of `mlex_prod`, i.e. Isabelle's `mlex_less`
+-- and `mlex_leq` (Wellfounded.thy:1349).  A lexicographic combination is
+-- proved call by call with them: every measure before the one that
+-- decreases is shown not to increase (`mlex_leq` needs `<=`, not `=`), and
+-- the decreasing one strictly (`mlex_less`).
+theorem mlex_less
+  fixes f :: 'a => nat, R :: 'a => 'a => bool, x :: 'a, y :: 'a
+  prop f x < f y --> mlex_prod f R x y
+proof
+  ← intro goal=0
+    #[1] f x < f y
+    #[2] mlex_prod f R x y
+  ← rewrite mlex_prod_def goal=2
+    #[3] f x < f y | f x = f y & R x y
+  ← rule disjI1 goal=3
+qed
+
+
+theorem mlex_leq
+  fixes f :: 'a => nat, R :: 'a => 'a => bool, x :: 'a, y :: 'a
+  prop f x <= f y --> R x y --> mlex_prod f R x y
+proof
+  ← intro goal=0
+    #[1] f x <= f y
+    #[2] R x y
+    #[3] mlex_prod f R x y
+  ← rewrite mlex_prod_def goal=3
+    #[4] f x < f y | f x = f y & R x y
+  ← cases "f x = f y" goal=4
+    #[5] f x = f y --> f x < f y | f x = f y & R x y
+    #[6] ~(f x = f y) --> f x < f y | f x = f y & R x y
+  ← intro goal=5
+    #[7] f x = f y
+    #[8] f x < f y | f x = f y & R x y
+  ← rule disjI2 goal=8
+    #[9] f x = f y & R x y
+  ← rule conjI goal=9
+  ← intro goal=6
+    #[10] ~(f x = f y)
+    #[11] f x < f y | f x = f y & R x y
+  → forward less_lesseqI goal=11 facts=[1,10]
+    #[12] f x < f y
+  ← rule disjI1 goal=11 facts=[12]
+    #[13] f x < f y | f x = f y & R x y
+qed
+
 header "Well-founded recursion"
