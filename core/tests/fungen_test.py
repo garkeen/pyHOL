@@ -116,19 +116,14 @@ class FunGenTest(unittest.TestCase):
             'g3 (Suc (Suc n)) = 2'])
         # A pattern without a variable of its own is an equality -- the
         # nested `Suc 0` included -- and one with variables is an
-        # existential over their tuple.
-        self.assertEqual(
-            fungen._prints(fungen.branch_condition(fungen._eq_args(eqs[0]), 0,
-                                                   fungen.Var('p', NatType))),
-            'p = 0')
-        self.assertEqual(
-            fungen._prints(fungen.branch_condition(fungen._eq_args(eqs[1]), 0,
-                                                   fungen.Var('p', NatType))),
-            'p = Suc 0')
-        self.assertEqual(
-            fungen._prints(fungen.branch_condition(fungen._eq_args(eqs[2]), 0,
-                                                   fungen.Var('p', NatType))),
-            '∃_w. p = Suc (Suc _w)')
+        # existential over their tuple, whose witness is named after the
+        # equation so that two of them in one proof cannot share an ID.
+        cond = lambda k: fungen._prints(
+            fungen.branch_condition(fungen._eq_args(eqs[k]), 0,
+                                    fungen.Var('p', NatType), k))
+        self.assertEqual(cond(0), 'p = 0')
+        self.assertEqual(cond(1), 'p = Suc 0')
+        self.assertEqual(cond(2), '∃_w3. p = Suc (Suc _w3)')
         self.assertEqual(
             fungen._body_prop('g3', arg_types, res_type, eqs, 0),
             'if p = 0 then (0::nat) else if p = Suc 0 then 1 else 2')
