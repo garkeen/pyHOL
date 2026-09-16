@@ -451,6 +451,23 @@ def _arg_text(t):
     return "(%s)" % text if t.is_comb() else text
 
 
+def _strip_type(ty, n):
+    """`([a_1, ..., a_n], b)` for a type `a_1 => ... => a_n => b`.
+
+    `Type.strip_type` always takes every arrow, which is not the arity of a
+    definition whose result is a type abbreviation.
+    """
+    domains = []
+    for _ in range(n):
+        if not ty.is_fun():
+            raise FunGenError(
+                'the declared type %s has fewer than %d arguments'
+                % (_printt_plain(ty), n))
+        domains.append(ty.domain_type())
+        ty = ty.range_type()
+    return domains, ty
+
+
 def _eq_args(eq):
     return eq.lhs.strip_comb()[1]
 
@@ -989,9 +1006,15 @@ def _expand(data):
     name = data['name']
     ty = parser.parse_type(data['type'])
     cname = theory.thy.get_overload_const_name(name, ty)
-    arg_types, res_type = ty.strip_type()
     with context.fresh_context(defs={name: ty}):
         eqs = [context.parse_term(rule['prop']) for rule in data['rules']]
+    # The arity comes from the equations' own left hand sides, not from
+    # stripping the declared type: a type abbreviation in the result
+    # (`'a multiset` is `'a ⇒ nat`) makes the declaration look like one
+    # argument more than the definition has, and the recursive calls are
+    # then looked for at the wrong arity and not found.
+    arity = len(_eq_args(eqs[0]))
+    arg_types, res_type = _strip_type(ty, arity)
     if len(arg_types) > 2:
         raise FunGenError('fun %s: %d arguments; the emitter handles two so '
                           'far' % (name, len(arg_types)))
