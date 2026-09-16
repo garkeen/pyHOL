@@ -140,6 +140,48 @@ class FunGenLibraryTest(unittest.TestCase):
                 self.assertTrue(eqs[0].steps,
                                 '%s_def_%d has no proof' % (cname, i))
 
+    def test_two_column_lexicographic_recursion(self):
+        """`lexnat` needs two measures, and its walk uses both mlex rules.
+
+        Its third equation keeps the first argument and decreases the
+        second, so no single measure covers it: the relation is a
+        two-column `mlex_prod` chain, and the call that only does not
+        increase at the first column is discharged at the second with
+        `mlex_leq` (`mlex_less` alone would not do it).
+        """
+        from core.verify import COMPUTATION_ORACLES, _replay
+        from core import context
+        from kernel import theory
+        cname = 'lexnat'
+        rel = self._by_name('%s_rel' % cname, 'measure_example')
+        self.assertIsNotNone(rel, '%s did not expand' % cname)
+        self.assertEqual([it.name for it in
+                          basic.theory_cache['measure_example']['content']
+                          if it.name == cname and it.ty == 'def.ind'], [],
+                         '%s is still an axiomatized fun' % cname)
+        # Two columns: `wf` peels `wf_mlex` once per measure.
+        wf_steps = [st.get('theorem') for st in
+                    self._by_name('%s_rel_wf' % cname, 'measure_example').steps]
+        self.assertEqual(wf_steps.count('wf_mlex'), 2,
+                         'the relation is not a two-column chain: %s'
+                         % wf_steps)
+        for name in ['%s_m1' % cname, '%s_m2' % cname]:
+            self.assertIsNotNone(self._by_name(name, 'measure_example'),
+                                 'no measure constant %s' % name)
+        for name in ['%s_def_1' % cname, '%s_def_2' % cname,
+                     '%s_def_3' % cname, '%s_rel_wf' % cname]:
+            item = self._by_name(name, 'measure_example')
+            self.assertIsNotNone(item, 'missing %s' % name)
+            with theory.fresh_theory():
+                context.set_context('measure_example', limit=('thm', name),
+                                    vars=dict(item.vars) if item.vars else {})
+                gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
+            self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
+        steps = [st.get('theorem') for st in
+                 self._by_name('%s_def_3' % cname, 'measure_example').steps]
+        self.assertIn('mlex_leq', steps,
+                      'the two-column walk never used mlex_leq')
+
     def test_no_equation_is_an_axiom(self):
         """`thm.ax` must not name any equation of an expanded fun."""
         for item in self.content:

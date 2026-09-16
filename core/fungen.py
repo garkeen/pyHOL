@@ -109,8 +109,16 @@ def _constr_names(T):
     return {c.name for c in constrs}
 
 
-def recursion_position(arg_types, eq_lhs_args):
-    """Index of the argument carrying constructor patterns, or None."""
+def recursion_positions(arg_types, eq_lhs_args):
+    """The arguments carrying constructor patterns, in order.
+
+    A definition may match on more than one argument: `lexnat`'s third
+    equation keeps the first and decreases the second, which is what makes
+    the descent lexicographic rather than a single measure.  Every
+    equation has to carry a constructor pattern at every one of these
+    positions -- a plain variable there would be a pattern overlapping the
+    others', which needs pattern subtraction.
+    """
     positions = set()
     for args in eq_lhs_args:
         for i, a in enumerate(args):
@@ -119,13 +127,19 @@ def recursion_position(arg_types, eq_lhs_args):
                 constrs = _constr_names(arg_types[i])
                 if constrs and h.name in constrs:
                     positions.add(i)
+    return tuple(sorted(positions))
+
+
+def recursion_position(arg_types, eq_lhs_args):
+    """Index of the argument carrying constructor patterns, or None."""
+    positions = recursion_positions(arg_types, eq_lhs_args)
     if not positions:
         return None
     if len(positions) != 1:
         raise FunGenError(
             "constructor patterns on arguments %s; exactly one argument "
-            "may carry them" % ", ".join(str(i + 1) for i in sorted(positions)))
-    return min(positions)
+            "may carry them" % ", ".join(str(i + 1) for i in positions))
+    return positions[0]
 
 
 def destructor(constr_name, j, t):
@@ -203,6 +217,41 @@ def _bind_pattern(pat, t, env):
             _bind_pattern(a, sub, env)
 
 
+def _pattern_positions(lhs_args, positions):
+    """The positions where *this* equation's pattern is a constructor.
+
+    A definition that matches on several arguments need not match on all
+    of them in every equation: `lexnat 0 n = n` constrains only the first
+    argument.  A plain variable at such a position is the general pattern,
+    and the equations after it are refuted at some other position (see
+    `_expand`), so its test is simply absent.
+    """
+    res = []
+    for i in positions:
+        a = lhs_args[i]
+        h, _ = a.strip_comb()
+        constrs = _constr_names(a.get_type())
+        if h.is_const() and constrs and h.name in constrs:
+            res.append(i)
+    return res
+
+
+def _as_positions(positions):
+    """The recursion positions as a tuple (a single index is accepted)."""
+    return (positions,) if isinstance(positions, int) else tuple(positions)
+
+
+def _pos_tag(tag, k, npos):
+    """The witness tag of position k of the equation numbered `tag`.
+
+    One position keeps the equation's own number, so the emitted text of
+    the definitions that match on a single argument does not change; with
+    several, the witnesses of one equation have to differ from each other
+    (a variable line is keyed by name and type alone).
+    """
+    return tag if npos == 1 else tag * npos + k
+
+
 def _cond_of(pat, proj, tag):
     """The test that `proj` matches `pat`.
 
@@ -242,28 +291,32 @@ def plain_env(lhs_args, p=None):
     return env
 
 
-def variable_env(lhs_args, r, p=None):
+def variable_env(lhs_args, positions, p=None):
     """Term for each source variable in terms of the tuple term p.
 
     Plain arguments become projections; the pattern variables at the
-    recursion position become destructor applications, following a nested
+    recursion positions become destructor applications, following a nested
     pattern down to its leaves.  Passing the literal tuple of an equation
     gives the body in exactly the shape the goal has after the
     corresponding rewrites.
     """
+    positions = _as_positions(positions)
     arg_types = [a.get_type() for a in lhs_args]
     if p is None:
         p = Var('p', tupled_type(arg_types))
     env = {}
+    patterned = _pattern_positions(lhs_args, positions)
     for i, a in enumerate(lhs_args):
-        if i == r:
+        if i in patterned:
             continue
         if not a.is_var():
             raise FunGenError(
-                "argument %d is not a plain variable; only argument %d may "
-                "carry patterns" % (i + 1, r + 1))
+                "argument %d is not a plain variable; only arguments %s may "
+                "carry patterns" % (i + 1,
+                                    ", ".join(str(k + 1) for k in positions)))
         env[a.name] = projection(p, arg_types, i)
-    _bind_pattern(lhs_args[r], projection(p, arg_types, r), env)
+    for i in patterned:
+        _bind_pattern(lhs_args[i], projection(p, arg_types, i), env)
     return env
 
 
@@ -300,15 +353,28 @@ def replace(t, f_const, n, env, g):
     return t
 
 
-def branch_condition(lhs_args, r, p, tag):
-    """Condition testing the recursion argument against a pattern.
+def branch_condition(lhs_args, positions, p, tag):
+    """Condition testing the recursion arguments against the pattern.
 
     A nullary constructor is tested by equality; a constructor with
-    arguments by an existential over its pattern variables, since those are
-    not in scope in the condition.
+    arguments by an existential over its pattern variables, since those
+    are not in scope in the condition.  With more than one position the
+    tests are combined into a conjunction -- the branch is taken when the
+    tuple matches the equation's pattern in every position at once -- and
+    with one it is left bare, so the emitted text of the definitions that
+    match on a single argument does not change.
     """
     arg_types = [a.get_type() for a in lhs_args]
-    return _cond_of(lhs_args[r], projection(p, arg_types, r), tag)
+    positions = _pattern_positions(lhs_args, _as_positions(positions))
+    tests = [_cond_of(lhs_args[i], projection(p, arg_types, i),
+                      _pos_tag(tag, k, len(positions)))
+             for k, i in enumerate(positions)]
+    if len(tests) == 1:
+        return tests[0]
+    res = tests[0]
+    for t in tests[1:]:
+        res = Const('conj', TFun(BoolType, TFun(BoolType, BoolType)))(res)(t)
+    return res
 
 
 # --- symbolic computation of the projection/destructor rewrites -------------
@@ -956,14 +1022,19 @@ def _rel_wf_entry(cname, arg_types, r, order=None):
             prover.step('← rule wf_false goal=%d' % g, new=0)
             return ['theorem %s_rel_wf' % cname, '  prop %s' % prop,
                     'proof'] + prover.text() + ['qed']
+        # The tails are cut from the inside out and closed the same way: a
+        # step can only cite lines that precede it, so the tail's `wf` fact
+        # has to be created before the step that uses it.
         cuts = []
-        for j in range(1, len(order) + 1):
+        for j in range(len(order), 0, -1):
             chain = _measure_chain_text(arg_types, order, j)
             cuts.append(prover.step('cut "wf (%s)" goal=%d' % (chain, g)))
-        prover.step('← rule wf_false goal=%d' % cuts[-1], new=0)
-        for j in range(len(order) - 1, -1, -1):
+        prover.step('← rule wf_false goal=%d' % cuts[0], new=0)
+        for j in range(len(order) - 1):
             prover.step('← rule wf_mlex goal=%d facts=[%d]'
-                        % (g if j == 0 else cuts[j - 1], cuts[j]), new=0)
+                        % (cuts[j + 1], cuts[j]), new=0)
+        prover.step('← rule wf_mlex goal=%d facts=[%d]' % (g, cuts[-1]),
+                    new=0)
         return ['theorem %s_rel_wf' % cname, '  prop %s' % prop,
                 'proof'] + prover.text() + ['qed']
     T = arg_types[r]
@@ -1017,40 +1088,47 @@ def _subst_svars(t, env):
     return t
 
 
-def _condition_negation(prover, names, arg_types, r, eqs, i, j, g, cond):
-    """A fact that equation j's test fails in branch i.
+def _conj_of(tests):
+    """The right-nested conjunction of the given tests."""
+    res = tests[-1]
+    for t in reversed(tests[:-1]):
+        res = Const('conj', TFun(BoolType, TFun(BoolType, BoolType)))(t)(res)
+    return res
 
-    The cut states exactly the test as the goal has it -- the branch's own
-    pattern on the left, the constructor of equation j on the right -- so
-    `if_not_P` can rewrite with it.  It is refuted from the datatype's
-    distinctness axiom, whose conclusion is the negation of an equation
-    between the two constructors: the axiom is instantiated with this
-    branch's own terms (its pattern's arguments on one side, the witness
-    the test binds on the other), flipped when it reads the other way
-    round, and `negE_gen` closes with it and the equation in hand.
 
-    Every step creates a fixed number of items -- one for each `forward`,
-    one for the flip -- which is what lets the caller write literal IDs.
+def _refute_test(prover, arg_types, pos, eqs, i, j, test, g):
+    """A fact that equation j's test at position `pos` fails in branch i.
+
+    The test is refuted from that datatype's distinctness axiom: the axiom
+    is instantiated with this branch's own terms (its pattern's arguments
+    on one side, the witness the test binds on the other), flipped when it
+    reads the other way round, and handed out either directly (the test is
+    an equality, so the axiom's instance *is* its negation) or through a
+    goal of its own (`negI` turns the negation into `test ==> false`,
+    `intro` takes the test as a hypothesis, `elim` its witness, and
+    `negE_gen` closes with both).
+
+    The fact is a fact of the goal `g` it is handed into, which is what
+    lets the caller either rewrite the branch condition with it (one
+    position) or use it inside the cut that builds the conjunction's
+    negation (several).
     """
-    cj = _constr_name(_eq_args(eqs[j]), r)
-    ci = _constr_name(_eq_args(eqs[i]), r)
-    th_name, th = _distinct_neq(arg_types[r].name, cj, ci)
+    cj = _constr_name(_eq_args(eqs[j]), pos)
+    ci = _constr_name(_eq_args(eqs[i]), pos)
+    th_name, th = _distinct_neq(arg_types[pos].name, cj, ci)
     if th is None:
         raise FunGenError(
             'no distinctness axiom for the constructors %s and %s of %s; '
             'without one the branch of %s cannot be ruled out'
-            % (cj, ci, _printt(arg_types[r]), cj))
-    pat_i = _eq_args(eqs[i])[r]
+            % (cj, ci, _printt(arg_types[pos]), cj))
+    pat_i = _eq_args(eqs[i])[pos]
     left, right = _neq_sides(th)
-    # The axiom's two sides take this branch's own terms: the pattern's
-    # arguments where the side is the branch's constructor, and the witness
-    # the test binds (nothing at all when that constructor is nullary).
     pat_args = list(pat_i.strip_comb()[1])
-    if not is_exists(cond):
+    if not is_exists(test):
         w_args = []
     else:
-        types = [a.get_type() for a in _pattern_leaves(_eq_args(eqs[j])[r])]
-        w = Var(_exists_var(cond), tupled_type(types))
+        types = [a.get_type() for a in _pattern_leaves(_eq_args(eqs[j])[pos])]
+        w = Var(_exists_var(test), tupled_type(types))
         w_args = [projection(w, types, k) for k in range(len(types))]
     lc, l_args = left.strip_comb()
     rc, r_args = right.strip_comb()
@@ -1061,64 +1139,101 @@ def _condition_negation(prover, names, arg_types, r, eqs, i, j, g, cond):
         pairs = list(zip(l_args, w_args)) + list(zip(r_args, pat_args))
         flipped = True
     # A schematic variable prints as `?n` and its `param_` argument is
-    # spelled without the question mark, so the two are built apart.
-    inst = dict((v.name, t) for v, t in pairs)
-    # Quoted, because the value can be a compound term (`Suc n`, `p + n`):
-    # the step parser keeps a quoted value together and without the quotes
-    # it would split at the first space.
+    # spelled without the question mark, so the two are built apart, and
+    # the value is quoted because it can be a compound term.
     params = ' '.join('param_%s="%s"' % (v.name.lstrip('?'), _arg_text(t))
                       for v, t in pairs)
-    # `ineq_sym` takes the two sides of the instantiated axiom, in its own
-    # order, so they are substituted here rather than left schematic.
-    # `ineq_sym` takes the two sides of the axiom's instance, in the
-    # axiom's own order.  They are built from this branch's own terms, not
-    # from the axiom's statement: substituting there would carry the
-    # statement's schematic *type* variables into the emitted text.
-    cj_pat = _eq_args(eqs[j])[r]
+    cj_pat = _eq_args(eqs[j])[pos]
     cj_head, cj_args = cj_pat.strip_comb()
     cj_inst = cj_head(*w_args) if cj_args else cj_pat
     if lc.name == ci:
         l_txt, r_txt = _arg_text(pat_i), _arg_text(cj_inst)
     else:
         l_txt, r_txt = _arg_text(cj_inst), _arg_text(pat_i)
-    if not is_exists(cond):
-        # The test is an equality, so the axiom's instance *is* its
-        # negation and there is nothing to prove: forward it as a fact of
-        # the goal `if_not_P` is about (`ineq_sym` when the axiom reads the
-        # other way round).  Neither step creates anything but its own
-        # fact, and no cut is needed -- a cut stating the negation would
-        # collide with the flipped fact, which is the same proposition.
-        fwd = prover.step('→ forward %s %s goal=%d' % (th_name, params, g))
+    if not is_exists(test):
+        fwd = prover.step(u'\u2192 forward %s %s goal=%d'
+                          % (th_name, params, g))
         if flipped:
             fwd = prover.step(
-                '→ forward ineq_sym param_x="%s" param_y="%s" goal=%d '
-                'facts=[%d]' % (l_txt, r_txt, g, fwd))
+                u'\u2192 forward ineq_sym param_x="%s" param_y="%s" goal=%d '
+                u'facts=[%d]' % (l_txt, r_txt, g, fwd))
         return fwd
-    # A test with variables is refuted inside a goal of its own: `negI`
-    # turns the negation into `cond ==> false`, `intro` takes the test as a
-    # hypothesis, `elim` its witness -- which is what the axiom's other
-    # side is instantiated with -- and `negE_gen` closes with both.
-    c = prover.step('cut "%s" goal=%d' % (_prints(Not(cond)), g))
-    c1 = prover.step('← rule negI goal=%d' % c)
-    ids = prover.ids('← intro goal=%d' % c1, 2)
+    c = prover.step(u'cut "%s" goal=%d' % (_prints(Not(test)), g))
+    c1 = prover.step(u'\u2190 rule negI goal=%d' % c)
+    ids = prover.ids(u'\u2190 intro goal=%d' % c1, 2)
     eq, g2 = ids[0], ids[1]
-    ids = prover.ids('→ elim "%s" goal=%d facts=[%d]'
-                     % (_exists_var(cond), g2, eq), 3)
+    ids = prover.ids(u'\u2192 elim "%s" goal=%d facts=[%d]'
+                     % (_exists_var(test), g2, eq), 3)
     eq, g2 = ids[1], ids[2]
-    fwd = prover.step('→ forward %s %s goal=%d' % (th_name, params, g2))
+    fwd = prover.step(u'\u2192 forward %s %s goal=%d' % (th_name, params, g2))
     if flipped:
         fwd = prover.step(
-            '→ forward ineq_sym param_x="%s" param_y="%s" goal=%d facts=[%d]'
-            % (l_txt, r_txt, g2, fwd))
+            u'\u2192 forward ineq_sym param_x="%s" param_y="%s" goal=%d '
+            u'facts=[%d]' % (l_txt, r_txt, g2, fwd))
     # `negE_gen` closes the goal and leaves one item behind (the goal with
     # the rewritten hypothesis), so the counter moves on even though
     # nothing is left to prove.
-    prover.step('← rule negE_gen goal=%d facts=[%d,%d]' % (g2, fwd, eq))
+    prover.step(u'\u2190 rule negE_gen goal=%d facts=[%d,%d]'
+                % (g2, fwd, eq))
     return c
 
 
-def _condition_fact(prover, arg_types, r, eqs, i, cond, g, dmap):
-    """Cut the branch's own test and prove it from the pattern.
+def _condition_negation(prover, names, arg_types, positions, eqs, i, j, g,
+                        conds):
+    """A fact that equation j's test fails in branch i.
+
+    The two equations' patterns are compared position by position and the
+    first position where their constructors differ is the one refuted --
+    the position has to be one *both* equations constrain, since a general
+    pattern there is not refuted by anything.  If equation j constrains a
+    single position its test *is* that refutation and the fact goes
+    straight to `if_not_P`.  Otherwise its test is the conjunction of its
+    positions, and refuting one conjunct has to become the negation of the
+    whole conjunction: `negI` makes the goal `C ==> false`, `intro` takes C
+    as a hypothesis, `conjD` takes the refuted conjunct out of it, and
+    `negE_gen` closes with the two.
+    """
+    here = _pattern_positions(_eq_args(eqs[i]), positions)
+    poses_j = _pattern_positions(_eq_args(eqs[j]), positions)
+    k = None
+    for kk, pos in enumerate(poses_j):
+        if pos in here and (_constr_name(_eq_args(eqs[j]), pos)
+                            != _constr_name(_eq_args(eqs[i]), pos)):
+            k = kk
+            break
+    if k is None:
+        raise FunGenError(
+            'the equations %d and %d of this definition match the same '
+            'constructors in every position they both constrain'
+            % (j + 1, i + 1))
+    if len(conds) == 1:
+        return _refute_test(prover, arg_types, poses_j[0], eqs, i, j,
+                            conds[0], g)
+    conj = _conj_of(conds)
+    c = prover.step(u'cut "%s" goal=%d' % (_prints(Not(conj)), g))
+    c1 = prover.step(u'\u2190 rule negI goal=%d' % c)
+    ids = prover.ids(u'\u2190 intro goal=%d' % c1, 2)
+    hyp, g2 = ids[0], ids[1]
+    fact = _refute_test(prover, arg_types, poses_j[k], eqs, i, j, conds[k],
+                        g2)
+    cur = hyp
+    for _ in range(k):
+        cur = prover.step(u'\u2192 forward conjD2 goal=%d facts=[%d]'
+                          % (g2, cur))
+    # The k-th conjunct of a right-nested conjunction: `conjD2` walks
+    # past the ones before it, and `conjD1` takes it out of the pair
+    # it heads -- except when it is the last one, where the walk has
+    # already landed on it.
+    if k < len(conds) - 1:
+        cur = prover.step(u'→ forward conjD1 goal=%d facts=[%d]'
+                          % (g2, cur))
+    prover.step(u'\u2190 rule negE_gen goal=%d facts=[%d,%d]'
+                % (g2, fact, cur))
+    return c
+
+
+def _test_fact(prover, arg_types, pos, eqs, i, cond, g, dmap, cut=True):
+    """Cut one test and prove it from the pattern it came from.
 
     The test is the pattern against itself: an equality when the pattern
     has no variable, and an existential over the variables otherwise,
@@ -1126,27 +1241,129 @@ def _condition_fact(prover, arg_types, r, eqs, i, cond, g, dmap):
     pattern's own variables.  The reduce closes it exactly when its last
     rewrite leaves an identity.
     """
-    c = prover.step('cut "%s" goal=%d' % (_prints(cond), g))
+    # `cut=False` is a conjunct of a branch test: `conjI` has already left
+    # that test as a goal of its own, and cutting it again would state a
+    # proposition the goal already has (so the cut would create nothing and
+    # the ids after it would be off).
+    c = prover.step(u'cut "%s" goal=%d' % (_prints(cond), g)) if cut else g
     if not is_exists(cond):
-        prover.step('← rule eq_refl goal=%d' % c, new=0)
+        prover.step(u'\u2190 rule eq_refl goal=%d' % c, new=0)
         return c
-    pat = _eq_args(eqs[i])[r]
+    pat = _eq_args(eqs[i])[pos]
     leaves = _pattern_leaves(pat)
     wit = _leaf_tuple(leaves)
     # The witness can be a tuple, so it is quoted: the step parser reads
     # one token for the argument otherwise, and `(Pair a b)` is two.
-    c2 = prover.step('← inst "%s" goal=%d' % (_arg_text(wit), c))
+    c2 = prover.step(u'\u2190 inst "%s" goal=%d' % (_arg_text(wit), c))
     body = cond.arg(wit).beta_norm()
     reduced = _reduce(body, dmap)
     rules = _reduce_used(body, dmap)[1]
     for k, rule in enumerate(rules):
         if k == len(rules) - 1 and reduced.is_reflexive():
-            prover.step('← rewrite %s goal=%d' % (rule, c2), new=0)
+            prover.step(u'\u2190 rewrite %s goal=%d' % (rule, c2), new=0)
         else:
-            c2 = prover.step('← rewrite %s goal=%d' % (rule, c2))
+            c2 = prover.step(u'\u2190 rewrite %s goal=%d' % (rule, c2))
     if not rules or not reduced.is_reflexive():
-        prover.step('← rule eq_refl goal=%d' % c2, new=0)
+        prover.step(u'\u2190 rule eq_refl goal=%d' % c2, new=0)
     return c
+
+
+def _refute_one(prover, arg_types, positions, eqs, i, j, k, test, g):
+    """A fact that equation j's test at its k-th position fails in branch i."""
+    poses_j = _pattern_positions(_eq_args(eqs[j]), positions)
+    return _refute_test(prover, arg_types, poses_j[k], eqs, i, j, test, g)
+
+
+def _single_test_fact(prover, arg_types, positions, eqs, i, j, k, g, dmap):
+    """Cut equation j's test at its k-th position and prove it holds."""
+    poses_j = _pattern_positions(_eq_args(eqs[j]), positions)
+    cond = _cond_of(_eq_args(eqs[j])[poses_j[k]],
+                    projection(_tuple_of(eqs[i]), arg_types, poses_j[k]),
+                    _pos_tag(j, k, len(poses_j)))
+    return _test_fact(prover, arg_types, poses_j[k], eqs, j, _reduce(cond, dmap),
+                      g, dmap)
+
+
+def _same_constructor(eqs, positions, i, j, pos):
+    """Whether both equations constrain `pos` with the same constructor."""
+    return (pos in _pattern_positions(_eq_args(eqs[i]), positions)
+            and _constr_name(_eq_args(eqs[j]), pos)
+            == _constr_name(_eq_args(eqs[i]), pos))
+
+
+def _multi_navigation(prover, names, arg_types, positions, eqs, i, g, dmap,
+                      conds, last_closes=False):
+    """Walk the nested chain to reach equation i's branch.
+
+    Every test of every earlier equation is visited in chain order: one
+    whose constructors differ from this branch's is refuted (`if_not_P`),
+    one that agrees is *taken* (`if_P` with the pattern's own witness --
+    both equations match there, and the chain asks them in order).  Then
+    this equation's own tests are taken, which is what its body needs.
+    """
+    steps = []
+    for j in range(i):
+        poses_j = _pattern_positions(_eq_args(eqs[j]), positions)
+        for k in range(len(poses_j)):
+            pos = poses_j[k]
+            if _same_constructor(eqs, positions, i, j, pos):
+                steps.append((u'take', j, k))
+            else:
+                steps.append((u'refute', j, k))
+    own = (_pattern_positions(_eq_args(eqs[i]), positions)
+           if i < len(eqs) - 1 else [])
+    for k in range(len(own)):
+        steps.append((u'take', i, k))
+    for n, (what, j, k) in enumerate(steps):
+        last = (n == len(steps) - 1)
+        if what == u'take':
+            c = _single_test_fact(prover, arg_types, positions, eqs, i, j, k, g,
+                                  dmap)
+            g = prover.step(u'\u2190 rewrite if_P goal=%d facts=[%d]' % (g, c),
+                            new=0 if (last and last_closes) else 1) or g
+        else:
+            neg = _refute_one(prover, arg_types, positions, eqs, i, j, k,
+                              conds[i][j][k], g)
+            g = prover.step(u'\u2190 rewrite if_not_P goal=%d facts=[%d]'
+                            % (g, neg),
+                            new=0 if (last and last_closes) else 1) or g
+    return g
+
+
+def _condition_fact(prover, arg_types, positions, eqs, i, conds, g, dmap):
+    """Cut the branch's own tests and prove them from the pattern.
+
+    With one position there is a single test and the cut *is* the fact
+    `if_P` wants.  With several the branch's condition is the conjunction
+    of the tests, so it is cut once and proved conjunct by conjunct
+    (`conjI` states the two halves; the goals it leaves are the tests
+    themselves, each proved the way a single one is).
+    """
+    poses = _pattern_positions(_eq_args(eqs[i]), positions)
+    if len(poses) == 1:
+        return _test_fact(prover, arg_types, poses[0], eqs, i, conds[0],
+                          g, dmap)
+    conj = _conj_of(conds)
+    c = prover.step(u'cut "%s" goal=%d' % (_prints(conj), g))
+    _prove_conj(prover, arg_types, positions, eqs, i, conds, c, dmap)
+    return c
+
+
+def _prove_conj(prover, arg_types, positions, eqs, i, conds, g, dmap):
+    """Prove a right-nested conjunction of tests, left to right.
+
+    Conjunct k is the test of position k of the equation's own constraining
+    positions, which is the order `branch_condition` builds them in.
+    """
+    poses = _pattern_positions(_eq_args(eqs[i]), positions)
+    if len(conds) == 1:
+        _test_fact(prover, arg_types, poses[0], eqs, i, conds[0], g, dmap,
+                   cut=False)
+        return
+    ids = prover.ids(u'\u2190 rule conjI goal=%d' % g, 2)
+    _test_fact(prover, arg_types, poses[0], eqs, i, conds[0], ids[0], dmap,
+               cut=False)
+    _prove_conj(prover, arg_types, positions, eqs, i, conds[1:], ids[1], dmap)
 
 
 def _proj_term(arg_types, r, t):
@@ -1209,14 +1426,17 @@ def _destructor_map(T):
     return res
 
 
-def _destructor_maps(arg_types, r):
+def _destructor_maps(arg_types, positions):
     """The destructor map for a definition's arguments.
 
-    Both ends are needed: the recursion component's (`Pre`, `hd`, ...) and
-    the tuple's (`fst`, `snd`), since the emitted bodies mention both.
+    Both ends are needed: every recursion position's own destructors
+    (`Pre`, `hd`, ...) and the tuple's (`fst`, `snd`), since the emitted
+    bodies mention both.
     """
-    T = arg_types[r]
-    res = _destructor_map(T)
+    positions = _as_positions(positions)
+    res = {}
+    for r in positions:
+        res.update(_destructor_map(arg_types[r]))
     if len(arg_types) > 1:
         res.update(_destructor_map(tupled_type(arg_types)))
     return res
@@ -1262,12 +1482,12 @@ def _decrease_prop(arg_types, r, tcall, t):
     return _prints(_relation(T)(call)(pat).beta_norm())
 
 
-def _branch_body(name, arg_types, res_type, eq, r, tup):
+def _branch_body(name, arg_types, res_type, eq, positions, tup):
     """One equation's right hand side as the body functional writes it."""
     g = Var('g', TFun(tupled_type(arg_types), res_type))
     f_const = Const(name, TFun(*(list(arg_types) + [res_type])))
     return replace(eq.rhs, f_const, len(arg_types),
-                   variable_env(_eq_args(eq), r, tup), g)
+                   variable_env(_eq_args(eq), positions, tup), g)
 
 
 def _decrease_witness(T, constrs, pairs, pattern, call, dmap):
@@ -1345,7 +1565,7 @@ def _decrease_steps(arg_types, r, tcall, eq, dmap):
     return steps, closes
 
 
-def _body_term(name, arg_types, res_type, eqs, r, p=None):
+def _body_term(name, arg_types, res_type, eqs, positions, p=None):
     """The `<c>_H g p = ...` right hand side, as a term.
 
     The equations are read in source order, so the body is the chain
@@ -1363,21 +1583,62 @@ def _body_term(name, arg_types, res_type, eqs, r, p=None):
     rewrites its proof needs.
     """
     Tup = tupled_type(arg_types)
+    positions = _as_positions(positions)
+    if len(positions) > 1:
+        return _nested_body(name, arg_types, res_type, eqs, positions, p)
     if p is None:
         p = Var('p', Tup)
     lhs = [_eq_args(eq) for eq in eqs]
-    body = _branch_body(name, arg_types, res_type, eqs[-1], r, p)
+    body = _branch_body(name, arg_types, res_type, eqs[-1], positions, p)
     for i in range(len(eqs) - 2, -1, -1):
-        b = _branch_body(name, arg_types, res_type, eqs[i], r, p)
-        cond = branch_condition(lhs[i], r, p, i)
+        b = _branch_body(name, arg_types, res_type, eqs[i], positions, p)
+        cond = branch_condition(lhs[i], positions, p, i)
         body = Const('IF', TFun(BoolType, TFun(
             res_type, TFun(res_type, res_type))))(cond)(b)(body)
     return body
 
 
-def _body_prop(name, arg_types, res_type, eqs, r, p=None):
+def _nested_body(name, arg_types, res_type, eqs, positions, p=None):
+    """The body functional as a chain of one test per (equation, position).
+
+    A definition that matches on several arguments takes a branch when all
+    of its positions match.  The chain says so by *nesting* the tests
+    rather than conjoining them:
+
+        if t_1 then (if t_2 then b_i else rest) else rest
+
+    Each step of a proof is then a single test -- `if_P` where it holds for
+    the equation's own tuple, `if_not_P` where the constructors differ --
+    which is the machinery the single-position chain already has, and every
+    step's item count is the fixed one that machinery was calibrated with.
+    A conjunction would need a step that closes a contradiction, and that
+    step creates one item or none depending on the proof state.
+    """
+    Tup = tupled_type(arg_types)
+    if p is None:
+        p = Var('p', Tup)
+    lhs = [_eq_args(eq) for eq in eqs]
+    ifty = TFun(BoolType, TFun(res_type, TFun(res_type, res_type)))
+
+    def chain(i):
+        body = _branch_body(name, arg_types, res_type, eqs[i], positions, p)
+        if i == len(eqs) - 1:
+            return body
+        rest = chain(i + 1)
+        poses = _pattern_positions(lhs[i], positions)
+        for k in range(len(poses) - 1, -1, -1):
+            pos = poses[k]
+            cond = _cond_of(lhs[i][pos], projection(p, arg_types, pos),
+                            _pos_tag(i, k, len(poses)))
+            body = Const('IF', ifty)(cond)(body)(rest)
+        return body
+
+    return chain(0)
+
+
+def _body_prop(name, arg_types, res_type, eqs, positions, p=None):
     """The `<c>_H g p = ...` right hand side, printed."""
-    return _prints(_body_term(name, arg_types, res_type, eqs, r, p))
+    return _prints(_body_term(name, arg_types, res_type, eqs, positions, p))
 
 
 def _rel_body(arg_types, r, order=None):
@@ -1496,8 +1757,8 @@ def _measure_obligation(prover, order, arg_types, call, pat, dmap, sizes, mdefs,
     return tail
 
 
-def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
-               tcalls, dmap, order=None, sizes=None, mdefs=None):
+def _def_entry(name, cname, arg_types, res_type, eqs, positions, i, conds,
+               rules, tcalls, dmap, order=None, sizes=None, mdefs=None):
     """Proof of equation i, whichever branch of the chain it is.
 
     The body functional is the if-chain over the equations in source
@@ -1513,6 +1774,7 @@ def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
     """
     prover = _Proof()
     names = _Names()
+    r = positions[0]
     t = _arg_text(_tuple_of(eqs[i]))
     g = prover.step('← unfold %s_def goal=0' % cname)
     a = _wf_fact(prover, cname, arg_types, g)
@@ -1531,8 +1793,9 @@ def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
     # when the two sides are already the same term, and `rest` is the
     # reduction the sweeps did not cover (a redex inside the right hand
     # side, which only the source mentions).
-    after = Eq(_reduce(_branch_body(name, arg_types, res_type, eqs[i], r,
-                                    _tuple_of(eqs[i])), dmap), eqs[i].rhs)
+    after = Eq(_reduce(_branch_body(name, arg_types, res_type, eqs[i],
+                                    positions, _tuple_of(eqs[i])), dmap),
+               eqs[i].rhs)
     rest = _reduce_used(after, dmap)[1]
     final = _reduce(after, dmap)
     closes_now = final.is_reflexive() and not rest
@@ -1552,17 +1815,24 @@ def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
             prover.step('← rewrite %s goal=%d' % (rule, g), new=0)
         else:
             g = prover.step('← rewrite %s goal=%d' % (rule, g))
-    for j in range(i):
-        neg = _condition_negation(prover, names, arg_types, r, eqs, i, j, g,
-                                  conds[i][j])
+    if len(positions) > 1:
+        # The chain has one `if` per (equation, position), so the branch is
+        # reached by taking or refuting each of them in order; nothing else
+        # about the equation's proof changes.
+        g = _multi_navigation(prover, names, arg_types, positions, eqs, i, g,
+                              dmap, conds, last_closes=closes_now)
+    for j in range(i) if len(positions) == 1 else []:
+        neg = _condition_negation(prover, names, arg_types, positions, eqs,
+                                  i, j, g, conds[i][j])
         # The last of these is the step that selects the branch when the
         # equation is the chain's else (the last one); it closes the goal
         # when the branch's body is already the equation's right hand side.
         last_nav = (j == i - 1) and (i == len(eqs) - 1) and closes_now
         g = prover.step('← rewrite if_not_P goal=%d facts=[%d]' % (g, neg),
                         new=0 if last_nav else 1) or g
-    if i < len(eqs) - 1:
-        c2 = _condition_fact(prover, arg_types, r, eqs, i, conds[i][i], g, dmap)
+    if i < len(eqs) - 1 and len(positions) == 1:
+        c2 = _condition_fact(prover, arg_types, positions, eqs, i,
+                             conds[i][i], g, dmap)
         g = prover.step('← rewrite if_P goal=%d facts=[%d]' % (g, c2),
                         new=0 if closes_now else 1) or g
     # Which step selected the branch: the chain's last equation has no test
@@ -1598,7 +1868,8 @@ def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
                                              g, name, i))
             continue
         obligation_prop = _decrease_prop(arg_types, r, tcall, _tuple_of(eq))
-        if i < len(eqs) - 1 and is_exists(conds[i][i]):
+        if (len(positions) == 1 and i < len(eqs) - 1
+                and is_exists(conds[i][i][0])):
             # Both this branch's test (once its witness is given) and the
             # decrease obligation would state the same proposition, and the
             # stable-ID layer keys items by proposition: the second one
@@ -1612,7 +1883,7 @@ def _def_entry(name, cname, arg_types, res_type, eqs, r, i, conds, rules,
             # The witness variables are bound by the existential, i.e. they
             # are de Bruijn indices inside it: giving one means applying
             # the binder and beta-reducing, which is what `inst` does.
-            test = conds[i][i].arg(wit).beta_norm()
+            test = conds[i][i][0].arg(wit).beta_norm()
             if _prints(test) == obligation_prop:
                 raise FunGenError(
                     'fun %s: equation %d tests its pattern with an '
@@ -1715,10 +1986,11 @@ def _expand(data):
     arity = len(_eq_args(eqs[0]))
     arg_types, res_type = _strip_type(ty, arity)
     lhs = [_eq_args(eq) for eq in eqs]
-    r = recursion_position(arg_types, lhs)
-    if r is None:
+    positions = recursion_positions(arg_types, lhs)
+    if not positions:
         raise FunGenError('fun %s: a definition without constructor patterns '
                           'is not emitted yet' % name)
+    r = positions[0]
     # Each equation matches one constructor at the recursion position, and
     # the roots have to be pairwise distinct: the branch chain decides by
     # `t = C _` alone, so two equations with the same root would need the
@@ -1727,22 +1999,46 @@ def _expand(data):
     # earlier branches are refuted with the datatype's distinctness axioms,
     # which is why a non-nullary pattern's test is an existential over one
     # witness tuple: `elim` takes it apart in one step.
+    # Every equation matches where it carries a constructor; the branch
+    # chain decides equation j against equation i at the first position
+    # where both carry one and they differ, so that position has to exist
+    # for every earlier equation.  Two equations that agree everywhere (or
+    # one of which is the general pattern of the other) would need pattern
+    # subtraction, which this emitter does not do.
     roots = []
     for i, args in enumerate(lhs):
-        cname_i = _constr_name(args, r)
-        constrs = _constr_names(arg_types[r])
-        if constrs is None or cname_i not in constrs:
-            raise FunGenError(
-                'fun %s: the pattern %s at argument %d is not a constructor '
-                'pattern of %s' % (name, _prints(args[r]), r + 1,
-                                   _printt(arg_types[r])))
-        roots.append(cname_i)
-    if len(set(roots)) != len(roots):
-        dup = [c for c in roots if roots.count(c) > 1][0]
-        raise FunGenError(
-            'fun %s: %s is the constructor of more than one equation; '
-            'overlapping patterns need pattern subtraction, which this '
-            'emitter does not do' % (name, dup))
+        root = []
+        for pos in positions:
+            cname_i = _constr_name(args, pos)
+            constrs = _constr_names(arg_types[pos])
+            if constrs is None:
+                raise FunGenError(
+                    'fun %s: recursion on argument %d is not supported: %s '
+                    'is not a datatype' % (name, pos + 1, _printt(arg_types[pos])))
+            if cname_i in constrs:
+                root.append((pos, cname_i))
+        roots.append(root)
+    for i in range(len(eqs)):
+        for j in range(i):
+            missing = [pos for pos, _ in roots[j]
+                       if not any(pos == p2 for p2, _ in roots[i])]
+            if missing:
+                raise FunGenError(
+                    'fun %s: equation %d matches on argument %d and equation '
+                    '%d leaves it a variable; the later branch cannot be '
+                    'separated from the earlier one without pattern '
+                    'subtraction, which this emitter does not do'
+                    % (name, j + 1, missing[0] + 1, i + 1))
+            diff = [pos for pos, c in roots[j]
+                    if not any(pos == p2 and c == c2 for p2, c2 in roots[i])]
+            if not diff:
+                raise FunGenError(
+                    'fun %s: equations %d and %d match the same constructors '
+                    'in every position they both constrain (%s); overlapping '
+                    'patterns need pattern subtraction, which this emitter '
+                    'does not do' % (name, j + 1, i + 1,
+                                     ", ".join(_prints(_eq_args(eqs[j])[pos])
+                                               for pos, _ in roots[j]) or "-"))
     f_const = Const(name, TFun(*(list(arg_types) + [res_type])))
     # A recursive call may stand in any equation, and several calls in one
     # equation are fine as long as they ask for the same thing: the body
@@ -1759,20 +2055,30 @@ def _expand(data):
         calls.append(tuples)
     _require_in_scope(arg_types, r, None if any(calls) else [])
 
-    dmap = _destructor_maps(arg_types, r)
-    rules = [_reduce_used(_body_term(name, arg_types, res_type, eqs, r,
+    dmap = _destructor_maps(arg_types, positions)
+    rules = [_reduce_used(_body_term(name, arg_types, res_type, eqs, positions,
                                      _tuple_of(eq)), dmap)[1] for eq in eqs]
-    # `conds[i][j]` is the test of equation j as this branch's goal has it:
-    # the projection already reduced to the branch's own pattern.
-    conds = [[_reduce(_cond_of(lhs[j][r],
-                               _proj_term(arg_types, r, _tuple_of(eqs[i])), j),
-                      dmap)
-              for j in range(i + 1)] for i in range(len(eqs))]
+    # `conds[i][j]` is the test of equation j as this branch's goal has it,
+    # one entry per recursion position: the projection already reduced to
+    # the branch's own pattern.
+    conds = [[[_reduce(_cond_of(lhs[j][pos],
+                                projection(_tuple_of(eqs[i]), arg_types, pos),
+                                _pos_tag(j, k, len(poses_j))), dmap)
+               for k, pos in enumerate(poses_j)]
+              for j, poses_j in ((j, _pattern_positions(lhs[j], positions))
+                                 for j in range(i + 1))]
+             for i in range(len(eqs))]
     order, sizes, mdefs = _measure_order(arg_types, (name, cname), cname, eqs,
                                          calls, dmap)
     try:
         _require_in_scope(arg_types, r, order)
     except FunGenError:
+        if len(positions) > 1:
+            # The subterm relation is stated for one argument; a
+            # definition matching on several needs the measures, and
+            # saying so is better than emitting a relation that descends
+            # through only one of them.
+            raise
         # The measure machinery is not in scope in this file (the nat
         # comparisons its cells are closed with, most often).  The
         # datatype's own subterm relation is the relation rule left, the
@@ -1785,7 +2091,7 @@ def _expand(data):
                                                         order)]
     entries += [_entry([text]) for text in _def_entries(
         name, cname, arg_types, res_type,
-        _body_prop(name, arg_types, res_type, eqs, r),
+        _body_prop(name, arg_types, res_type, eqs, positions),
         _rel_body(arg_types, r, order))]
     entries.append(_entry(_rel_wf_entry(cname, arg_types, r, order)))
     for i, eq in enumerate(eqs):
@@ -1796,8 +2102,8 @@ def _expand(data):
                 '  prop %s' % eq_text,
                 '  [hint_rewrite]',
                 'proof']
-        text.extend(_def_entry(name, cname, arg_types, res_type, eqs, r, i,
-                               conds, rules[i],
+        text.extend(_def_entry(name, cname, arg_types, res_type, eqs,
+                               positions, i, conds, rules[i],
                                [tupled_arg(c) for c in calls[i]], dmap,
                                order, sizes, mdefs))
         text.append('qed')

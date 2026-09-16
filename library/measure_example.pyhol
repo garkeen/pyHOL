@@ -33,3 +33,13 @@ datatype tri =
 fun tsum :: tri ⇒ nat
   | tsum TriZ = 0
   | tsum (TriS t) = Suc (tsum t)
+
+-- Two columns: the first equation decreases the first argument, the
+-- third keeps it (only `<=` there) and decreases the second, so no single
+-- measure works and the relation is a two-column `mlex_prod` chain.
+
+fun lexnat :: nat ⇒ nat ⇒ nat
+  | lexnat 0 n = n
+  | lexnat (Suc m) 0 = lexnat m 0
+  | lexnat (Suc m) (Suc n) = lexnat (Suc m) n
+
