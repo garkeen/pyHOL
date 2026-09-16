@@ -682,7 +682,13 @@ def _proj_term(arg_types, r, t):
 
 
 def _proj_const(arg_types, r):
-    """The projection as a plain function, for `wf_measure_gen`'s map."""
+    """The projection as a plain function, for `wf_measure_gen`'s map.
+
+    Two arguments is the emitter's limit: the projection of component r of
+    a longer tuple is a composition (`fst (snd p)`), and the equation
+    proofs' projection rewrites are emitted one rule per step, which a
+    nested projection does not fit yet.
+    """
     Tup = tupled_type(arg_types)
     T = arg_types[r]
     return Const('fst' if r == 0 else 'snd', TFun(Tup, T))
