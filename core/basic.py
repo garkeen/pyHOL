@@ -1,5 +1,6 @@
 # Author: Bohua Zhan
 import os
+import re
 import json
 import hashlib
 import importlib
@@ -377,6 +378,12 @@ def load_theory_cache(filename):
         source_lines = source_text.split('\n')
         cache['source_hash'] = hashlib.sha1(
             source_text.encode('utf-8')).hexdigest()
+        # The names the file declares itself.  A `fun` expansion must not
+        # emit a rule the file states by hand further down -- `nat.pyhol`
+        # writes `nat_less_induct` after the definition it belongs to, and
+        # the generator, which expands the definition where the loader
+        # reaches it, cannot see it in the theory yet.
+        declared = set(re.findall(r'^theorem\s+(\S+)', source_text, re.M))
         cache['item_hashes'] = []
         cache['content'] = []
 
@@ -401,7 +408,7 @@ def load_theory_cache(filename):
                 if item.get('ty') == 'def.ind':
                     from core import fungen
                     try:
-                        derived = fungen.expand_item(item)
+                        derived = fungen.expand_item(item, declared)
                     except Exception:
                         if os.environ.get('HOLPY_FUNGEN_DEBUG'):
                             raise

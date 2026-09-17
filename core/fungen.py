@@ -46,11 +46,12 @@ breaks because of the expansion:
 """
 import os
 import re
+import itertools
 
 from kernel.type import TFun, TConst, BoolType
-from kernel.term import Lambda, Var, Const, Eq, Abs
+from kernel.term import Lambda, Var, Const, Eq, Abs, Implies, Forall
 from syntax import printer
-from syntax.logicops import Exists, is_exists, Not, is_not
+from syntax.logicops import Exists, Or, is_exists, Not, is_not
 from syntax.settings import global_setting
 from core import measure
 
@@ -168,7 +169,12 @@ def _subst(t, env):
     """
     if t.is_comb():
         h, args = t.strip_comb()
-        return h(*[_subst(a, env) for a in args])
+        # The head is substituted too: a recursive call's arguments can have
+        # a *variable* in head position (`foldl f (f z x) xs`, where `f` is
+        # a pattern variable applied), and leaving it behind names a
+        # variable the branch has since renamed away.  For the constructor
+        # patterns this is a no-op -- their heads are constants.
+        return _subst(h, env)(*[_subst(a, env) for a in args])
     if t.is_var() and t.name in env:
         return env[t.name]
     return t
@@ -1198,6 +1204,25 @@ def _check_lemma(lemma, prop, what, name):
     return lemma
 
 
+def _unfold_is_the_equality(arg_types, r, tcall, p, eq_tuple):
+    """Whether unfolding the relation gives the branch's own equality.
+
+    The subterm relation over a single-argument definition is `q = C p`,
+    so `rewrite <c>_rel_def` turns the goal `<c>_rel <call> p` into
+    exactly the equation the branch already obtained from `elim` -- and a
+    rewrite whose result is a theorem already in the table lays out no new
+    line.  With more than one argument the relation is stated over the
+    projections (`fst q = Suc (fst p)`), which is a different theorem from
+    the equality between the tuples, so the unfold does create one.
+    Comparing the two terms says which, instead of leaving the count to
+    whatever the table happens to hold.
+    """
+    T = arg_types[r]
+    call = _proj_term(arg_types, r, tcall)
+    unfolded = _relation(T)(call)(_proj_term(arg_types, r, p)).beta_norm()
+    return unfolded == Eq(p, eq_tuple)
+
+
 def _given_obligation(prover, arg_types, r, relation, tcall, tup, descent, g,
                       name, i, used):
     """One call's decrease obligation, discharged from the user's lemmas.
@@ -2122,19 +2147,44 @@ def _in_def_fact(prover, cname, arg_types, res_type, g):
     return c
 
 
-def _emit_closing(prover, closing, g):
-    """Write the last steps of a comparison: a tree of cuts and rules."""
+def _emit_closing(prover, closing, g, lines=False):
+    """Write the last steps of a comparison: a tree of cuts and rules.
+
+    Returns the stable ID of the fact that closes `g`, which is not always
+    `g` itself.  A `rule` closes its goal in place when the fact it derives
+    is the goal's own theorem, and lays out a line when that fact is a
+    *different* theorem: the fact then gets a new ID and the goal's is
+    consumed.  The second case is an induction branch, where the goal
+    carries the branch's hypotheses and a comparison lemma's conclusion
+    carries none; `_def_entry`'s goals have no hypotheses, so there the
+    two coincide.  `lines` says which of the two this proof is, because
+    the difference is not visible in the step itself.
+
+    The distinction reaches up the tree: a cut node closes its goal with
+    the fact the node below it produced, so the `facts=[...]` the outer
+    rule takes has to name *that* fact -- the cut's own ID is consumed by
+    the rule below whenever that rule laid out a line.
+    """
     if closing.kind == 'rule':
+        if lines:
+            return prover.step('← rule %s goal=%d' % (closing.theorem, g))
         prover.step('← rule %s goal=%d' % (closing.theorem, g), new=0)
-        return
+        return g
     c = prover.step('cut "%s" goal=%d' % (closing.prop, g))
-    _emit_closing(prover, closing.sub, c)
-    prover.step('← rule %s goal=%d facts=[%d]' % (closing.theorem, g, c),
+    fact = _emit_closing(prover, closing.sub, c, lines)
+    if lines:
+        return prover.step('← rule %s goal=%d facts=[%d]'
+                           % (closing.theorem, g, fact))
+    # The premise here is the cut's own goal, whose hypotheses are the
+    # goal's, so the fact this rule derives *is* the goal's theorem and
+    # the step closes in place.
+    prover.step('← rule %s goal=%d facts=[%d]' % (closing.theorem, g, fact),
                 new=0)
+    return g
 
 
 def _measure_obligation(prover, order, arg_types, call, pat, dmap, sizes, mdefs,
-                        g, name, i):
+                        g, name, i, lines=False):
     """One recursive call's decrease, walked through the measure chain.
 
     The call is discharged at the first column where it strictly
@@ -2164,7 +2214,7 @@ def _measure_obligation(prover, order, arg_types, call, pat, dmap, sizes, mdefs,
             cur = prover.step('← beta goal=%d' % cur)
         for step in c.steps:
             cur = prover.step('← rewrite %s goal=%d' % (step, cur))
-        _emit_closing(prover, c.closing, cur)
+        _emit_closing(prover, c.closing, cur, lines)
         cell_facts.append(cell)
     call_text, pat_text = _arg_text(call), _arg_text(pat)
     tail = None
@@ -2180,6 +2230,512 @@ def _measure_obligation(prover, order, arg_types, call, pat, dmap, sizes, mdefs,
                         % (c, cell_facts[j], tail), new=0)
         tail = c
     return tail
+
+
+# ---------------------------------------------------------------------------
+# Coverage: the exhaustive disjunction over the equations' patterns.
+# ---------------------------------------------------------------------------
+
+
+_OUT = object()
+"""An equation a split ruled out: its pattern names another constructor."""
+
+
+def _constr_pattern(t):
+    """Whether `t` is a constructor of its type applied to arguments.
+
+    A plain variable is the *general* pattern -- the equation it belongs to
+    constrains nothing at that spot -- and a split there has to keep every
+    equation, which is what separates the two.
+    """
+    h, _ = t.strip_comb()
+    if h.is_var():
+        return False
+    constrs = _constr_names(t.get_type())
+    return constrs is not None and h.name in constrs
+
+
+def _pred_names():
+    """Names to offer the induction rule's predicate, in order."""
+    yield 'P'
+    for i in itertools.count(1):
+        yield 'P%d' % i
+
+
+def _pattern_vars_in(args):
+    """The Vars a pattern's arguments bind, in order of appearance.
+
+    A nullary constructor binds nothing and a nested one binds its own
+    arguments, in order.  This is the order the disjunct's `?` prefix lists
+    the variables in, and therefore the order the leaf's `inst` steps have
+    to consume them in: `inst` takes the outermost binder first.
+    """
+    res = []
+    for a in args:
+        if a.is_var():
+            res.append(a)
+        elif a.is_const() and not a.strip_comb()[1]:
+            continue
+        else:
+            res.extend(_pattern_vars_in(a.strip_comb()[1]))
+    return res
+
+
+def _coverage_prop(lhs, p):
+    """`(?v_1. p = P_1) | ... | (?v_n. p = P_n)`, right-nested.
+
+    One disjunct per equation, in source order, each binding exactly the
+    variables its pattern has.  The disjunction says that `p` is *some*
+    instance of one of the patterns, which is what the induction rule's
+    case split consumes: a disjunct gives one branch, with the equation
+    `p = <pattern>` to rewrite the goal by.
+    """
+    res = None
+    for args in reversed(lhs):
+        body = Eq(p, tupled_arg(args))
+        for v in reversed(_pattern_vars_in(args)):
+            body = Exists(v, body)
+        res = body if res is None else Or(body, res)
+    return res
+
+
+def _induct_prop(arg_types, lhs, calls, P=None):
+    """`(!v_1. <IH_1> --> P P_1) --> ... --> (!p. P p)`, the induction rule.
+
+    One premise per equation: quantify the pattern's variables, put the
+    induction hypothesis `P <call>` of each recursive call of the equation
+    in front, and conclude `P <pattern>`.  The rule's conclusion is about
+    an arbitrary `p`, so a proof by induction is `rule <c>_induct`, and the
+    premises are exactly the obligations the branches of that proof leave:
+    a branch for an equation with no call is discharged by its own premise,
+    one with calls needs the hypotheses first.
+
+    This is Isabelle's `f.induct` (`Function/induction_schema.ML`,
+    `mk_ind_goal`), specialised to the case it does not need a sum type
+    for: every equation's premise is about the same tuple type, so the
+    "sum of branch predicates" collapses to a conjunction of implications
+    and the case split is a disjunction over the patterns rather than a
+    `sumcases`.
+    """
+    Tup = tupled_type(arg_types)
+    if P is None:
+        P = Var('P', TFun(Tup, BoolType))
+    prems = []
+    for i, args in enumerate(lhs):
+        body = P(tupled_arg(args))
+        for t in reversed(calls[i]):
+            body = Implies(P(t), body)
+        for v in reversed(_pattern_vars_in(args)):
+            body = Forall(v, body)
+        prems.append(body)
+    res = Forall(Var('p', Tup), P(Var('p', Tup)))
+    for pre in reversed(prems):
+        res = Implies(pre, res)
+    return res
+
+
+def _coverage_entry(cname, arg_types, eqs, lhs):
+    """The `<c>_exhaustive` item: every input is one of the patterns.
+
+    The split walks the *patterns*, not the input: `type_cases` on the
+    tuple, then on each position whose patterns are not all variables, and
+    down into the arguments of the constructor a branch chose.  A leaf
+    realises exactly one equation -- a definition's patterns are pairwise
+    disjoint, which `_expand` has already checked -- so that equation's
+    disjunct is reached with `disjI`, its pattern's variables are given as
+    the witnesses the split recorded, and `eq_refl` closes.
+
+    This is the completeness half of Isabelle's pattern check
+    (`Function/pat_completeness.ML`, `prove_completeness`), the same
+    routine `Function/induction_schema.ML` reuses to split its induction
+    schema.  It is a mechanism on purpose, not a proof written once: the
+    induction rule and pattern completeness are two consumers of it.
+    """
+    Tup = tupled_type(arg_types)
+    p = Var('p', Tup)
+    lines = ['theorem %s_exhaustive' % cname,
+             '  fixes p :: %s' % _printt(Tup),
+             '  prop %s' % _prints(_coverage_prop(lhs, p)),
+             'proof']
+    prover = _Proof()
+    names = _Names()
+
+    def leaf(goal, alive, envs):
+        cands = [i for i in range(len(eqs)) if alive[i]]
+        if len(cands) != 1:
+            raise FunGenError(
+                'fun %s: %d equations match the same input; the coverage '
+                'split needs exactly one branch per input, so the patterns '
+                'have to be pairwise disjoint'
+                % (cname, len(cands)))
+        i = cands[0]
+        for rule in _disjunct_chain(len(eqs), i):
+            goal = prover.step('%s goal=%d' % (rule, goal))
+        for v in _pattern_vars_in(_eq_args(eqs[i])):
+            goal = prover.step('inst "%s" goal=%d'
+                               % (_arg_text(envs[i][v.name]), goal))
+        prover.step('rule eq_refl goal=%d' % goal, new=0)
+
+    def split(goal, spots, alive, envs):
+        """Close `goal` by splitting `spots`.
+
+        spots -- (term, pats) pairs still to split.  `pats[i]` is equation
+                 i's pattern there: a term, `_OUT` when an earlier split
+                 ruled the equation out, None when the equation's pattern
+                 never reached this spot (its parent was a variable).
+        alive -- per equation, whether it is still a candidate.
+        envs  -- per equation, the value each of its pattern variables has
+                 taken.  The spot's term is that value: the split replaced
+                 it by the constructor application, so no term has to be
+                 rebuilt for the leaf's `inst` steps.
+        """
+        if not spots:
+            return leaf(goal, alive, envs)
+        t, pats = spots[0]
+        if not any(x is not _OUT and x is not None and _constr_pattern(x)
+                   for x in pats):
+            # Nothing here tells the equations apart: a pattern variable
+            # takes the whole term as it stands.
+            for i, x in enumerate(pats):
+                if x is not None and x is not _OUT and x.is_var():
+                    envs[i][x.name] = t
+            return split(goal, spots[1:], alive, envs)
+        constrs = _registered_constrs(t.get_type())
+        if not constrs:
+            raise FunGenError(
+                'fun %s: the pattern at %s is not a constructor pattern of '
+                'a datatype' % (cname, _prints(t)))
+        ids = prover.ids('type_cases %s goal=%d' % (t.name, goal),
+                         len(constrs))
+        for k, constr in enumerate(constrs):
+            g = ids[k]
+            argT, _ = constr['type'].strip_type()
+            nms = [names.alloc('u') for _ in argT]
+            if nms:
+                g = prover.ids('intro "%s" goal=%d' % (', '.join(nms), g),
+                               len(nms) + 1)[-1]
+            targs = [Var(nm, Ty) for nm, Ty in zip(nms, argT)]
+            term = Const(constr['name'], constr['type'])(*targs)
+            sub_alive = list(alive)
+            sub_envs = [dict(e) for e in envs]
+            # One spot per argument of this constructor, unfilled to begin
+            # with: an equation whose pattern here is a variable never
+            # reaches them, and one that named another constructor is out.
+            sub = [(targs[a], [None] * len(pats)) for a in range(len(argT))]
+            for i, x in enumerate(pats):
+                if x is None or x is _OUT:
+                    continue
+                if x.is_var():
+                    sub_envs[i][x.name] = term
+                    continue
+                h, xargs = x.strip_comb()
+                if h.name != constr['name']:
+                    sub_alive[i] = False
+                    continue
+                for a, xa in enumerate(xargs):
+                    sub[a][1][i] = xa
+            split(g, sub + spots[1:], sub_alive, sub_envs)
+
+    # The tuple, one `type_cases` per nesting level.  A one-argument
+    # definition has no tuple at all and the argument itself is the whole
+    # of `p`.
+    goal = 0
+    comps = []
+    cur, rest = p, list(arg_types)
+    while len(rest) > 1:
+        goal = prover.ids('type_cases %s goal=%d' % (cur.name, goal), 1)[0]
+        a, b = names.alloc('a'), names.alloc('b')
+        goal = prover.ids('intro "%s, %s" goal=%d' % (a, b, goal), 3)[-1]
+        comps.append(Var(a, rest[0]))
+        cur = Var(b, tupled_type(rest[1:]))
+        rest = rest[1:]
+    comps.append(cur)
+    split(goal,
+          [(comps[j], [lhs[i][j] for i in range(len(eqs))])
+           for j in range(len(arg_types))],
+          [True] * len(eqs), [dict() for _ in eqs])
+    lines.extend(prover.text())
+    lines.append('qed')
+    return lines
+
+
+class _RenamedEq:
+    """An equation whose left hand side carries the split's own variables.
+
+    The branch's `elim` replaces the pattern's variables by fresh names
+    (`n1`, `m1` -- `_Names` hands out a variant because the same name and
+    type twice would be one stable id and the second line would create
+    nothing), so the call terms the equation's right hand side mentions no
+    longer name anything in scope.  The obligation has to be computed from
+    the renamed equation: `_decrease_steps` reads the left hand side only
+    (`_eq_args` strips the head, `_tuple_of` the tuple), so a stand-in
+    carrying that suffices.
+    """
+
+    def __init__(self, lhs):
+        self.lhs = lhs
+
+
+def _induct_entry(name, cname, arg_types, res_type, eqs, positions, calls,
+                  dmap, order=None, sizes=None, mdefs=None, relation=None,
+                  descent=None, used=None):
+    """The `<c>_induct` item: the induction rule and its proof.
+
+    The rule's statement is `_induct_prop`; the proof is Isabelle's
+    `induction_schema_tac` (Function/induction_schema.ML) with the sum
+    type left out:
+
+    * `wf_induct` on the definition's own relation gives the relation
+      induction hypothesis `!y. <c>_rel y p --> P y`;
+    * `<c>_exhaustive` says `p` is some instance of one of the patterns,
+      and `disjE` -- once per disjunct, since the disjunction is
+      right-nested -- turns that into one branch per equation;
+    * a branch takes its pattern apart with one `elim` per pattern
+      variable, rewrites `P p` into `P <pattern>` by the equation it just
+      obtained, and closes: an equation with no recursive call is its own
+      premise instantiated at the pattern's variables, and one with calls
+      instantiates each call's induction hypothesis, states that call's
+      decrease obligation and proves it with the same machinery the
+      equation's own proof uses, then applies the premise.
+
+    The obligation is stated against the *pattern* (`<c>_rel <call>
+    <pattern>`), which is what every proof of one is about, so the
+    relation is unfolded and the equation `p = <pattern>` substituted
+    before it is proved -- except on the measure path, where the chain
+    cut `_measure_obligation` states would then be the goal itself and
+    would create no item at all; there the substitution happens after the
+    chain fact exists and closes the goal by `rule trivial`.
+    """
+    lhs = [_eq_args(eq) for eq in eqs]
+    Tup = tupled_type(arg_types)
+    r = positions[0]
+    ng = len(eqs)
+    # `calls` holds each call's argument sequence; every use here is of the
+    # tupled argument, which is what the function constant takes and what
+    # the relation and the induction hypothesis are stated over.
+    tcalls = [[tupled_arg(c) for c in calls[i]] for i in range(ng)]
+    # The predicate's name has to be one the equations do not use: `filter`
+    # binds its predicate as `P`, and a fixed `P` here then makes the
+    # quantifier and the pattern's variable clash in type
+    # (`abstract_over: wrong type`).
+    taken = set()
+    for eq in eqs:
+        for v in eq.get_vars():
+            taken.add(v.name)
+    # ... nor one the branch's own name allocation will hand out: `_Names`
+    # makes `P1` from a pattern variable `P`, and the predicate must not be
+    # the name the `elim` of that variable introduces.
+    for base in list(taken):
+        for i in range(1, 8):
+            taken.add('%s%d' % (base, i))
+    pred_name = next(c for c in _pred_names() if c not in taken)
+    P = Var(pred_name, TFun(Tup, BoolType))
+    lines = ['theorem %s_induct' % cname,
+             '  fixes %s :: %s ⇒ bool' % (pred_name, _printt(Tup)),
+             '  prop %s' % _prints(_induct_prop(arg_types, lhs, tcalls, P)),
+             'proof']
+    prover = _Proof()
+    names = _Names()
+    seen = set()
+
+    def obligation(goal, tcall, k, req):
+        """Prove the decrease obligation `goal` is (the relation, unfolded).
+
+        `goal` already reads `<body> <call> ...`, the relation having been
+        unfolded, and `tcall`/`req` are the call and the equation renamed
+        into the branch's own variables.  Which machinery proves it is the
+        same choice `_def_entry` makes for the equation's own proof, so the
+        two proofs of one definition cannot disagree about what the
+        obligation is.
+
+        Returns the fact stating the obligation when the caller still has
+        to close `goal` against it, and None when `goal` is closed here.
+        The subterm relation's steps are *about the pattern* -- they reduce
+        the projections of the tuple the pattern is -- so that path is the
+        one that needs `goal` to be the substituted form already.  The
+        measure chain and a relation the user wrote are stated with the
+        pattern by construction, so their fact is the bridge and the
+        substitution happens after it exists.
+        """
+        if order is not None:
+            return _measure_obligation(prover, order, arg_types, tcall,
+                                       _tuple_of(req), dmap, sizes, mdefs,
+                                       goal, name, k, lines=True)
+        if descent:
+            return _given_obligation(prover, arg_types, r, relation, tcall,
+                                     _tuple_of(req), descent, goal, name, k,
+                                     used)
+        steps, closes = _decrease_steps(arg_types, r, tcall, req, dmap, seen)
+        # A call whose instance the proof already produced ends at its own
+        # `inst`: that step resolves the goal to the item that is there and
+        # creates nothing (`_decrease_steps` says so), where every other
+        # closing -- `rule eq_refl`, a rewrite that leaves an identity --
+        # lays out a line in a branch whose goal carries hypotheses.
+        last_new = 0 if steps and steps[-1].startswith('inst') else 1
+        cur = goal
+        for j, step in enumerate(steps):
+            # Even the step that discharges the obligation lays out a line
+            # here: an induction branch's goal carries the hypotheses the
+            # `elim`s introduced, so the fact the step derives is a
+            # different theorem from the goal and the engine exports the
+            # step instead of rewriting the goal in place (`_def_entry`'s
+            # branch goals carry none, which is why its counts are the
+            # `new=0` ones).
+            cur = prover.step('← %s goal=%d' % (step, cur),
+                              new=last_new if j == len(steps) - 1 else 1) or cur
+        return None
+
+    def one(goal, eqf, k):
+        """Equation k: `eqf` states its disjunct, `goal` is `P p`.
+
+        The branch's disjunction has already been introduced by the caller
+        (`split` takes the `D_k --> P p` apart, and with one equation the
+        fact is the disjunct itself), so this starts at the equation.
+        """
+        vnames = {}
+        env = {}
+        for v in _pattern_vars_in(lhs[k]):
+            nm = names.alloc(v.name)
+            vnames[v.name] = nm
+            env[v.name] = Var(nm, v.T)
+            e = prover.ids('elim %s goal=%d facts=[%d]' % (nm, goal, eqf), 3)
+            eqf, goal = e[1], e[2]
+        # The substitution turns `P p` into `P <pattern>`.  Where the
+        # equation has no call and the pattern has no variable, that
+        # proposition is the equation's own premise -- a fact already in
+        # scope -- so the goal closes by itself and the rewrite lays out
+        # no new line; everywhere else the proposition is new.
+        pvars = _pattern_vars_in(lhs[k])
+        autocloser = not tcalls[k] and not pvars
+        goal = prover.step('← rewrite source=prev goal=%d facts=[%d]'
+                           % (goal, eqf), new=0 if autocloser else 1) or goal
+        # The equation's own names are out of scope from here on: the
+        # `elim`s above bound the fresh ones, so every term taken from the
+        # equation -- the calls, the pattern the obligation is stated
+        # against -- has to be renamed into them.
+        ren_call = [_subst(c, env) for c in tcalls[k]]
+        ren_eq = _RenamedEq(f_const(*[_subst(a, env) for a in lhs[k]]))
+        if not tcalls[k]:
+            # An equation whose pattern has no variable (`g [] = []`) has a
+            # premise with nothing to quantify, so the premise itself is
+            # already the instance that matches the goal -- and since it is
+            # a fact already in scope, the goal closes on the substitution
+            # above by itself (a target whose proposition equals an item's
+            # is closed automatically).  Only a pattern with variables
+            # needs the instantiations and the closing step that follows.
+            inst = prem[k]
+            for v in pvars:
+                inst = prover.step('← inst "%s" goal=%d facts=[%d]'
+                                   % (vnames[v.name], goal, inst))
+            if pvars:
+                prover.step('← rule trivial goal=%d facts=[%d]'
+                            % (goal, inst), new=0)
+            return
+        pfacts = []
+        for tcall in ren_call:
+            imp = prover.step('← inst "%s" goal=%d facts=[%d]'
+                              % (_arg_text(tcall), goal, ih))
+            cut = prover.step('cut "%s_rel %s %s" goal=%d'
+                              % (cname, _arg_text(tcall), pname, goal))
+            if order is not None or descent:
+                # The measure chain's cut and the user's lemma both state the
+                # obligation with the *pattern*, which is what the equation's
+                # own proof cuts against its branch goal -- so the machinery
+                # runs on the cut goal, and the relation is unfolded and the
+                # equation substituted afterwards to meet the fact it
+                # produced.
+                fact = obligation(cut, tcall, k, ren_eq)
+                cur = prover.step('← rewrite %s_rel_def goal=%d' % (cname, cut))
+                if order is None:
+                    cur = prover.step('← beta goal=%d' % cur)
+                # Substituting the equation into the unfolded relation
+                # produces exactly the proposition the obligation above
+                # states, so the engine finds that item already in its table
+                # and lays out no new line -- and the goal, now being that
+                # proposition, is closed by the in-scope item itself.  There
+                # is no closing step to emit.
+                prover.step('← rewrite source=prev goal=%d facts=[%d]'
+                            % (cur, eqf), new=0)
+            else:
+                # The unfold already contracts the redex the lambda's
+                # application makes (the rewriter reduces there), so there
+                # is no `beta` to emit; the subterm relation's steps are
+                # about the pattern, so the substitution comes first -- and
+                # it rewrites the goal in place, the substituted form being
+                # the proposition the relation's own subterm instance is.
+                same_eq = _unfold_is_the_equality(
+                    arg_types, r, tcall, Var(pname, Tup),
+                    _subst(_tuple_of(eqs[k]), env))
+                cur = prover.step('← rewrite %s_rel_def goal=%d' % (cname, cut),
+                                  new=0 if same_eq else 1) or cut
+                if same_eq:
+                    # The obligation *is* the equation the branch just
+                    # obtained, so the goal closes on that fact by itself
+                    # and there is nothing left to substitute or prove.
+                    pass
+                else:
+                    cur = prover.step('← rewrite source=prev goal=%d facts=[%d]'
+                                      % (cur, eqf))
+                    obligation(cur, tcall, k, ren_eq)
+            pfacts.append(prover.step('→ forward goal=%d facts=[%d,%d]'
+                                      % (goal, imp, cut)))
+        inst = prem[k]
+        for v in pvars:
+            inst = prover.step('← inst "%s" goal=%d facts=[%d]'
+                               % (vnames[v.name], goal, inst))
+        prover.step('← apply_prev goal=%d facts=[%s]'
+                    % (goal, ",".join(str(x) for x in [inst] + pfacts)),
+                    new=0)
+
+    def split(goal, d, k, n):
+        """`d` states `D_k ∨ … ∨ D_{k+n-1}`; `goal` is `P p`."""
+        if n == 1:
+            return one(goal, d, k)
+        two = prover.ids('← rule disjE goal=%d facts=[%d]' % (goal, d), 2)
+        f1 = prover.ids('← intro goal=%d' % two[0], 2)
+        one(f1[1], f1[0], k)
+        f2 = prover.ids('← intro goal=%d' % two[1], 2)
+        split(f2[1], f2[0], k + 1, n - 1)
+
+    g = prover.ids('← intro goal=0', ng + 1)[-1]
+    prem = list(range(1, ng + 1))
+    # `param_R` carries the ascription: a bare `<c>_rel` leaves the parser
+    # with nothing to instantiate a polymorphic relation from, and
+    # `forward <c>_rel_wf` cannot instantiate one either (`unmatched type
+    # variable ?'a` -- it does not read the goal's proposition).  With the
+    # ascription the rule states `wf <c>_rel` as a subgoal of its own, and
+    # that subgoal is closed at the *end*: closing it here rewrites its line
+    # in place, and the branch split below is then refused as an illegal
+    # dependence because the lines have shifted under it.
+    ids = prover.ids('← rule wf_induct param_R="(%s_rel::%s)" goal=%d'
+                     % (cname, _rel_ty_text(arg_types), g), 2)
+    wf_goal, g = ids[0], ids[1]
+    f_const = Const(name, TFun(*(list(arg_types) + [res_type])))
+    pname = names.alloc('p')
+    ids = prover.ids('← intro %s goal=%d' % (pname, g), 3)
+    ih, g = ids[1], ids[2]
+    d0 = prover.step('→ forward %s_exhaustive param_p=%s goal=%d'
+                     % (cname, pname, g))
+    split(g, d0, 0, ng)
+    prover.step('← rule %s_rel_wf goal=%d' % (cname, wf_goal))
+    lines.extend(prover.text())
+    lines.append('qed')
+    return lines
+
+
+def _name_taken(name):
+    """Whether the theory already states a theorem of this name.
+
+    The generator runs with the theory as loaded so far, so this is the
+    same question the loader will ask -- and asking it here keeps a
+    hand-written rule in the file instead of colliding with it.
+    """
+    from kernel import theory
+    try:
+        theory.get_theorem(name)
+        return True
+    except Exception:
+        return False
 
 
 def _def_entry(name, cname, arg_types, res_type, eqs, positions, i, conds,
@@ -2413,7 +2969,7 @@ def _require_in_scope(arg_types, r, order=None, relation=None):
                 'add the wf/list theory to this file imports' % th_name)
 
 
-def _expand(data):
+def _expand(data, declared=None):
     from syntax import parser
     from core import context
     from kernel import theory
@@ -2588,6 +3144,39 @@ def _expand(data):
             raise FunGenError(
                 'fun %s: the `descent` lemma %s is not the obligation of any '
                 'call; every lemma given has to discharge one' % (name, lemma))
+    # A theory may state these rules by hand (`nat.pyhol` has
+    # `nat_less_induct`, `wfrec_example` has `wfx_induct` as the shape to
+    # generate).  The written one wins: emitting a second theorem of the
+    # same name is an item the loader refuses, and the hand-written one is
+    # the one the rest of the file was written against.
+    declared = declared or set()
+    if ('%s_exhaustive' % cname) in declared or ('%s_induct' % cname) in declared:
+        return entries
+    try:
+        entries.append(_entry(_coverage_entry(cname, arg_types, eqs, lhs)))
+    except FunGenError:
+        # The split enumerates each position's constructors, so it can only
+        # be closed where the equations have a pattern for every input.  A
+        # definition may leave a hole -- `drop2 0` with `drop2 (Suc (Suc n))`
+        # leaves `Suc 0` -- and then there is no such theorem.  The
+        # definition is sound as it stands (the body's chain is defined for
+        # every input, the last equation being its else branch), and neither
+        # item is part of it: dropping them is the honest outcome.  Letting
+        # the error out would make the whole definition fall back to axioms,
+        # turning every equation the emitter derives today back into an
+        # assumption -- a regression, not a refusal.
+        pass
+    else:
+        try:
+            entries.append(_entry(_induct_entry(
+                name, cname, arg_types, res_type, eqs, positions, calls, dmap,
+                order, sizes, mdefs, relation, descent, used)))
+        except FunGenError:
+            # Same rule as the coverage theorem above: the induction rule is
+            # not part of the definition, so a definition the rule cannot be
+            # stated for keeps the items it has instead of falling back to
+            # axioms.
+            pass
     # The relation item names the measure constants defined in this group,
     # so it can only be parsed after them -- the loader does exactly that.
     # What is checked here is everything up to and including the body
@@ -2709,7 +3298,7 @@ def _has_clauses(data):
     return bool(data.get('measure') or data.get('relation'))
 
 
-def expand_item(data):
+def expand_item(data, declared=None):
     """Item dicts for a `fun` definition, or None to keep it axiomatized.
 
     None means the definition is outside the supported increment, so the
@@ -2721,7 +3310,7 @@ def expand_item(data):
     clauses`).
     """
     try:
-        return _expand(data)
+        return _expand(data, declared)
     except FunGenError:
         if _has_clauses(data):
             raise

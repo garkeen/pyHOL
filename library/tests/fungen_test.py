@@ -244,6 +244,17 @@ class FunGenLibraryTest(unittest.TestCase):
             self.assertEqual(item.ty, 'thm', '%s is not a theorem' % name)
         self.assertIsNotNone(self._by_name('t3count_m1', 'measure_example'),
                              't3count did not find the size as a measure')
+        # `t3count`'s second call is the one whose cell is not a lemma on
+        # its own: `size y <= size x + (size y + size z)` needs
+        # `le_add_left_mono` to peel the surplus atom off a sub-comparison
+        # `le_add` proves, so the closing is a tree and not a single rule.
+        # In an induction branch the goal carries the branch's hypotheses
+        # while a comparison lemma's conclusion carries none, so each rule
+        # in that tree lays out a line and consumes the goal it closes --
+        # the outer one has to name the fact the inner one produced.  The
+        # item is replayed below, which is what judges those IDs.
+        self.assertIsNotNone(self._by_name('t3count_induct', 'measure_example'),
+                             't3count did not get an induction rule')
         # `hoare`'s `com` is parametric (`'a com`) and recurses twice in a
         # constructor (`Seq`, `Cond`).  `While b I c` also names an argument
         # `b` -- the name `_disjunct` binds its own tuple variable with -- so
@@ -275,12 +286,14 @@ class FunGenLibraryTest(unittest.TestCase):
         # The three shapes the emitted proofs branch on: two calls landing
         # on one instance (`seen`), a position past the first of several
         # (the peel chain), three calls in one equation, and a test whose
-        # instance is the obligation.
+        # instance is the obligation.  `t3count_induct` is the fourth: a
+        # cell whose closing is a cut tree rather than one rule.
         for thy, name in [('expr', 'aexp_size_def_3'),
                           ('expr', 'aexp_size_less_2'),
                           ('measure_example', 'tri3_size_def_2'),
                           ('measure_example', 'tri3_size_less_3'),
                           ('measure_example', 't3count_def_2'),
+                          ('measure_example', 't3count_induct'),
                           ('hoare', 'com_size_def_4'),
                           ('wfrec_example', 'tri_size_def_2')]:
             item = self._by_name(name, thy)

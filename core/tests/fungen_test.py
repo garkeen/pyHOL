@@ -9,11 +9,12 @@ library/tests/fungen_test.py, and by the library validation itself.
 
 import unittest
 
-from kernel.term import Const
+from kernel.term import Const, Var
 from kernel.type import TFun, TConst, TVar
 from core import basic
 from core import context
 from core import fungen
+from core.measure import Closing
 
 NatType = TConst('nat')
 
@@ -201,6 +202,199 @@ class FunGenTest(unittest.TestCase):
         self.assertEqual(fungen._kept_whole('g (tl p) @ [hd p]'),
                          '(g (tl p) @ [hd p])')
         self.assertEqual(fungen._kept_whole('g (tl p)'), 'g (tl p)')
+
+    def test_induct_statement_matches_the_hand_written_rule(self):
+        """The induction rule's statement, equation by equation.
+
+        One premise per equation -- the pattern's variables quantified, the
+        induction hypothesis of every recursive call in front, the pattern
+        as the conclusion -- and `!p. P p` at the end.  The shape below is
+        the one library/wfrec_example.pyhol carries by hand as
+        `wfx_induct`, whose equations are these; generating it is what
+        makes a definition usable for proving anything about it.
+        """
+        ty = TFun(NatType, TFun(NatType, NatType))
+        arg_types, res_type, r, eqs = self._plan('wfgen', ty, [
+            'wfgen 0 n = n',
+            'wfgen (Suc m) n = Suc (wfgen m n)'])
+        lhs = [fungen._eq_args(eq) for eq in eqs]
+        calls = [[], [fungen.tupled_arg([Var('m', NatType), Var('n', NatType)])]]
+        self.assertEqual(
+            fungen._prints(fungen._induct_prop(arg_types, lhs, calls)),
+            '(∀n. P (Pair 0 n)) ⟶'
+            ' (∀m. ∀n. P (Pair m n) ⟶ P (Pair (Suc m) n)) ⟶'
+            ' (∀p. P p)')
+
+    def test_closing_tree_carries_the_fact_the_sub_proof_made(self):
+        """A cut node takes the fact below it, which is not always the cut.
+
+        A `rule` closes its goal in place when the fact it derives is the
+        goal's own theorem, and lays out a line when it is a different one.
+        An induction branch's goal carries the branch's hypotheses and a
+        comparison lemma's conclusion carries none, so in that context the
+        two differ: the goal's stable ID is consumed and the fact gets a
+        new one.  A cut node's outer rule takes the inner rule's fact as
+        its premise and has to name *that* ID; naming the cut, which the
+        inner rule just consumed, is a reference the replay cannot resolve.
+        """
+        tree = Closing('cut', 'le_add_left_mono', prop='a <= b',
+                       sub=Closing('rule', 'le_add'))
+        branch = fungen._Proof()
+        self.assertEqual(fungen._emit_closing(branch, tree, 7, lines=True), 3)
+        self.assertEqual(branch.text(), [
+            '  cut "a <= b" goal=7',
+            '  ← rule le_add goal=1',
+            '  ← rule le_add_left_mono goal=7 facts=[2]',
+        ])
+
+    def test_closing_tree_in_place_keeps_the_cut_id(self):
+        """Where the goal has no hypotheses the cut's own ID is the fact.
+
+        `_def_entry`'s goals are hypothesis-free, so the rule it applies
+        derives the goal's own theorem and closes in place: nothing is
+        consumed and the cut's ID stands.  The same tree, emitted in that
+        context, names the cut and closes its outer goal in place too.
+        """
+        tree = Closing('cut', 'le_add_left_mono', prop='a <= b',
+                       sub=Closing('rule', 'le_add'))
+        equation = fungen._Proof()
+        self.assertEqual(fungen._emit_closing(equation, tree, 7), 7)
+        self.assertEqual(equation.text(), [
+            '  cut "a <= b" goal=7',
+            '  ← rule le_add goal=1',
+            '  ← rule le_add_left_mono goal=7 facts=[1]',
+        ])
+
+    def test_coverage_walks_the_patterns(self):
+        """The coverage proof splits the input along the *patterns*.
+
+        It is Isabelle's `prove_completeness`
+        (Function/pat_completeness.ML) which Function/induction_schema.ML
+        reuses for its case split.  The step sequence below is the one the
+        hand-written `wfx_exhaustive` in library/wfrec_example.pyhol
+        carries, ID for ID: `type_cases` on the tuple, then on the one
+        position whose patterns are not all variables, then into the
+        constructor's argument; the branch that names `0` takes the first
+        disjunct and the one under `Suc` the second, each instantiating its
+        pattern's variables -- `m` from the split, `n` from the position
+        that stayed a variable -- and closing on `eq_refl`.
+        """
+        ty = TFun(NatType, TFun(NatType, NatType))
+        arg_types, res_type, r, eqs = self._plan('wfgen', ty, [
+            'wfgen 0 n = n',
+            'wfgen (Suc m) n = Suc (wfgen m n)'])
+        lhs = [fungen._eq_args(eq) for eq in eqs]
+        lines = fungen._coverage_entry('wfgen', arg_types, eqs, lhs)
+        self.assertEqual(lines[0], 'theorem wfgen_exhaustive')
+        self.assertEqual(lines[1], '  fixes p :: nat × nat')
+        self.assertEqual(lines[2],
+                         '  prop (∃n. p = Pair 0 n) ∨ (∃m. ∃n. p = Pair (Suc m) n)')
+        self.assertEqual(lines[3:], [
+            'proof',
+            '  type_cases p goal=0',
+            '  intro "a1, b1" goal=1',
+            '  type_cases a1 goal=4',
+            '  rule disjI1 goal=5',
+            '  inst "b1" goal=7',
+            '  rule eq_refl goal=8',
+            '  intro "u1" goal=6',
+            '  rule disjI2 goal=10',
+            '  inst "u1" goal=11',
+            '  inst "b1" goal=12',
+            '  rule eq_refl goal=13',
+            'qed'])
+
+    def test_coverage_descends_into_nested_patterns(self):
+        """A nested pattern splits again on the constructor's argument.
+
+        `Suc (Suc n)` sits one constructor below `Suc`, so the branch that
+        took `Suc` has to be split once more before a leaf can tell
+        equation 2 (`Suc 0`) from equation 3.  The two `disjI2` steps of
+        the third leaf are the chain to the last disjunct of a
+        three-way `∨`.
+        """
+        ty = TFun(NatType, NatType)
+        arg_types, res_type, r, eqs = self._plan('g3', ty, [
+            'g3 0 = 0',
+            'g3 (Suc 0) = 1',
+            'g3 (Suc (Suc n)) = 2'])
+        lhs = [fungen._eq_args(eq) for eq in eqs]
+        lines = fungen._coverage_entry('g3', arg_types, eqs, lhs)
+        self.assertEqual(lines[1], '  fixes p :: nat')
+        self.assertEqual(
+            lines[2],
+            '  prop p = 0 ∨ p = Suc 0 ∨ (∃n. p = Suc (Suc n))')
+        self.assertEqual(lines[3:], [
+            'proof',
+            '  type_cases p goal=0',
+            '  rule disjI1 goal=1',
+            '  rule eq_refl goal=3',
+            '  intro "u1" goal=2',
+            '  type_cases u1 goal=5',
+            '  rule disjI2 goal=6',
+            '  rule disjI1 goal=8',
+            '  rule eq_refl goal=9',
+            '  intro "u2" goal=7',
+            '  rule disjI2 goal=11',
+            '  rule disjI2 goal=12',
+            '  inst "u2" goal=13',
+            '  rule eq_refl goal=14',
+            'qed'])
+
+    def test_coverage_splits_a_nested_tuple(self):
+        """A three-argument definition's tuple is split once per level.
+
+        `p :: nat × (nat × nat)` is one `type_cases` and one `intro` to get
+        the first component and a pair, then another to get the remaining
+        two.  The position that carries the patterns is split after that,
+        and the two positions that stay variables never are.
+        """
+        ty = TFun(NatType, TFun(NatType, TFun(NatType, NatType)))
+        arg_types, res_type, r, eqs = self._plan('f3', ty, [
+            'f3 0 n k = n',
+            'f3 (Suc m) n k = f3 m n k'])
+        lhs = [fungen._eq_args(eq) for eq in eqs]
+        lines = fungen._coverage_entry('f3', arg_types, eqs, lhs)
+        self.assertEqual(lines[1], '  fixes p :: nat × nat × nat')
+        self.assertEqual(
+            lines[2],
+            '  prop (∃n. ∃k. p = Pair 0 (Pair n k))'
+            ' ∨ (∃m. ∃n. ∃k. p = Pair (Suc m) (Pair n k))')
+        self.assertEqual(lines[3:], [
+            'proof',
+            '  type_cases p goal=0',
+            '  intro "a1, b1" goal=1',
+            '  type_cases b1 goal=4',
+            '  intro "a2, b2" goal=5',
+            '  type_cases a1 goal=8',
+            '  rule disjI1 goal=9',
+            '  inst "a2" goal=11',
+            '  inst "b2" goal=12',
+            '  rule eq_refl goal=13',
+            '  intro "u1" goal=10',
+            '  rule disjI2 goal=15',
+            '  inst "u1" goal=16',
+            '  inst "a2" goal=17',
+            '  inst "b2" goal=18',
+            '  rule eq_refl goal=19',
+            'qed'])
+
+    def test_coverage_rejects_a_hole_in_the_patterns(self):
+        """Inputs no equation matches have no branch to take.
+
+        `g3` leaves `Suc 0` uncovered, so the leaf under `Suc 0` realises
+        no equation and the disjunction cannot be closed there.  Saying so
+        is the point: an induction rule whose branches do not cover its
+        inputs proves nothing about them, and a `fun` whose equations do
+        not cover its inputs is not a total function.
+        """
+        ty = TFun(NatType, NatType)
+        arg_types, res_type, r, eqs = self._plan('g3', ty, [
+            'g3 0 = 0',
+            'g3 (Suc (Suc n)) = 2'])
+        lhs = [fungen._eq_args(eq) for eq in eqs]
+        with self.assertRaises(fungen.FunGenError):
+            fungen._coverage_entry('g3', arg_types, eqs, lhs)
 
     def test_disjunct_chain(self):
         """The introductions that walk to one disjunct of a right-nested `|`.
