@@ -2082,11 +2082,9 @@ proof
     #[14] P
   ← rule conjD1 goal=14 facts=[13]
   ← intro goal=12
-    #[15] P
     #[16] P ∧ Q
   ← rule conjI goal=16
-    #[17] P
-    #[18] Q
+    #[17] Q
   ← apply_prev goal=17 facts=[9]
 qed
 
