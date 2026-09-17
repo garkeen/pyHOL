@@ -323,8 +323,10 @@ STEP FAILED: AssertionError: rewrite: unable to apply theorem.
    - HOL/LCF 的证明是「每个分支各自线性」的：`apply_method` 用
      `ItemID.can_depend_on`（`kernel/proof.py:71`）强制 `facts=` 必须是目标的
      **同分支、且位置在前**的项。**这是正确的，不要去改引擎。**
-   - 会踩到的情形：`StableProofState` 按**命题值**去重分配 sid，两个兄弟分支里
-     出现的同一命题（典型：两支都引入 `0 = 1` 这类假设）共用同一 sid，回放时会
+   - 会踩到的情形：`StableProofState` 按 **Thm**（`Thm.__eq__`：假设集合 + 命题，
+     `kernel/thm.py:105`）去重分配 sid——比"同一命题"严；两个兄弟分支里
+     出现的**同假设集合、同命题**的条目（典型：两支都引入 `0 = 1` 这类假设）
+     共用同一 sid，回放时会
      解析到另一个分支的位置，于是报 `apply_method: illegal dependence`。
      这是**那条证明的结构问题**（同一命题不该同时当两个分支的假设），不是引擎
      缺陷。

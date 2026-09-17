@@ -150,8 +150,10 @@ REPL 的 `_parse_step_line`（`syntax/pyhol.py`）用 `^facts=\[([\d,\s]*)\]$` �
 
 ### 3.8 稳定 ID 的重复命题与跨分支依赖
 
-- `th2sid` 按**命题相等**分配（`method/stable_state.py::_ensure_sid`），
-  同一命题在多个分支出现时**共用 sid**；`sid2pos = {v: k for k, v in pos2sid.items()}` 保留**最后一个**位置。
+- `th2sid` 按 **Thm 相等**分配（`method/stable_state.py::_ensure_sid`），而
+  `Thm.__eq__`（`kernel/thm.py:105`）比的是**假设集合 + 命题**——所以共号的条件比
+  「同一命题」严：命题相同、假设集合不同是两个条目、两个 sid。同一 Thm 在多个分支
+  出现时**共用 sid**；`sid2pos = {v: k for k, v in pos2sid.items()}` 保留**最后一个**位置。
 - `apply_method` 有 `assert goal_id.can_depend_on(fact_id)`（`method/methods/core.py:1658`），
   `ItemID.can_depend_on`（`kernel/proof.py:71`）要求"同父级且编号更大"。
   **兄弟分支里派生的事实不能拿来给自己的目标用**。
@@ -1267,6 +1269,17 @@ def minus :: 'a set ⇒ 'a set ⇒ 'a set = A - B = diff A B      -- library/set
    取前缀、冲突条目让位、数量相等时行为不变。
    注意：这修的是「不该整体丢弃」，**不是**「加前提后旧注解自动正确」——类前提是
    每个分支各一份，加一条前提仍然要按 §14.6 重证（本修复没有也不能取代它）。
+
+   **已知边界（2026-09-17 实测）**：按创建顺序对齐只在一种情形会挪位——注解条数
+   多于实建条目数，且被记下的那一条**已由本步之外的条目持有**。`logic.conj_iff_left`
+   的 `intro goal=12` 就是：假设 `P` 已在作用域（`rule conjD1 goal=14` 派生的那条，
+   #15），本步只新建 `P ∧ Q` 一个条目，而注解记着 `[15, 16]`；位置对齐把 `P ∧ Q`
+   钉到 #15，后一步 `rule conjI goal=16` 就解析不到（症状是被点名的那一步失败，
+   肇事步在它前面）。
+   试过把规则改成「跳过已被本步未创建条目占用的记录 ID」，单测通过，但 `logic`
+   从 92 VALID 掉到 **82 VALID / 10 非绿**——库里大量证明依赖位置对齐的这种补偿，
+   所以**保留现行为**。这类过期注解按数据问题改正（`logic.pyhol` 那三条已按引擎
+   真实导出改，见提交 `8c87294a`），改完 `logic` 92 VALID / 0 非绿。
 
 ### 14.5（已完成，见 §14.6）
 
