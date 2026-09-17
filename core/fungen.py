@@ -696,6 +696,180 @@ def _measure_chain_text(arg_types, order, start=0):
     return body
 
 
+def _typed_lambda(text, arg_types, ascribe=False):
+    """A clause's lambda, with its binders typed from the definition.
+
+    The clause is written as a bare lambda (`"%m n. m + n"`); the parser
+    cannot type an unbound lambda on its own, and the types are exactly
+    the definition's own arguments, so they are written into the binders
+    here.  A binder the user typed keeps its ascription, and a clause that
+    is not a plain lambda prefix (`"my_measure"`, say) is left as written
+    -- then its type has to stand on its own, which `fun_clauses` checks.
+    """
+    m = re.match(r'\s*%([^.%]*)\.(.*)$', text, re.S)
+    if not m:
+        return text
+    names = m.group(1).split()
+    if ascribe:
+        # One binder per tuple: the clause is the relation the machinery
+        # uses, over the tupled arguments.
+        types = [arg_types[0]] * len(names)
+    else:
+        types = list(arg_types)
+    if len(names) != len(types):
+        return text
+    # One `%` per binder: the parser reads a type after a binder only when
+    # the binder starts a lambda of its own (`%x::nat. %y::nat. ...`).
+    parts = [('%' + nm) if '::' in nm else ('%%%s::%s' % (nm, _printt(T)))
+             for nm, T in zip(names, types)]
+    return '%s. %s' % ('. '.join(parts), m.group(2))
+
+
+def _tupled_measure(t, arg_types):
+    """A measure written over the arguments, as a function of the tuple.
+
+    `"%m n. m + n"` becomes `%p. m + n` with `m`, `n` the projections of
+    `p` -- the shape every measure in the emitter has, so a measure the
+    user wrote and one the search picked take the same path from here on.
+    """
+    p = Var('p', tupled_type(arg_types))
+    app = t
+    for i in range(len(arg_types)):
+        app = app(projection(p, arg_types, i))
+    return Lambda(p, app.beta_norm())
+
+
+def _measure_tables(arg_types, def_names, measures):
+    """(size tables, reduction rules) for a set of measures.
+
+    `def_names` are the names whose own definition must not be unfolded
+    (the function being defined, whose measure would be itself); the
+    reduction table is what `measure.cell` unfolds the measures with.
+    """
+    sizes, _ = _size_tables(arg_types, def_names)
+    mdefs = {}
+    for m in measures:
+        mdefs.update(m.tables())
+    return sizes, mdefs
+
+
+def _given_measures(arg_types, cname, given):
+    """The measures a definition was given, as the search's own objects.
+
+    A given measure is a measure like any other from here on: it becomes
+    the same named constant (`<c>_m1`), its columns are built by the same
+    `cell`, and the chain, the `wf` obligation and the decrease
+    obligations are the same code.  Nothing downstream knows where a
+    measure came from.
+    """
+    return [measure.Measure(0, arg_types, 'given',
+                            def_name='%s_m%d' % (cname, k + 1), given=m)
+            for k, m in enumerate(given)]
+
+
+def fun_clauses(data, eqs, name, ty):
+    """The relation or measures a `fun` was given, parsed and checked.
+
+    Returns `(measures, relation, wf lemma, descent lemmas)`.  The
+    measures and the relation are terms of the *tupled* argument -- the
+    same shape the inferred measures have, so that they need no
+    conversion -- and `wf`/`descent` name theorems of the file.
+
+    The rules about which clause goes with which are stated here, in one
+    place, and they are about what can be *proved* rather than about what
+    looks tidy:
+
+    * a relation is a term the emitter knows nothing about, so `wf` (the
+      theorem proving `wf R`) and `descent` (the theorems proving each
+      call's `R call pat`) are both required -- there is nothing
+      automatic left to fall back on;
+    * a measure chain says its own obligation, in terms of the constants
+      the emitter generates for it, so no lemma written in the file can
+      state it: `wf`/`descent` with measures is an error rather than a
+      clause that would be silently ignored.
+    """
+    from core import context
+    from core import items
+    try:
+        texts = dict((key, items._clause_values(data.get(key) or []))
+                     for key in ('measure', 'relation', 'wf', 'descent'))
+    except items.ItemException as error:
+        raise FunGenError('fun %s: %s' % (name, error))
+    if len(texts['relation']) > 1:
+        raise FunGenError('fun %s: one relation, %d given'
+                          % (name, len(texts['relation'])))
+    if len(texts['wf']) > 1:
+        raise FunGenError('fun %s: one `wf` lemma, %d given'
+                          % (name, len(texts['wf'])))
+    arity = len(_eq_args(eqs[0]))
+    arg_types, _ = _strip_type(ty, arity)
+    Tup = tupled_type(arg_types)
+    curried = TFun(*(list(arg_types) + [NatType]))
+    tupled_rel = TFun(Tup, TFun(Tup, BoolType))
+    # A clause's type is known here and nowhere else, so it is put into the
+    # text rather than asked of the user again: the binders are the
+    # definition's own, and `_typed_lambda` ascribes them.  A *measure* is
+    # written over the arguments (`"%m n. m + n"`), because who proves its
+    # obligations is the emitter, and the arguments are what the user
+    # reads; a *relation* is written over the two tupled arguments
+    # (`"%p q. fst p < fst q"`), because its obligations are matched
+    # against lemmas the user writes, and those have to be the very terms
+    # the emitter states.
+    with context.fresh_context(defs={name: ty}):
+        measures = [_tupled_measure(
+            context.parse_term(_typed_lambda(text, arg_types)), arg_types)
+            for text in texts['measure']]
+        relation = (context.parse_term(_typed_lambda(
+            texts['relation'][0], [Tup, Tup], ascribe=True))
+            if texts['relation'] else None)
+    if measures and relation is not None:
+        raise FunGenError('fun %s: a relation or measures, not both' % name)
+    if relation is not None:
+        if not texts['wf']:
+            raise FunGenError(
+                'fun %s: a relation needs the theorem proving `wf R`; give '
+                '`wf "<lemma>"`, or use `measure` for the automatic path'
+                % name)
+        if not texts['descent']:
+            raise FunGenError(
+                'fun %s: a relation needs the lemmas that discharge the '
+                'calls\' obligations; give `descent "<lemma>", ...`, or use '
+                '`measure`' % name)
+    elif texts['wf'] or texts['descent']:
+        raise FunGenError(
+            'fun %s: `wf`/`descent` discharge the obligations of a relation; '
+            'a measure chain states its own, in terms of the measure '
+            'constants the emitter generates for it, which no lemma of this '
+            'file can name' % name)
+    arity = len(_eq_args(eqs[0]))
+    arg_types, _ = _strip_type(ty, arity)
+    Tup = tupled_type(arg_types)
+
+    def _ascribed(t, T, what):
+        """The term at type `T`, instantiating what it left open.
+
+        The clause is parsed with the type ascribed, so this is a check:
+        a term that cannot have the type is reported as such rather than
+        as a comparison that failed for a reason further on.
+        """
+        from kernel.type import TyInst, TypeMatchException
+        inst = TyInst()
+        try:
+            t.get_type().match_incr(T, inst)
+        except TypeMatchException:
+            raise FunGenError(
+                'fun %s: the %s %s has type %s; it has to be %s'
+                % (name, what, _prints(t), _printt(t.get_type()), _printt(T)))
+        return t.subst_type(inst)
+
+    measures = [_ascribed(m, TFun(Tup, NatType), 'measure') for m in measures]
+    if relation is not None:
+        relation = _ascribed(relation, TFun(Tup, TFun(Tup, BoolType)),
+                             'relation')
+    return (measures, relation,
+            texts['wf'][0] if texts['wf'] else None, texts['descent'])
+
+
 def _measure_order(arg_types, def_names, cname, eqs, calls, dmap):
     """The measures the definition descends through, or None.
 
@@ -716,9 +890,7 @@ def _measure_order(arg_types, def_names, cname, eqs, calls, dmap):
     measures = measure.candidate_measures(arg_types, size_of.get)
     for m in measures:
         m.def_name = '%s_m%d' % (cname, m.pos + 1)
-    mdefs = {}
-    for m in measures:
-        mdefs.update(m.tables())
+    _, mdefs = _measure_tables(arg_types, def_names, measures)
     rows = [(tupled_arg(c), _tuple_of(eqs[i]))
             for i, cs in enumerate(calls) for c in cs]
     return measure.infer(measures, rows, dmap, sizes, mdefs), sizes, mdefs
@@ -993,7 +1165,67 @@ def _def_entries(name, cname, arg_types, res_type, body_prop, rel_prop):
     return res
 
 
-def _rel_wf_entry(cname, arg_types, r, order=None):
+def _lemma_states(lemma, prop):
+    """Whether the named theorem states the proposition (or matches it).
+
+    A theorem item's `fixes` become schematic variables
+    (`nat_size ?n < nat_size (Suc ?n)`), and those are exactly the points
+    `rule` instantiates at replay time, so the question is asked with the
+    matcher the replay will use.
+    """
+    from core import matcher
+    from kernel import theory
+    return matcher.can_first_order_match(theory.get_theorem(lemma).prop, prop)
+
+
+def _check_lemma(lemma, prop, what, name):
+    """The named theorem that states `prop`, or an error.
+
+    Asking the question here turns a wrong lemma into a report naming it
+    instead of an item that fails its replay.
+    """
+    from kernel import theory
+    try:
+        th = theory.get_theorem(lemma)
+    except Exception:
+        raise FunGenError(
+            'fun %s: the %s lemma %s is not in the theory yet; it has to be '
+            'stated before the definition' % (name, what, lemma))
+    if not _lemma_states(lemma, prop):
+        raise FunGenError(
+            'fun %s: the %s lemma %s states %s, which is not the obligation '
+            '%s' % (name, what, lemma, _prints(th.prop), _prints(prop)))
+    return lemma
+
+
+def _given_obligation(prover, arg_types, r, relation, tcall, tup, descent, g,
+                      name, i, used):
+    """One call's decrease obligation, discharged from the user's lemmas.
+
+    The proposition is the relation applied to the call and to the
+    equation's own pattern -- the same shape the measure path states, with
+    the relation the user wrote -- and the lemma is the one of `descent`
+    that states it.  Which lemma serves which call is decided by the
+    *statement*, so the user does not have to list them in call order; a
+    call no lemma covers is an error naming the obligation, and a lemma no
+    call uses is an error naming the lemma.
+    """
+    call = _proj_term(arg_types, r, tcall)
+    pat = _proj_term(arg_types, r, tup)
+    prop = relation(call)(pat).beta_norm()
+    c = prover.step('cut "%s" goal=%d' % (_prints(prop), g))
+    for lemma in descent:
+        if _lemma_states(lemma, prop):
+            prover.step('← rule %s goal=%d' % (lemma, c), new=0)
+            used.add(lemma)
+            return c
+    raise FunGenError(
+        'fun %s: equation %d: no `descent` lemma states the obligation %s'
+        % (name, i + 1, _prints(prop)))
+
+
+def _rel_wf_entry(cname, arg_types, r, order=None, relation=None,
+                  wf_lemma=None):
     """The `wf` obligation: the relation is well-founded.
 
     With a measure order the relation is the `mlex_prod` chain, so its
@@ -1004,7 +1236,11 @@ def _rel_wf_entry(cname, arg_types, r, order=None):
     chain's tail `wf` obligations are the ones `wf_mlex` states, so they
     are stated here with the same text the chain is written with.
 
-    Without one the relation is the datatype's subterm relation lifted
+    With a relation the user wrote, the obligation is `wf R` and the proof
+    is the user's own: unfolding the relation's definition leaves exactly
+    that, and `wf_lemma` is the theorem that states it.
+
+    Without either the relation is the datatype's subterm relation lifted
     through the projection.  The relation def is a lambda, so `rewrite`
     unfolds it in the unapplied goal `wf <c>_rel` without a beta redex;
     the lift is `wf_measure_gen`, instantiated explicitly because its
@@ -1017,6 +1253,14 @@ def _rel_wf_entry(cname, arg_types, r, order=None):
     prop = _rel_wf_prop(cname, arg_types)
     prover = _Proof()
     g = prover.step('← rewrite %s_rel_def goal=0' % cname)
+    if relation is not None:
+        wf_prop = Const('wf', TFun(TFun(tupled_type(arg_types),
+                                        TFun(tupled_type(arg_types),
+                                             BoolType)), BoolType))(relation)
+        _check_lemma(wf_lemma, wf_prop, 'wf', cname)
+        prover.step('← rule %s goal=%d' % (wf_lemma, g), new=0)
+        return ['theorem %s_rel_wf' % cname, '  prop %s' % prop,
+                'proof'] + prover.text() + ['qed']
     if order is not None:
         if not order:
             prover.step('← rule wf_false goal=%d' % g, new=0)
@@ -1240,6 +1484,13 @@ def _test_fact(prover, arg_types, pos, eqs, i, cond, g, dmap, cut=True):
     which `inst` turns into that equality with the witness tuple of the
     pattern's own variables.  The reduce closes it exactly when its last
     rewrite leaves an identity.
+
+    Returns the cut's id and, when the test is an existential, the
+    instance's proposition and the id `inst` left behind.  That instance
+    can be the very proposition the branch's decrease obligation states --
+    a pattern whose only variable is the recursive argument (`TriS t`)
+    has the instance `C t = C t`, which is its obligation too -- and the
+    caller then lets the one item serve both (see `_def_entry`).
     """
     # `cut=False` is a conjunct of a branch test: `conjI` has already left
     # that test as a goal of its own, and cutting it again would state a
@@ -1248,7 +1499,7 @@ def _test_fact(prover, arg_types, pos, eqs, i, cond, g, dmap, cut=True):
     c = prover.step(u'cut "%s" goal=%d' % (_prints(cond), g)) if cut else g
     if not is_exists(cond):
         prover.step(u'\u2190 rule eq_refl goal=%d' % c, new=0)
-        return c
+        return c, None
     pat = _eq_args(eqs[i])[pos]
     leaves = _pattern_leaves(pat)
     wit = _leaf_tuple(leaves)
@@ -1265,7 +1516,7 @@ def _test_fact(prover, arg_types, pos, eqs, i, cond, g, dmap, cut=True):
             c2 = prover.step(u'\u2190 rewrite %s goal=%d' % (rule, c2))
     if not rules or not reduced.is_reflexive():
         prover.step(u'\u2190 rule eq_refl goal=%d' % c2, new=0)
-    return c
+    return c, (_prints(body), c2)
 
 
 def _refute_one(prover, arg_types, positions, eqs, i, j, k, test, g):
@@ -1275,13 +1526,19 @@ def _refute_one(prover, arg_types, positions, eqs, i, j, k, test, g):
 
 
 def _single_test_fact(prover, arg_types, positions, eqs, i, j, k, g, dmap):
-    """Cut equation j's test at its k-th position and prove it holds."""
+    """Cut equation j's test at its k-th position and prove it holds.
+
+    Only the cut's id is returned: the instance a test leaves behind is
+    what the *single*-position `_condition_fact` hands on, and a chain with
+    several positions never reaches the decrease obligation's own shape
+    that way (the guard that reads it only fires with one position).
+    """
     poses_j = _pattern_positions(_eq_args(eqs[j]), positions)
     cond = _cond_of(_eq_args(eqs[j])[poses_j[k]],
                     projection(_tuple_of(eqs[i]), arg_types, poses_j[k]),
                     _pos_tag(j, k, len(poses_j)))
-    return _test_fact(prover, arg_types, poses_j[k], eqs, j, _reduce(cond, dmap),
-                      g, dmap)
+    return _test_fact(prover, arg_types, poses_j[k], eqs, j,
+                      _reduce(cond, dmap), g, dmap)[0]
 
 
 def _same_constructor(eqs, positions, i, j, pos):
@@ -1338,6 +1595,10 @@ def _condition_fact(prover, arg_types, positions, eqs, i, conds, g, dmap):
     of the tests, so it is cut once and proved conjunct by conjunct
     (`conjI` states the two halves; the goals it leaves are the tests
     themselves, each proved the way a single one is).
+
+    Returns what `_test_fact` returns: the cut's id and the instance the
+    single test left behind, which a decrease obligation of the same
+    branch may be.  A conjunction of several tests is its own instance.
     """
     poses = _pattern_positions(_eq_args(eqs[i]), positions)
     if len(poses) == 1:
@@ -1346,7 +1607,7 @@ def _condition_fact(prover, arg_types, positions, eqs, i, conds, g, dmap):
     conj = _conj_of(conds)
     c = prover.step(u'cut "%s" goal=%d' % (_prints(conj), g))
     _prove_conj(prover, arg_types, positions, eqs, i, conds, c, dmap)
-    return c
+    return c, None
 
 
 def _prove_conj(prover, arg_types, positions, eqs, i, conds, g, dmap):
@@ -1441,12 +1702,19 @@ def _destructor_map(T):
     return res
 
 
-def _destructor_maps(arg_types, positions):
+def _destructor_maps(arg_types, positions, lhs=None):
     """The destructor map for a definition's arguments.
 
     Both ends are needed: every recursion position's own destructors
     (`Pre`, `hd`, ...) and the tuple's (`fst`, `snd`), since the emitted
     bodies mention both.
+
+    A pattern with several variables (`Plus a1 a2`) is a third end: its
+    branch test is an existential over the tuple of those variables, and
+    `_test_fact` takes that witness apart with the product's projectors.
+    Whether the argument tuple is a product does not decide it -- `fun
+    <ty>_size :: aexp ⇒ nat` matches `Plus a1 a2` with one argument -- so
+    the patterns are read when `lhs` is given.
     """
     positions = _as_positions(positions)
     res = {}
@@ -1454,6 +1722,16 @@ def _destructor_maps(arg_types, positions):
         res.update(_destructor_map(arg_types[r]))
     if len(arg_types) > 1:
         res.update(_destructor_map(tupled_type(arg_types)))
+    for args in lhs or []:
+        for r in positions:
+            try:
+                leaves = _pattern_leaves(args[r])
+            except FunGenError:
+                continue          # the pattern is a variable: no tuple
+            if len(leaves) > 1:
+                res.update(_destructor_map(
+                    tupled_type([v.T for v in leaves])))
+                break
     return res
 
 
@@ -1535,16 +1813,108 @@ def _decrease_witness(T, constrs, pairs, pattern, call, dmap):
     return None
 
 
-def _decrease_steps(arg_types, r, tcall, eq, dmap):
+def _exists_body(t):
+    """The body of `?x. t`, or None when `t` is not an existential.
+
+    `Exists` is the constant applied to a lambda, and the disjunct's
+    witness is that lambda's variable: giving a witness means substituting
+    into the body, which is what `inst` does at replay time.
+    """
+    if not t.is_comb():
+        return None
+    h, args = t.strip_comb()
+    if h.is_const() and h.name == 'exists' and len(args) == 1:
+        return args[0]
+    return None
+
+
+def _disjunct_index(constrs, pairs, pattern, call, dmap):
+    """Which disjunct of the subterm relation holds for this call.
+
+    The relation is the disjunction over the datatype's recursive
+    constructor arguments, and a call sits at exactly one of them: the
+    pattern's own constructor, with the call at one of its recursive
+    positions.  The index is read off the pattern -- the same match
+    `_decrease_witness` makes, so the two agree on which disjunct this is
+    -- and it is what the `disjI` chain walks to.  Nothing is tried.
+    """
+    head, args = pattern.strip_comb()
+    if not head.is_const():
+        return None
+    want = _reduce(call, dmap)
+    for k, (i, j) in enumerate(pairs):
+        if constrs[i]['name'] != head.name or j >= len(args):
+            continue
+        if args[j] == want or _reduce(args[j], dmap) == want:
+            return k
+    return None
+
+
+def _disjunct_chain(n, k):
+    """The introductions that reach the k-th disjunct of an n-way chain.
+
+    The relation's disjunction is right-nested, so every disjunct but the
+    last is `disjI2` once per level it is nested under and `disjI1` on
+    itself.  The last one is `disjI2` all the way down and has no
+    `disjI1` of its own: emitting one there asks the goal to split a
+    disjunct that is already the whole goal.
+    """
+    if k == n - 1:
+        return ['rule disjI2'] * k
+    return ['rule disjI2'] * k + ['rule disjI1']
+
+
+def _disjunct_instance(T, constrs, pairs, k, call, pat, witness):
+    """The k-th disjunct as the goal carries it once the witness is given.
+
+    This is the proposition `inst` leaves behind, built here so that the
+    steps after it are computed from the very term the goal has: the
+    projections are *not* reduced, because reducing them is what those
+    steps do.
+
+    The disjunct's two tuple variables are replaced *before* the witness
+    goes in, and the order is not a matter of taste: the witness is built
+    from the pattern's own variables, and `_disjunct` names its variables
+    `a` and `b`, which a pattern may use itself -- `While b I c` does, and
+    its `b` has a different type from the variable being abstracted, so
+    abstracting over the witness first is refused ("wrong type") and would
+    silently capture if the types happened to agree.
+    """
+    from core import datgen
+    d = datgen._disjunct(T, constrs, pairs[k])
+    a, b = Var('a', T), Var('b', T)
+    body = Lambda(a, Lambda(b, d))(call)(pat).beta_norm()
+    if witness is None:
+        return body
+    binder = _exists_body(body)
+    if binder is None:
+        return None
+    return binder.subst_bound(witness)
+
+
+def _decrease_steps(arg_types, r, tcall, eq, dmap, seen=None):
     """The steps that prove one recursive call's decrease obligation.
 
     The obligation is the relation applied to the call and to the
-    equation's own pattern, and the relation is a disjunction when the
-    datatype has more than one recursive constructor argument: the first
-    steps are the introductions that reach this call's disjunct, then the
-    projection/destructor rewrites, the witness, and the identity.  With a
-    single recursive argument there is no disjunction and the sequence is
-    exactly what it always was.
+    equation's own pattern.  A datatype with one recursive constructor
+    argument has the identity-shaped relation `b = C a`, and the sequence
+    is the projection rewrites, the witness and the identity, exactly as
+    it always was.  More than one makes the relation a disjunction, and
+    the sequence then also walks to the disjunct this call occupies.
+
+    In that case the witness is given *before* the projections are
+    reduced, so that the reductions close the goal: a goal closed by a
+    rewrite creates no item, while an instantiated identity left over as
+    an item is one both calls of an equation land on (`Plus a1 a2 = Plus
+    a1 a2`, from either side).  The stable-ID layer keys items by
+    proposition, so the second call's goal would vanish into the first
+    one's already-closed item and the step after it would have nothing to
+    rewrite.
+
+    `seen` collects the instances the emitted proof has already produced.
+    A call whose instance is already there ends at its own `inst`, which
+    resolves the goal to that item and creates nothing; the caller owns
+    the set, so the calls of one equation see each other's.
     """
     from core import datgen
     T = arg_types[r]
@@ -1552,37 +1922,66 @@ def _decrease_steps(arg_types, r, tcall, eq, dmap):
     tree = _tuple_of(eq)
     call = _proj_term(arg_types, r, tcall)
     pat = _proj_term(arg_types, r, tree)
-    obligation = _relation(T)(call)(pat).beta_norm()
     constrs = _registered_constrs(T)
     pairs = datgen.subterm_pairs(T, constrs)
-    if len(pairs) != 1:
-        # The relation is then a disjunction over the recursive arguments
-        # and the obligation picks one of them; that is the case the
-        # measure engine handles -- its cells never mention the subterm
-        # relation -- so this path stops here instead of half-working.
+    if len(pairs) == 1:
+        disj = _relation(T)(call)(pat).beta_norm()
+        proj = _reduce_used(disj, dmap)[1]
+        closes = _reduce(disj, dmap).is_reflexive()
+        steps = ['rewrite %s' % rule for rule in proj]
+        if not closes:
+            witness = _decrease_witness(T, constrs, pairs, pattern, call, dmap)
+            if witness is None and _exists_body(disj) is not None:
+                # The pattern is not one of the constructor's immediate
+                # arguments (`Plus (Plus a b) c`, with the call on `b`):
+                # the disjunct binds a witness the pattern cannot give, so
+                # the obligation cannot be discharged.  Saying so keeps the
+                # definition's axioms instead of emitting a proof whose
+                # `eq_refl` has nothing to close.
+                raise FunGenError(
+                    'recursion: the call %s is not an immediate subterm of '
+                    'the pattern %s, so the relation built for %s cannot '
+                    'reach it' % (_prints(call), _prints(pattern), _printt(T)))
+            if witness is not None:
+                steps.append('inst "%s"' % _arg_text(witness))
+            steps.append('rule eq_refl')
+        elif not proj:
+            # Recursion on a single argument: the projections are the
+            # identity, so no projection rule applies and the obligation
+            # already reads `t = t`.  It still needs its closing step --
+            # `closes` only says the last rewrite closes the goal, and
+            # there is no rewrite here.
+            steps.append('rule eq_refl')
+        return steps, closes or steps[-1] == 'rule eq_refl'
+    k = _disjunct_index(constrs, pairs, pattern, call, dmap)
+    if k is None:
         raise FunGenError(
-            'recursion on %s: %d recursive constructor arguments; the '
-            'subterm obligation is emitted for one, the measure engine is '
-            'what the others need'
-            % (_printt(T), len(pairs)))
-    steps = []
-    disj = obligation
-    proj = _reduce_used(disj, dmap)[1]
-    closes = _reduce(disj, dmap).is_reflexive()
-    for rule in proj:
-        steps.append('rewrite %s' % rule)
-    if not closes:
-        witness = _decrease_witness(T, constrs, pairs, pattern, call, dmap)
-        if witness is not None:
-            steps.append('inst "%s"' % _arg_text(witness))
+            'recursion: no disjunct of the subterm relation of %s states '
+            'that the call %s is a subterm of the pattern %s'
+            % (_printt(T), _prints(call), _prints(pattern)))
+    witness = _decrease_witness(T, constrs, pairs, pattern, call, dmap)
+    body = _disjunct_instance(T, constrs, pairs, k, call, pat, witness)
+    steps = _disjunct_chain(len(pairs), k)
+    if witness is not None:
+        steps.append('inst "%s"' % _arg_text(witness))
+    if seen is not None and body in seen:
+        # The instance is already an item of this proof, so `inst` resolves
+        # the goal to it and creates nothing: the obligation is discharged
+        # by the step just emitted and the proof stops there.
+        return steps, True
+    if seen is not None:
+        seen.add(body)
+    reduced, proj = _reduce_used(body, dmap)
+    steps.extend('rewrite %s' % rule for rule in proj)
+    if not reduced.is_reflexive():
+        raise FunGenError(
+            'recursion: the decrease obligation %s of %s does not reduce to '
+            'an identity' % (_prints(reduced), _prints(pattern)))
+    if not proj:
+        # No projection to reduce: the instantiated disjunct already reads
+        # `t = t`, and only the reflexivity rule closes it.
         steps.append('rule eq_refl')
-    elif not proj:
-        # Recursion on a single argument: the projections are the identity,
-        # so no projection rule applies and the obligation already reads
-        # `t = t`.  It still needs its closing step -- `closes` only says
-        # the last *rewrite* closes the goal, and there is no rewrite here.
-        steps.append('rule eq_refl')
-    return steps, closes
+    return steps, True
 
 
 def _body_term(name, arg_types, res_type, eqs, positions, p=None):
@@ -1661,12 +2060,16 @@ def _body_prop(name, arg_types, res_type, eqs, positions, p=None):
     return _prints(_body_term(name, arg_types, res_type, eqs, positions, p))
 
 
-def _rel_body(arg_types, r, order=None):
+def _rel_body(arg_types, r, order=None, relation=None):
     """The relation as a lambda over the tuple variables p and q.
 
     The def's right hand side is the whole lambda: `wf <c>_rel` is
     unfolded by rewriting the unapplied constant, which only works if the
     definitional equation is `c_rel = (%p. %q. ...)`.
+
+    `relation` is the relation the user wrote: it *is* the definitional
+    right hand side, as it stands, so that the obligations stated with it
+    are the obligations the unfolded goal has.
 
     `order` is the measure chain the search kept: the body is then the
     `mlex_prod` chain over it, ending at the empty relation.  An empty
@@ -1679,6 +2082,8 @@ def _rel_body(arg_types, r, order=None):
     descends through.
     """
     Tup = _printt(tupled_type(arg_types))
+    if relation is not None:
+        return _prints(relation)
     if order is not None:
         # The chain is already a function of the two tuples, so it is the
         # definitional right hand side as it stands.  Wrapping it in
@@ -1778,7 +2183,8 @@ def _measure_obligation(prover, order, arg_types, call, pat, dmap, sizes, mdefs,
 
 
 def _def_entry(name, cname, arg_types, res_type, eqs, positions, i, conds,
-               rules, tcalls, dmap, order=None, sizes=None, mdefs=None):
+               rules, tcalls, dmap, order=None, sizes=None, mdefs=None,
+               relation=None, descent=None, used=None):
     """Proof of equation i, whichever branch of the chain it is.
 
     The body functional is the if-chain over the equations in source
@@ -1850,9 +2256,13 @@ def _def_entry(name, cname, arg_types, res_type, eqs, positions, i, conds,
         last_nav = (j == i - 1) and (i == len(eqs) - 1) and closes_now
         g = prover.step('← rewrite if_not_P goal=%d facts=[%d]' % (g, neg),
                         new=0 if last_nav else 1) or g
+    # The instance the branch's own test leaves behind, when it has one: a
+    # decrease obligation of this branch can turn out to be that very
+    # proposition (see the loop below).
+    test_inst = None
     if i < len(eqs) - 1 and len(positions) == 1:
-        c2 = _condition_fact(prover, arg_types, positions, eqs, i,
-                             conds[i][i], g, dmap)
+        c2, test_inst = _condition_fact(prover, arg_types, positions, eqs, i,
+                                        conds[i][i], g, dmap)
         g = prover.step('← rewrite if_P goal=%d facts=[%d]' % (g, c2),
                         new=0 if closes_now else 1) or g
     # Which step selected the branch: the chain's last equation has no test
@@ -1884,35 +2294,33 @@ def _def_entry(name, cname, arg_types, res_type, eqs, positions, i, conds,
         return prover.text()
     eq = eqs[i]
     facts = []
+    # The instances the obligations of this equation have already produced,
+    # shared between them: two calls of one equation can land on the same
+    # instance, and then the second one's `inst` resolves to the first one's
+    # item instead of creating one (`_decrease_steps`).
+    seen = set()
     for tcall in tcalls:
+        if descent:
+            facts.append(_given_obligation(prover, arg_types, r, relation,
+                                           tcall, _tuple_of(eq), descent, g,
+                                           name, i, used))
+            continue
         if order is not None:
             facts.append(_measure_obligation(prover, order, arg_types, tcall,
                                              _tuple_of(eq), dmap, sizes, mdefs,
                                              g, name, i))
             continue
         obligation_prop = _decrease_prop(arg_types, r, tcall, _tuple_of(eq))
-        if (len(positions) == 1 and i < len(eqs) - 1
-                and is_exists(conds[i][i][0])):
-            # Both this branch's test (once its witness is given) and the
-            # decrease obligation would state the same proposition, and the
-            # stable-ID layer keys items by proposition: the second one
-            # reuses the first one's ID, which no emitted `goal=` can name.
-            # A one-argument datatype reaches this whenever a recursive
-            # equation with a constructor pattern stands before the chain's
-            # end -- its obligation is the identity `C t = C t`.  The way
-            # out is to test with a generated discriminator per constructor
-            # instead of the existential, which is what `case` compiles to.
-            wit = _leaf_tuple(_pattern_leaves(_eq_args(eq)[r]))
-            # The witness variables are bound by the existential, i.e. they
-            # are de Bruijn indices inside it: giving one means applying
-            # the binder and beta-reducing, which is what `inst` does.
-            test = conds[i][i][0].arg(wit).beta_norm()
-            if _prints(test) == obligation_prop:
-                raise FunGenError(
-                    'fun %s: equation %d tests its pattern with an '
-                    'existential and then states the same proposition as its '
-                    'decrease obligation (%s); the two would share a stable '
-                    'ID' % (name, i + 1, obligation_prop))
+        if test_inst is not None and test_inst[0] == obligation_prop:
+            # The branch's own test already stated and discharged exactly this
+            # proposition.  A pattern whose only variable is the recursive
+            # argument (`TriS t`) is the case: the test's instance is `C t =
+            # C t`, and the obligation, the relation being the subterm one, is
+            # that same identity.  The stable-ID layer keys items by
+            # proposition, so cutting it again would create nothing; the
+            # instance item is the fact the obligation's `if_P` takes.
+            facts.append(test_inst[1])
+            continue
         c_cut = prover.step('cut "%s" goal=%d' % (obligation_prop, g))
         # The steps are computed from the obligation's own term -- the one
         # the cut above states, with the projections of both the call and
@@ -1920,15 +2328,14 @@ def _def_entry(name, cname, arg_types, res_type, eqs, positions, i, conds,
         # from the two projections separately emits steps the sweep has
         # already cleared, and deduping them loses a level when the
         # projection is nested (`snd (snd p)`, three arguments and up).
-        steps, closes = _decrease_steps(arg_types, r, tcall, eq, dmap)
+        steps, closes = _decrease_steps(arg_types, r, tcall, eq, dmap, seen)
         c3 = c_cut
         for k3, step in enumerate(steps):
             last = (k3 == len(steps) - 1)
-            if last and (step == 'rule eq_refl'
-                         or (closes and step.startswith('rewrite'))):
-                # The last step closes the obligation: the reflexivity rule
-                # always does, a rewrite only when it leaves an identity
-                # (`closes` says it does).
+            if last and closes:
+                # `closes` says the last step discharges the obligation: the
+                # reflexivity rule always does, a rewrite when it leaves an
+                # identity, and the `inst` that ends a repeated instance.
                 prover.step('← %s goal=%d' % (step, c3), new=0)
             else:
                 c3 = prover.step('← %s goal=%d' % (step, c3))
@@ -1949,7 +2356,7 @@ def _def_entry(name, cname, arg_types, res_type, eqs, positions, i, conds,
     return prover.text()
 
 
-def _require_in_scope(arg_types, r, order=None):
+def _require_in_scope(arg_types, r, order=None, relation=None):
     """Names the emitted items and proofs depend on.
 
     A definition is only expanded when the file can actually see them:
@@ -1980,7 +2387,14 @@ def _require_in_scope(arg_types, r, order=None):
         # definition has no tuple: requiring them there is a false gate,
         # and for prod itself, which defines them, a circular one.
         needed += ['fst_def_1', 'snd_def_1']
-    if order is None:
+    if relation is not None:
+        # The user's own relation: nothing of the measure machinery is
+        # needed for it, but the chain of rewrites that reaches the
+        # fixpoint is the same, and the datatype's well-foundedness lemma
+        # is replaced by the user's `wf` theorem, which names its own
+        # prerequisites.
+        pass
+    elif order is None:
         needed.append('wf_measure_gen')
         needed.append('ineq_sym')
         needed.append(_subterm(arg_types[r])[1])
@@ -2085,7 +2499,7 @@ def _expand(data):
         calls.append(tuples)
     _require_in_scope(arg_types, r, None if any(calls) else [])
 
-    dmap = _destructor_maps(arg_types, positions)
+    dmap = _destructor_maps(arg_types, positions, lhs)
     rules = [_reduce_used(_body_term(name, arg_types, res_type, eqs, positions,
                                      _tuple_of(eq)), dmap)[1] for eq in eqs]
     # `conds[i][j]` is the test of equation j as this branch's goal has it,
@@ -2098,32 +2512,63 @@ def _expand(data):
               for j, poses_j in ((j, _pattern_positions(lhs[j], positions))
                                  for j in range(i + 1))]
              for i in range(len(eqs))]
-    order, sizes, mdefs = _measure_order(arg_types, (name, cname), cname, eqs,
-                                         calls, dmap)
-    try:
-        _require_in_scope(arg_types, r, order)
-    except FunGenError:
-        if len(positions) > 1:
-            # The subterm relation is stated for one argument; a
-            # definition matching on several needs the measures, and
-            # saying so is better than emitting a relation that descends
-            # through only one of them.
-            raise
-        # The measure machinery is not in scope in this file (the nat
-        # comparisons its cells are closed with, most often).  The
-        # datatype's own subterm relation is the relation rule left, the
-        # same one that was used before the measures existed: a file that
-        # cannot see them keeps the items it always had, instead of losing
-        # the definition to an axiom.
+    measures, relation, wf_lemma, descent = fun_clauses(data, eqs, name, ty)
+    if relation is not None:
+        # The relation is the user's: nothing is inferred, and there is no
+        # fallback to the datatype's subterm relation -- the definition
+        # descends through *that* relation, and the obligations below are
+        # discharged from the named lemmas or the definition is not emitted
+        # at all (`expand_item` lets the error out, since the structural
+        # check that makes an axiom safe is not being asked).
+        for lemma in descent + [wf_lemma]:
+            try:
+                theory.get_theorem(lemma)
+            except Exception:
+                raise FunGenError(
+                    'fun %s: %s is not in the theory yet; the lemmas a '
+                    'relation is discharged with have to be stated before '
+                    'the definition' % (name, lemma))
         order, sizes, mdefs = None, {}, {}
+        used = set()
+        _require_in_scope(arg_types, r, order, relation)
+    elif measures:
+        # A given measure goes through the search's own machinery -- the
+        # same named constants, the same cells, the same chain -- so it
+        # needs the same machinery to be in scope, and it is not tried
+        # against anything else: the user asked for *this* measure.
+        order = _given_measures(arg_types, cname, measures)
+        sizes, mdefs = _measure_tables(arg_types, (name, cname), order)
+        used = set()
         _require_in_scope(arg_types, r, order)
+    else:
+        used = set()
+        order, sizes, mdefs = _measure_order(arg_types, (name, cname), cname,
+                                             eqs, calls, dmap)
+        try:
+            _require_in_scope(arg_types, r, order)
+        except FunGenError:
+            if len(positions) > 1:
+                # The subterm relation is stated for one argument; a
+                # definition matching on several needs the measures, and
+                # saying so is better than emitting a relation that descends
+                # through only one of them.
+                raise
+            # The measure machinery is not in scope in this file (the nat
+            # comparisons its cells are closed with, most often).  The
+            # datatype's own subterm relation is the relation rule left, the
+            # same one that was used before the measures existed: a file that
+            # cannot see them keeps the items it always had, instead of losing
+            # the definition to an axiom.
+            order, sizes, mdefs = None, {}, {}
+            _require_in_scope(arg_types, r, order)
     entries = [_entry([text]) for text in _measure_defs(cname, arg_types,
                                                         order)]
     entries += [_entry([text]) for text in _def_entries(
         name, cname, arg_types, res_type,
         _body_prop(name, arg_types, res_type, eqs, positions),
-        _rel_body(arg_types, r, order))]
-    entries.append(_entry(_rel_wf_entry(cname, arg_types, r, order)))
+        _rel_body(arg_types, r, order, relation))]
+    entries.append(_entry(_rel_wf_entry(cname, arg_types, r, order, relation,
+                                        wf_lemma)))
     for i, eq in enumerate(eqs):
         eq_text = _equation_text(name, ty, data['rules'][i]['prop'], eq)
         text = ['theorem %s_def_%d' % (cname, i + 1),
@@ -2135,9 +2580,14 @@ def _expand(data):
         text.extend(_def_entry(name, cname, arg_types, res_type, eqs,
                                positions, i, conds, rules[i],
                                [tupled_arg(c) for c in calls[i]], dmap,
-                               order, sizes, mdefs))
+                               order, sizes, mdefs, relation, descent, used))
         text.append('qed')
         entries.append(_entry(text))
+    for lemma in descent:
+        if lemma not in used:
+            raise FunGenError(
+                'fun %s: the `descent` lemma %s is not the obligation of any '
+                'call; every lemma given has to discharge one' % (name, lemma))
     # The relation item names the measure constants defined in this group,
     # so it can only be parsed after them -- the loader does exactly that.
     # What is checked here is everything up to and including the body
@@ -2247,18 +2697,36 @@ def _require_parsable_defs(entries, name):
                               % (name, item.name, item.error))
 
 
+def _has_clauses(data):
+    """Whether the definition carries a relation or a measure.
+
+    A definition that does is not left axiomatized when its proof does not
+    come off: the relation or the measure *is* the justification, and the
+    structural check that would make the equations consistent as axioms is
+    not being asked (`core/items.py`), so a failure has to be reported
+    rather than swallowed.
+    """
+    return bool(data.get('measure') or data.get('relation'))
+
+
 def expand_item(data):
     """Item dicts for a `fun` definition, or None to keep it axiomatized.
 
     None means the definition is outside the supported increment, so the
     caller keeps the current mechanism; nothing is silently approved.
     Set HOLPY_FUNGEN_DEBUG to see the underlying exception instead.
+
+    A definition that carries a relation or a measure is the exception:
+    it has no current mechanism to keep, so its errors are let out (`_has_
+    clauses`).
     """
     try:
         return _expand(data)
     except FunGenError:
+        if _has_clauses(data):
+            raise
         return None
     except Exception:
-        if os.environ.get('HOLPY_FUNGEN_DEBUG'):
+        if os.environ.get('HOLPY_FUNGEN_DEBUG') or _has_clauses(data):
             raise
         return None

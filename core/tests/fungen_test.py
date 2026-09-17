@@ -202,6 +202,52 @@ class FunGenTest(unittest.TestCase):
                          '(g (tl p) @ [hd p])')
         self.assertEqual(fungen._kept_whole('g (tl p)'), 'g (tl p)')
 
+    def test_disjunct_chain(self):
+        """The introductions that walk to one disjunct of a right-nested `|`.
+
+        Every disjunct before the last is `disjI2` once per level it is
+        nested under and `disjI1` on itself; the last one is `disjI2` all
+        the way down and has no `disjI1`.  Emitting one there asks the
+        goal to split a disjunct that is already the whole goal, which is
+        how the first version of the multi-recursive-argument support
+        failed on the last disjunct of the `Plus` relation.
+        """
+        self.assertEqual(fungen._disjunct_chain(4, 0), ['rule disjI1'])
+        self.assertEqual(fungen._disjunct_chain(4, 1),
+                         ['rule disjI2', 'rule disjI1'])
+        self.assertEqual(fungen._disjunct_chain(4, 2),
+                         ['rule disjI2', 'rule disjI2', 'rule disjI1'])
+        self.assertEqual(fungen._disjunct_chain(4, 3),
+                         ['rule disjI2', 'rule disjI2', 'rule disjI2'])
+        # One disjunct is no disjunction at all: the goal is already the
+        # disjunct, so there is nothing to introduce (and a datatype with
+        # a single recursive argument never reaches this path).
+        self.assertEqual(fungen._disjunct_chain(1, 0), [])
+
+    def test_clause_decides_the_structural_check(self):
+        """A relation or a measure replaces the structural check.
+
+        The check is what makes the equations safe *as axioms*; a
+        definition that carries a relation or a measure derives them from
+        a termination proof instead, so the check is the wrong question --
+        and a definition the check refuses (`f n` is not a direct argument
+        of the pattern) is accepted once the clause says what it descends
+        through.
+        """
+        from core import items
+        rules = [{'prop': 'f 0 = 0'}, {'prop': 'f (Suc (Suc n)) = f n'}]
+        data = {'ty': 'def.ind', 'name': 'f', 'type': "nat ⇒ nat",
+                'rules': rules}
+        self.assertIsNotNone(items.parse_item(dict(data)).error,
+                             'the structural check accepted a deep call')
+        for clause in ({'measure': ['"%p. p"']},
+                       {'relation': ['"%p q. p < q"'],
+                        'wf': ['"w"'], 'descent': ['"d"']}):
+            item = items.parse_item(dict(data, **clause))
+            self.assertIsNone(item.error, 'a clause did not carry it: %s'
+                              % item.error)
+            self.assertIsNotNone(item.measures or item.relation)
+
 
 def printer_type(ty):
     from syntax import printer

@@ -1,5 +1,6 @@
 """Abstraction for parsing and processing of different types of items."""
 
+import re
 import traceback
 
 from kernel.type import TVar, TConst, TFun, BoolType
@@ -397,6 +398,24 @@ class Definition(Item):
             res['attributes'] = self.attributes
         return res
 
+def _clause_values(texts):
+    """The quoted values of a `fun` clause's text, in order.
+
+    A value is quoted so that it may carry spaces and brackets
+    (`"%p. fst p"`), and several are separated by commas.  Anything left
+    outside quotes is an error rather than a dropped value: a clause the
+    reader misreads would silently lose the measure the user wrote, and
+    the definition would then be rejected for a reason that is not there.
+    """
+    res = []
+    for text in texts:
+        rest = re.sub(r'"[^"]*"', '', text).replace(',', '').strip()
+        if rest:
+            raise ItemException('unexpected text in clause: %r' % rest)
+        res.extend(re.findall(r'"([^"]*)"', text))
+    return res
+
+
 class Fun(Item):
     """Inductively defined functions.
     
@@ -422,6 +441,10 @@ class Fun(Item):
         self.type = None  # type of the constant
         self.rules = []  # list of equality rules
         self.cname = None  # expanded name of the constant (for linking)
+        self.measures = []  # measures its recursion descends through, if given
+        self.relation = None  # the relation it descends through, if given
+        self.wf_lemma = None  # name of the theorem proving `wf <relation>`
+        self.descent = []  # names of the theorems discharging the calls
         self.error = None
 
     def __eq__(self, other):
@@ -455,17 +478,55 @@ class Fun(Item):
 
                 self.rules.append({'prop': prop})
 
+            self._parse_clauses(data)
+
+            if self.measures or self.relation is not None:
+                # The recursion is justified by the termination proof the
+                # emitter derives from the relation or the measures -- the
+                # `wf` obligation and one decrease obligation per call --
+                # and not by the shape of the equations, so the structural
+                # check is the wrong question to ask.  The two are
+                # alternatives, not a hierarchy: a definition that carries
+                # one is *not* expanded into axioms when the proof does not
+                # come off (`fungen.expand_item` lets the error out), since
+                # nothing else would make its equations consistent.
+                return
+
             # Check that the equations are structural recursion.
             check_fun_recursion(self.name, self.type, self.rules)
-            
+
         except Exception as error:
             self.type = data['type']
             self.rules = data['rules']
             self.error = error
             self.trace = traceback.format_exc()
 
+    def _parse_clauses(self, data):
+        """Read the `measure` / `relation` / `wf` / `descent` clauses.
+
+        The reading and the rules about which clause goes with which live
+        in `fungen.fun_clauses`, which the emitter uses too: a clause
+        means one thing, in the item layer and in the generator, and its
+        errors are the same either way.
+        """
+        from core import fungen
+        eqs = [rule['prop'] for rule in self.rules]
+        self.measures, self.relation, self.wf_lemma, self.descent = \
+            fungen.fun_clauses(data, eqs, self.name, self.type)
+
     def get_extension(self):
         assert self.error is None, "get_extension"
+        if self.measures or self.relation is not None:
+            # The equations of such a definition are *derived*, from the
+            # termination proof the relation or the measure carries.  The
+            # load path never gets here: the emitter either produces the
+            # items or reports why not (`fungen.expand_item`).  Turning
+            # them into axioms instead would be exactly the unchecked
+            # recursion the structural check exists to prevent.
+            raise ItemException(
+                'Fun %s: a definition with a relation or a measure is '
+                'emitted, not axiomatized; the generator did not produce it'
+                % self.name)
         res = []
         res.append(extension.Constant(self.name, self.type, ref_name=self.cname))
         for i, rule in enumerate(self.rules):
@@ -482,12 +543,24 @@ class Fun(Item):
             disp_type = printer.print_type(self.type)
             with global_setting(line_length=None):
                 disp_rules = [printer.print_term(rule['prop']) for rule in self.rules]
-        
+                disp_measure = [printer.print_term(m) for m in self.measures]
+                disp_relation = (printer.print_term(self.relation)
+                                 if self.relation is not None else None)
+        if self.error:
+            disp_measure, disp_relation = [], None
+
+        def joined(texts):
+            if texts is None:
+                return None
+            return texts if settings.highlight else '\n'.join(texts)
+
         return {
             'ty': 'def.ind',
             'name': self.name,
             'type': disp_type,
-            'rules': disp_rules if settings.highlight else '\n'.join(disp_rules)
+            'rules': joined(disp_rules),
+            'measure': joined(disp_measure),
+            'relation': joined([disp_relation] if disp_relation else None),
         }
 
     def parse_edit(self, edit_data):
@@ -495,17 +568,41 @@ class Fun(Item):
         for prop in edit_data['rules'].split('\n'):
             rules.append({'prop': prop})
         edit_data['rules'] = rules
+        for key in ('measure', 'relation', 'descent'):
+            text = edit_data.get(key)
+            if isinstance(text, str):
+                texts = [part.strip() for part in text.split('\n')
+                         if part.strip()]
+                edit_data[key] = ['"%s"' % t.strip('"') for t in texts]
+            elif text:
+                edit_data[key] = ['"%s"' % t.strip('"') for t in text]
+        wf = edit_data.get('wf')
+        if isinstance(wf, str):
+            wf = wf.strip()
+            edit_data['wf'] = ['"%s"' % wf] if wf else []
         self.parse(edit_data)
 
     def export_json(self):
         with global_setting(unicode=True):
-            return {
+            res = {
                 'ty': 'def.ind',
                 'name': self.name,
                 'type': self.type if self.error else printer.print_type(self.type),
                 'rules': [{'prop': rule['prop'] if self.error else export_term(rule['prop'])}
                           for rule in self.rules]
             }
+            if self.error:
+                return res
+            for clause, values in (('measure', self.measures),
+                                   ('relation', [self.relation]
+                                    if self.relation is not None else []),
+                                   ('wf', [self.wf_lemma] if self.wf_lemma else []),
+                                   ('descent', self.descent)):
+                if values:
+                    res[clause] = ['"%s"' % (v if isinstance(v, str)
+                                             else printer.print_term(v))
+                                   for v in values]
+            return res
 
 class Inductive(Item):
     """Inductively defined predicate.

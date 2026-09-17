@@ -43,3 +43,67 @@ fun lexnat :: nat ⇒ nat ⇒ nat
   | lexnat (Suc m) 0 = lexnat m 0
   | lexnat (Suc m) (Suc n) = lexnat (Suc m) n
 
+-- A constructor that recurses more than once.  Isabelle's datatype
+-- package gives `T3S` the size `1 + size x + size y + size z`, and that
+-- size is what definitions over the datatype descend through -- the
+-- subterm relation is never consulted for them.  The size function's own
+-- recursion is the one that is: its relation is the datatype's subterm
+-- relation, a disjunction over the recursive arguments, so its first call
+-- reaches its disjunct with `disjI1` and each later one with a `disjI2`
+-- per level of the right-nested chain.
+
+datatype tri3 =
+  | T3Z :: tri3
+  | T3S (x :: tri3) (y :: tri3) (z :: tri3) :: tri3
+
+-- The measure is that size, so the two calls of the second equation are
+-- discharged by a strict size comparison.
+
+fun t3count :: tri3 ⇒ nat
+  | t3count T3Z = 0
+  | t3count (T3S x y z) = Suc (t3count x + t3count y)
+
+-- The recursive call is two constructors down: `n` is not a direct
+-- argument of the pattern `Suc (Suc n)`, so the structural check that
+-- guards the axiomatized path refuses this definition -- and without a
+-- clause that check is what decides, before any inference runs.  With a
+-- measure the descent is *proved* rather than assumed: the obligation is
+-- `n < Suc (Suc n)`, which the emitter closes like any other cell.
+
+fun drop2 :: nat ⇒ nat
+  measure "%p. p"
+  | drop2 0 = 0
+  | drop2 (Suc (Suc n)) = drop2 n
+
+
+-- A relation of the file's own, with its own well-foundedness and its own
+-- descent lemmas: the general case.  The emitter knows the *shape* of the
+-- obligation -- the relation applied to the call and to the pattern -- but
+-- nothing about the relation, so the file states both and the definition
+-- is proved from them.  The relation is written over the two *tupled*
+-- arguments (`p` and `q`), because that is the relation the recursion
+-- combinator uses, and the descent lemmas state exactly the obligation it
+-- produces.
+
+theorem ex_less_wf
+  prop wf (%p::nat. %q::nat. p < q)
+proof
+  ← rewrite measure_def sym=true goal=0
+  ← rule wf_measure goal=1
+qed
+
+theorem ex_drop_dec
+  fixes n :: nat
+  prop n < Suc (Suc n)
+proof
+  ← rewrite less_Suc_lesseq goal=0
+  ← rule le_suc_right goal=1
+  ← rule lesseq_refl goal=2
+qed
+
+fun exdrop :: nat ⇒ nat
+  relation "%p q. p < q"
+  wf "ex_less_wf"
+  descent "ex_drop_dec"
+  | exdrop 0 = 0
+  | exdrop (Suc (Suc n)) = exdrop n

@@ -145,16 +145,23 @@ class Measure:
 
     `kind` is what the measure is made of at that position: `'nat'` is the
     identity (a natural-number argument carries its own order), `'size'` is
-    the datatype's generated size function.  A position whose type has
-    neither -- a function type, a type variable, a datatype without a size
-    family -- contributes no column at all.
+    the datatype's generated size function, and `'given'` is a measure the
+    user wrote.  A position whose type has neither -- a function type, a
+    type variable, a datatype without a size family -- contributes no
+    column at all.
+
+    A given measure carries the term itself (`given`); everything else
+    about it is the same, so a measure the user wrote and one the search
+    picked are the same object from here on.
     """
 
-    def __init__(self, pos, arg_types, kind, size_name=None, def_name=None):
+    def __init__(self, pos, arg_types, kind, size_name=None, def_name=None,
+                 given=None):
         self.pos = pos
         self.arg_types = arg_types
         self.kind = kind
         self.size_name = size_name
+        self.given = given
         # The constant the emitter defines for this measure.  A measure is
         # a *named* function, not a lambda written into the relation: the
         # rules that use it (`mlex_less`, `mlex_leq`) state their premises
@@ -179,6 +186,13 @@ class Measure:
     def body(self, p):
         """The measure as a function of the tuple term p."""
         from core import fungen
+        if self.given is not None:
+            # A lambda's body directly, so that the emitted definition
+            # `m p = <body>` substitutes the tuple into it in one rewrite,
+            # and so that the comparison sees the very term the goal gets
+            # rather than a beta-reduced variant of it.
+            return (self.given.subst_bound(p) if self.given.is_abs()
+                    else self.given(p))
         proj = fungen.projection(p, self.arg_types, self.pos)
         if self.kind == 'nat':
             return proj
@@ -352,7 +366,7 @@ def _sum(atoms):
     return res
 
 
-def _prove_le(left, right, sucs=0):
+def _prove_le(left, right, sucs=0, props=True):
     """The closing of `left <= Suc^sucs right`, or None when unprovable.
 
     Both sides are normal forms (`_spine` plus a sum of atoms).  The right
@@ -361,13 +375,20 @@ def _prove_le(left, right, sucs=0):
     does start with is consumed from both, and when the left side is down
     to a single atom equal to the next one the surplus right tail is
     absorbed by `le_add` in one step.
+
+    `props` says whether a `cut` node carries its sub-comparison as text.
+    A caller that applies the tree backwards (`rule` per node, which makes
+    the sub-comparison a subgoal) never writes it out, and computing it
+    means *printing* terms, which needs their constants registered in the
+    theory.  A datatype's size function is not registered while its own
+    family is still being generated, so that caller passes props=False.
     """
     if sucs > 0:
-        sub = _prove_le(left, right, sucs - 1)
+        sub = _prove_le(left, right, sucs - 1, props)
         if sub is None:
             return None
-        return Closing('cut', 'le_suc_right',
-                       _le_prop(left, _sucs(right, sucs - 1)), sub)
+        prop = _le_prop(left, _sucs(right, sucs - 1)) if props else None
+        return Closing('cut', 'le_suc_right', prop, sub)
     if left == Const('zero', NatType):
         return Closing('rule', 'lesseq_zero')
     if left == right:
@@ -379,17 +400,19 @@ def _prove_le(left, right, sucs=0):
         return None
     head, rest = ratoms[0], _sum(ratoms[1:])
     if latoms[0] != head:
-        sub = _prove_le(left, rest)
+        sub = _prove_le(left, rest, 0, props)
         if sub is None:
             return None
-        return Closing('cut', 'le_add_left_mono', _le_prop(left, rest), sub)
+        prop = _le_prop(left, rest) if props else None
+        return Closing('cut', 'le_add_left_mono', prop, sub)
     if len(latoms) == 1:
         return Closing('rule', 'le_add')
     ltail = _sum(latoms[1:])
-    sub = _prove_le(ltail, rest)
+    sub = _prove_le(ltail, rest, 0, props)
     if sub is None:
         return None
-    return Closing('cut', 'le_add_front', _le_prop(ltail, rest), sub)
+    prop = _le_prop(ltail, rest) if props else None
+    return Closing('cut', 'le_add_front', prop, sub)
 
 
 def _le_prop(left, right):
@@ -398,11 +421,14 @@ def _le_prop(left, right):
     return '%s <= %s' % (fungen._prints(left), fungen._prints(right))
 
 
-def _comparison(kind, left, right, dmap, sizes, mdefs):
+def _comparison(kind, left, right, dmap, sizes, mdefs, props=True):
     """(steps, closing) proving `left < right` or `left <= right`, or None.
 
     The steps are what the goal needs after its beta reduction; the
-    closing finishes what is left of it.
+    closing finishes what is left of it.  `props` is passed on to
+    `_prove_le`; a caller that applies the closing backwards has no use
+    for the `cut` nodes' text and passes False to avoid printing terms
+    whose constants are not registered yet.
     """
     goal = Const(kind, TFun(NatType, NatType, BoolType))(left, right)
     norm, steps = reduce(goal, dmap, sizes, mdefs)
@@ -420,7 +446,7 @@ def _comparison(kind, left, right, dmap, sizes, mdefs):
     if k1 > k2:
         return None
     steps = steps + ['le_suc'] * k1
-    closing = _prove_le(lsum, rsum, k2 - k1)
+    closing = _prove_le(lsum, rsum, k2 - k1, props)
     if closing is None:
         return None
     return steps, closing

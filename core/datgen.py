@@ -65,6 +65,8 @@ from syntax import printer
 
 from core import fungen
 
+NatType = TConst('nat')
+
 
 def constr_args(constr):
     """(argument types, argument names) of a constructor.
@@ -630,21 +632,25 @@ def size_fun_lines(name, args, constrs, rec_pos):
     """The `<ty>_size` definition, as `fun` item lines.
 
     One equation per constructor, in declaration order: 1 for the
-    constructor plus the size of its recursive argument.  A source
-    definition on purpose -- the equations are then derived from the
+    constructor plus the size of each of its recursive arguments.  A
+    source definition on purpose -- the equations are then derived from the
     relation's well-foundedness like any other `fun`, instead of being
     asserted, and the destructor family the emitter needs is part of the
     same block.  A constructor with no argument of the datatype's own
-    (`Some`, `Pair`) contributes the constant 1.
+    (`Some`, `Pair`) contributes the constant 1, and one with several
+    (`Plus a1 a2`) contributes each of them, which is what makes the size
+    a measure for definitions that recurse on any of them.
     """
     T = TConst(name, *[TVar(a) for a in args])
     sz = '%s_size' % name
     lines = ['fun %s :: %s ⇒ nat' % (sz, fungen._printt(T))]
-    for constr, pos in zip(constrs, rec_pos):
+    for constr, poses in zip(constrs, rec_pos):
         argT, argnames = constr_args(constr)
         pat = Const(constr['name'], constr['type'])(
             *[Var(nm, Ty) for nm, Ty in zip(argnames, argT)])
-        rhs = '1' if pos is None else '1 + %s %s' % (sz, argnames[pos])
+        rhs = ('1' if not poses else
+               '1 + ' + ' + '.join('%s %s' % (sz, argnames[j])
+                                   for j in poses))
         lines.append('  | %s %s = %s'
                      % (sz, fungen._arg_text(pat) if argnames
                         else fungen._prints(pat), rhs))
@@ -655,29 +661,90 @@ def size_fun_lines(name, args, constrs, rec_pos):
 # A caller that generates the size family at the earliest point it can --
 # so the file's own definitions can use it as a measure -- has to wait for
 # these to be in scope, which in the file that defines them (nat) is later
-# than the datatype and even than the comparison itself.
+# than the datatype and even than the comparison itself.  This is the set a
+# *single* recursive argument needs; a constructor with several cites more
+# of the comparison lemmas, and `size_less_lines` checks those itself.
 SIZE_LESS_DEPS = ['add_1_left', 'less_Suc_lesseq', 'lesseq_refl']
 
 
-def size_less_lines(name, args, recursive, rec_pos, suffix=''):
-    """`<ty>_size` strictly decreases from a constructor argument.
+def size_rule_name(sz, constr):
+    """The name of a constructor's size equation, as the block emits it."""
+    return '%s_def_%d' % (sz, size_equation_index(constr))
 
-    The one fact a size is for: the recursive argument of the pattern is
-    smaller than the pattern.  With the generated equation that is
-    `size x < 1 + size x`, i.e. `size x < Suc (size x)`, i.e. `size x <=
-    size x`.
+
+def _closing_theorems(closing):
+    """The theorems a comparison's closing tree cites."""
+    res = [closing.theorem]
+    if closing.sub is not None:
+        res.extend(_closing_theorems(closing.sub))
+    return res
+
+
+def _in_scope(name):
+    from kernel import theory
+    try:
+        theory.get_theorem(name)
+        return True
+    except Exception:
+        return False
+
+
+def _apply_closing(prover, closing, g):
+    """A comparison's closing, applied backwards.
+
+    Every node is a rule whose conclusion is the goal at hand, so the
+    sub-comparison becomes the next subgoal instead of a `cut` stated
+    first.  That is what lets a size family be generated before the size
+    function it belongs to is registered: the `cut` form has to print its
+    proposition, and printing a term needs its constants in the theory.
     """
+    while closing.kind != 'rule':
+        g = prover.step('\u2190 rule %s goal=%d' % (closing.theorem, g))
+        closing = closing.sub
+    prover.step('\u2190 rule %s goal=%d' % (closing.theorem, g), new=0)
+
+
+def size_less_lines(name, args, recursive, rec_pos, suffix=''):
+    """`<ty>_size` strictly decreases from a constructor argument, or None.
+
+    The one fact a size is for: a recursive argument of the pattern is
+    smaller than the pattern.  With the generated equation the right hand
+    side unfolds to `1 + size x_1 + ... + size x_n`, which the measure
+    engine's own comparison machinery proves (core/measure.py): the `1`
+    becomes a `Suc`, one `add_Suc_left` per remaining summand pulls that
+    `Suc` to the top, `less_Suc_lesseq` makes the comparison weak, and the
+    remaining `size x_k <= size x_1 + ... + size x_n` is closed atom by
+    atom.  A single recursive argument is the four steps it always was.
+
+    None means the comparison is not provable here -- the lemmas it needs
+    (more of them the more recursive arguments the constructor has) are not
+    in scope yet, or the shape is outside the comparison's reach.  Emitting
+    the item anyway would leave the file with a proof that does not replay,
+    so the caller drops the whole family instead.
+    """
+    from core import measure
     T = TConst(name, *[TVar(a) for a in args])
     argT, argnames = constr_args(recursive)
     vars_ = [Var(nm, Ty) for nm, Ty in zip(argnames, argT)]
     pat = Const(recursive['name'], recursive['type'])(*vars_)
-    prover = _Proof()
     sz = '%s_size' % name
-    g = prover.step('← rewrite %s_def_%d goal=0'
-                    % (sz, size_equation_index(recursive)))
-    g = prover.step('← rewrite add_1_left goal=%d' % g)
-    g = prover.step('← rewrite less_Suc_lesseq goal=%d' % g)
-    prover.step('← rule lesseq_refl goal=%d' % g, new=0)
+    positions = [j for j, Ty in enumerate(argT) if Ty == T]
+    rule = size_rule_name(sz, recursive)
+    sizes = {sz: {recursive['name']: (rule, positions)}}
+    res = measure._comparison(
+        'less', Const(sz, TFun(T, NatType))(vars_[rec_pos]),
+        Const(sz, TFun(T, NatType))(pat), {}, sizes, {}, props=False)
+    if res is None:
+        return None
+    steps, closing = res
+    cited = [s for s in steps if s != rule] + _closing_theorems(closing)
+    if not all(_in_scope(c) for c in cited):
+        return None
+    prover = _Proof()
+    g = 0
+    for step in steps:
+        g = prover.step('← rewrite %s goal=%d' % (step, g))
+    _apply_closing(prover, closing, g)
     return ['theorem %s_size_less%s' % (name, suffix),
             '  fixes %s' % ', '.join('%s :: %s' % (v.name, fungen._printt(v.T))
                                      for v in vars_),
@@ -698,13 +765,33 @@ def size_equation_index(constr):
 def expand_size(data):
     """The datatype's size family, or None.
 
-    Every datatype whose constructors each take at most one argument of the
-    datatype itself gets a size: the equations are derived by the emitter,
-    and the one fact a size is for -- a recursive argument is smaller than
-    the pattern it came from -- comes with it.  A constructor with two
-    recursive arguments is left out on purpose: its equation's obligation
-    is one disjunct of the subterm relation, which is exactly the case the
-    measure engine is for.
+    A datatype with a recursive constructor argument gets a size: the
+    equations are derived by the emitter, and the one fact a size is for --
+    a recursive argument is smaller than the pattern it came from -- comes
+    with it.  A constructor may take any number of arguments of the
+    datatype itself; the equation sums all of them, which is the size
+    Isabelle's datatype package gives such a constructor and what lets a
+    definition recursing on any of them carry the size as its measure.
+    The size function's own recursion descends through the datatype's
+    subterm relation, which is a disjunction when a constructor has several
+    recursive arguments (see fungen's `_decrease_steps`).
+
+    A datatype *without* a recursive argument gets none: its equations
+    would all be the constant 1, which no comparison can make strictly
+    decrease, so the column would never discharge a call.  (`option`,
+    `prod` and `state` are the library's three: their constructors hold the
+    parameter, or a function, never the datatype itself.)  Isabelle gives
+    those a size anyway, because its `size` recurses into the argument
+    *types*; that needs a `size` class and instances, which this size --
+    counting the datatype's own positions only -- does not.
+
+    None means the family cannot be built here: the datatype recurses but
+    the equations do not expand (the comparison lemmas of `nat` are not in
+    scope in this file, the emitted text of a constructor does not parse
+    back, or the size function's own recursion is out of the emitter's
+    reach).  The definition then keeps its axioms -- for a size that is no
+    loss, since nothing but the measures depends on the family -- and the
+    caller retries after the next item.
     """
     name = data['name']
     constrs = _parsed_constrs(data)
@@ -715,19 +802,18 @@ def expand_size(data):
     for k, c in enumerate(constrs):
         c['index'] = k
         argT, _ = constr_args(c)
-        positions = [j for j, Ty in enumerate(argT) if Ty == T]
-        if len(positions) > 1:
-            return None
-        rec_pos.append(positions[0] if positions else None)
+        rec_pos.append([j for j, Ty in enumerate(argT) if Ty == T])
     item = fungen._entry(size_fun_lines(name, data['args'], constrs, rec_pos))
     derived = fungen.expand_item(item)
     if derived is None:
         return None
-    recursive = [(c, p) for c, p in zip(constrs, rec_pos) if p is not None]
+    recursive = [(c, j) for c, poses in zip(constrs, rec_pos) for j in poses]
     for k, (c, p) in enumerate(recursive):
         suffix = '' if len(recursive) == 1 else '_%d' % (k + 1)
-        derived.append(fungen._entry(
-            size_less_lines(name, data['args'], c, p, suffix)))
+        lines = size_less_lines(name, data['args'], c, p, suffix)
+        if lines is None:
+            return None
+        derived.append(fungen._entry(lines))
     return derived
 
 

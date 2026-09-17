@@ -1,19 +1,25 @@
 # Tests for the `fun` expansion (phase 4) at the library level.
 
-"""Active: `nat`'s recursive definitions are born with a well-foundedness
-proof -- the cache holds the generated group (`<c>_rel`, `<c>_H`,
-`<c>_in`, `<c>_rel_wf` and the two equations) for every one of them, and
-no equation is left as an axiom.  A representative item per shape the
-templates branch on is replayed here as well, and no item of either
+"""Active: every recursive `fun` of the library is born with a
+well-foundedness proof -- the cache holds the generated group (`<c>_rel`,
+`<c>_H`, `<c>_in`, `<c>_rel_wf` and the equations) for each of them, and
+no equation is left as an axiom anywhere.  A representative item per shape
+the templates branch on is replayed here as well, and no item of either
 theory is left unparsed.
 
+The relation a definition descends through is the measure chain the search
+found (`wf_mlex` once per column down to `wf_false`, each call discharged
+at the first column where it strictly decreases).  The datatype's own
+subterm relation is what is left for the definitions a measure cannot
+express, above all the datatype's size function itself -- its only
+candidate measure would be the constant being defined.  Both routes are
+asserted here, and so is the size family of a datatype whose constructors
+recurse more than once: that size is what Isabelle's datatype package
+gives such a constructor, and what `lexicographic_order` then finds.
+
 Passive: the shapes still outside the increment stay as `def.ind` items,
-i.e. axiomatized.  In `nat` and `prod` those are the datatype's own
-projections (`Pre`, `fst`, `snd` -- they cannot use themselves as
-destructors).  In `list` they are the definitions with a single
-equation, more than two arguments or more than one recursive call, the
-projections `hd`/`tl`, and `set` (whose rules do not parse where it
-stands).  That boundary is asserted here so it cannot widen unnoticed.
+i.e. axiomatized.  Nothing is left there today; the lists below say which
+shapes used to be, so their return would be noticed.
 """
 
 import unittest
@@ -21,18 +27,14 @@ import unittest
 from core import basic
 
 
-# The definitions the generator expands today: every recursive `fun` in
-# nat.pyhol except the projections (Pre, fst, snd).
+# The recursive definitions of nat.pyhol, projections included.
 EXPANDED = ['plus', 'times', 'power', 'Sigma', 'less_eq', 'less', 'minus',
             'even', 'odd', 'fact']
-# The projections are still axiomatized: their destructor would be the very
-# function being defined (`Pre (Suc n) = n`, `fst (Pair a b) = a`), and a
-# file below them cannot import the wf machinery either.
-# Every `fun` of these four theories is derived now, the datatype's own
-# projections included: their destructor is the generated one of the same
-# position (`nat_Suc_1`, `list_cons_2`, `prod_Pair_1`, `option_SomeC_1`),
-# which is defined by THE and does not mention the function being defined
-# (see core/datgen.py `generated_destructor_names`).
+# Empty since the datatype's own projections were derived: their destructor
+# would be the very function being defined (`Pre (Suc n) = n`,
+# `fst (Pair a b) = a`), which is why the emitter uses the generated one of
+# the same position instead (`nat_Suc_1`, `list_cons_2`, `prod_Pair_1`,
+# `option_SomeC_1`; see core/datgen.py `generated_destructor_names`).
 STILL_AXIOMATIZED = {}
 # list.pyhol's recursive definitions: the ones the generator emits, and the
 # ones it leaves axiomatized.
@@ -188,6 +190,152 @@ class FunGenLibraryTest(unittest.TestCase):
                  self._by_name('%s_def_3' % cname, 'measure_example').steps]
         self.assertIn('mlex_leq', steps,
                       'the two-column walk never used mlex_leq')
+
+    def test_size_carries_multi_recursive_datatypes(self):
+        """A constructor that recurses more than once.
+
+        Isabelle's datatype package gives `Plus a1 a2` the size
+        `1 + size a1 + size a2`, and `lexicographic_order` finds it: a
+        definition over such a datatype descends through the size and the
+        subterm relation is never consulted for it.  holpy derives that
+        size as an ordinary `fun`, so the size function itself is the one
+        definition whose relation *is* the subterm relation -- a
+        disjunction over the recursive arguments -- and its `wf` goes
+        through `wf_measure_gen` while `aval`'s goes through `wf_mlex`.
+        """
+        from core.verify import COMPUTATION_ORACLES, _replay
+        from core import context
+        from kernel import theory
+        for name in (['aexp_size_def_%d' % k for k in (1, 2, 3, 4)]
+                     + ['aexp_size_less_%d' % k for k in (1, 2, 3, 4)]
+                     + ['aexp_size_rel_wf', 'aval_rel_wf',
+                        'aval_def_3', 'aval_def_4']):
+            item = self._by_name(name, 'expr')
+            self.assertIsNotNone(item, 'missing %s' % name)
+            self.assertEqual(item.ty, 'thm', '%s is not a theorem' % name)
+            self.assertTrue(item.steps, '%s has no proof' % name)
+        self.assertEqual(
+            [it for it in basic.theory_cache['expr']['content']
+             if it.ty == 'def.ind'], [],
+            'expr still has an axiomatized fun')
+        # `aval` descends through the size: its relation is a one-column
+        # `mlex_prod` chain, and the obligation is closed by `mlex_less`.
+        wf_steps = self._theorems('aval_rel_wf', 'expr')
+        self.assertIn('wf_mlex', wf_steps,
+                      'the aval relation is not a measure chain')
+        self.assertNotIn('aexp_wf_subterm', wf_steps,
+                         'aval descends through the subterm relation')
+        self.assertIn('mlex_less', self._theorems('aval_def_3', 'expr'),
+                      'aval does not descend through a measure')
+        # The size function's own recursion is the one that is not: its
+        # relation is the datatype's subterm relation, so its `wf` is that
+        # relation's own lemma (`wf_measure_gen` only enters for a
+        # definition of several arguments, where the relation is lifted
+        # through the projection).
+        self.assertIn('aexp_wf_subterm', self._theorems('aexp_size_rel_wf',
+                                                        'expr'),
+                      'the size function descends through a measure')
+        # `tri3` recurses three times in one constructor: one `size_less`
+        # per recursive position, and a definition that takes that size as
+        # its measure.
+        for name in ('tri3_size_less_%d' % k for k in (1, 2, 3)):
+            item = self._by_name(name, 'measure_example')
+            self.assertIsNotNone(item, 'missing %s' % name)
+            self.assertEqual(item.ty, 'thm', '%s is not a theorem' % name)
+        self.assertIsNotNone(self._by_name('t3count_m1', 'measure_example'),
+                             't3count did not find the size as a measure')
+        # `hoare`'s `com` is parametric (`'a com`) and recurses twice in a
+        # constructor (`Seq`, `Cond`).  `While b I c` also names an argument
+        # `b` -- the name `_disjunct` binds its own tuple variable with -- so
+        # the pattern's variables have to go into the disjunct only after
+        # that binder is gone; abstracting over the witness first is refused
+        # ("abstract_over: wrong type") and would capture silently if the
+        # two types agreed.
+        for name in ('com_size', 'com_size_rel_wf',
+                     'com_size_def_3', 'com_size_def_4'):
+            item = self._by_name(name, 'hoare')
+            self.assertIsNotNone(item, 'missing %s' % name)
+        self.assertEqual(self._by_name('com_size_rel_wf', 'hoare').ty, 'thm',
+                         'com_size_rel_wf is not a theorem')
+        # `wfrec_example`'s `tri` puts the recursive equation in the middle
+        # of the chain (`TriZ | TriS t | TriO`), so its branch test has to be
+        # *proved*, and that test's instance (`TriS t = TriS t`) is the
+        # decrease obligation itself.  The two are one proposition, so one
+        # item serves both -- a second `cut` would create nothing, the
+        # stable-ID layer keying items by proposition.
+        for name in ('tri_size', 'tri_size_rel_wf', 'tri_size_def_2'):
+            self.assertIsNotNone(self._by_name(name, 'wfrec_example'),
+                                 'missing %s' % name)
+        # `tsum :: tri ⇒ nat` has no `nat` argument, so its only candidate
+        # measure is the size the datatype just got; its relation is then a
+        # `mlex` chain rather than `tri`'s subterm relation, which is what
+        # `tleaf` (no recursion at all) still uses.
+        self.assertIn('wf_mlex', self._theorems('tsum_rel_wf', 'wfrec_example'),
+                      'tsum did not take the size as its measure')
+        # The three shapes the emitted proofs branch on: two calls landing
+        # on one instance (`seen`), a position past the first of several
+        # (the peel chain), three calls in one equation, and a test whose
+        # instance is the obligation.
+        for thy, name in [('expr', 'aexp_size_def_3'),
+                          ('expr', 'aexp_size_less_2'),
+                          ('measure_example', 'tri3_size_def_2'),
+                          ('measure_example', 'tri3_size_less_3'),
+                          ('measure_example', 't3count_def_2'),
+                          ('hoare', 'com_size_def_4'),
+                          ('wfrec_example', 'tri_size_def_2')]:
+            item = self._by_name(name, thy)
+            self.assertIsNotNone(item, 'missing %s' % name)
+            with theory.fresh_theory():
+                context.set_context(thy, limit=('thm', name),
+                                    vars=dict(item.vars) if item.vars else {})
+                gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
+            self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
+
+    def test_definitions_with_a_clause(self):
+        """Definitions that carry a measure, or a relation and its proofs.
+
+        The structural check is what makes an *axiomatized* definition safe;
+        one that carries a clause derives its equations from a termination
+        proof instead, so the check is not asked and the emitter descends
+        through what the clause says.  `drop2` and `exdrop` are the shape
+        the check refuses (`n` is not a direct argument of the pattern
+        `Suc (Suc n)`): the first carries the measure, the second the
+        relation with the file's own `wf` and descent lemmas.
+        """
+        from core.verify import COMPUTATION_ORACLES, _replay
+        from core import context
+        from kernel import theory
+        for cname in ('drop2', 'exdrop'):
+            wf = self._by_name('%s_rel_wf' % cname, 'measure_example')
+            self.assertIsNotNone(wf, 'missing %s_rel_wf' % cname)
+            self.assertEqual(wf.ty, 'thm', '%s_rel_wf is not a theorem' % cname)
+            self.assertTrue(wf.steps, '%s_rel_wf has no proof' % cname)
+        # The measure the file wrote becomes a column like any other.
+        self.assertIsNotNone(self._by_name('drop2_m1', 'measure_example'),
+                             'the given measure is not a measure column')
+        self.assertIn('wf_mlex',
+                      self._theorems('drop2_rel_wf', 'measure_example'),
+                      'the given measure is not on a chain')
+        # The relation is the file's, and so are the proofs of it.
+        self.assertIn('ex_less_wf',
+                      self._theorems('exdrop_rel_wf', 'measure_example'),
+                      'the relation was not proved from the file\'s wf lemma')
+        self.assertIn('ex_drop_dec',
+                      self._theorems('exdrop_def_2', 'measure_example'),
+                      'the obligation was not discharged from the file\'s lemma')
+        for name in ('drop2_def_2', 'exdrop_def_2'):
+            item = self._by_name(name, 'measure_example')
+            with theory.fresh_theory():
+                context.set_context('measure_example', limit=('thm', name),
+                                    vars=dict(item.vars) if item.vars else {})
+                gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
+            self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
+
+    def _theorems(self, name, thy):
+        """The theorems one generated item's steps cite."""
+        item = self._by_name(name, thy)
+        self.assertIsNotNone(item, 'missing %s' % name)
+        return [st.get('theorem') for st in item.steps]
 
     def test_no_equation_is_an_axiom(self):
         """`thm.ax` must not name any equation of an expanded fun."""

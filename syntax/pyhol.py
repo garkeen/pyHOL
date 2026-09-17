@@ -280,6 +280,9 @@ def _export_fun(item):
     rules = item.get('rules', [])
 
     lines = ['fun %s :: %s' % (name, ty)]
+    for clause in ('measure', 'relation', 'wf', 'descent'):
+        for text in item.get(clause) or []:
+            lines.append('  %s %s' % (clause, text))
     for rule in rules:
         lines.append('  | %s' % rule['prop'])
     return lines
@@ -902,6 +905,13 @@ def _parse_fun(lines, i):
     name = m.group(1)
     ty = _norm_arrows(m.group(2).strip())
 
+    # The clauses a `fun` may carry before its equations: the relation or
+    # measures its recursion descends through, and the lemmas that
+    # discharge the obligations when the emitter cannot.  Their text is
+    # kept as written; `core/items.py` splits and checks it, so that a
+    # malformed clause is an item error and not a silently missing
+    # measure.
+    clauses = {}
     rules = []
     i += 1
     while i < len(lines):
@@ -909,13 +919,20 @@ def _parse_fun(lines, i):
         if not line or line.startswith('--'):
             i += 1
             continue
-        if not line.startswith('  |'):
+        if line.startswith('  |'):
+            rule_prop = _norm_arrows(line[3:].strip())
+            rules.append({'prop': rule_prop})
+            i += 1
+            continue
+        m = re.match(r'^\s*(measure|relation|wf|descent)\s+(.*)$', line)
+        if not m:
             break
-        rule_prop = _norm_arrows(line[3:].strip())
-        rules.append({'prop': rule_prop})
+        clauses.setdefault(m.group(1), []).append(m.group(2).strip())
         i += 1
 
-    return {'ty': 'def.ind', 'name': name, 'type': ty, 'rules': rules}, i
+    data = {'ty': 'def.ind', 'name': name, 'type': ty, 'rules': rules}
+    data.update(clauses)
+    return data, i
 
 
 def _parse_inductive(lines, i):

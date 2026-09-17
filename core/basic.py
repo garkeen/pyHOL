@@ -405,6 +405,13 @@ def load_theory_cache(filename):
                     except Exception:
                         if os.environ.get('HOLPY_FUNGEN_DEBUG'):
                             raise
+                        if fungen._has_clauses(item):
+                            # A definition that carries a relation or a
+                            # measure has no axioms to fall back on, and the
+                            # structural check that makes axioms consistent
+                            # is not being asked: the failure is the answer,
+                            # not a reason to approve anything.
+                            raise
                         derived = None
                     if derived is not None:
                         for derived_item in derived:
