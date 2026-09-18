@@ -7,8 +7,9 @@ because `sum` is the set sum of library/sums.pyhol, whose `sum_cases`
 would shadow a datatype's own case rule).
 
 Active: the theory replays VALID, the datatype's and the case
-combinator's generated items are present, and the expansion of the case
-combinator is the one the `fun` machinery derives (no axioms left).
+combinator's generated items are present, the expansion of the case
+combinator is the one the `fun` machinery derives (no axioms left), and
+the relation lemmas `wf_either_rel` reads are all there.
 Passive: `Left a = Right b` is not derivable, and the failed attempt
 leaves the gap count unchanged.
 """
@@ -20,13 +21,18 @@ from core import basic
 from core.verify import validate_theory, COMPUTATION_ORACLES
 
 # The API: the datatype's own rules, the projections datgen generates for
-# its two arguments, the case combinator's expansion, and the two
-# injection lemmas a mutual definition's descent obligations go through.
+# its two arguments, the case combinator's expansion, and the relation
+# lemmas -- the two injections a descent obligation is built from, the
+# two reverses it is read back with, the two mixed-side facts that make
+# the cross cases vacuous, and the well-foundedness of the relation the
+# encoding lifts its termination relation to.
 API = ['either_induct', 'either_cases', 'either_Left_Right_neq',
        'either_Left_inject', 'either_Left_1_rule', 'either_Right_1_rule',
        'either_case_def_1', 'either_case_def_2', 'either_case_rel_wf',
        'either_case_exhaustive', 'either_case_cases', 'either_case_elims',
-       'either_case_induct', 'either_rel_LeftI', 'either_rel_RightI']
+       'either_case_induct', 'either_rel_LeftI', 'either_rel_RightI',
+       'either_rel_LeftD', 'either_rel_RightD', 'either_rel_Left_Right_neq',
+       'either_rel_Right_Left_neq', 'wf_either_rel']
 
 
 class EitherTheoryTest(unittest.TestCase):

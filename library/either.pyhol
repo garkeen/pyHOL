@@ -94,3 +94,401 @@ proof
   ← rule eq_refl goal=10
     #[11] (Right::'b => ('a, 'b) either) y = Right y
 qed
+
+header "The descent obligations, backwards"
+
+-- The reverse direction of the injections: what the well-foundedness
+-- proof reads off a descent obligation.  Same unfold as above; the
+-- branch for the other side is a `Left = Right` (or `Right = Left`)
+-- equation, which the datatype's distinctness rules out, and the
+-- witnesses of the branch that is left are the arguments themselves.
+
+theorem either_rel_LeftD
+  fixes R1 :: 'a => 'a => bool, R2 :: 'b => 'b => bool, x :: 'a, y :: 'a
+  prop either_rel R1 R2 (Left x) (Left y) ⟶ R1 x y
+proof
+  ← intro goal=0
+    #[1] either_rel R1 R2 (Left x) (Left y)
+    #[2] R1 x y
+  → rewrite either_rel_def sym=false target=fact goal=2 facts=[1]
+    #[3] (?x1. ?y1. (Left::'a => ('a, 'b) either) x = Left x1 & (Left::'a => ('a, 'b) either) y = Left y1 & R1 x1 y1) | (?x1. ?y1. Left x = Right x1 & Left y = Right y1 & R2 x1 y1)
+  ← rule disjE goal=2 facts=[3]
+    #[4] (?x1. ?y1. (Left::'a => ('a, 'b) either) x = Left x1 & (Left::'a => ('a, 'b) either) y = Left y1 & R1 x1 y1) --> R1 x y
+    #[5] (?x1. ?y1. Left x = Right x1 & Left y = Right y1 & R2 x1 y1) --> R1 x y
+  ← intro goal=4
+    #[6] ?x1. ?y1. (Left::'a => ('a, 'b) either) x = Left x1 & (Left::'a => ('a, 'b) either) y = Left y1 & R1 x1 y1
+    #[7] R1 x y
+  elim u goal=7 facts=[6]
+    #[8] _VAR u
+    #[9] ?y1. (Left::'a => ('a, 'b) either) x = Left u & (Left::'a => ('a, 'b) either) y = Left y1 & R1 u y1
+    #[10] R1 x y
+  elim v goal=10 facts=[9]
+    #[11] _VAR v
+    #[12] (Left::'a => ('a, 'b) either) x = Left u & (Left::'a => ('a, 'b) either) y = Left v & R1 u v
+    #[13] R1 x y
+  → forward conjD1 goal=13 facts=[12]
+    #[14] (Left::'a => ('a, 'b) either) x = Left u
+  → forward either_Left_inject goal=13 facts=[14]
+    #[15] x = u
+  → forward conjD2 goal=13 facts=[12]
+    #[16] (Left::'a => ('a, 'b) either) y = Left v & R1 u v
+  → forward conjD1 goal=13 facts=[16]
+    #[17] (Left::'a => ('a, 'b) either) y = Left v
+  → forward conjD2 goal=13 facts=[16]
+    #[18] R1 u v
+  → forward either_Left_inject goal=13 facts=[17]
+    #[19] y = v
+  ← rewrite source=prev goal=13 facts=[15]
+    #[20] R1 u y
+  ← rewrite source=prev goal=20 facts=[19]
+  ← intro goal=5
+    #[21] ?x1. ?y1. Left x = Right x1 & Left y = Right y1 & R2 x1 y1
+    #[22] R1 x y
+  elim u goal=22 facts=[21]
+    #[23] _VAR u
+    #[24] ?y1. Left x = Right u & Left y = Right y1 & R2 u y1
+    #[25] R1 x y
+  elim v goal=25 facts=[24]
+    #[26] _VAR v
+    #[27] Left x = Right u & Left y = Right v & R2 u v
+    #[28] R1 x y
+  → forward conjD1 goal=28 facts=[27]
+    #[29] Left x = Right u
+  ← resolve either_Left_Right_neq goal=28 facts=[29]
+    #[30] R1 x y
+qed
+
+theorem either_rel_RightD
+  fixes R1 :: 'a => 'a => bool, R2 :: 'b => 'b => bool, x :: 'b, y :: 'b
+  prop either_rel R1 R2 (Right x) (Right y) ⟶ R2 x y
+proof
+  ← intro goal=0
+    #[1] either_rel R1 R2 (Right x) (Right y)
+    #[2] R2 x y
+  → rewrite either_rel_def sym=false target=fact goal=2 facts=[1]
+    #[3] (?x1. ?y1. Right x = Left x1 & Right y = Left y1 & R1 x1 y1) | (?x1. ?y1. (Right::'b => ('a, 'b) either) x = Right x1 & (Right::'b => ('a, 'b) either) y = Right y1 & R2 x1 y1)
+  ← rule disjE goal=2 facts=[3]
+    #[4] (?x1. ?y1. Right x = Left x1 & Right y = Left y1 & R1 x1 y1) --> R2 x y
+    #[5] (?x1. ?y1. (Right::'b => ('a, 'b) either) x = Right x1 & (Right::'b => ('a, 'b) either) y = Right y1 & R2 x1 y1) --> R2 x y
+  ← intro goal=5
+    #[6] ?x1. ?y1. (Right::'b => ('a, 'b) either) x = Right x1 & (Right::'b => ('a, 'b) either) y = Right y1 & R2 x1 y1
+    #[7] R2 x y
+  elim u goal=7 facts=[6]
+    #[8] _VAR u
+    #[9] ?y1. (Right::'b => ('a, 'b) either) x = Right u & (Right::'b => ('a, 'b) either) y = Right y1 & R2 u y1
+    #[10] R2 x y
+  elim v goal=10 facts=[9]
+    #[11] _VAR v
+    #[12] (Right::'b => ('a, 'b) either) x = Right u & (Right::'b => ('a, 'b) either) y = Right v & R2 u v
+    #[13] R2 x y
+  → forward conjD1 goal=13 facts=[12]
+    #[14] (Right::'b => ('a, 'b) either) x = Right u
+  → forward either_Right_inject goal=13 facts=[14]
+    #[15] x = u
+  → forward conjD2 goal=13 facts=[12]
+    #[16] (Right::'b => ('a, 'b) either) y = Right v & R2 u v
+  → forward conjD1 goal=13 facts=[16]
+    #[17] (Right::'b => ('a, 'b) either) y = Right v
+  → forward conjD2 goal=13 facts=[16]
+    #[18] R2 u v
+  → forward either_Right_inject goal=13 facts=[17]
+    #[19] y = v
+  ← rewrite source=prev goal=13 facts=[15]
+    #[20] R2 u y
+  ← rewrite source=prev goal=20 facts=[19]
+  ← intro goal=4
+    #[21] ?x1. ?y1. Right x = Left x1 & Right y = Left y1 & R1 x1 y1
+    #[22] R2 x y
+  elim u goal=22 facts=[21]
+    #[23] _VAR u
+    #[24] ?y1. Right x = Left u & Right y = Left y1 & R1 u y1
+    #[25] R2 x y
+  elim v goal=25 facts=[24]
+    #[26] _VAR v
+    #[27] Right x = Left u & Right y = Left v & R1 u v
+    #[28] R2 x y
+  → forward conjD1 goal=28 facts=[27]
+    #[29] Right x = Left u
+  → rewrite eq_sym_eq target=fact goal=28 facts=[29]
+    #[30] Left u = Right x
+  ← resolve either_Left_Right_neq goal=28 facts=[30]
+    #[31] R2 x y
+qed
+
+header "One side never relates to the other"
+
+-- `either_rel` never relates a `Left` to a `Right` (nor the other way):
+-- each disjunct of the unfolded definition demands an equation between
+-- different constructors.  The well-foundedness proof uses these to
+-- discharge the branches where the relation mixes the two sides -- they
+-- are vacuous, so nothing has to be known about the other function.
+
+theorem either_rel_Left_Right_neq
+  fixes R1 :: 'a => 'a => bool, R2 :: 'b => 'b => bool, x :: 'a, y :: 'b
+  prop ~(either_rel R1 R2 (Left x) (Right y))
+proof
+  ← rule negI goal=0
+    #[1] either_rel R1 R2 (Left x) (Right y) --> false
+  ← intro goal=1
+    #[2] either_rel R1 R2 (Left x) (Right y)
+    #[3] false
+  → rewrite either_rel_def sym=false target=fact goal=3 facts=[2]
+    #[4] (?x1. ?y1. (Left::'a => ('a, 'b) either) x = Left x1 & Right y = Left y1 & R1 x1 y1) | (?x1. ?y1. Left x = Right x1 & (Right::'b => ('a, 'b) either) y = Right y1 & R2 x1 y1)
+  ← rule disjE goal=3 facts=[4]
+    #[5] (?x1. ?y1. (Left::'a => ('a, 'b) either) x = Left x1 & Right y = Left y1 & R1 x1 y1) --> false
+    #[6] (?x1. ?y1. Left x = Right x1 & (Right::'b => ('a, 'b) either) y = Right y1 & R2 x1 y1) --> false
+  ← intro goal=5
+    #[7] ?x1. ?y1. (Left::'a => ('a, 'b) either) x = Left x1 & Right y = Left y1 & R1 x1 y1
+    #[8] false
+  elim u goal=8 facts=[7]
+    #[9] _VAR u
+    #[10] ?y1. (Left::'a => ('a, 'b) either) x = Left u & Right y = Left y1 & R1 u y1
+    #[11] false
+  elim v goal=11 facts=[10]
+    #[12] _VAR v
+    #[13] (Left::'a => ('a, 'b) either) x = Left u & Right y = Left v & R1 u v
+    #[14] false
+  → forward conjD2 goal=14 facts=[13]
+    #[15] Right y = Left v & R1 u v
+  → forward conjD1 goal=14 facts=[15]
+    #[16] Right y = Left v
+  → rewrite eq_sym_eq target=fact goal=14 facts=[16]
+    #[17] Left v = Right y
+  ← resolve either_Left_Right_neq goal=14 facts=[17]
+    #[18] false
+  ← intro goal=6
+    #[19] ?x1. ?y1. Left x = Right x1 & (Right::'b => ('a, 'b) either) y = Right y1 & R2 x1 y1
+    #[20] false
+  elim u goal=20 facts=[19]
+    #[21] _VAR u
+    #[22] ?y1. Left x = Right u & (Right::'b => ('a, 'b) either) y = Right y1 & R2 u y1
+    #[23] false
+  elim v goal=23 facts=[22]
+    #[24] _VAR v
+    #[25] Left x = Right u & (Right::'b => ('a, 'b) either) y = Right v & R2 u v
+    #[26] false
+  → forward conjD1 goal=26 facts=[25]
+    #[27] Left x = Right u
+  ← resolve either_Left_Right_neq goal=26 facts=[27]
+    #[28] false
+qed
+
+theorem either_rel_Right_Left_neq
+  fixes R1 :: 'a => 'a => bool, R2 :: 'b => 'b => bool, p :: 'b, q :: 'a
+  prop ~(either_rel R1 R2 (Right p) (Left q))
+proof
+  ← rule negI goal=0
+    #[1] either_rel R1 R2 (Right p) (Left q) --> false
+  ← intro goal=1
+    #[2] either_rel R1 R2 (Right p) (Left q)
+    #[3] false
+  → rewrite either_rel_def sym=false target=fact goal=3 facts=[2]
+    #[4] (?x. ?y. Right p = Left x & (Left::'a => ('a, 'b) either) q = Left y & R1 x y) | (?x. ?y. (Right::'b => ('a, 'b) either) p = Right x & Left q = Right y & R2 x y)
+  ← rule disjE goal=3 facts=[4]
+    #[5] (?x. ?y. Right p = Left x & (Left::'a => ('a, 'b) either) q = Left y & R1 x y) --> false
+    #[6] (?x. ?y. (Right::'b => ('a, 'b) either) p = Right x & Left q = Right y & R2 x y) --> false
+  ← intro goal=5
+    #[7] ?x. ?y. Right p = Left x & (Left::'a => ('a, 'b) either) q = Left y & R1 x y
+    #[8] false
+  elim u goal=8 facts=[7]
+    #[9] _VAR u
+    #[10] ?y. Right p = Left u & (Left::'a => ('a, 'b) either) q = Left y & R1 u y
+    #[11] false
+  elim v goal=11 facts=[10]
+    #[12] _VAR v
+    #[13] Right p = Left u & (Left::'a => ('a, 'b) either) q = Left v & R1 u v
+    #[14] false
+  → forward conjD1 goal=14 facts=[13]
+    #[15] Right p = Left u
+  → rewrite eq_sym_eq target=fact goal=14 facts=[15]
+    #[16] Left u = Right p
+  ← resolve either_Left_Right_neq goal=14 facts=[16]
+    #[17] false
+  ← intro goal=6
+    #[18] ?x. ?y. (Right::'b => ('a, 'b) either) p = Right x & Left q = Right y & R2 x y
+    #[19] false
+  elim u goal=19 facts=[18]
+    #[20] _VAR u
+    #[21] ?y. (Right::'b => ('a, 'b) either) p = Right u & Left q = Right y & R2 u y
+    #[22] false
+  elim v goal=22 facts=[21]
+    #[23] _VAR v
+    #[24] (Right::'b => ('a, 'b) either) p = Right u & Left q = Right v & R2 u v
+    #[25] false
+  → forward conjD2 goal=25 facts=[24]
+    #[26] Left q = Right v & R2 u v
+  → forward conjD1 goal=25 facts=[26]
+    #[27] Left q = Right v
+  ← resolve either_Left_Right_neq goal=25 facts=[27]
+    #[28] false
+qed
+
+header "Well-foundedness"
+
+-- `wf_either_rel`, the reason the relation is defined this way: a
+-- mutual definition's termination proof gives one well-founded relation
+-- per function, and the encoding needs a single well-founded relation on
+-- the sum.  The induction is *not* run on the sum -- it is run once per
+-- side (`wf_induct` on `R1` for `P ∘ Left`, on `R2` for `P ∘ Right`).
+-- Each side's step is discharged from the sum's own step (`wf_def` of
+-- `either_rel`, applied as the fact `!y. either_rel R1 R2 y (Left a)
+-- --> P y`), and where the relation mixes the sides the case is
+-- vacuous, so the lemmas above close it and nothing has to be known
+-- about the other function.
+--
+-- The sum element is split through the *definition's* disjunction, not
+-- `type_cases`: it is bound inside the step's universal, and a case
+-- split on a bound variable would have to happen before its guard is
+-- introduced -- which `intro` cannot do, it introduces every forall and
+-- implication at once.  The definition's disjunction is a fact, and
+-- unpacking it hands out the equation that turns the goal back into the
+-- side's own argument.
+
+theorem wf_either_rel
+  fixes R1 :: 'a => 'a => bool, R2 :: 'b => 'b => bool
+  prop wf R1 ⟶ wf R2 ⟶ wf (either_rel R1 R2)
+proof
+  ← intro goal=0
+    #[1] wf R1
+    #[2] wf R2
+    #[3] wf (either_rel R1 R2)
+  ← rewrite wf_def goal=3
+    #[4] !P. (!x. (!y. either_rel R1 R2 y x --> P y) --> P x) --> (!x. P x)
+  ← intro P goal=4
+    #[5] _VAR P
+    #[6] !x. (!y. either_rel R1 R2 y x --> P y) --> P x
+    #[7] !x. P x
+  ← intro z goal=7
+    #[8] _VAR z
+    #[9] P z
+  ← type_cases z cases_thm=either_cases goal=9
+    #[10] !left. P (Left left)
+    #[11] !right. P (Right right)
+  ← rule wf_induct goal=10 facts=[1]
+    #[12] !left. (!y. R1 y left --> P (Left y)) --> P (Left left)
+  ← intro a goal=12
+    #[13] _VAR a
+    #[14] !y. R1 y a --> P (Left y)
+    #[15] P (Left a)
+  ← apply_prev goal=15 facts=[6]
+    #[16] !y. either_rel R1 R2 y (Left a) --> P y
+  ← intro y goal=16
+    #[17] _VAR y
+    #[18] either_rel R1 R2 y (Left a)
+    #[19] P y
+  → rewrite either_rel_def sym=false target=fact goal=19 facts=[18]
+    #[20] (?x. ?y1. y = Left x & (Left::'a => ('a, 'b) either) a = Left y1 & R1 x y1) | (?x. ?y1. y = Right x & Left a = Right y1 & R2 x y1)
+  ← rule disjE goal=19 facts=[20]
+    #[21] (?x. ?y1. y = Left x & (Left::'a => ('a, 'b) either) a = Left y1 & R1 x y1) --> P y
+    #[22] (?x. ?y1. y = Right x & Left a = Right y1 & R2 x y1) --> P y
+  ← intro goal=21
+    #[23] ?x. ?y1. y = Left x & (Left::'a => ('a, 'b) either) a = Left y1 & R1 x y1
+    #[24] P y
+  elim u goal=24 facts=[23]
+    #[25] _VAR u
+    #[26] ?y1. y = Left u & (Left::'a => ('a, 'b) either) a = Left y1 & R1 u y1
+    #[27] P y
+  elim v goal=27 facts=[26]
+    #[28] _VAR v
+    #[29] y = Left u & (Left::'a => ('a, 'b) either) a = Left v & R1 u v
+    #[30] P y
+  → forward conjD1 goal=30 facts=[29]
+    #[31] y = Left u
+  → forward conjD2 goal=30 facts=[29]
+    #[32] (Left::'a => ('a, 'b) either) a = Left v & R1 u v
+  → forward conjD1 goal=30 facts=[32]
+    #[33] (Left::'a => ('a, 'b) either) a = Left v
+  → forward either_Left_inject goal=30 facts=[33]
+    #[34] a = v
+  → forward conjD2 goal=30 facts=[32]
+    #[35] R1 u v
+  ← rewrite source=prev goal=30 facts=[31]
+    #[36] P (Left u)
+  → rewrite eq_sym_eq target=fact goal=36 facts=[34]
+    #[37] v = a
+  ← inst u goal=36 facts=[14]
+    #[38] R1 u a --> P (Left u)
+  → rewrite source=prev target=fact goal=36 facts=[37,35]
+    #[39] R1 u a
+  ← apply_prev goal=36 facts=[38,39]
+    #[40] P (Left u)
+  ← intro goal=22
+    #[41] ?x. ?y1. y = Right x & Left a = Right y1 & R2 x y1
+    #[42] P y
+  elim u goal=42 facts=[41]
+    #[43] _VAR u
+    #[44] ?y1. y = Right u & Left a = Right y1 & R2 u y1
+    #[45] P y
+  elim v goal=45 facts=[44]
+    #[46] _VAR v
+    #[47] y = Right u & Left a = Right v & R2 u v
+    #[48] P y
+  → forward conjD2 goal=48 facts=[47]
+    #[49] Left a = Right v & R2 u v
+  → forward conjD1 goal=48 facts=[49]
+    #[50] Left a = Right v
+  ← resolve either_Left_Right_neq goal=48 facts=[50]
+    #[51] P y
+  ← rule wf_induct goal=11 facts=[2]
+    #[52] !right. (!y. R2 y right --> P (Right y)) --> P (Right right)
+  ← intro a goal=52
+    #[53] _VAR a
+    #[54] !y. R2 y a --> P (Right y)
+    #[55] P (Right a)
+  ← apply_prev goal=55 facts=[6]
+    #[56] !y. either_rel R1 R2 y (Right a) --> P y
+  ← intro y goal=56
+    #[57] either_rel R1 R2 y (Right a)
+    #[58] P y
+  → rewrite either_rel_def sym=false target=fact goal=58 facts=[57]
+    #[59] (?x. ?y1. y = Left x & Right a = Left y1 & R1 x y1) | (?x. ?y1. y = Right x & (Right::'b => ('a, 'b) either) a = Right y1 & R2 x y1)
+  ← rule disjE goal=58 facts=[59]
+    #[60] (?x. ?y1. y = Left x & Right a = Left y1 & R1 x y1) --> P y
+    #[61] (?x. ?y1. y = Right x & (Right::'b => ('a, 'b) either) a = Right y1 & R2 x y1) --> P y
+  ← intro goal=61
+    #[62] ?x. ?y1. y = Right x & (Right::'b => ('a, 'b) either) a = Right y1 & R2 x y1
+    #[63] P y
+  elim u goal=63 facts=[62]
+    #[64] ?y1. y = Right u & (Right::'b => ('a, 'b) either) a = Right y1 & R2 u y1
+    #[65] P y
+  elim v goal=65 facts=[64]
+    #[66] y = Right u & (Right::'b => ('a, 'b) either) a = Right v & R2 u v
+    #[67] P y
+  → forward conjD1 goal=67 facts=[66]
+    #[68] y = Right u
+  ← rewrite source=prev goal=67 facts=[68]
+    #[69] P (Right u)
+  → forward conjD2 goal=69 facts=[66]
+    #[70] (Right::'b => ('a, 'b) either) a = Right v & R2 u v
+  → forward conjD1 goal=69 facts=[70]
+    #[71] (Right::'b => ('a, 'b) either) a = Right v
+  → forward either_Right_inject goal=69 facts=[71]
+    #[72] a = v
+  → forward conjD2 goal=69 facts=[70]
+    #[73] R2 u v
+  → rewrite eq_sym_eq target=fact goal=69 facts=[72]
+    #[74] v = a
+  → rewrite source=prev target=fact goal=69 facts=[74,73]
+    #[75] R2 u a
+  ← inst u goal=69 facts=[54]
+    #[76] R2 u a --> P (Right u)
+  ← apply_prev goal=69 facts=[76,75]
+    #[77] P (Right u)
+  ← intro goal=60
+    #[78] ?x. ?y1. y = Left x & Right a = Left y1 & R1 x y1
+    #[79] P y
+  elim u goal=79 facts=[78]
+    #[80] ?y1. y = Left u & Right a = Left y1 & R1 u y1
+    #[81] P y
+  elim v goal=81 facts=[80]
+    #[82] y = Left u & Right a = Left v & R1 u v
+    #[83] P y
+  → forward conjD2 goal=83 facts=[82]
+    #[84] Right a = Left v & R1 u v
+  → forward conjD1 goal=83 facts=[84]
+    #[85] Right a = Left v
+  → rewrite eq_sym_eq target=fact goal=83 facts=[85]
+    #[86] Left v = Right a
+  ← resolve either_Left_Right_neq goal=83 facts=[86]
+    #[87] P y
+qed

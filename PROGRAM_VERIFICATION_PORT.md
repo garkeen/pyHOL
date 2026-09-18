@@ -129,25 +129,29 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
   顺便它是**三参数**定义的第一个样例，暴露出 `_require_in_scope` 要 `fst_def_1`（多参数走元组），
   所以理论的 imports 必须带 `prod`（这里用 `imports nat`，它已经带上）。
 - `either_rel`：每侧一个关系提升成一个和上的关系，`mk_sumcases` 那条路要用。
+- **关系上的六条引理**（全部证出来、由 `check_item.py` 独立重放 VALID）：
+  `either_rel_LeftI`/`either_rel_RightI`（注入：`R1 x y ⟹ either_rel R1 R2 (Left x) (Left y)`，
+  即下降义务的形状）、`either_rel_LeftD`/`either_rel_RightD`（反推：
+  `either_rel R1 R2 (Left x) (Left y) ⟹ R1 x y`）、`either_rel_Left_Right_neq`/
+  `either_rel_Right_Left_neq`（两侧之间没有关系）。反推那两条的证明形状：展开定义 →
+  `disjE` → 跨侧那支是 `Left = Right`（`Right` 侧要先用 `eq_sym_eq` 转向）→ `resolve
+  either_Left_Right_neq`；本侧那支 `elim` 出见证、`conjD1/conjD2` 取合取项、
+  `either_Left_inject` 把 `Left x = Left u` 化成 `x = u`，再用等式把目标改写成见证的样子。
+- **`wf_either_rel`**（`wf R1 ⟹ wf R2 ⟹ wf (either_rel R1 R2)`）——编码的终止证明走它。
+  证明形状与伊莎贝尔的直觉不同：**不在和类型上做归纳**，而是每侧各用一次自己的 `wf_induct`
+  （`P ∘ Left` 配 `wf R1`、`P ∘ Right` 配 `wf R2`），每侧的步进从和上的那一步
+  （`wf_def` 展开 `either_rel`，当成事实 `!y. either_rel R1 R2 y (Left a) --> P y` 用）推出来；
+  和上的关系跨侧的分支是**空**的（上面两条 `_neq` 关掉），所以证一侧时完全不需要另一侧的结论——
+  这正是互递归终止证明能拆成两份递归调用的原因。和元素的分情形走**定义自身的析取**而不是
+  `type_cases`（原因见 §5.8 第 51 条）。
 
 **未做**（按依赖顺序）：
 
-1. **`wf_either_rel`**（`wf R1 ⟹ wf R2 ⟹ wf (either_rel R1 R2)`）——编码的终止证明走它。
-   两条**注入引理已落地**（`either_rel_LeftI`/`either_rel_RightI`：`R1 x y ⟹ either_rel R1 R2 (Left x) (Left y)`，
-   即下降义务的形状）。剩下的 `wf` 证明配方（照 `wf_base.pyhol` 的 `wf_subset`）：
-   展开 `wf_def` → `intro P` + 步进假设 → `type_cases p`（和类型两支）→ 每支把该侧 `wf` 事实
-   展开、`inst "%a. P (Left a)"`、`cut` 出步进假设的实例（`inst "Left a"` + `apply_prev`）→
-   `apply_prev` 收口。**两支各需要两样东西**：一是从 `either_rel R1 R2 (Left b) (Left a)` 反推
-   `R1 b a`（另一条方向的引理，还没做，配方：展开 → 第二析取项被 `either_Left_Right_neq` 排除
-   （`force_disj_true1` 那一步）→ `elim` 见证 → `conjD1/conjD2` 取出合取项 →
-   `either_Left_inject` 把 `Left x = Left a` 化成 `x = a` → 两条重写把 `R1 a b` 变成 `R1 x y`）；
-   二是 `Right c` 与 `Left a` 之间**没有**关系（同一次展开、两个析取项都要求 `Left = Right`，
-   都被不同构造子性挡掉）。
-2. 语法与条目 schema：`_parse_fun`（`syntax/pyhol.py:899`）只读一个 `fun NAME :: TYPE` +
+1. 语法与条目 schema：`_parse_fun`（`syntax/pyhol.py:899`）只读一个 `fun NAME :: TYPE` +
    `|` 方程 + 子句，`_export_fun` 亦然，没有 `and`；要么加 `fun … and …` 的块，要么给
    互递归新条目类型，牵动 `items.py` 的解析/扩展、`basic.py` 的分发与增量缓存。
-3. 编码本身：`mk_inj`/`mk_proj`（沿平衡树走 `Left`/`Right` 与析构子）、`mk_sumcases`、
-   每个函数用投影定义、方程翻译成 `fsum` 的方程、终止关系搬到和上（第 1 条）、
+2. 编码本身：`mk_inj`/`mk_proj`（沿平衡树走 `Left`/`Right` 与析构子）、`mk_sumcases`、
+   每个函数用投影定义、方程翻译成 `fsum` 的方程、终止关系搬到和上（用 `wf_either_rel`）、
    再把方程 / cases / elims / induct 投影回各函数——**投影那步是 holpy 侧的真正工作量**：
    伊莎贝尔用 `EqSubst`+`simp_tac`，这里得写成显式步骤（形态与现有 `_def_entry` 模板同款）。
 
@@ -391,6 +395,30 @@ auto2 建立在 Isabelle 的 Imperative_HOL 上：带类型 ref/array、`lim`、
     （`method/stable_state.py` 还要求注解条数 == 新建条目数）。
 49. **`item NAME` 输出的是"当前证明"**：会话停在别的证明上时它会写出那条证明。
     导出后立刻核对 `prop` 行再落盘。
+
+### 5.8 和类型编码：`elim`、∀-目标与分情况
+
+50. **一次消一个见证**。`elim "u,v"`（k≥2 个名字）会失败：方法把 ∃ 事实连同 k 个变量塞进外层
+    `intros` 行，而 `intros` 宏只用一次 `exE` 消化 `∀x. P x ⟹ C`；k≥2 时续行是
+    `∀x1…xk. B ⟹ C`，匹配器报 `When matching implies (?P a) with (all::…)`。
+    配方：`elim "u"` 再 `elim "v"`——第二次的 ∃ 正是第一次留下的假设行，两个单见证的 `exE`
+    在反序重放里各吃一个，恰好对上。
+    另注：k≥2 的这次失败**会留下半截条目**（变量行、假设行都在，gap 数不变），所以失败后要么
+    `undo`，要么用 `all` 重读 sid——按旧 sid 手抄的 `goal=` 会指空。
+51. **∀-绑定的变量不能 `type_cases`**。`type_cases` 要"上下文里的变量"
+    （`Apply type_cases: extra variable`），而 `intro` 一次引进**所有**嵌套 ∀ 与 ⟹
+    （`logic.strip_all_implies`），守卫一变成事实就不再代入分支（第 35 条）。
+    所以 `!y. 守卫 y ⟹ 结论 y` 既不能 `intro y` 后 `type_cases y`（守卫已僵在事实里），
+    也不能直接 `type_cases`（y 不在上下文），两条出路：
+    (a) 让目标成为某个**有 ∀ 结论的定理**的实例，用 `rule` 配高阶谓词（下一条）；
+    (b) 展开定义自身的析取：`→ rewrite <def> target=fact goal=… facts=[<守卫>]` → `rule disjE`
+    → 每支 `elim` 见证 + `conjD1/conjD2` → 用析取项给的等式把目标改写成见证的样子。
+    `wf_either_rel` 的跨侧分支走 (b)，本侧分支走 (a)。
+52. **`rule` 能对 ∀-目标做高阶匹配**：`wf_induct`
+    （`wf ?R ⟹ (!x. (!y. ?R y x ⟹ ?P y) ⟹ ?P x) ⟹ !x. ?P x`）上，
+    `← rule wf_induct goal=<!x. P (Left x)> facts=[<wf R1>]` 一步把 `?P` 配成 `%z. P (Left z)`，
+    留下 `<步进>` 子目标——比 `rewrite wf_def` 再 `inst` 写 λ 项省事（λ 项还带类型注解的坑）。
+    前提是定理结论本身是 ∀（`?P ?x` 与 `!x. 目标 x` 之间的匹配），否则 §5.4 第 29 条适用。
 
 ---
 
