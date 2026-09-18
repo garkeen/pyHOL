@@ -32,3 +32,65 @@ header "The relation"
 -- on the encoded arguments, whose well-foundedness is `wf_either_rel`.
 
 def either_rel :: ('a ⇒ 'a ⇒ bool) ⇒ ('b ⇒ 'b ⇒ bool) ⇒ ('a,'b) either ⇒ ('a,'b) either ⇒ bool = either_rel R1 R2 p q ⟷ (?x. ?y. p = Left x ∧ q = Left y ∧ R1 x y) ∨ (?x. ?y. p = Right x ∧ q = Right y ∧ R2 x y)
+
+header "The injections"
+
+-- What a proof about a mutual definition needs from the relation: the
+-- descent obligation of a call is `either_rel … (Left c) (Left p)`, and
+-- what the definition's own proof has is `R1 c p` (and the symmetric
+-- pair for the other side).  Unfolding the relation gives the two
+-- disjuncts; the one for the other side is what the datatype's
+-- distinctness rules out, so the witnesses are the arguments themselves
+-- and both conjuncts are equalities at `Left`/`Right`.
+
+theorem either_rel_LeftI
+  fixes R1 :: 'a ⇒ 'a ⇒ bool, R2 :: 'b ⇒ 'b ⇒ bool, x :: 'a, y :: 'a
+  prop R1 x y ⟶ either_rel R1 R2 (Left x) (Left y)
+proof
+  ← intro goal=0
+    #[1] R1 x y
+    #[2] either_rel R1 R2 (Left x) (Left y)
+  ← rewrite either_rel_def goal=2
+    #[3] (?x1. ?y1. (Left::'a => ('a, 'b) either) x = Left x1 & (Left::'a => ('a, 'b) either) y = Left y1 & R1 x1 y1) | (?x1. ?y1. Left x = Right x1 & Left y = Right y1 & R2 x1 y1)
+  ← rule disjI1 goal=3
+    #[4] ?x1. ?y1. (Left::'a => ('a, 'b) either) x = Left x1 & (Left::'a => ('a, 'b) either) y = Left y1 & R1 x1 y1
+  ← inst x goal=4
+    #[5] ?y1. (Left::'a => ('a, 'b) either) x = Left x & (Left::'a => ('a, 'b) either) y = Left y1 & R1 x y1
+  ← inst y goal=5
+    #[6] (Left::'a => ('a, 'b) either) x = Left x & (Left::'a => ('a, 'b) either) y = Left y & R1 x y
+  ← rule conjI goal=6
+    #[7] (Left::'a => ('a, 'b) either) x = Left x
+    #[8] (Left::'a => ('a, 'b) either) y = Left y & R1 x y
+  ← rule eq_refl goal=7
+    #[9] (Left::'a => ('a, 'b) either) x = Left x
+  ← rule conjI goal=8
+    #[10] (Left::'a => ('a, 'b) either) y = Left y
+  ← rule eq_refl goal=10
+    #[11] (Left::'a => ('a, 'b) either) y = Left y
+qed
+
+theorem either_rel_RightI
+  fixes R1 :: 'a ⇒ 'a ⇒ bool, R2 :: 'b ⇒ 'b ⇒ bool, x :: 'b, y :: 'b
+  prop R2 x y ⟶ either_rel R1 R2 (Right x) (Right y)
+proof
+  ← intro goal=0
+    #[1] R2 x y
+    #[2] either_rel R1 R2 (Right x) (Right y)
+  ← rewrite either_rel_def goal=2
+    #[3] (?x1. ?y1. Right x = Left x1 & Right y = Left y1 & R1 x1 y1) | (?x1. ?y1. (Right::'b => ('a, 'b) either) x = Right x1 & (Right::'b => ('a, 'b) either) y = Right y1 & R2 x1 y1)
+  ← rule disjI2 goal=3
+    #[4] ?x1. ?y1. (Right::'b => ('a, 'b) either) x = Right x1 & (Right::'b => ('a, 'b) either) y = Right y1 & R2 x1 y1
+  ← inst x goal=4
+    #[5] ?y1. (Right::'b => ('a, 'b) either) x = Right x & (Right::'b => ('a, 'b) either) y = Right y1 & R2 x y1
+  ← inst y goal=5
+    #[6] (Right::'b => ('a, 'b) either) x = Right x & (Right::'b => ('a, 'b) either) y = Right y & R2 x y
+  ← rule conjI goal=6
+    #[7] (Right::'b => ('a, 'b) either) x = Right x
+    #[8] (Right::'b => ('a, 'b) either) y = Right y & R2 x y
+  ← rule eq_refl goal=7
+    #[9] (Right::'b => ('a, 'b) either) x = Right x
+  ← rule conjI goal=8
+    #[10] (Right::'b => ('a, 'b) either) y = Right y
+  ← rule eq_refl goal=10
+    #[11] (Right::'b => ('a, 'b) either) y = Right y
+qed

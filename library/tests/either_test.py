@@ -20,12 +20,13 @@ from core import basic
 from core.verify import validate_theory, COMPUTATION_ORACLES
 
 # The API: the datatype's own rules, the projections datgen generates for
-# its two arguments, and the case combinator's expansion.
+# its two arguments, the case combinator's expansion, and the two
+# injection lemmas a mutual definition's descent obligations go through.
 API = ['either_induct', 'either_cases', 'either_Left_Right_neq',
        'either_Left_inject', 'either_Left_1_rule', 'either_Right_1_rule',
        'either_case_def_1', 'either_case_def_2', 'either_case_rel_wf',
        'either_case_exhaustive', 'either_case_cases', 'either_case_elims',
-       'either_case_induct']
+       'either_case_induct', 'either_rel_LeftI', 'either_rel_RightI']
 
 
 class EitherTheoryTest(unittest.TestCase):
