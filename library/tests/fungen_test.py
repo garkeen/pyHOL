@@ -122,6 +122,55 @@ class FunGenLibraryTest(unittest.TestCase):
                 gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
             self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
 
+    def test_every_expanded_fun_has_both_rules(self):
+        """The two rules of a definition are part of its expansion, holes
+        or not.
+
+        A definition whose equations leave an input out still states both:
+        the catchall `= undefined` equation the subtraction adds (`dbl`'s
+        `dbl 1 = undefined`, `the`'s `the None = undefined`) makes the
+        equation set exhaustive, so the coverage disjunction is provable
+        and the induction rule hangs off it -- which is what Isabelle's
+        `add_catchall` buys there too.
+
+        A name missing here means a definition kept its equations but lost
+        the rules: `_fun_items` drops both when the coverage theorem
+        cannot be closed, and nothing else in this suite would notice.  The
+        exception is a rule the file states by hand (`nat.pyhol` has
+        `nat_less_induct`): the emitter yields to the written one and then
+        emits neither.
+        """
+        import io
+        import os
+        from core import basic as _basic
+        theories = ['expr', 'gcl', 'list', 'measure_example', 'lists_ex',
+                    'multiset', 'nat', 'option', 'prod', 'real',
+                    'realderivative', 'wfrec_example']
+        missing, total = [], 0
+        for thy in theories:
+            for fn in _basic.get_import_order([thy]):
+                _basic.load_theory_cache(fn)
+            content = _basic.theory_cache[thy]['content']
+            names = set(item.name for item in content if item.name)
+            path = os.path.join(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))), '%s.pyhol' % thy)
+            source = io.open(path, encoding='utf-8').read()
+            for cname in sorted(n[:-7] for n in names if n.endswith('_rel_wf')):
+                total += 1
+                # The emitter yields a definition's rules to a file that
+                # states either of them by hand, and then emits neither
+                # (`nat.pyhol` writes `nat_less_induct` itself, and has no
+                # `nat_less_exhaustive` as a result).
+                if ('theorem %s_induct\n' % cname) in source \
+                        or ('theorem %s_exhaustive\n' % cname) in source:
+                    continue
+                for kind in ('exhaustive', 'induct'):
+                    name = '%s_%s' % (cname, kind)
+                    if name not in names:
+                        missing.append('%s/%s' % (thy, name))
+        self.assertGreater(total, 60, 'the inventory found almost no funs')
+        self.assertEqual(missing, [], 'definitions without their rules')
+
     def test_every_item_parses(self):
         """No emitted item is left unparsed.
 
