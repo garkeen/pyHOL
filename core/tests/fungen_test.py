@@ -572,27 +572,82 @@ class FunGenTest(unittest.TestCase):
             '  ← rewrite source=prev goal=20 facts=[19]',
             'qed'])
 
-    def test_the_case_rule_yields_to_a_written_one(self):
-        """A file that states `<c>_cases` itself keeps its own.
+    def test_elims_entry_carries_the_equation_each_clause_way(self):
+        """The elimination rule reads `f x̄ = y` clause by clause.
+
+        Isabelle's `f.elims` with the domain condition left out (holpy has
+        no `f.dom`): the first premise is the equation a proof holds, and
+        each clause's premise says what the arguments are there (`x1 =
+        P_k`, with the pattern's own variables) and what the right hand
+        side is (`y = R_k`).
+
+        The proof has one step that does *not* depend on the clause --
+        `f x̄ = y` read through the curried constant's definition, giving
+        `<c>_in T = y` -- and it stands before the split for that reason:
+        inside a branch it would be the same proposition as the branch
+        before it, and a step whose proposition is already an item lays
+        out no line at all, which is what the later literal IDs count.
+        Each branch then substitutes the tuple equation in, reads the
+        clause's equation at the branch's own variables, and cuts
+        `y = R_k` -- the rewrites produce `R_k = y`, so the cut is what
+        hands `apply_prev` a fact of exactly the premise's shape.
+        """
+        arg_types, res_type, r, eqs = self._plan(
+            'g', TFun(NatType, NatType), ['g 0 = 0', 'g (Suc n) = Suc (g n)'])
+        lhs = [fungen._eq_args(eq) for eq in eqs]
+        lines = fungen._elims_entry('g', 'g', arg_types, res_type, eqs, lhs)
+        self.assertEqual(lines[0:3], [
+            'theorem g_elims',
+            '  fixes x1 :: nat, y :: nat, P :: bool',
+            '  prop g x1 = y ⟶ (x1 = 0 ⟶ y = 0 ⟶ P) ⟶ '
+            '(∀n. x1 = Suc n ⟶ y = Suc (g n) ⟶ P) ⟶ P'])
+        self.assertEqual(lines[3:], [
+            'proof',
+            '  ← intro goal=0',
+            '  → rewrite g_def target=fact goal=4 facts=[1]',
+            '  → forward g_exhaustive param_p="x1" goal=4',
+            '  ← rule disjE goal=4 facts=[6]',
+            '  ← intro goal=7',
+            '  → rewrite source=prev target=fact goal=10 facts=[9,5]',
+            '  → rewrite g_def sym=true target=fact goal=10 facts=[11]',
+            '  → rewrite g_def_1 target=fact goal=10 facts=[12]',
+            '  cut "y = 0" goal=10',
+            '  ← rewrite source=prev goal=14 facts=[13]',
+            '  ← apply_prev goal=10 facts=[2,9,15]',
+            '  ← intro goal=8',
+            '  elim n1 goal=18 facts=[17]',
+            '  → rewrite source=prev target=fact goal=21 facts=[20,5]',
+            '  → rewrite g_def sym=true target=fact goal=21 facts=[22]',
+            '  → rewrite g_def_2 target=fact goal=21 facts=[23]',
+            '  cut "y = Suc (g n1)" goal=21',
+            '  ← rewrite source=prev goal=25 facts=[24]',
+            '  ← inst "n1" goal=21 facts=[3]',
+            '  ← apply_prev goal=21 facts=[27,20,26]',
+            'qed'])
+
+    def test_the_rules_yield_to_written_ones(self):
+        """A file that states one of the rules itself keeps its own.
 
         The generator asks the same question the loader will: the name is
         taken, so the emitted rule would be a second item of that name and
         the file's own is the one the rest of the file was written
         against.  Each rule is yielded on its own name, so a file that
-        writes only the case rule keeps the coverage and induction rules.
+        writes only the case rule keeps the coverage, elimination and
+        induction rules.
         """
         rules = [{'prop': 'wfgen 0 n = n'},
                  {'prop': 'wfgen (Suc m) n = Suc (wfgen m n)'}]
         data = {'ty': 'def.ind', 'name': 'wfgen',
                 'type': 'nat ⇒ nat ⇒ nat', 'rules': rules}
         names = [item['name'] for item in fungen._expand(dict(data))]
-        self.assertIn('wfgen_cases', names)
-        self.assertIn('wfgen_exhaustive', names)
-        self.assertIn('wfgen_induct', names)
-        names = [item['name'] for item in
-                 fungen._expand(dict(data), declared={'wfgen_cases'})]
-        self.assertNotIn('wfgen_cases', names)
-        self.assertIn('wfgen_exhaustive', names)
+        for kind in ('exhaustive', 'cases', 'elims', 'induct'):
+            self.assertIn('wfgen_%s' % kind, names)
+        for kind in ('cases', 'elims'):
+            names = [item['name'] for item in
+                     fungen._expand(dict(data), declared={'wfgen_%s' % kind})]
+            self.assertNotIn('wfgen_%s' % kind, names)
+            self.assertIn('wfgen_exhaustive', names)
+            self.assertIn('wfgen_induct', names)
 
     def test_the_case_rule_avoids_the_patterns_own_names(self):
         """The predicate and the case variable miss the equations' names.

@@ -43,9 +43,10 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 
 `fun` 现在**展开成派生条目**（`core/fungen.py`：`<c>_H` 体函数、`<c>_rel` 递归关系、
 `<c>_in` 不动点、方程由良基性证明），不再当公理注入；每个定义还得到
-`<c>_exhaustive`（覆盖析取）、`<c>_cases`（定义自己的 case 规则，见 §3）与
-`<c>_induct`（关系归纳），带洞的定义靠模式减法补
-`= undefined` 兜底方程后同样齐全。对齐伊莎贝尔 Function 包的九个阶段里，1–5 已完成：
+`<c>_exhaustive`（覆盖析取）、`<c>_cases`（定义自己的 case 规则）、`<c>_elims`
+（消去规则）与 `<c>_induct`（关系归纳），带洞的定义靠模式减法补
+`= undefined` 兜底方程后同样齐全。规则形状的样例在 `library/rules_example.pyhol`
+（无变量子句、多参数多子句、布尔值——别处的定义覆盖不到的三种）。对齐伊莎贝尔 Function 包的九个阶段里，1–5 已完成：
 
 | 阶段 | 内容 | 状态 |
 |---|---|---|
@@ -55,7 +56,7 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 | 4 | 模式减法 / 带洞定义（`pattern_split.ML`） | 完成 |
 | 5 | 组合度量：`size_list f` 这类候选（`measure_functions.ML`） | 完成 |
 | 6 | 互递归 `fun … and …` | 未做，见 §3 |
-| 7 | `f.cases` / `f.elims` / `fun_cases` | 部分完成：`<c>_cases` 已发射（`type_cases … cases_thm=` 消费）；`elims`/`fun_cases` 见 §3 |
+| 7 | `f.cases` / `f.elims` / `fun_cases` | 部分完成：`<c>_cases` 与 `<c>_elims` 已发射；`fun_cases` 那层与布尔特化见 §3 |
 | 8 | `partial_function` | 未做，见 §3 |
 | 9 | `size_change`（scnp 终止证明器） | 未做，见 §3 |
 
@@ -127,34 +128,40 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 
 **依赖**：阶段 2（已有）与一套归纳包风格的 case 化简。
 
-**已落地：`<c>_cases`**（每个展开的 `fun` 的第三条规则，与 `<c>_exhaustive>`/`<c>_induct>` 并列；
-`library/tests/fungen_test.py` 的不变量测试现在要求三条齐）。
+**已落地：`<c>_cases` 与 `<c>_elims`**（每个展开的 `fun` 的两条新规则，与
+`<c>_exhaustive`/`<c>_induct` 并列；`library/tests/fungen_test.py` 的不变量测试现在要求四条齐）。
 
-- 形状刻意与 **datatype 的 `<ty>_cases` 同款**（`defcheck.datatype_axioms`）：
+- **`<c>_cases`** 形状刻意与 **datatype 的 `<ty>_cases` 同款**（`defcheck.datatype_axioms`）：
   `(⋀v̄₁. P P₁) ⟹ … ⟹ (⋀v̄ₙ. P Pₙ) ⟹ P p`，`P` 与 `p` 是**自由变量**（`fixes`）。
   因此 **不需要新 tactic**：`type_cases x cases_thm="<c>_cases"` 走的就是 `datatype_cases`
   那条路（`P := λx. 目标`、`p := 分情况的表达式`），每子句一个子目标。
-- 与前两条规则一样是**证明出来的**：读 `<c>_exhaustive` 的析取（`disjE` 逐层、`elim` 取见证与
-  等式 `p = pat`、每个前提 `inst` 到分支自己的变量上再让重写直接关门），
-  即 `_induct_entry` 分支收口那套减去归纳假设与递减义务。
+- **`<c>_elims`** 是伊莎贝尔的 `f.elims` 去掉域条件（holpy 没有 `dom`，部分性不是谓词）：
+  `f x̄ = y ⟹ (⋀v̄₁. T = P₁ ⟹ y = R₁ ⟹ P) ⟹ … ⟹ P`。首前提是消去方程，每子句的
+  前提给出该子句下参数的样子（`T = P_k`，模式自己的变量作分支变量）与右端（`y = R_k`）。
+- 两条规则都是**证明出来的**：读 `<c>_exhaustive` 的析取（`disjE` 逐层、`elim` 取见证与
+  等式、每支把自己的前提 `inst` 到分支变量上再让重写/`apply_prev` 收口）。`_elims` 多一条
+  桥：方程说的是柯里化应用，子句说的是模式的变量，靠柯里化常量的定义
+  （`f x̄ = <c>_in T`）在两者之间走；这条桥里**与子句无关的那一步提到分叉之前**——
+  分支里它是上一条分支的同命题，而"命题已是条目"的步不落行，后面的字面 ID 就全错。
 - 子句比 datatype 的构造子更细：嵌套模式（`dbl (Suc (Suc n))`）与补 `undefined` 的洞
-  （`drop2 (Suc 0)`、`the None`）都是一个分支，这正是它比 `type_cases` 多出来的东西。
-- 命名：`P`/`p` 避开方程自己的变量名，也避开 `elim` 会拿到的名字（`filter` 的模式变量就叫
-  `P`，于是谓词取 `P1`、消去拿 `P2`）；文件若自己写了 `theorem <c>_cases`，发射器让位。
-- **用法上的坑**：分割要在 `intro` 之前——已 `intro` 出来的事实不代入分支（行不可变），
-  守卫必须留在目标里（§5.5 第 35 条同一个道理）；`type_cases` 要一个**变量**，
-  多参数定义得给元组变量。
+  （`drop2 (Suc 0)`、`the None`）都是一个分支，这正是它们比 `type_cases` 多出来的东西。
+- 命名：谓词/分支变量避开方程自己的变量名，也避开 `elim` 会拿到的名字（`filter` 的模式变量
+  就叫 `P`，于是谓词取 `P1`、消去拿 `P2`），`_elims` 还避开 RHS 里 binder 的绑定名
+  （`strict_sorted` 的 RHS 是 `(∀y. …) ∧ …`）。文件若自己写了同名规则，发射器让位。
+- **用法上的坑**：`type_cases … cases_thm=` 的分割要在 `intro` 之前——已 `intro` 出来的事实
+  不代入分支（行不可变），守卫必须留在目标里（§5.5 第 35 条同一个道理）；
+  `type_cases` 要一个**变量**，多参数定义得给元组变量。
 
 **验收（已过）**：`library/gcl.pyhol` 的 `scalar_of_nat_id` / `scalar_of_bool_id` 原是两条公理，
 现在用 `type_cases s cases_thm=scalar_of_{nat,bool}_cases` 分割后证明（`check_item.py` 独立重放 VALID）。
 
 **未做**：
 
-- `f.elims` 走 `function_elims.ML`（157 行）：由 `f x̄ = y` 驱动（`cases` + `psimps` + `dom` 再化简），
-  每个子句给参数等式与 `y = rhs`，**不需要内核新能力**；最容易漏的是布尔返回类型的两条特化
-  （`f x̄` 与 `¬ f x̄`）。holpy 侧多两件事：没有 `dom`（域条件本就不存在），
-  且证明要写成显式步骤（伊莎贝尔那套 `EqSubst`+`bool_subst_tac` 没有对应物）。
-- `fun_cases.ML`（62 行）是最薄的一层，前提是前面那套 case 化简已存在。
+- `fun_cases`：伊莎贝尔那层（`fun_cases.ML`，62 行）把 elim 规则特化到一条给定实例上
+  （`f x̄ = y` 或布尔式的 `f x̄`）。前提是前面那套 case 化简已存在，现在有了。
+- 布尔返回类型的两条**特化**规则（`f x̄` 与 `¬ f x̄` 作前提，`mk_bool_elims` 用 `eq_boolI`
+  特化）：通用规则对布尔值定义同样工作（`rules_example` 的 `gb_elims` 在重放清单里），
+  特化只是省掉用户手里那个 `= y`。
 
 ### 阶段 8：`partial_function`
 

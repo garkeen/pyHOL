@@ -1,0 +1,34 @@
+theory rules_example
+imports nat
+description "Samples for the rules a `fun` expansion emits (case and elimination), in shapes the other theories do not carry."
+
+-- The expansion emits the coverage theorem, the case rule, the
+-- elimination rule and the induction rule for every definition.  The
+-- library's own definitions exercise most of their shapes; the three
+-- below are the ones nothing else reaches, and each of them is a place
+-- the emitted proofs could go wrong on their own:
+--
+--   * two clauses with no pattern variable *before* one with a variable.
+--     The elimination rule's branches then repeat their propositions
+--     (nothing about them names the branch) and a step whose proposition
+--     is already an item lays out no line at all -- so the literal IDs
+--     after it are the ones to get wrong.
+--   * two arguments and three clauses, one of which keeps the second
+--     argument: the clauses do not all consume the same position, so the
+--     relation is a two-column chain and the rules have to follow it.
+--   * a boolean-valued definition, whose right hand sides are booleans:
+--     the propositions print with `⟷` and are read back as equalities.
+
+fun gz :: nat ⇒ nat
+  | gz 0 = 0
+  | gz (Suc 0) = 1
+  | gz (Suc (Suc n)) = n
+
+fun gr :: nat ⇒ nat ⇒ nat
+  | gr 0 n = n
+  | gr (Suc m) 0 = m
+  | gr (Suc m) (Suc n) = gr m n
+
+fun gb :: nat ⇒ bool
+  | gb 0 ⟷ true
+  | gb (Suc n) ⟷ false

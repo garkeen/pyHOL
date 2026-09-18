@@ -161,13 +161,18 @@ def destructor(constr_name, j, t):
         % (j + 1, constr_name))
 
 
-def _subst(t, env):
-    """Replace the variables named in env throughout t.
+def _subst(t, env, bound=None):
+    """Replace the variables named in env throughout t, binders included.
 
-    Patterns and right hand sides carry no binder that could capture a
-    bound name (a right hand side that does is refused by `replace`), so a
-    plain traversal is enough here.
+    The patterns and calls this is used on carry no binder, but a right
+    hand side may (`strict_sorted`'s is `(∀y. ...) ∧ ...`), and a branch
+    has to be able to substitute its own variables into it.  A variable of
+    one of the names under a binder that binds *that* name is the binder's
+    own, not the free one being replaced, so it stays where it is.
     """
+    if t.is_abs():
+        body = _subst(t.body, env, (bound or frozenset()) | {t.var_name})
+        return t if body is t.body else Abs(t.var_name, t.var_T, body)
     if t.is_comb():
         h, args = t.strip_comb()
         # The head is substituted too: a recursive call's arguments can have
@@ -175,10 +180,23 @@ def _subst(t, env):
         # a pattern variable applied), and leaving it behind names a
         # variable the branch has since renamed away.  For the constructor
         # patterns this is a no-op -- their heads are constants.
-        return _subst(h, env)(*[_subst(a, env) for a in args])
-    if t.is_var() and t.name in env:
+        return _subst(h, env, bound)(*[_subst(a, env, bound) for a in args])
+    if t.is_var() and t.name in env and t.name not in (bound or ()):
         return env[t.name]
     return t
+
+
+def _bound_names(t, acc=None):
+    """The names a binder inside `t` binds (an `Abs`, so `!x.` or `%x.`)."""
+    if acc is None:
+        acc = set()
+    if t.is_abs():
+        acc.add(t.var_name)
+        _bound_names(t.body, acc)
+    elif t.is_comb():
+        _bound_names(t.fun, acc)
+        _bound_names(t.arg, acc)
+    return acc
 
 
 def _pattern_leaves(pat):
@@ -1175,6 +1193,32 @@ def _subterm(T):
 # ---------------------------------------------------------------------------
 # Emission helpers.
 # ---------------------------------------------------------------------------
+
+def _const_as_var(name, t):
+    """`t` with every occurrence of the constant `name` written as a variable."""
+    if t.is_const() and t.name == name:
+        return Var(name, t.T)
+    if t.is_comb():
+        fun_t, arg_t = _const_as_var(name, t.fun), _const_as_var(name, t.arg)
+        return t if fun_t is t.fun and arg_t is t.arg else fun_t(arg_t)
+    if t.is_abs():
+        body_t = _const_as_var(name, t.body)
+        return t if body_t is t.body else Abs(t.var_name, t.var_T, body_t)
+    return t
+
+
+def _prints_def(name, t):
+    """Print a term that mentions the constant being defined.
+
+    The constant is not in the theory yet -- the items this call is about
+    to emit are what registers it -- and the printer looks a constant's
+    signature up, so printing such a term as it stands fails.  A variable
+    of the same name and type prints to the same text, and the parser that
+    reads the emitted item resolves that name to the constant, which
+    exists by then.
+    """
+    return _prints(_const_as_var(name, t))
+
 
 def _prints(t):
     with global_setting(unicode=True):
@@ -2609,17 +2653,35 @@ def _pred_names():
         yield 'P%d' % i
 
 
-def _case_var_names():
-    """Names to offer the case rule's variable, in order.
+def _reserve(names, *statement_names):
+    """Keep the allocator off the names a statement's free variables took.
 
-    The datatype case rule calls it `x` and the induction rule here calls
-    it `p`; the parameters of a definition are usually one of those, so
-    the numbered variants are what a definition over a variable `p` gets.
+    The proofs below introduce the pattern's variables with `_Names`,
+    which appends a count: a variable `x` is handed `x1`, `x2`, ... -- and
+    one of those may be a name the statement itself has as a free variable
+    (`filter`'s pattern is named `P`, and the case rule's predicate would
+    take `P1` right after).  Counting the statement's own allocations as
+    used is what keeps the two apart.
     """
-    yield 'p'
-    yield 'x'
+    for nm in statement_names:
+        base = nm.rstrip('0123456789')
+        if base != nm:
+            names.used[base] = max(names.used.get(base, 0),
+                                   int(nm[len(base):]))
+
+
+def _fresh_name(base, taken):
+    """`base`, or `base1`, `base2`, ... -- whichever no equation uses.
+
+    The free names of a generated rule's statement have to miss the
+    equations' variables: a pattern variable of the same name would
+    shadow the free one inside its own premise.
+    """
+    if base not in taken:
+        return base
     for i in itertools.count(1):
-        yield 'p%d' % i
+        if '%s%d' % (base, i) not in taken:
+            return '%s%d' % (base, i)
 
 
 def _pattern_vars_in(args):
@@ -2746,7 +2808,7 @@ def _cases_entry(cname, arg_types, eqs, lhs):
         for v in eq.get_vars():
             taken.add(v.name)
     pred_name = next(c for c in _pred_names() if c not in taken)
-    pname = next(c for c in _case_var_names() if c not in taken)
+    pname = _fresh_name('p', taken)
     P = Var(pred_name, TFun(Tup, BoolType))
     p = Var(pname, Tup)
     lines = ['theorem %s_cases' % cname,
@@ -2755,17 +2817,7 @@ def _cases_entry(cname, arg_types, eqs, lhs):
              'proof']
     prover = _Proof()
     names = _Names()
-    # The branch's `elim`s take their names from the pattern's variables,
-    # with `_Names` appending a count: a variable `P` is handed `P1`, `P2`,
-    # ... -- and one of those may be the name the predicate itself took
-    # (`filter` binds its predicate as `P`).  Counting the statement's own
-    # allocations as done is what keeps the two apart; the preemption
-    # `_induct_entry` does is the same rule, spelled out as a range.
-    for nm in (pred_name, pname):
-        base = nm.rstrip('0123456789')
-        if base != nm:
-            names.used[base] = max(names.used.get(base, 0),
-                                   int(nm[len(base):]))
+    _reserve(names, pred_name, pname)
     # The premises are the branch goals the rule leaves, and in this proof
     # they are facts: one per equation, in source order, at IDs 1..ng.
     g = prover.ids('\u2190 intro goal=0', ng + 1)[-1]
@@ -2795,6 +2847,154 @@ def _cases_entry(cname, arg_types, eqs, lhs):
 
     def split(goal, d, k, n):
         """`d` states `D_k ∨ ... ∨ D_{k+n-1}`; `goal` is `P p`."""
+        if n == 1:
+            return one(goal, d, k)
+        two = prover.ids('\u2190 rule disjE goal=%d facts=[%d]' % (goal, d), 2)
+        f1 = prover.ids('\u2190 intro goal=%d' % two[0], 2)
+        one(f1[1], f1[0], k)
+        f2 = prover.ids('\u2190 intro goal=%d' % two[1], 2)
+        split(f2[1], f2[0], k + 1, n - 1)
+
+    split(g, d, 0, ng)
+    lines.extend(prover.text())
+    lines.append('qed')
+    return lines
+
+
+def _elims_prop(name, arg_types, res_type, eqs, lhs, xs, y, P):
+    """`f x̄ = y ⟹ (⋀v̄₁. T = P₁ ⟹ y = R₁ ⟹ P) ⟹ ... ⟹ P`.
+
+    `T` is the tupled argument.  The first premise carries the function
+    application the rule is about, so a proof that has such an equation
+    applies the rule with it; each clause then says what the arguments are
+    where that clause fires and what its right hand side is there.
+    """
+    T = tupled_arg(xs)
+    f = Const(name, TFun(*(list(arg_types) + [res_type])))
+    prems = []
+    for k, args in enumerate(lhs):
+        body = P
+        body = Implies(Eq(y, eqs[k].rhs), body)
+        body = Implies(Eq(T, tupled_arg(args)), body)
+        for v in reversed(_pattern_vars_in(args)):
+            body = Forall(v, body)
+        prems.append(body)
+    return Implies(*(Eq(f(*xs), y),) + tuple(prems) + (P,))
+
+
+def _elims_entry(name, cname, arg_types, res_type, eqs, lhs):
+    """The `<c>_elims` item: the elimination rule and its proof.
+
+    `f x̄ = y ⟹ (⋀v̄₁. T = P₁ ⟹ y = R₁ ⟹ P) ⟹ ... ⟹ P`
+
+    Isabelle's `f.elims` (`Function/function_elims.ML`) with the sum type
+    left out: a proof that holds `f x̄ = y` learns from the rule which
+    clause fired, what the arguments are at that clause (`T = P_k`, with
+    the pattern's variables as the branch's own) and what the right hand
+    side is (`y = R_k`).  holpy has no `f.dom` -- partiality is not a
+    predicate here -- so there is no domain condition to drop, and the
+    rule is read back from `<c>_exhaustive` and the equation itself.
+
+    The proof, per branch: `<c>_exhaustive` gives the pattern instance,
+    the eliminated equation is carried to the clause's own variables
+    through the curried constant's definition (`f x̄ = <c>_in T`), and the
+    clause's equation is rewritten at those variables.  That is the result
+    equation in the direction the clause's right hand side reads, which is
+    what the premise states -- the cut is there to hand `apply_prev` a
+    fact of exactly that proposition, since rewriting produces the
+    other direction.
+    """
+    nargs = len(arg_types)
+    ng = len(eqs)
+    taken = set()
+    for eq in eqs:
+        for v in eq.get_vars():
+            taken.add(v.name)
+    arg_names = [_fresh_name('x%d' % (i + 1), taken) for i in range(nargs)]
+    yname = _fresh_name('y', taken)
+    pred_name = next(c for c in _pred_names() if c not in taken)
+    xs = [Var(nm, T) for nm, T in zip(arg_names, arg_types)]
+    y = Var(yname, res_type)
+    P = Var(pred_name, BoolType)
+    T = tupled_arg(xs)
+    lines = ['theorem %s_elims' % cname,
+             '  fixes %s' % _typenames(xs + [y, P]),
+             '  prop %s' % _prints_def(name, _elims_prop(
+                 name, arg_types, res_type, eqs, lhs, xs, y, P)),
+             'proof']
+    prover = _Proof()
+    names = _Names()
+    _reserve(names, *(arg_names + [yname, pred_name]))
+    # A right hand side may carry a binder (`strict_sorted`'s is
+    # `(∀y. ...) ∧ ...`), and the branch's own variables are substituted
+    # into it: a name the binder uses would then be captured -- printed
+    # as the bound variable, parsed the same way -- so the substitution
+    # gives those names a wide berth.
+    bound = set()
+    for eq in eqs:
+        bound |= _bound_names(eq.rhs)
+
+    def branch_name(base):
+        nm = names.alloc(base)
+        while nm in bound:
+            nm = names.alloc(base)
+        return nm
+
+    # The equation to eliminate is introduced first, one premise per
+    # equation after it, and the goal last.
+    g = prover.ids('\u2190 intro goal=0', ng + 2)[-1]
+    h = 1
+    prem = [2 + k for k in range(ng)]
+    # The one step of the bridge that does not depend on which clause
+    # fires -- `f x̄ = y` read through the curried constant's definition --
+    # belongs before the split: inside a branch it would be the same
+    # proposition as the branch before it, and a step whose proposition is
+    # already an item lays out no line at all.
+    h1 = prover.step('\u2192 rewrite %s_def target=fact goal=%d facts=[%d]'
+                     % (cname, g, h))
+    d = prover.step('\u2192 forward %s_exhaustive param_p="%s" goal=%d'
+                    % (cname, _arg_text(T), g))
+
+    def one(goal, exf, k):
+        """Clause k: `exf` states `T = pattern`, `goal` is `P`."""
+        env = {}
+        pvars = _pattern_vars_in(lhs[k])
+        for v in pvars:
+            nm = branch_name(v.name)
+            env[v.name] = Var(nm, v.T)
+            e = prover.ids('elim %s goal=%d facts=[%d]' % (nm, goal, exf), 3)
+            exf, goal = e[1], e[2]
+        # From here on every proposition names the branch's own variables,
+        # so no step repeats one the branch before it took.
+        h2 = prover.step('\u2192 rewrite source=prev target=fact goal=%d '
+                         'facts=[%d,%d]' % (goal, exf, h1))
+        h3 = prover.step('\u2192 rewrite %s_def sym=true target=fact goal=%d '
+                         'facts=[%d]' % (cname, goal, h2))
+        h4 = prover.step('\u2192 rewrite %s_def_%d target=fact goal=%d '
+                         'facts=[%d]' % (cname, k + 1, goal, h3))
+        # The premise wants `y = rhs`; what the rewrites produced is
+        # `rhs = y`.  Cutting `y = rhs` and rewriting the cut goal with
+        # the fact in hand turns it into an identity -- the rewrite closes
+        # the cut, and the fact it leaves is what the premise is applied
+        # with.  The proposition is printed rather than spelled out, so
+        # that a boolean right hand side is written the way the parser
+        # reads it back (`y ⟷ ¬(...)`, not `y = ¬(...)`).
+        cut = prover.step('cut "%s" goal=%d'
+                          % (_prints_def(name, Eq(y, _subst(eqs[k].rhs, env))),
+                             goal))
+        # The cut is a goal; closing it by the rewrite is what leaves the
+        # proposition as a fact, under the id that step creates.
+        cut_fact = prover.step('\u2190 rewrite source=prev goal=%d facts=[%d]'
+                               % (cut, h4))
+        inst = prem[k]
+        for v in pvars:
+            inst = prover.step('\u2190 inst "%s" goal=%d facts=[%d]'
+                               % (env[v.name].name, goal, inst))
+        prover.step('\u2190 apply_prev goal=%d facts=[%s]'
+                    % (goal, ",".join(str(x) for x in [inst, exf, cut_fact])))
+
+    def split(goal, d, k, n):
+        """`d` states `D_k ∨ ... ∨ D_{k+n-1}`; `goal` is `P`."""
         if n == 1:
             return one(goal, d, k)
         two = prover.ids('\u2190 rule disjE goal=%d facts=[%d]' % (goal, d), 2)
@@ -3623,6 +3823,16 @@ def _expand(data, declared=None):
             # of them by hand keeps its own.
             try:
                 entries.append(_entry(_cases_entry(cname, arg_types, eqs, lhs)))
+            except FunGenError:
+                pass
+        if ('%s_elims' % cname) not in declared:
+            # The elimination rule is read off the same disjunction plus
+            # the equations, so it stands or falls with them
+            # (`_elims_entry`); it is yielded on its own name like the case
+            # rule.
+            try:
+                entries.append(_entry(_elims_entry(
+                    name, cname, arg_types, res_type, eqs, lhs)))
             except FunGenError:
                 pass
         try:

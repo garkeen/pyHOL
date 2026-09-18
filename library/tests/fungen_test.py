@@ -128,29 +128,31 @@ class FunGenLibraryTest(unittest.TestCase):
             self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
 
     def test_every_expanded_fun_has_its_rules(self):
-        """The three rules of a definition are part of its expansion, holes
+        """The four rules of a definition are part of its expansion, holes
         or not.
 
         A definition whose equations leave an input out still states all
-        three: the catchall `= undefined` equation the subtraction adds
+        four: the catchall `= undefined` equation the subtraction adds
         (`dbl`'s `dbl 1 = undefined`, `the`'s `the None = undefined`) makes
         the equation set exhaustive, so the coverage disjunction is provable
-        and both readers of it -- the case rule and the induction rule --
-        hang off it, which is what Isabelle's `add_catchall` buys there too.
+        and its three readers -- the case rule, the elimination rule and the
+        induction rule -- hang off it, which is what Isabelle's
+        `add_catchall` buys there too.
 
         A name missing here means a definition kept its equations but lost
         the rules: `_fun_items` drops them when the coverage theorem
         cannot be closed, and nothing else in this suite would notice.  The
         exception is a rule the file states by hand (`nat.pyhol` has
         `nat_less_induct`): the emitter yields to the written one and then
-        emits neither the coverage theorem nor the case rule.
+        emits neither the coverage theorem nor the case and elimination
+        rules.
         """
         import io
         import os
         from core import basic as _basic
         theories = ['expr', 'gcl', 'list', 'measure_example', 'lists_ex',
                     'multiset', 'nat', 'option', 'prod', 'real',
-                    'realderivative', 'wfrec_example']
+                    'realderivative', 'rules_example', 'wfrec_example']
         missing, total = [], 0
         for thy in theories:
             for fn in _basic.get_import_order([thy]):
@@ -169,7 +171,7 @@ class FunGenLibraryTest(unittest.TestCase):
                 if ('theorem %s_induct\n' % cname) in source \
                         or ('theorem %s_exhaustive\n' % cname) in source:
                     continue
-                for kind in ('exhaustive', 'cases', 'induct'):
+                for kind in ('exhaustive', 'cases', 'elims', 'induct'):
                     name = '%s_%s' % (cname, kind)
                     if name not in names:
                         missing.append('%s/%s' % (thy, name))
@@ -224,10 +226,9 @@ class FunGenLibraryTest(unittest.TestCase):
             self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
 
     def test_the_case_rule_is_usable(self):
-        """`<c>_cases` splits by the definition's clauses, and a proof
-        consumes it.
+        """The rules the expansion emits are consumed, not just stated.
 
-        The rule has a datatype case rule's shape, so the `type_cases`
+        The case rule has a datatype case rule's shape, so the `type_cases`
         method with `cases_thm` naming it drives the split -- no tactic of
         its own.  The hypotheses have to stay in the goal while the split
         happens (a fact already introduced is not substituted into the
@@ -237,18 +238,53 @@ class FunGenLibraryTest(unittest.TestCase):
 
         Those two theorems were stated as axioms before the case rule
         existed and are proved by it now, so a definition whose clause
-        shape stops matching its own rule shows up here.  `filter` is the
-        other shape worth replaying: its pattern binds `P`, the name the
-        predicate would take first.
+        shape stops matching its own rule shows up here.
         """
         from core.verify import COMPUTATION_ORACLES, _replay
         from core import context
         from kernel import theory
-        for thy, name in [('list', 'filter_cases'),
-                          ('nat', 'nat_plus_cases'),
-                          ('gcl', 'scalar_of_nat_cases'),
+        for thy, name in [('gcl', 'scalar_of_nat_cases'),
                           ('gcl', 'scalar_of_nat_id'),
                           ('gcl', 'scalar_of_bool_id')]:
+            item = self._by_name(name, thy)
+            self.assertIsNotNone(item, 'missing %s' % name)
+            self.assertEqual(item.ty, 'thm', '%s is not a theorem' % name)
+            self.assertTrue(item.steps, '%s has no proof' % name)
+            with theory.fresh_theory():
+                context.set_context(thy, limit=('thm', name),
+                                    vars=dict(item.vars) if item.vars else {})
+                gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
+            self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
+
+    def test_the_rules_replay_their_shapes(self):
+        """One shape per way the emitted rules can go wrong.
+
+        The two rules split by the definition's clauses, so the shapes
+        that matter are the ones the clauses can have: a hole (`the`),
+        a nested pattern (`drop2`), three clauses with two arguments
+        (`lexnat`), a pattern that binds the predicate's own name
+        (`filter`), a right hand side with a binder (`strict_sorted`, the
+        one place the substitution has to go under a quantifier), boolean
+        clauses whose propositions print with `⟷` (`distinct`, `gb`), and
+        two clauses with no variable at all before a third -- where the
+        branches repeat their propositions and a step that lays out no
+        line shifts every literal ID after it (`gz`).
+        """
+        from core.verify import COMPUTATION_ORACLES, _replay
+        from core import context
+        from kernel import theory
+        for thy, name in [('option', 'the_elims'), ('option', 'the_cases'),
+                          ('measure_example', 'drop2_elims'),
+                          ('measure_example', 'lexnat_elims'),
+                          ('measure_example', 'exdrop_elims'),
+                          ('list', 'filter_elims'), ('list', 'distinct_elims'),
+                          ('list', 'hd_elims'),
+                          ('lists_ex', 'strict_sorted_elims'),
+                          ('lists_ex', 'sorted_elims'),
+                          ('rules_example', 'gz_elims'),
+                          ('rules_example', 'gr_elims'),
+                          ('rules_example', 'gb_elims'),
+                          ('rules_example', 'gb_cases')]:
             item = self._by_name(name, thy)
             self.assertIsNotNone(item, 'missing %s' % name)
             self.assertEqual(item.ty, 'thm', '%s is not a theorem' % name)
