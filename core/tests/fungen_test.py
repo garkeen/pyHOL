@@ -525,6 +525,95 @@ class FunGenTest(unittest.TestCase):
         # a single recursive argument never reaches this path).
         self.assertEqual(fungen._disjunct_chain(1, 0), [])
 
+    def test_cases_entry_reads_the_coverage_backwards(self):
+        """The case rule is the coverage theorem's content, consumed.
+
+        `<c>_exhaustive` says the input is some instance of a pattern;
+        `<c>_cases` is that disjunction read as a rule -- one premise per
+        equation, applied at the very variables `elim` takes off the
+        disjunct.  It is the shape a datatype's `<ty>_cases` has
+        (`defcheck.datatype_axioms`), so `type_cases` with `cases_thm`
+        naming it consumes it the same way: the predicate is instantiated
+        with the goal and the case variable with the expression to split.
+
+        The step sequence below is the one the emitted `wfgen_cases`
+        carries, ID for ID: `intro` lays the premises out at IDs 1..ng
+        with the goal after them, `forward` brings the disjunction in, and
+        a branch eliminates its disjunct's witnesses and instantiates its
+        own premise at exactly those variables -- the `inst` that closes
+        `_induct_entry`'s branches, without the induction hypotheses and
+        the decrease obligations.
+        """
+        ty = TFun(NatType, TFun(NatType, NatType))
+        arg_types, res_type, r, eqs = self._plan('wfgen', ty, [
+            'wfgen 0 n = n',
+            'wfgen (Suc m) n = Suc (wfgen m n)'])
+        lhs = [fungen._eq_args(eq) for eq in eqs]
+        lines = fungen._cases_entry('wfgen', arg_types, eqs, lhs)
+        self.assertEqual(lines[0:3], [
+            'theorem wfgen_cases',
+            '  fixes P :: nat × nat ⇒ bool, p :: nat × nat',
+            '  prop (∀n. P (Pair 0 n)) ⟶ (∀m. ∀n. P (Pair (Suc m) n))'
+            ' ⟶ P p'])
+        self.assertEqual(lines[3:], [
+            'proof',
+            '  ← intro goal=0',
+            '  → forward wfgen_exhaustive param_p=p goal=3',
+            '  ← rule disjE goal=3 facts=[4]',
+            '  ← intro goal=5',
+            '  elim n1 goal=8 facts=[7]',
+            '  ← inst "n1" goal=11 facts=[1]',
+            '  ← rewrite source=prev goal=11 facts=[10]',
+            '  ← intro goal=6',
+            '  elim m1 goal=14 facts=[13]',
+            '  elim n2 goal=17 facts=[16]',
+            '  ← inst "m1" goal=20 facts=[2]',
+            '  ← inst "n2" goal=20 facts=[21]',
+            '  ← rewrite source=prev goal=20 facts=[19]',
+            'qed'])
+
+    def test_the_case_rule_yields_to_a_written_one(self):
+        """A file that states `<c>_cases` itself keeps its own.
+
+        The generator asks the same question the loader will: the name is
+        taken, so the emitted rule would be a second item of that name and
+        the file's own is the one the rest of the file was written
+        against.  Each rule is yielded on its own name, so a file that
+        writes only the case rule keeps the coverage and induction rules.
+        """
+        rules = [{'prop': 'wfgen 0 n = n'},
+                 {'prop': 'wfgen (Suc m) n = Suc (wfgen m n)'}]
+        data = {'ty': 'def.ind', 'name': 'wfgen',
+                'type': 'nat ⇒ nat ⇒ nat', 'rules': rules}
+        names = [item['name'] for item in fungen._expand(dict(data))]
+        self.assertIn('wfgen_cases', names)
+        self.assertIn('wfgen_exhaustive', names)
+        self.assertIn('wfgen_induct', names)
+        names = [item['name'] for item in
+                 fungen._expand(dict(data), declared={'wfgen_cases'})]
+        self.assertNotIn('wfgen_cases', names)
+        self.assertIn('wfgen_exhaustive', names)
+
+    def test_the_case_rule_avoids_the_patterns_own_names(self):
+        """The predicate and the case variable miss the equations' names.
+
+        Both are free in the statement, so a pattern variable of the same
+        name would shadow them inside its premise; and the names the
+        proof's `elim`s are handed are those variables with a count
+        appended, so one of *those* may be the name the predicate took
+        (`filter` binds its predicate as `P`, and the first elimination
+        there would want `P1`).  A definition whose pattern binds `P`
+        therefore gets `P1` for the predicate and `P2` for the
+        elimination.
+        """
+        arg_types, res_type, r, eqs = self._plan(
+            'g', TFun(NatType, NatType), ['g 0 = 0', 'g (Suc P) = P'])
+        lhs = [fungen._eq_args(eq) for eq in eqs]
+        lines = fungen._cases_entry('g', arg_types, eqs, lhs)
+        self.assertEqual(lines[1], '  fixes P1 :: nat ⇒ bool, p :: nat')
+        self.assertEqual(lines[2], '  prop P1 0 ⟶ (∀P. P1 (Suc P)) ⟶ P1 p')
+        self.assertIn('  elim P2 goal=', '\n'.join(lines))
+
     def test_clause_decides_the_structural_check(self):
         """A relation or a measure replaces the structural check.
 

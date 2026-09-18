@@ -88,13 +88,13 @@ class FunGenLibraryTest(unittest.TestCase):
         are statable.  The same subtraction runs here, which is why `hd [] =
         undefined`, `tl [] = undefined` and `the None = undefined` are
         equations of these definitions rather than holes the generator walks
-        around -- and why both rules are emitted for them, and replayed here.
-        `dbl`, `drop2` and `exdrop` are the harder half: their hole is `Suc 0`,
-        which differs from the equation next to it only *inside* the `Suc`, so
-        the branch that rules it out peels that constructor with its injectivity
-        first (`_pattern_neq`) -- and `exdrop` goes through a user-written
-        relation and descent lemma, whose rule lays out a line in an induction
-        branch just as a comparison lemma does.
+        around -- and why all three rules are emitted for them, and replayed
+        here.  `dbl`, `drop2` and `exdrop` are the harder half: their hole is
+        `Suc 0`, which differs from the equation next to it only *inside* the
+        `Suc`, so the branch that rules it out peels that constructor with its
+        injectivity first (`_pattern_neq`) -- and `exdrop` goes through a
+        user-written relation and descent lemma, whose rule lays out a line in
+        an induction branch just as a comparison lemma does.
         """
         from core.verify import COMPUTATION_ORACLES, _replay
         from core import context
@@ -107,6 +107,11 @@ class FunGenLibraryTest(unittest.TestCase):
                           ('list', 'hd_exhaustive'), ('list', 'tl_induct'),
                           ('list', 'last_induct'), ('option', 'the_exhaustive'),
                           ('option', 'the_induct'),
+                          ('list', 'hd_cases'), ('list', 'last_cases'),
+                          ('option', 'the_cases'),
+                          ('measure_example', 'dbl_cases'),
+                          ('measure_example', 'drop2_cases'),
+                          ('measure_example', 'exdrop_cases'),
                           ('measure_example', 'dbl_exhaustive'),
                           ('measure_example', 'dbl_induct'),
                           ('measure_example', 'drop2_induct'),
@@ -122,23 +127,23 @@ class FunGenLibraryTest(unittest.TestCase):
                 gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
             self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
 
-    def test_every_expanded_fun_has_both_rules(self):
-        """The two rules of a definition are part of its expansion, holes
+    def test_every_expanded_fun_has_its_rules(self):
+        """The three rules of a definition are part of its expansion, holes
         or not.
 
-        A definition whose equations leave an input out still states both:
-        the catchall `= undefined` equation the subtraction adds (`dbl`'s
-        `dbl 1 = undefined`, `the`'s `the None = undefined`) makes the
-        equation set exhaustive, so the coverage disjunction is provable
-        and the induction rule hangs off it -- which is what Isabelle's
-        `add_catchall` buys there too.
+        A definition whose equations leave an input out still states all
+        three: the catchall `= undefined` equation the subtraction adds
+        (`dbl`'s `dbl 1 = undefined`, `the`'s `the None = undefined`) makes
+        the equation set exhaustive, so the coverage disjunction is provable
+        and both readers of it -- the case rule and the induction rule --
+        hang off it, which is what Isabelle's `add_catchall` buys there too.
 
         A name missing here means a definition kept its equations but lost
-        the rules: `_fun_items` drops both when the coverage theorem
+        the rules: `_fun_items` drops them when the coverage theorem
         cannot be closed, and nothing else in this suite would notice.  The
         exception is a rule the file states by hand (`nat.pyhol` has
         `nat_less_induct`): the emitter yields to the written one and then
-        emits neither.
+        emits neither the coverage theorem nor the case rule.
         """
         import io
         import os
@@ -164,7 +169,7 @@ class FunGenLibraryTest(unittest.TestCase):
                 if ('theorem %s_induct\n' % cname) in source \
                         or ('theorem %s_exhaustive\n' % cname) in source:
                     continue
-                for kind in ('exhaustive', 'induct'):
+                for kind in ('exhaustive', 'cases', 'induct'):
                     name = '%s_%s' % (cname, kind)
                     if name not in names:
                         missing.append('%s/%s' % (thy, name))
@@ -212,6 +217,42 @@ class FunGenLibraryTest(unittest.TestCase):
                           ('list', 'zip_def_2')]:
             item = self._by_name(name, thy)
             self.assertIsNotNone(item, 'no generated item %s' % name)
+            with theory.fresh_theory():
+                context.set_context(thy, limit=('thm', name),
+                                    vars=dict(item.vars) if item.vars else {})
+                gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
+            self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
+
+    def test_the_case_rule_is_usable(self):
+        """`<c>_cases` splits by the definition's clauses, and a proof
+        consumes it.
+
+        The rule has a datatype case rule's shape, so the `type_cases`
+        method with `cases_thm` naming it drives the split -- no tactic of
+        its own.  The hypotheses have to stay in the goal while the split
+        happens (a fact already introduced is not substituted into the
+        branches: lines are immutable), which is why the two `gcl` proofs
+        below split before they `intro` and why the guard rides along
+        inside each branch's goal.
+
+        Those two theorems were stated as axioms before the case rule
+        existed and are proved by it now, so a definition whose clause
+        shape stops matching its own rule shows up here.  `filter` is the
+        other shape worth replaying: its pattern binds `P`, the name the
+        predicate would take first.
+        """
+        from core.verify import COMPUTATION_ORACLES, _replay
+        from core import context
+        from kernel import theory
+        for thy, name in [('list', 'filter_cases'),
+                          ('nat', 'nat_plus_cases'),
+                          ('gcl', 'scalar_of_nat_cases'),
+                          ('gcl', 'scalar_of_nat_id'),
+                          ('gcl', 'scalar_of_bool_id')]:
+            item = self._by_name(name, thy)
+            self.assertIsNotNone(item, 'missing %s' % name)
+            self.assertEqual(item.ty, 'thm', '%s is not a theorem' % name)
+            self.assertTrue(item.steps, '%s has no proof' % name)
             with theory.fresh_theory():
                 context.set_context(thy, limit=('thm', name),
                                     vars=dict(item.vars) if item.vars else {})

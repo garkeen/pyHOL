@@ -2609,6 +2609,19 @@ def _pred_names():
         yield 'P%d' % i
 
 
+def _case_var_names():
+    """Names to offer the case rule's variable, in order.
+
+    The datatype case rule calls it `x` and the induction rule here calls
+    it `p`; the parameters of a definition are usually one of those, so
+    the numbered variants are what a definition over a variable `p` gets.
+    """
+    yield 'p'
+    yield 'x'
+    for i in itertools.count(1):
+        yield 'p%d' % i
+
+
 def _pattern_vars_in(args):
     """The Vars a pattern's arguments bind, in order of appearance.
 
@@ -2679,6 +2692,121 @@ def _induct_prop(arg_types, lhs, calls, P=None):
     for pre in reversed(prems):
         res = Implies(pre, res)
     return res
+
+
+def _cases_prop(lhs, P, p):
+    """`(⋀v̄₁. P P₁) ⟹ ... ⟹ P p`, one premise per equation.
+
+    A datatype's case rule has this shape (`defcheck.datatype_axioms`):
+    the predicate is a variable the consumer instantiates with the goal,
+    and the conclusion is about an arbitrary `p`.  Each premise binds
+    exactly the variables its pattern has, so a branch of the rule is the
+    goal at one clause of the definition, and instantiating the premise's
+    variables is what turns it into that branch.
+    """
+    prems = []
+    for args in lhs:
+        body = P(tupled_arg(args))
+        for v in reversed(_pattern_vars_in(args)):
+            body = Forall(v, body)
+        prems.append(body)
+    res = P(p)
+    for pre in reversed(prems):
+        res = Implies(pre, res)
+    return res
+
+
+def _cases_entry(cname, arg_types, eqs, lhs):
+    """The `<c>_cases` item: the definition's own case rule and its proof.
+
+    `(⋀v̄₁. P P₁) ⟹ ... ⟹ (⋀v̄ₙ. P Pₙ) ⟹ P p`
+
+    A datatype states the same theorem for its constructors
+    (`defcheck.datatype_axioms`), and the same consumer reads both: the
+    `type_cases` method with `cases_thm` naming this theorem instead of
+    the type's own.  The difference is what the branches are -- the
+    *definition's* clauses, nested patterns and the `= undefined` equation
+    of a hole included, rather than the constructor list -- which is what
+    a proof about the function wants and what a datatype split cannot give
+    (`drop2`'s `Suc 0` is a branch of its own here and none at all there).
+
+    The proof reads the coverage disjunction the other way round:
+    `<c>_exhaustive` gives `p` as some instance of a pattern, `disjE` and
+    `elim` hand each branch that equation and the pattern's variables, and
+    the branch's premise is applied at exactly those variables -- the
+    `inst` + `apply_prev` closing the induction rule's own branches use.
+    """
+    Tup = tupled_type(arg_types)
+    ng = len(eqs)
+    # The predicate's name and the case variable's have to be names no
+    # equation uses: they are free in the statement, and a pattern variable
+    # of the same name would shadow them inside its premise.
+    taken = set()
+    for eq in eqs:
+        for v in eq.get_vars():
+            taken.add(v.name)
+    pred_name = next(c for c in _pred_names() if c not in taken)
+    pname = next(c for c in _case_var_names() if c not in taken)
+    P = Var(pred_name, TFun(Tup, BoolType))
+    p = Var(pname, Tup)
+    lines = ['theorem %s_cases' % cname,
+             '  fixes %s' % _typenames([P, p]),
+             '  prop %s' % _prints(_cases_prop(lhs, P, p)),
+             'proof']
+    prover = _Proof()
+    names = _Names()
+    # The branch's `elim`s take their names from the pattern's variables,
+    # with `_Names` appending a count: a variable `P` is handed `P1`, `P2`,
+    # ... -- and one of those may be the name the predicate itself took
+    # (`filter` binds its predicate as `P`).  Counting the statement's own
+    # allocations as done is what keeps the two apart; the preemption
+    # `_induct_entry` does is the same rule, spelled out as a range.
+    for nm in (pred_name, pname):
+        base = nm.rstrip('0123456789')
+        if base != nm:
+            names.used[base] = max(names.used.get(base, 0),
+                                   int(nm[len(base):]))
+    # The premises are the branch goals the rule leaves, and in this proof
+    # they are facts: one per equation, in source order, at IDs 1..ng.
+    g = prover.ids('\u2190 intro goal=0', ng + 1)[-1]
+    prem = list(range(1, ng + 1))
+    d = prover.step('\u2192 forward %s_exhaustive param_p=%s goal=%d'
+                    % (cname, pname, g))
+
+    def one(goal, exf, k):
+        """Equation k: `exf` states its disjunct, `goal` is `P p`."""
+        env = {}
+        pvars = _pattern_vars_in(lhs[k])
+        for v in pvars:
+            nm = names.alloc(v.name)
+            env[v.name] = Var(nm, v.T)
+            e = prover.ids('elim %s goal=%d facts=[%d]' % (nm, goal, exf), 3)
+            exf, goal = e[1], e[2]
+        # The premise instantiated at the branch's own variables is the
+        # goal's proposition after the equation has been used, so the
+        # rewrite that substitutes it closes the goal on that item by
+        # itself and lays out no line of its own.
+        inst = prem[k]
+        for v in pvars:
+            inst = prover.step('\u2190 inst "%s" goal=%d facts=[%d]'
+                               % (env[v.name].name, goal, inst))
+        prover.step('\u2190 rewrite source=prev goal=%d facts=[%d]'
+                    % (goal, exf), new=0)
+
+    def split(goal, d, k, n):
+        """`d` states `D_k ∨ ... ∨ D_{k+n-1}`; `goal` is `P p`."""
+        if n == 1:
+            return one(goal, d, k)
+        two = prover.ids('\u2190 rule disjE goal=%d facts=[%d]' % (goal, d), 2)
+        f1 = prover.ids('\u2190 intro goal=%d' % two[0], 2)
+        one(f1[1], f1[0], k)
+        f2 = prover.ids('\u2190 intro goal=%d' % two[1], 2)
+        split(f2[1], f2[0], k + 1, n - 1)
+
+    split(g, d, 0, ng)
+    lines.extend(prover.text())
+    lines.append('qed')
+    return lines
 
 
 def _coverage_entry(cname, arg_types, eqs, lhs):
@@ -3467,7 +3595,9 @@ def _expand(data, declared=None):
     # `nat_less_induct`, `wfrec_example` has `wfx_induct` as the shape to
     # generate).  The written one wins: emitting a second theorem of the
     # same name is an item the loader refuses, and the hand-written one is
-    # the one the rest of the file was written against.
+    # the one the rest of the file was written against.  The case rule is
+    # yielded on its own name below, so a file that writes only one of the
+    # three keeps the other two.
     declared = declared or set()
     if ('%s_exhaustive' % cname) in declared or ('%s_induct' % cname) in declared:
         return entries
@@ -3486,6 +3616,15 @@ def _expand(data, declared=None):
         # assumption -- a regression, not a refusal.
         pass
     else:
+        if ('%s_cases' % cname) not in declared:
+            # The case rule is the coverage theorem's content in the shape
+            # a case split consumes (see `_cases_entry`), so it is emitted
+            # exactly where that theorem is -- and a file that states one
+            # of them by hand keeps its own.
+            try:
+                entries.append(_entry(_cases_entry(cname, arg_types, eqs, lhs)))
+            except FunGenError:
+                pass
         try:
             entries.append(_entry(_induct_entry(
                 name, cname, arg_types, res_type, eqs, positions, calls, dmap,

@@ -29,7 +29,43 @@ fun scalar_of_bool :: scalarValue ⇒ bool
 theorem scalar_of_nat_id
   fixes s :: scalarValue
   prop scalar_is_nat s ⟶ NatV (scalar_of_nat s) = s
+proof
+  ← type_cases s cases_thm=scalar_of_nat_cases goal=0
+    #[1] !n. scalar_is_nat (NatV n) --> NatV (scalar_of_nat (NatV n)) = NatV n
+    #[2] !b. scalar_is_nat (BoolV b) --> NatV (scalar_of_nat (BoolV b)) = BoolV b
+  ← intro n goal=1
+    #[3] _VAR n
+    #[4] scalar_is_nat (NatV n)
+    #[5] NatV (scalar_of_nat (NatV n)) = NatV n
+  ← rewrite scalar_of_nat_def_1 goal=5
+    #[6] NatV (scalar_of_nat (NatV n)) = NatV n
+  ← intro b goal=2
+    #[7] _VAR b
+    #[8] scalar_is_nat (BoolV b)
+    #[9] NatV (scalar_of_nat (BoolV b)) = BoolV b
+  → rewrite scalar_is_nat_def_2 target=fact goal=9 facts=[8]
+    #[10] false
+  ← rule falseE goal=9 facts=[10]
+qed
 
 theorem scalar_of_bool_id
   fixes s :: scalarValue
   prop scalar_is_bool s ⟶ BoolV (scalar_of_bool s) = s
+proof
+  ← type_cases s cases_thm=scalar_of_bool_cases goal=0
+    #[1] !n. scalar_is_bool (NatV n) --> BoolV (scalar_of_bool (NatV n)) = NatV n
+    #[2] !b. scalar_is_bool (BoolV b) --> BoolV (scalar_of_bool (BoolV b)) = BoolV b
+  ← intro n goal=1
+    #[3] _VAR n
+    #[4] scalar_is_bool (NatV n)
+    #[5] BoolV (scalar_of_bool (NatV n)) = NatV n
+  → rewrite scalar_is_bool_def_1 target=fact goal=5 facts=[4]
+    #[6] false
+  ← rule falseE goal=5 facts=[6]
+  ← intro b goal=2
+    #[7] _VAR b
+    #[8] scalar_is_bool (BoolV b)
+    #[9] BoolV (scalar_of_bool (BoolV b)) = BoolV b
+  ← rewrite scalar_of_bool_def_2 goal=9
+    #[10] BoolV (scalar_of_bool (BoolV b)) = BoolV b
+qed
