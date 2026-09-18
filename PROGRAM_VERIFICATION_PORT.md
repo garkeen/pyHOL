@@ -153,15 +153,18 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
   `type_cases` 要一个**变量**，多参数定义得给元组变量。
 
 **验收（已过）**：`library/gcl.pyhol` 的 `scalar_of_nat_id` / `scalar_of_bool_id` 原是两条公理，
-现在用 `type_cases s cases_thm=scalar_of_{nat,bool}_cases` 分割后证明（`check_item.py` 独立重放 VALID）。
+现在用 `type_cases s cases_thm=scalar_of_{nat,bool}_cases` 分割后证明；消去规则的用法是
+`rule <c>_elims facts=[<方程>]`（`library/rules_example.pyhol` 的 `gz_value_shape`），
+两条都由 `check_item.py` 独立重放 VALID。
 
-**未做**：
+**余下（可选）**：
 
-- `fun_cases`：伊莎贝尔那层（`fun_cases.ML`，62 行）把 elim 规则特化到一条给定实例上
-  （`f x̄ = y` 或布尔式的 `f x̄`）。前提是前面那套 case 化简已存在，现在有了。
+- `fun_cases`（`fun_cases.ML`，62 行）在伊莎贝尔里是把 elim 规则**特化到一条给定实例**上，
+  因为那边的 `cases` 方法要一条现成规则；holpy 的 `rule` 直接吃 `facts=[<方程>]`（上面那条验收），
+  所以这层不需要——真要做，也只是把它包成一条 `fun_cases` 方法。
 - 布尔返回类型的两条**特化**规则（`f x̄` 与 `¬ f x̄` 作前提，`mk_bool_elims` 用 `eq_boolI`
   特化）：通用规则对布尔值定义同样工作（`rules_example` 的 `gb_elims` 在重放清单里），
-  特化只是省掉用户手里那个 `= y`。
+  特化只是省掉用户自己把 `f x̄` 化成 `f x̄ = true`。
 
 ### 阶段 8：`partial_function`
 

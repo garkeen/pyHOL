@@ -238,14 +238,18 @@ class FunGenLibraryTest(unittest.TestCase):
 
         Those two theorems were stated as axioms before the case rule
         existed and are proved by it now, so a definition whose clause
-        shape stops matching its own rule shows up here.
+        shape stops matching its own rule shows up here.  The elimination
+        rule needs no consumer of its own: `rule <c>_elims facts=[<the
+        equation>]` takes the equation straight, and `gz_value_shape` is a
+        proof that does it.
         """
         from core.verify import COMPUTATION_ORACLES, _replay
         from core import context
         from kernel import theory
         for thy, name in [('gcl', 'scalar_of_nat_cases'),
                           ('gcl', 'scalar_of_nat_id'),
-                          ('gcl', 'scalar_of_bool_id')]:
+                          ('gcl', 'scalar_of_bool_id'),
+                          ('rules_example', 'gz_value_shape')]:
             item = self._by_name(name, thy)
             self.assertIsNotNone(item, 'missing %s' % name)
             self.assertEqual(item.ty, 'thm', '%s is not a theorem' % name)
