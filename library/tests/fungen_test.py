@@ -89,15 +89,29 @@ class FunGenLibraryTest(unittest.TestCase):
         undefined`, `tl [] = undefined` and `the None = undefined` are
         equations of these definitions rather than holes the generator walks
         around -- and why both rules are emitted for them, and replayed here.
+        `dbl`, `drop2` and `exdrop` are the harder half: their hole is `Suc 0`,
+        which differs from the equation next to it only *inside* the `Suc`, so
+        the branch that rules it out peels that constructor with its injectivity
+        first (`_pattern_neq`) -- and `exdrop` goes through a user-written
+        relation and descent lemma, whose rule lays out a line in an induction
+        branch just as a comparison lemma does.
         """
         from core.verify import COMPUTATION_ORACLES, _replay
         from core import context
         from kernel import theory
         for thy, name in [('list', 'hd_def_2'), ('list', 'tl_def_2'),
                           ('list', 'last_def_2'), ('option', 'the_def_2'),
+                          ('measure_example', 'dbl_def_3'),
+                          ('measure_example', 'drop2_def_3'),
+                          ('measure_example', 'exdrop_def_3'),
                           ('list', 'hd_exhaustive'), ('list', 'tl_induct'),
                           ('list', 'last_induct'), ('option', 'the_exhaustive'),
-                          ('option', 'the_induct')]:
+                          ('option', 'the_induct'),
+                          ('measure_example', 'dbl_exhaustive'),
+                          ('measure_example', 'dbl_induct'),
+                          ('measure_example', 'drop2_induct'),
+                          ('measure_example', 'exdrop_exhaustive'),
+                          ('measure_example', 'exdrop_induct')]:
             item = self._by_name(name, thy)
             self.assertIsNotNone(item, 'missing %s' % name)
             self.assertEqual(item.ty, 'thm', '%s is not a theorem' % name)

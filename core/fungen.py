@@ -670,12 +670,12 @@ def _subtract_pattern(eq, other, used):
 def _chain_separable(arg_types, eqs):
     """Whether the branch chain can rule these equations out of one another.
 
-    A branch refutes an earlier equation's test with the *top-level*
-    constructor the two patterns disagree on at some position they both
-    constrain (`_condition_negation`).  Two patterns that differ only deeper --
-    `dbl (Suc 0)` against `dbl (Suc (Suc n))`, the shape a hole in a `nat`
-    leaves behind -- would need the constructor's injectivity to be peeled
-    first, which the refutation does not do, so such a set cannot be emitted.
+    A branch refutes an earlier equation's test at a position both equations
+    constrain, and `_pattern_neq` gets there from the two patterns' own
+    constructors -- peeling one level with a constructor's injectivity when
+    they share it.  Two patterns that agree at every such position, or that
+    meet a *variable* where the other carries a constructor, cannot be told
+    apart at all, and then the emission would fail.
     """
     lhs = [_eq_args(eq) for eq in eqs]
     positions = recursion_positions(arg_types, lhs)
@@ -683,9 +683,7 @@ def _chain_separable(arg_types, eqs):
         here = _pattern_positions(lhs[i], positions)
         for j in range(i):
             for pos in _pattern_positions(lhs[j], positions):
-                if (pos in here
-                        and _constr_name(lhs[j], pos)
-                        != _constr_name(lhs[i], pos)):
+                if pos in here and _patterns_differ(lhs[j][pos], lhs[i][pos]):
                     break
             else:
                 return False
@@ -1396,7 +1394,7 @@ def _unfold_is_the_equality(arg_types, r, tcall, p, eq_tuple):
 
 
 def _given_obligation(prover, arg_types, r, relation, tcall, tup, descent, g,
-                      name, i, used):
+                      name, i, used, lines=False):
     """One call's decrease obligation, discharged from the user's lemmas.
 
     The proposition is the relation applied to the call and to the
@@ -1406,6 +1404,11 @@ def _given_obligation(prover, arg_types, r, relation, tcall, tup, descent, g,
     *statement*, so the user does not have to list them in call order; a
     call no lemma covers is an error naming the obligation, and a lemma no
     call uses is an error naming the lemma.
+
+    Returns the stable ID of the fact that closes the goal, which is the cut
+    itself where the lemma closes its goal in place (`_def_entry`'s goals
+    carry no hypotheses) and the item the lemma lays out where it does not
+    (an induction branch, as in `_emit_closing`).  `lines` says which.
     """
     call = _proj_term(arg_types, r, tcall)
     pat = _proj_term(arg_types, r, tup)
@@ -1413,8 +1416,10 @@ def _given_obligation(prover, arg_types, r, relation, tcall, tup, descent, g,
     c = prover.step('cut "%s" goal=%d' % (_prints(prop), g))
     for lemma in descent:
         if _lemma_states(lemma, prop):
-            prover.step('← rule %s goal=%d' % (lemma, c), new=0)
             used.add(lemma)
+            if lines:
+                return prover.step('← rule %s goal=%d' % (lemma, c))
+            prover.step('← rule %s goal=%d' % (lemma, c), new=0)
             return c
     raise FunGenError(
         'fun %s: equation %d: no `descent` lemma states the obligation %s'
@@ -1537,85 +1542,178 @@ def _conj_of(tests):
     return res
 
 
-def _refute_test(prover, arg_types, pos, eqs, i, j, test, g):
-    """A fact that equation j's test at position `pos` fails in branch i.
+def _patterns_differ(t1, t2):
+    """Whether two constructor patterns can be told apart by their constructors.
 
-    The test is refuted from that datatype's distinctness axiom: the axiom
-    is instantiated with this branch's own terms (its pattern's arguments
-    on one side, the witness the test binds on the other), flipped when it
-    reads the other way round, and handed out either directly (the test is
-    an equality, so the axiom's instance *is* its negation) or through a
-    goal of its own (`negI` turns the negation into `test ==> false`,
-    `intro` takes the test as a hypothesis, `elim` its witness, and
-    `negE_gen` closes with both).
-
-    The fact is a fact of the goal `g` it is handed into, which is what
-    lets the caller either rewrite the branch condition with it (one
-    position) or use it inside the cut that builds the conjunction's
-    negation (several).
+    `C a` and `D b` differ when the constructors do; `C a` and `C b` when one
+    of their argument pairs does.  A variable takes any value, so a pattern
+    that is one cannot be refuted this way -- which is also the shape a hole
+    is left alone for rather than filled (`_chain_separable`).
     """
-    cj = _constr_name(_eq_args(eqs[j]), pos)
-    ci = _constr_name(_eq_args(eqs[i]), pos)
-    th_name, th = _distinct_neq(arg_types[pos].name, cj, ci)
+    if t1.is_var() or t2.is_var():
+        return False
+    h1, a1 = t1.strip_comb()
+    h2, a2 = t2.strip_comb()
+    if not (h1.is_const() and h2.is_const()):
+        return False
+    if h1.name != h2.name or len(a1) != len(a2):
+        return True
+    return any(_patterns_differ(x, y) for x, y in zip(a1, a2))
+
+
+def _distinct_fact(prover, T, t1, t2, g):
+    """A fact that `t1 = t2` fails, for two *different* constructors of `T`.
+
+    The datatype's distinctness axiom is instantiated with the two terms'
+    own arguments -- a schematic variable prints as `?n` and its `param_`
+    argument is spelled without the question mark, so the two are built
+    apart, and the value is quoted because it can be a compound term -- and
+    flipped with `ineq_sym` when the axiom reads the other way round.
+    """
+    h1, a1 = t1.strip_comb()
+    h2, a2 = t2.strip_comb()
+    th_name, th = _distinct_neq(T.name, h2.name, h1.name)
     if th is None:
         raise FunGenError(
             'no distinctness axiom for the constructors %s and %s of %s; '
             'without one the branch of %s cannot be ruled out'
-            % (cj, ci, _printt(arg_types[pos]), cj))
-    pat_i = _eq_args(eqs[i])[pos]
+            % (h2.name, h1.name, _printt(T), h1.name))
     left, right = _neq_sides(th)
-    pat_args = list(pat_i.strip_comb()[1])
-    if not is_exists(test):
-        w_args = []
-    else:
-        types = [a.get_type() for a in _pattern_leaves(_eq_args(eqs[j])[pos])]
-        w = Var(_exists_var(test), tupled_type(types))
-        w_args = [projection(w, types, k) for k in range(len(types))]
     lc, l_args = left.strip_comb()
     rc, r_args = right.strip_comb()
-    if lc.name == ci:
-        pairs = list(zip(l_args, pat_args)) + list(zip(r_args, w_args))
+    if lc.name == h1.name:
+        pairs = list(zip(l_args, a1)) + list(zip(r_args, a2))
         flipped = False
     else:
-        pairs = list(zip(l_args, w_args)) + list(zip(r_args, pat_args))
+        pairs = list(zip(l_args, a2)) + list(zip(r_args, a1))
         flipped = True
-    # A schematic variable prints as `?n` and its `param_` argument is
-    # spelled without the question mark, so the two are built apart, and
-    # the value is quoted because it can be a compound term.
     params = ' '.join('param_%s="%s"' % (v.name.lstrip('?'), _arg_text(t))
                       for v, t in pairs)
-    cj_pat = _eq_args(eqs[j])[pos]
-    cj_head, cj_args = cj_pat.strip_comb()
-    cj_inst = cj_head(*w_args) if cj_args else cj_pat
-    if lc.name == ci:
-        l_txt, r_txt = _arg_text(pat_i), _arg_text(cj_inst)
-    else:
-        l_txt, r_txt = _arg_text(cj_inst), _arg_text(pat_i)
+    fact = prover.step(u'\u2192 forward %s %s goal=%d' % (th_name, params, g))
+    if flipped:
+        fact = prover.step(
+            u'\u2192 forward ineq_sym param_x="%s" param_y="%s" goal=%d '
+            u'facts=[%d]' % (_arg_text(t2), _arg_text(t1), g, fact))
+    return fact
+
+
+def _refute_equality(prover, T, t1, t2, hyp, g):
+    """Close goal `g` from `hyp`, the equality of the patterns `t1` and `t2`.
+
+    `g` is a `false` goal and the equality is one that cannot hold.  Different
+    constructors at the top make it the distinctness axiom's negation, which
+    `negE_gen` closes with the hypothesis.  The *same* constructor means the
+    difference is in an argument, so the equality is peeled with that
+    constructor's injectivity (`<ty>_<C>_inject` turns `C a = C b` into the
+    conjunction of the argument equalities) and the argument that differs is
+    refuted in turn.
+
+    Peeling is what rules out a sibling whose pattern differs one level down --
+    `dbl (Suc 0)` against `dbl (Suc (Suc n))`, the shape a hole in a datatype as
+    shallow as `nat` always leaves.  Isabelle gets there through
+    `pat_completeness`'s general case analysis; here it is this recursion, so a
+    pair it cannot peel is refused rather than emitted.
+    """
+    h1, a1 = t1.strip_comb()
+    h2, a2 = t2.strip_comb()
+    if h1.name != h2.name:
+        neq = _distinct_fact(prover, T, t1, t2, g)
+        # `negE_gen` closes the goal and leaves one item behind (the goal with
+        # the rewritten hypothesis), so the counter moves on even though
+        # nothing is left to prove.
+        prover.step(u'\u2190 rule negE_gen goal=%d facts=[%d,%d]'
+                    % (g, neq, hyp))
+        return
+    k = next(i for i, (x, y) in enumerate(zip(a1, a2))
+             if _patterns_differ(x, y))
+    cur = prover.step(u'\u2192 forward %s_%s_inject goal=%d facts=[%d]'
+                      % (T.name, h1.name, g, hyp))
+    # The k-th conjunct of a right-nested conjunction: `conjD2` walks past
+    # the ones before it, and `conjD1` takes it out of the pair it heads --
+    # except when it is the last one, where the walk has landed on it.
+    for _ in range(k):
+        cur = prover.step(u'\u2192 forward conjD2 goal=%d facts=[%d]'
+                          % (g, cur))
+    if k < len(a1) - 1:
+        cur = prover.step(u'\u2192 forward conjD1 goal=%d facts=[%d]'
+                          % (g, cur))
+    arg_types, _ = h1.get_type().strip_type()
+    _refute_equality(prover, arg_types[k], a1[k], a2[k], cur, g)
+
+
+def _pattern_neq(prover, T, t1, t2, g):
+    """A fact that the two patterns `t1` and `t2` are different, in goal `g`.
+
+    Different constructors are the distinctness axiom as it stands: the axiom
+    instance *is* the negation, and stating it as a goal of its own first would
+    make the step that derives it coincide with that goal -- items are keyed on
+    the proposition, so the second one would create nothing and every ID after
+    it would be off by one.  Peeling needs a goal of its own (`negI` turns the
+    negation into `t1 = t2 ==> false`, `intro` takes the equality as the
+    hypothesis, and `_refute_equality` closes it), which is what the `cut`
+    below is for.
+    """
+    if not _patterns_differ(t1, t2):
+        raise FunGenError(
+            'the patterns %s and %s cannot be told apart: one of them is a '
+            'variable where the other carries a constructor, so no branch '
+            'rules the other out' % (_prints(t1), _prints(t2)))
+    h1, _ = t1.strip_comb()
+    h2, _ = t2.strip_comb()
+    if h1.name != h2.name:
+        return _distinct_fact(prover, T, t1, t2, g)
+    c = prover.step(u'cut "%s" goal=%d' % (_prints(Not(Eq(t1, t2))), g))
+    c1 = prover.step(u'\u2190 rule negI goal=%d' % c)
+    hyp, g2 = prover.ids(u'\u2190 intro goal=%d' % c1, 2)
+    _refute_equality(prover, T, t1, t2, hyp, g2)
+    return c
+
+
+def _refute_test(prover, arg_types, pos, eqs, i, j, test, g):
+    """A fact that equation j's test at position `pos` fails in branch i.
+
+    The test is refuted from the two patterns' own constructors
+    (`_pattern_neq` and `_refute_equality`): this branch's pattern on one side,
+    the witness the test binds on the other.  When the test is an equality the
+    refutation *is* its negation and is handed out as such; otherwise the
+    witness is taken apart first (`elim`) and the equality it leaves behind is
+    refuted directly -- that equality is already the one to refute, so nothing
+    restates it.
+
+    The fact is a fact of the goal `g` it is handed into, which is what lets
+    the caller either rewrite the branch condition with it (one position) or
+    use it inside the cut that builds the conjunction's negation (several).
+    """
+    T = arg_types[pos]
+    pat_i = _eq_args(eqs[i])[pos]
+    pat_j = _eq_args(eqs[j])[pos]
+    # The instantiation of equation j's pattern: its own leaves take the
+    # values the test's witness projects to, so a *nested* pattern
+    # (`Suc (Suc n)`) is rebuilt whole and not cut down to its top
+    # constructor's arguments.
     if not is_exists(test):
-        fwd = prover.step(u'\u2192 forward %s %s goal=%d'
-                          % (th_name, params, g))
-        if flipped:
-            fwd = prover.step(
-                u'\u2192 forward ineq_sym param_x="%s" param_y="%s" goal=%d '
-                u'facts=[%d]' % (l_txt, r_txt, g, fwd))
-        return fwd
+        env = {}
+    else:
+        leaves = _pattern_leaves(pat_j)
+        types = [a.get_type() for a in leaves]
+        w = Var(_exists_var(test), tupled_type(types))
+        w_args = [projection(w, types, k) for k in range(len(types))]
+        env = {a.name: t for a, t in zip(leaves, w_args)}
+    cj_inst = _subst(pat_j, env)
+    if not is_exists(test):
+        return _pattern_neq(prover, T, pat_i, cj_inst, g)
     c = prover.step(u'cut "%s" goal=%d' % (_prints(Not(test)), g))
     c1 = prover.step(u'\u2190 rule negI goal=%d' % c)
     ids = prover.ids(u'\u2190 intro goal=%d' % c1, 2)
     eq, g2 = ids[0], ids[1]
     ids = prover.ids(u'\u2192 elim "%s" goal=%d facts=[%d]'
                      % (_exists_var(test), g2, eq), 3)
+    # The test's own body is `pat_i = pat_j` with the witness free -- the
+    # branch's projection is already written as its own pattern -- so `elim`
+    # leaves exactly the equality to refute, and `negE_gen` closes the goal
+    # with it (the counter moves on even though nothing is left to prove).
     eq, g2 = ids[1], ids[2]
-    fwd = prover.step(u'\u2192 forward %s %s goal=%d' % (th_name, params, g2))
-    if flipped:
-        fwd = prover.step(
-            u'\u2192 forward ineq_sym param_x="%s" param_y="%s" goal=%d '
-            u'facts=[%d]' % (l_txt, r_txt, g2, fwd))
-    # `negE_gen` closes the goal and leaves one item behind (the goal with
-    # the rewritten hypothesis), so the counter moves on even though
-    # nothing is left to prove.
-    prover.step(u'\u2190 rule negE_gen goal=%d facts=[%d,%d]'
-                % (g2, fwd, eq))
+    _refute_equality(prover, T, pat_i, cj_inst, eq, g2)
     return c
 
 
@@ -1638,15 +1736,14 @@ def _condition_negation(prover, names, arg_types, positions, eqs, i, j, g,
     poses_j = _pattern_positions(_eq_args(eqs[j]), positions)
     k = None
     for kk, pos in enumerate(poses_j):
-        if pos in here and (_constr_name(_eq_args(eqs[j]), pos)
-                            != _constr_name(_eq_args(eqs[i]), pos)):
+        if pos in here and _patterns_differ(_eq_args(eqs[j])[pos],
+                                            _eq_args(eqs[i])[pos]):
             k = kk
             break
     if k is None:
         raise FunGenError(
-            'the equations %d and %d of this definition match the same '
-            'constructors in every position they both constrain'
-            % (j + 1, i + 1))
+            'the equations %d and %d of this definition do not differ at '
+            'any position they both constrain' % (j + 1, i + 1))
     if len(conds) == 1:
         return _refute_test(prover, arg_types, poses_j[0], eqs, i, j,
                             conds[0], g)
@@ -2736,7 +2833,7 @@ def _induct_entry(name, cname, arg_types, res_type, eqs, positions, calls,
         if descent:
             return _given_obligation(prover, arg_types, r, relation, tcall,
                                      _tuple_of(req), descent, goal, name, k,
-                                     used)
+                                     used, lines=True)
         steps, closes = _decrease_steps(arg_types, r, tcall, req, dmap, seen)
         # A call whose instance the proof already produced ends at its own
         # `inst`: that step resolves the goal to the item that is there and
@@ -2817,9 +2914,11 @@ def _induct_entry(name, cname, arg_types, res_type, eqs, positions, calls,
                 # equation substituted afterwards to meet the fact it
                 # produced.
                 fact = obligation(cut, tcall, k, ren_eq)
+                # The unfolding already contracts the redex the relation
+                # lambda's application makes -- the rewriter reduces there --
+                # so no `beta` belongs here, exactly as in the branch below
+                # and in `_def_entry`'s own walk of the same relation.
                 cur = prover.step('← rewrite %s_rel_def goal=%d' % (cname, cut))
-                if order is None:
-                    cur = prover.step('← beta goal=%d' % cur)
                 # Substituting the equation into the unfolded relation
                 # produces exactly the proposition the obligation above
                 # states, so the engine finds that item already in its table
@@ -3396,7 +3495,7 @@ def _ascribed_eq(name, eq, missing):
     being defined, which is not in the theory yet.
     """
     _, args = eq.lhs.strip_comb()
-    parts = [name] + [_ascribed_term(a, missing) for a in args]
+    parts = [name] + [_arg_ascribed(a, missing) for a in args]
     return "%s = %s" % (" ".join(parts), _ascribed_term(eq.rhs, missing))
 
 
@@ -3407,6 +3506,20 @@ def _ascribed_term(t, missing):
     if any("'" + tv.name in missing for tv in Ty.get_tvars()):
         text = "(%s::%s)" % (text, _printt(Ty))
     return text
+
+
+def _arg_ascribed(t, missing):
+    """A term in argument position: ascribed, and parenthesized when compound.
+
+    `T` applied to `Suc 0` has to be written `T (Suc 0)`; the ascription
+    brings the parentheses along only when one is needed, so a compound
+    argument whose type names nothing missing would otherwise be printed
+    bare and parse as two arguments.
+    """
+    Ty = t.get_type()
+    if any("'" + tv.name in missing for tv in Ty.get_tvars()):
+        return "(%s::%s)" % (_prints(t), _printt(Ty))
+    return _arg_text(t)
 
 
 def _missing_type_vars(ty, text, eq):

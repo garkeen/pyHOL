@@ -327,16 +327,16 @@ class FunGenTest(unittest.TestCase):
         self.assertEqual(fungen._prints(missing[0].rhs), '(undefined::nat)')
         self.assertIsNone(texts[1])
 
-    def test_a_hole_inside_a_constructor_is_left_alone(self):
-        """The chain cannot rule out a sibling that differs one level deeper.
+    def test_a_hole_one_level_down_is_filled(self):
+        """`g 0` and `g (Suc (Suc n))` leave `Suc 0`, and it is filled.
 
-        `g 0` and `g (Suc (Suc n))` leave `Suc 0`.  Filling it would put
-        `g (Suc 0)` next to `g (Suc (Suc n))`, and a branch rules a sibling out
-        by a *top-level* constructor -- these two agree there, so the
-        refutation would have to peel the `Suc` with its injectivity first,
-        which it does not do.  The fill is dropped rather than emitted: an
-        emission that fails takes the whole definition back to axioms, losing
-        the equations and the relation the file already had.
+        The missing pattern differs from its neighbour `Suc (Suc n)` only
+        *inside* a constructor, so ruling one out needs that constructor's
+        injectivity first -- `_pattern_neq` peels the shared `Suc` and refutes
+        the argument that differs.  A `nat` is shallow enough that a hole in it
+        is always this shape, so this is the case that decides whether a
+        definition with a gap over `nat` (`dbl`, whose recursion skips a
+        constructor) can be given rules at all.
         """
         ty = TFun(NatType, NatType)
         arg_types, res_type, r, eqs = self._plan('g', ty, [
@@ -344,9 +344,33 @@ class FunGenTest(unittest.TestCase):
             'g (Suc (Suc n)) = 2'])
         out, texts, missing = fungen._complete_equations(
             'g', arg_types, res_type, eqs, ['g 0 = 0', 'g (Suc (Suc n)) = 2'])
-        self.assertEqual(missing, [])
-        self.assertEqual(len(out), 2)
-        self.assertEqual(texts, ['g 0 = 0', 'g (Suc (Suc n)) = 2'])
+        self.assertEqual(len(out), 3)
+        self.assertEqual(len(missing), 1)
+        self.assertEqual(fungen._prints(fungen._eq_args(missing[0])[0]),
+                         'Suc 0')
+
+    def test_patterns_meeting_a_variable_cannot_be_told_apart(self):
+        """A variable where the other pattern carries a constructor.
+
+        `g x` agrees with every pattern of its type, so no branch can rule the
+        other equation out -- which is what `_chain_separable` asks before it
+        lets a filled set through: a set that cannot be emitted has to keep the
+        definition as it is, because an emission that fails takes the whole
+        definition back to axioms.
+        """
+        self.assertTrue(fungen._patterns_differ(
+            Const('Suc', TFun(NatType, NatType))(Const('zero', NatType)),
+            Const('zero', NatType)))
+        self.assertFalse(fungen._patterns_differ(
+            Var('n', NatType), Const('zero', NatType)))
+        # Nested: `Suc 0` and `Suc (Suc n)` are told apart one level down.
+        self.assertTrue(fungen._patterns_differ(
+            Const('Suc', TFun(NatType, NatType))(Const('zero', NatType)),
+            Const('Suc', TFun(NatType, NatType))(
+                Const('Suc', TFun(NatType, NatType))(Var('n', NatType)))))
+        self.assertFalse(fungen._patterns_differ(
+            Const('Suc', TFun(NatType, NatType))(Var('n', NatType)),
+            Const('Suc', TFun(NatType, NatType))(Var('m', NatType))))
 
     def test_coverage_walks_the_patterns(self):
         """The coverage proof splits the input along the *patterns*.
