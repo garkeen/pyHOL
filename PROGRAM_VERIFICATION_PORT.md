@@ -132,12 +132,17 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 
 **未做**（按依赖顺序）：
 
-1. `either_rel` 的两条改写引理（`either_rel R1 R2 (Left x) (Left y) ⟷ R1 x y`，右侧同理）
-   与 **`wf_either_rel`**（`wf R1 ⟹ wf R2 ⟹ wf (either_rel R1 R2)`）——编码的终止证明走它。
-   配方（照 `wf_base.pyhol` 的 `wf_subset`）：展开 `wf_def` → `intro P` + 步进假设 →
-   `type_cases p`（和类型两支）→ 每支把该侧 `wf` 事实展开、`inst "%a. P (Left a)"`、
-   `cut` 出步进假设的实例、用 `either_rel` 的引理把 `R1 b a` 化成和上的关系，
-   最后 `apply_prev` 收口。
+1. **`wf_either_rel`**（`wf R1 ⟹ wf R2 ⟹ wf (either_rel R1 R2)`）——编码的终止证明走它。
+   两条**注入引理已落地**（`either_rel_LeftI`/`either_rel_RightI`：`R1 x y ⟹ either_rel R1 R2 (Left x) (Left y)`，
+   即下降义务的形状）。剩下的 `wf` 证明配方（照 `wf_base.pyhol` 的 `wf_subset`）：
+   展开 `wf_def` → `intro P` + 步进假设 → `type_cases p`（和类型两支）→ 每支把该侧 `wf` 事实
+   展开、`inst "%a. P (Left a)"`、`cut` 出步进假设的实例（`inst "Left a"` + `apply_prev`）→
+   `apply_prev` 收口。**两支各需要两样东西**：一是从 `either_rel R1 R2 (Left b) (Left a)` 反推
+   `R1 b a`（另一条方向的引理，还没做，配方：展开 → 第二析取项被 `either_Left_Right_neq` 排除
+   （`force_disj_true1` 那一步）→ `elim` 见证 → `conjD1/conjD2` 取出合取项 →
+   `either_Left_inject` 把 `Left x = Left a` 化成 `x = a` → 两条重写把 `R1 a b` 变成 `R1 x y`）；
+   二是 `Right c` 与 `Left a` 之间**没有**关系（同一次展开、两个析取项都要求 `Left = Right`，
+   都被不同构造子性挡掉）。
 2. 语法与条目 schema：`_parse_fun`（`syntax/pyhol.py:899`）只读一个 `fun NAME :: TYPE` +
    `|` 方程 + 子句，`_export_fun` 亦然，没有 `and`；要么加 `fun … and …` 的块，要么给
    互递归新条目类型，牵动 `items.py` 的解析/扩展、`basic.py` 的分发与增量缓存。
