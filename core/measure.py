@@ -24,12 +24,16 @@ destructors, the datatypes' size equations and the arithmetic rules below,
 then comparing the normal forms.
 
 The normal form of a side is a `Suc`-spine over a right-nested sum of
-atoms:
+atoms whose order is canonical:
 
     Suc^k (a_1 + (a_2 + ... + a_n))
 
 where an atom is anything the rules cannot take apart (a variable, a
-`size` of a variable, a destructor application).  Two sides are compared
+`size` of a variable, a destructor application, a product of such, a
+subtraction that is not `0`), and the atoms are sorted by the kernel's
+term order.  Sorting is what makes the normal form canonical: `size a +
+size b` and `size b + size a` are the same term, so the comparison below
+sees one form rather than two.  Two sides are compared
 by reading those forms: the strict case needs one more `Suc` on the right
 (`less_Suc_lesseq` turns it into the weak one), a common `Suc` on both
 sides is stripped (`le_suc`), a surplus `Suc` on the right is absorbed
@@ -49,13 +53,41 @@ from kernel.type import TFun, TConst, BoolType
 
 NatType = TConst('nat')
 from kernel.term import Var, Const, Lambda, Abs
+from kernel import term_ord
 
-# The arithmetic rules the normalization runs, in one `rewrite` step each:
-# `1 + x` and `x + 1` are `Suc`, a `Suc` summand moves out of the sum, and
-# sums are right-associated.  Together they are terminating and put every
-# side into the normal form described above.
+# The arithmetic rules the normalization runs, in one `rewrite` step each.
+# They are the polynomial normal form's rules, run as a terminating
+# rewrite system rather than through a conversion:
+#   * `Suc` and the literals: `1 + x` and `x + 1` are `Suc`, a `Suc`
+#     summand moves out of the sum, sums right-associate, and a numeral
+#     (`of_nat (bit0 1)` is how `2` is written) comes apart into that
+#     same spine, so ground arithmetic folds;
+#   * the AC order: a sum's atoms are sorted by swapping an inverted
+#     adjacent pair, which is a bubble sort -- one `add_left_comm` per
+#     swap, and `add_comm` where the two are both atoms;
+#   * products: a sum factor distributes, a literal factor turns into a
+#     sum (`Suc m * n`, `x * Suc y`), factors right-associate and sort
+#     the way sum atoms do.  A product of atoms nothing takes apart
+#     stays an atom, and the comparison then treats it as one;
+#   * subtraction: `n - 0` is `n`, `n - Suc m` is `Pre (n - m)`, `Pre`
+#     takes a matching `Suc` off both ends, and the two that cannot be
+#     taken apart -- `0 - n`, `n - n` -- are `0`.  What is left is a
+#     `Pre`-headed or variable-headed subtraction, an atom like any
+#     other: this normalizes subtraction, it does not compare it.
+#
+# The order *is* the priority order: when several rules match one node,
+# the first one here names the step.  It is the order the rules have to
+# be tried in to reach the normal form (a `Suc` summand comes out before
+# the sum is reassociated, a sum factor distributes before the product
+# is reassociated), not an arbitrary list.
 ARITH = ['add_1_left', 'add_1_right', 'add_Suc_left', 'add_Suc_right',
-         'add_assoc']
+         'add_assoc', 'add_left_comm', 'add_comm',
+         'nat_of_nat_def', 'nat_one_def', 'bit0_def', 'bit1_def',
+         'nat_times_def_1', 'mult_0_right', 'mult_1_left', 'mult_1_right',
+         'nat_times_def_2', 'mult_Suc_right', 'distrib_r', 'distrib_l',
+         'mult_assoc', 'mult_left_comm', 'mult_comm',
+         'nat_minus_l0', 'nat_minus_def_1', 'nat_minus_def_2',
+         'nat_minus_refl', 'nat_minus_presuc']
 
 # The lemmas a finished comparison is closed with.  They are the nat
 # comparisons the normalization leaves behind:
@@ -78,6 +110,10 @@ def _suc(t):
 
 def _plus(a, b):
     return Const('plus', TFun(NatType, NatType, NatType))(a, b)
+
+
+def _times(a, b):
+    return Const('times', TFun(NatType, NatType, NatType))(a, b)
 
 
 def _sucs(t, n):
@@ -210,7 +246,7 @@ class Measure:
         return self.term(Var('p', tup.get_type()))(tup).beta_norm()
 
     def tables(self):
-        """The measure's own reduction rule: name -> body, for `_redex_kind`.
+        """The measure's own reduction rule: name -> body, for `_rewrite`.
 
         The defining equation is `m p = <body>` with `p` free, so a
         `rewrite m_def` substitutes the tuple into the body directly --
@@ -252,65 +288,286 @@ def _size_body(size_name, T, args, positions):
     return res
 
 
-def _arith_redex(t):
-    """(replacement, rule) for the top-most arithmetic redex of t."""
-    if not _is_plus(t):
+def _is_times(t):
+    h, args = t.strip_comb()
+    return h.is_const() and h.name == 'times' and len(args) == 2
+
+
+def _minus(a, b):
+    return Const('minus', TFun(NatType, NatType, NatType))(a, b)
+
+
+def _is_minus(t):
+    h, args = t.strip_comb()
+    return h.is_const() and h.name == 'minus' and len(args) == 2
+
+
+def _pre(t):
+    return Const('Pre', TFun(NatType, NatType))(t)
+
+
+def _atom_gt(a, b):
+    """Whether atom `a` sorts after `b` -- the AC order.
+
+    The comparison is the kernel's term order, so it is total and does
+    not depend on the goal: a swap always moves a strictly smaller atom
+    left, which is what makes the sorting rewrites terminate.
+    """
+    return term_ord.fast_compare(a, b) > 0
+
+
+# The rules a step has to be emitted *positionally* (`loc=`), one rewrite
+# per step.  They are the commutativity laws: a step named for a rule
+# applies that rule at every node of the goal that matches its left side
+# (`top_sweep_conv`), and `x + y = y + x` matches *every* sum, so a
+# global step would scramble all of them rather than swap the one pair
+# the engine planned.  Everything else is directed -- its left side only
+# matches where the rewrite is wanted, and applying it everywhere is what
+# one step should do.
+POSITIONAL = {'add_comm', 'add_left_comm', 'mult_comm', 'mult_left_comm'}
+
+# The rules that take a literal apart, so that a numeral is never an
+# atom: `2` is written `of_nat (bit0 1)`, and these turn it into
+# `Suc (Suc 0)`, where the `Suc` rules take over.  Two things follow from
+# it, both of them the point of the rules: ground arithmetic folds (`2 +
+# 3` is one spine), and a literal coefficient distributes (`2 * n` is
+# `n + n`, through `mult_Suc_right`), so a multiplicative measure is
+# compared additively.
+NUMERAL = {'of_nat': 'nat_of_nat_def', 'one': 'nat_one_def',
+           'bit0': 'bit0_def', 'bit1': 'bit1_def'}
+
+
+def _numeral_rewrite(t, name):
+    """The replacement for the numeral constant `name` at t, or None.
+
+    None for a constant of this name at *another* type: the rules are
+    nat's own (`nat_of_nat_def` is what `of_nat` is at nat, and `one` is
+    an overloaded constant), so the type has to be checked before the
+    rule is named.
+    """
+    if t.get_type() != NatType:
         return None
-    x, y = t.strip_comb()[1]
-    one = Const('one', NatType)
-    if x == one:
-        return _suc(y), 'add_1_left'
-    if y == one:
-        return _suc(x), 'add_1_right'
-    if _is_suc(x):
-        return _suc(_plus(x.arg, y)), 'add_Suc_left'
-    if _is_suc(y):
-        return _suc(_plus(x, y.arg)), 'add_Suc_right'
-    if _is_plus(x):
-        x1, x2 = x.strip_comb()[1]
-        return _plus(x1, _plus(x2, y)), 'add_assoc'
+    if name == 'one':
+        return _suc(Const('zero', NatType))
+    args = t.strip_comb()[1]
+    if len(args) != 1:
+        return None
+    if name == 'of_nat':
+        return args[0] if args[0].get_type() == NatType else None
+    if name == 'bit0':
+        return _plus(args[0], args[0])
+    if name == 'bit1':
+        return _plus(_plus(args[0], args[0]), Const('one', NatType))
     return None
 
 
-def _redex_kind(t, dmap, sizes, mdefs):
-    """(replacement, rule) for the top-most redex of t, or (t, None)."""
-    h, args = t.strip_comb()
-    if not h.is_const():
-        return t, None
-    if h.name in mdefs and len(args) == 1:
-        return mdefs[h.name](args[0]), '%s_def' % h.name
-    if h.name in dmap and len(args) == 1:
-        inner, iargs = args[0].strip_comb()
-        cname, j, rule = dmap[h.name]
-        if inner.is_const() and inner.name == cname and len(iargs) > j:
-            return iargs[j], rule
-    if h.name in sizes and len(args) == 1:
-        inner, iargs = args[0].strip_comb()
-        if inner.is_const() and inner.name in sizes[h.name]:
-            rule, positions = sizes[h.name][inner.name]
-            T = args[0].get_type()
-            return _size_body(h.name, T, iargs, positions), rule
-    if h.name == 'plus':
-        res = _arith_redex(t)
-        if res is not None:
-            return res
-    return t, None
+def _plus_rewrite(rule, x, y):
+    """The replacement of `x + y` under one sum rule, or None."""
+    one = Const('one', NatType)
+    if rule == 'add_1_left':
+        return _suc(y) if x == one else None
+    if rule == 'add_1_right':
+        return _suc(x) if y == one else None
+    if rule == 'add_Suc_left':
+        return _suc(_plus(x.arg, y)) if _is_suc(x) else None
+    if rule == 'add_Suc_right':
+        return _suc(_plus(x, y.arg)) if _is_suc(y) else None
+    if rule == 'add_assoc':
+        if _is_plus(x):
+            x1, x2 = x.strip_comb()[1]
+            return _plus(x1, _plus(x2, y))
+        return None
+    if rule == 'add_left_comm':
+        if _is_plus(y):
+            head, rest = y.strip_comb()[1]
+            return _plus(head, _plus(x, rest))
+        return None
+    if rule == 'add_comm':
+        return _plus(y, x)
+    return None
 
 
-def _sweep(t, dmap, sizes, mdefs):
-    """A top-down sweep like the method layer's: (term, rule).
+def _times_rewrite(rule, x, y):
+    """The replacement of `x * y` under one product rule, or None."""
+    zero, one = Const('zero', NatType), Const('one', NatType)
+    if rule == 'nat_times_def_1':
+        return zero if x == zero else None
+    if rule == 'mult_0_right':
+        return zero if y == zero else None
+    if rule == 'mult_1_left':
+        return y if x == one else None
+    if rule == 'mult_1_right':
+        return x if y == one else None
+    if rule == 'nat_times_def_2':
+        return _plus(y, _times(x.arg, y)) if _is_suc(x) else None
+    if rule == 'mult_Suc_right':
+        return _plus(x, _times(x, y.arg)) if _is_suc(y) else None
+    if rule == 'distrib_r':
+        if _is_plus(x):
+            x1, x2 = x.strip_comb()[1]
+            return _plus(_times(x1, y), _times(x2, y))
+        return None
+    if rule == 'distrib_l':
+        if _is_plus(y):
+            y1, y2 = y.strip_comb()[1]
+            return _plus(_times(x, y1), _times(x, y2))
+        return None
+    if rule == 'mult_assoc':
+        if _is_times(x):
+            x1, x2 = x.strip_comb()[1]
+            return _times(x1, _times(x2, y))
+        return None
+    if rule == 'mult_left_comm':
+        if _is_times(y):
+            head, rest = y.strip_comb()[1]
+            return _times(head, _times(x, rest))
+        return None
+    if rule == 'mult_comm':
+        return _times(y, x)
+    return None
 
-    The rule is tried at a node and, where it fires, that path is not
-    descended into -- which is exactly what one `rewrite` step does -- so
-    the rule this returns is the first one that fires anywhere, and `t` is
-    the term after clearing every top-most redex of it.
+
+def _minus_rewrite(rule, x, y):
+    """The replacement of `x - y` under one subtraction rule, or None.
+
+    Subtraction is defined by recursion on its *second* argument, so the
+    rules peel a `Suc` off it (`n - Suc m` is `Pre (n - m)`, and `Pre` is
+    nat's own destructor) and take the two matching ends off when the
+    first argument runs out.  A literal is peeled the same way, once the
+    numeral rules have made it a spine.
     """
-    fired = [None]
+    zero = Const('zero', NatType)
+    if rule == 'nat_minus_l0':
+        return zero if x == zero else None
+    if rule == 'nat_minus_def_1':
+        return x if y == zero else None
+    if rule == 'nat_minus_def_2':
+        return _pre(_minus(x, y.arg)) if _is_suc(y) else None
+    if rule == 'nat_minus_refl':
+        return zero if x == y else None
+    return None
 
+
+def _swap_redex(t, rule):
+    """Whether the positional swap `rule` should be emitted at t.
+
+    A commutativity rule's left side matches any term of its shape, so
+    the direction cannot come from the rule: the swap is taken exactly
+    when it moves a *smaller* atom leftward.  That is one pass of a
+    bubble sort over the flattened sum (product), which is what makes
+    the sorting terminate and end in the canonical order.
+    """
+    x, y = t.strip_comb()[1]
+    if rule in ('add_left_comm', 'mult_left_comm'):
+        head, _ = y.strip_comb()[1]
+        return _atom_gt(x, head)
+    return _atom_gt(x, y)
+
+
+def _rewrite(t, rule, dmap, sizes, mdefs):
+    """The term after rewriting t at its root with `rule`, or None.
+
+    One function per theorem's left side: this is what decides whether
+    the theorem matches here, which is *not* the same as the priority
+    order below -- the order only names the step, while a step applies
+    its rule wherever that rule matches (and a positional one where the
+    engine says).
+    """
+    h, args = t.strip_comb()
+    name = h.name
+    if len(args) == 1 and name in mdefs and rule == '%s_def' % name:
+        return mdefs[name](args[0])
+    if len(args) == 1 and name in dmap:
+        cname, j, r = dmap[name]
+        inner, iargs = args[0].strip_comb()
+        if r == rule and inner.is_const() and inner.name == cname \
+                and len(iargs) > j:
+            return iargs[j]
+    if len(args) == 1 and name in sizes:
+        inner, iargs = args[0].strip_comb()
+        if inner.is_const() and inner.name in sizes[name]:
+            r, positions = sizes[name][inner.name]
+            if r == rule:
+                return _size_body(name, args[0].get_type(), iargs, positions)
+    if NUMERAL.get(name) == rule:
+        return _numeral_rewrite(t, name)
+    if rule in _PLUS_RULES and len(args) == 2 and _is_plus(t):
+        return _plus_rewrite(rule, args[0], args[1])
+    if rule in _TIMES_RULES and len(args) == 2 and _is_times(t):
+        return _times_rewrite(rule, args[0], args[1])
+    if rule in _MINUS_RULES and len(args) == 2 and _is_minus(t):
+        return _minus_rewrite(rule, args[0], args[1])
+    if rule == 'nat_minus_presuc' and name == 'Pre' and len(args) == 1 \
+            and _is_minus(args[0]):
+        a, b = args[0].strip_comb()[1]
+        if _is_suc(a):
+            return _minus(a.arg, b)
+    return None
+
+
+_PLUS_RULES = frozenset(['add_1_left', 'add_1_right', 'add_Suc_left',
+                         'add_Suc_right', 'add_assoc', 'add_left_comm',
+                         'add_comm'])
+_TIMES_RULES = frozenset(['nat_times_def_1', 'mult_0_right', 'mult_1_left',
+                          'mult_1_right', 'nat_times_def_2', 'mult_Suc_right',
+                          'distrib_r', 'distrib_l', 'mult_assoc',
+                          'mult_left_comm', 'mult_comm'])
+_MINUS_RULES = frozenset(['nat_minus_l0', 'nat_minus_def_1',
+                          'nat_minus_def_2', 'nat_minus_refl'])
+
+
+def _rules(dmap, sizes, mdefs):
+    """The rule names in priority order: the definition's own rules (the
+    measures, the destructors, the size functions) first, then `ARITH`,
+    whose order is this order."""
+    res = ['%s_def' % n for n in mdefs]
+    res += [r for _, _, r in dmap.values()]
+    res += [r for table in sizes.values() for r, _ in table.values()]
+    return res + list(ARITH)
+
+
+def _rule_at(x, rules, dmap, sizes, mdefs):
+    """The rule that fires at this node, or None."""
+    for rule in rules:
+        if _rewrite(x, rule, dmap, sizes, mdefs) is not None:
+            if rule in POSITIONAL and not _swap_redex(x, rule):
+                continue
+            return rule
+    return None
+
+
+def _next_redex(t, dmap, sizes, mdefs):
+    """(rule, path) for the rewrite the next step performs.
+
+    The step is the first node of the top-down sweep where a rule fires,
+    and `path` is how to reach that node from the root -- `loc_conv`'s
+    0/1 digits.  A node under a binder has no path `loc` can name, so a
+    swap there is not taken; the comparison that needed it is then
+    reported as unprovable, which is the honest answer rather than a
+    step the replay would refuse.
+    """
+    rules = _rules(dmap, sizes, mdefs)
+
+    def rec(x, path, binder):
+        rule = _rule_at(x, rules, dmap, sizes, mdefs)
+        if rule is not None and not (rule in POSITIONAL and binder):
+            return rule, path
+        if x.is_comb():
+            return rec(x.fun, path + ('0',), binder) \
+                or rec(x.arg, path + ('1',), binder)
+        if x.is_abs():
+            return rec(x.body, path, True)
+        return None
+
+    return rec(t, (), False) or (None, None)
+
+
+def _apply_global(t, rule, dmap, sizes, mdefs):
+    """The term after one global `rewrite <rule>` step: the rule at every
+    top-most node where it matches, and nowhere else."""
     def rec(x):
-        y, rule = _redex_kind(x, dmap, sizes, mdefs)
-        if rule is not None:
-            fired[0] = rule
+        y = _rewrite(x, rule, dmap, sizes, mdefs)
+        if y is not None:
             return y
         if x.is_comb():
             f, a = rec(x.fun), rec(x.arg)
@@ -320,19 +577,73 @@ def _sweep(t, dmap, sizes, mdefs):
             return x if body is x.body else Abs(x.var_name, x.var_T, body)
         return x
 
-    return rec(t), fired[0]
+    return rec(t)
+
+
+def _apply_at(t, path, rule, dmap, sizes, mdefs):
+    """The term after rewriting the single node at `path`."""
+    if not path:
+        y = _rewrite(t, rule, dmap, sizes, mdefs)
+        assert y is not None, \
+            'measure: the planned positional rewrite does not apply'
+        return y
+    if path[0] == '0':
+        return _apply_at(t.fun, path[1:], rule, dmap, sizes, mdefs)(t.arg)
+    return t.fun(_apply_at(t.arg, path[1:], rule, dmap, sizes, mdefs))
+
+
+def _step_text(rule, path):
+    """The step's text: the rule, and where it is for a positional one."""
+    if rule in POSITIONAL:
+        assert path, 'measure: a swap at the root of the goal'
+        return '%s loc=%s' % (rule, '.'.join(path))
+    return rule
+
+
+def _known_rules(dmap, sizes, mdefs):
+    """Every rule name the normalization is allowed to emit.
+
+    The arithmetic rules are the declared list, and the rest come from
+    the definition at hand: the measure's own equation, the datatype's
+    destructors, and its size functions.  `reduce` checks each step
+    against this set, because a rule the emitter writes but the file
+    cannot see is a broken item rather than a failed expansion.
+    """
+    res = set(ARITH)
+    for _, _, rule in dmap.values():
+        res.add(rule)
+    for table in sizes.values():
+        for rule, _ in table.values():
+            res.add(rule)
+    res.update('%s_def' % name for name in mdefs)
+    return res
 
 
 def reduce(t, dmap, sizes=None, mdefs=None):
-    """(normal form of t, the rules one `rewrite` step each runs through)."""
+    """(normal form of t, the steps one `rewrite` each runs through).
+
+    A step is the text of a `rewrite` step in the emitted proof: the
+    rule's name, plus the position when the rule has to be applied in
+    one place only.  The caller writes it out as it stands -- the
+    sequence is the term's own normalization, modelled step for step, so
+    the replay does exactly what this loop did.
+    """
     sizes, mdefs = sizes or {}, mdefs or {}
+    known = _known_rules(dmap, sizes, mdefs)
     steps = []
     while True:
-        t2, rule = _sweep(t, dmap, sizes, mdefs)
+        rule, path = _next_redex(t, dmap, sizes, mdefs)
         if rule is None:
             return t, steps
-        steps.append(rule)
-        t = t2
+        assert rule in known, (
+            'measure.reduce: the normalization fired %s, which is not a '
+            'rule the emitter declares (add it to ARITH if it is an '
+            'arithmetic rule)' % rule)
+        steps.append(_step_text(rule, path))
+        if rule in POSITIONAL:
+            t = _apply_at(t, path, rule, dmap, sizes, mdefs)
+        else:
+            t = _apply_global(t, rule, dmap, sizes, mdefs)
 
 
 # ---------------------------------------------------------------------------

@@ -16,6 +16,7 @@ import unittest
 
 from kernel.term import Const, Var
 from kernel.type import TFun, TConst
+from syntax.numeral import Nat
 from core import basic
 from core import fungen
 from core import measure
@@ -93,18 +94,96 @@ class MeasureTest(unittest.TestCase):
     def test_atom_added_on_the_left(self):
         # A sum on the right that does not start with the left side's atom:
         # `le_add_left_mono` adds it, and the sub-comparison is proved
-        # first.
+        # first.  The right sum is in the canonical order (`b` sorts after
+        # `a`), so the atom the walk meets first is `a`, and the left side
+        # has to get past it by adding it to both sides.
+        a_var, b_var = Var('a', NatType), Var('b', NatType)
+        plus = Const('plus', TFun(NatType, NatType, NatType))
+        c = self._cell(0, self._pair(b_var, a_var),
+                       self._pair(plus(a_var, b_var), a_var))
+        self.assertEqual(c.kind, 'le')
+        self.assertEqual(c.closing.kind, 'cut')
+        self.assertEqual(c.closing.theorem, 'le_add_left_mono')
+        # The atom the left side does not start with (`a`) is dropped
+        # from the right end, and what is left is the reflexive one.
+        self.assertEqual(c.closing.prop, 'b <= b')
+        self.assertEqual(c.closing.sub.theorem, 'lesseq_refl')
+
+    def test_the_sums_are_sorted_before_they_are_compared(self):
+        # `a <= b + a` is the same comparison as `a <= a + b`, and the
+        # engine sorts the sum first (`add_comm`), so the walk meets the
+        # left side's atom at the head and the whole tail is absorbed by
+        # `le_add` in one step instead of the `le_add_left_mono` cut.
         a_var, b_var = Var('a', NatType), Var('b', NatType)
         plus = Const('plus', TFun(NatType, NatType, NatType))
         c = self._cell(0, self._pair(a_var, b_var),
                        self._pair(plus(b_var, a_var), a_var))
         self.assertEqual(c.kind, 'le')
-        self.assertEqual(c.closing.kind, 'cut')
-        self.assertEqual(c.closing.theorem, 'le_add_left_mono')
-        # The atom the left side does not start with (`b`) is dropped
-        # from the right end, and what is left is the reflexive one.
-        self.assertEqual(c.closing.prop, 'a <= a')
-        self.assertEqual(c.closing.sub.theorem, 'lesseq_refl')
+        self.assertEqual(c.steps,
+                         ['m1_def', 'fst_def_1', 'add_comm loc=1'])
+        self.assertEqual(c.closing.kind, 'rule')
+        self.assertEqual(c.closing.theorem, 'le_add')
+
+    def test_a_literal_coefficient_distributes(self):
+        # A literal is written `of_nat (bit0 1)` and is taken apart into
+        # the spine, so `2 * n` becomes `n + n`: the cell is a comparison
+        # of sums, and closes by `le_add` rather than needing anything
+        # about multiplication.
+        a_var, n_var = Var('a', NatType), Var('n', NatType)
+        times = Const('times', TFun(NatType, NatType, NatType))
+        c = self._cell(0, self._pair(n_var, a_var),
+                       self._pair(times(Nat(2), n_var), a_var))
+        self.assertEqual(c.kind, 'le')
+        self.assertEqual(c.steps, ['m1_def', 'fst_def_1', 'mult_comm loc=1',
+                                   'nat_of_nat_def', 'bit0_def', 'distrib_l',
+                                   'mult_1_right'])
+        self.assertEqual(c.closing.theorem, 'le_add')
+
+    def test_a_literal_makes_the_cell_strict(self):
+        # `n + 3` is `Suc (Suc (Suc n))`, so a call that keeps `n` while
+        # the pattern adds a literal is a *strict* decrease, not a weak
+        # one: the spine carries the three `Suc`s and the comparison
+        # below them is reflexive.
+        a_var, n_var = Var('a', NatType), Var('n', NatType)
+        plus = Const('plus', TFun(NatType, NatType, NatType))
+        c = self._cell(0, self._pair(n_var, a_var),
+                       self._pair(plus(n_var, Nat(3)), a_var))
+        self.assertEqual(c.kind, 'lt')
+        self.assertIn('nat_of_nat_def', c.steps)
+        self.assertIn('bit1_def', c.steps)
+        self.assertEqual(c.closing.theorem, 'le_suc_right')
+
+    def test_ground_arithmetic_folds(self):
+        # Both sides are literals: the rules unfold them into the spine
+        # and the comparison is `0 <= 0` with seven `Suc`s above it.
+        a_var = Var('a', NatType)
+        plus = Const('plus', TFun(NatType, NatType, NatType))
+        c = self._cell(0, self._pair(plus(Nat(3), Nat(4)), a_var),
+                       self._pair(Nat(7), a_var))
+        self.assertEqual(c.kind, 'le')
+        self.assertEqual(c.closing.theorem, 'lesseq_zero')
+
+    def test_products_sort_by_commutativity(self):
+        # `a * b` and `b * a` are the same atom once the factors are
+        # sorted, and a product the rules cannot take apart stays an
+        # atom -- it is not flattened into anything.
+        a_var, b_var = Var('a', NatType), Var('b', NatType)
+        times = Const('times', TFun(NatType, NatType, NatType))
+        c = self._cell(0, self._pair(times(a_var, b_var), b_var),
+                       self._pair(times(b_var, a_var), b_var))
+        self.assertEqual(c.kind, 'le')
+        self.assertEqual(c.steps,
+                         ['m1_def', 'fst_def_1', 'mult_comm loc=1'])
+        self.assertEqual(c.closing.theorem, 'lesseq_refl')
+
+    def test_a_product_is_not_an_atom_of_its_factor(self):
+        # `a * b <= a` is not provable, and must not be reported as a
+        # decrease: the walk compares atoms by equality, and the product
+        # is one atom while `a` is another.
+        a_var, b_var = Var('a', NatType), Var('b', NatType)
+        times = Const('times', TFun(NatType, NatType, NatType))
+        self.assertIsNone(self._cell(0, self._pair(times(a_var, b_var), a_var),
+                                     self._pair(a_var, a_var)))
 
     def test_no_order_reported(self):
         # `f (Suc m) n = f (n + 1) m` descends nowhere: neither measure can

@@ -170,6 +170,13 @@ proof
   ← rewrite source=prev goal=7 facts=[4]
 qed
 
+theorem add_left_comm
+  fixes x :: nat, y :: nat, z :: nat
+  prop x + (y + z) = y + (x + z)
+proof
+  nat_norm goal=0
+qed
+
 theorem mult_0_right
   fixes x :: nat
   prop x * 0 = 0
@@ -335,6 +342,13 @@ proof
     #[8] y + y * x = y * Suc x
   ← rewrite mult_Suc_right goal=8
     #[9] y + y * x = y * Suc x
+qed
+
+theorem mult_left_comm
+  fixes x :: nat, y :: nat, z :: nat
+  prop x * (y * z) = y * (x * z)
+proof
+  nat_norm goal=0
 qed
 
 theorem add_cancel_left

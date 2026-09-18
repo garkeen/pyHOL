@@ -35,6 +35,16 @@ class StepLineTest(unittest.TestCase):
         self.assertEqual(step['goal'], 6)
         self.assertNotIsInstance(step.get('facts'), list)
 
+    def testPositionalRewriteRoundTrips(self):
+        """`loc=` names one subterm, and is what the measure engine emits
+        for a commutativity swap (`rewrite add_comm` alone would rewrite
+        every sum of the goal).  It has to survive parse -> export."""
+        step = pyhol._parse_step_line('← rewrite add_comm loc=0.1 goal=12')
+        self.assertEqual(step['method_name'], 'rewrite')
+        self.assertEqual(step['theorem'], 'add_comm')
+        self.assertEqual(step['loc'], '0.1')
+        self.assertEqual(pyhol._parse_step_line(pyhol._export_step(step)), step)
+
 
 if __name__ == '__main__':
     unittest.main()

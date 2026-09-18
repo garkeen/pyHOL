@@ -107,3 +107,26 @@ fun exdrop :: nat ⇒ nat
   descent "ex_drop_dec"
   | exdrop 0 = 0
   | exdrop (Suc (Suc n)) = exdrop n
+
+header "Arithmetic measures"
+
+-- The measure is a literal coefficient of the argument.  The cell is a
+-- comparison of two products, which the engine distributes and then
+-- compares additively: `3 * n` is `n + n + n`, and `3 * Suc n` is three
+-- successors over that same sum, so the descent is strict.  Nothing
+-- about multiplication is needed at the comparison itself.
+
+fun qdbl :: nat ⇒ nat
+  measure "%p. 3 * p"
+  | qdbl 0 = 0
+  | qdbl (Suc n) = qdbl n
+
+-- The measure is the sum of the two arguments and the call swaps them.
+-- The two sides only meet because the sums are sorted first: the call's
+-- measure `n + m` becomes `m + n`, which is the pattern's measure with
+-- one `Suc` over it.
+
+fun swapdec :: nat ⇒ nat ⇒ nat
+  measure "%m n. m + n"
+  | swapdec 0 n = n
+  | swapdec (Suc m) n = swapdec n m

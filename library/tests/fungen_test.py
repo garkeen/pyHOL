@@ -237,6 +237,49 @@ class FunGenLibraryTest(unittest.TestCase):
         self.assertIn('mlex_leq', steps,
                       'the two-column walk never used mlex_leq')
 
+    def test_arithmetic_measures_expand(self):
+        """Measures that need the arithmetic engine, not just the `Suc`
+        rules: a literal coefficient, and a sum the call wrote in the
+        other order.
+
+        `qdbl`'s cell is a comparison of two products (`3 * n` against
+        `3 * Suc n`): the literal comes apart into the spine and the
+        product distributes, so the comparison is additive.  `swapdec`'s
+        cell is a sum in the other order (`n + m` against `m + n` with a
+        `Suc` over it), which only meets once the atoms are sorted -- and
+        the swap is emitted *positionally* (`loc=`), because one `rewrite
+        add_comm` step applies the theorem at every sum of the goal
+        rather than at the one pair the engine planned.
+        """
+        from core.verify import COMPUTATION_ORACLES, _replay
+        from core import context
+        from kernel import theory
+        for cname in ('qdbl', 'swapdec'):
+            self.assertIsNotNone(
+                self._by_name('%s_rel' % cname, 'measure_example'),
+                '%s did not expand' % cname)
+        for name in ['qdbl_def_1', 'qdbl_def_2', 'qdbl_exhaustive',
+                     'qdbl_induct', 'qdbl_rel_wf',
+                     'swapdec_def_1', 'swapdec_def_2', 'swapdec_exhaustive',
+                     'swapdec_induct', 'swapdec_rel_wf']:
+            item = self._by_name(name, 'measure_example')
+            self.assertIsNotNone(item, 'missing %s' % name)
+            with theory.fresh_theory():
+                context.set_context('measure_example', limit=('thm', name),
+                                    vars=dict(item.vars) if item.vars else {})
+                gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
+            self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
+        steps = self._by_name('swapdec_def_2', 'measure_example').steps
+        swaps = [st for st in steps if st.get('theorem') == 'add_comm']
+        self.assertTrue(swaps, 'the sum was never sorted: %s'
+                        % [st.get('theorem') for st in steps])
+        self.assertTrue(all(st.get('loc') for st in swaps),
+                        'a commutativity step was emitted globally, which '
+                        'the replay applies at every sum of the goal')
+        self.assertIn('distrib_l', [st.get('theorem') for st in
+                                    self._by_name('qdbl_def_2',
+                                                  'measure_example').steps])
+
     def test_size_carries_multi_recursive_datatypes(self):
         """A constructor that recurses more than once.
 
