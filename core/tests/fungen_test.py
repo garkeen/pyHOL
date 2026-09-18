@@ -265,6 +265,89 @@ class FunGenTest(unittest.TestCase):
             '  ← rule le_add_left_mono goal=7 facts=[1]',
         ])
 
+    def test_subtraction_narrows_an_overlapping_equation(self):
+        """A later equation means "the equations before it did not match".
+
+        `g x (Suc y)` overlaps `g (Suc x) y` where both arguments are a `Suc`.
+        Subtracting the first equation leaves exactly that region out of the
+        second, so the second becomes `g 0 (Suc y)`: the sequential reading of
+        `fun`, which is also what the branch chain emits.  The two equations
+        together still leave `g 0 0` -- neither matches it -- so the catchall
+        contributes that too, and it is the one entry reported as missing.
+        """
+        ty = TFun(NatType, TFun(NatType, NatType))
+        with context.fresh_context(defs={'g': ty}):
+            eqs = [context.parse_term(prop) for prop in
+                   ['g (Suc x) y = y', 'g x (Suc y) = x']]
+        arg_types, res_type = ty.strip_type()
+        out, texts, missing = fungen._complete_equations(
+            'g', arg_types, res_type, eqs, ['g (Suc x) y = y', 'g x (Suc y) = x'])
+        self.assertEqual(len(out), 3)
+        self.assertEqual(fungen._prints(fungen._eq_args(out[1])[0]), '(0::nat)')
+        self.assertEqual(fungen._constr_name(fungen._eq_args(out[1]), 1), 'Suc')
+        self.assertEqual(len(missing), 1)
+        self.assertEqual([fungen._prints(a)
+                          for a in fungen._eq_args(missing[0])],
+                         ['(0::nat)', '(0::nat)'])
+        # The first equation is untouched, so it keeps the source's text.
+        self.assertEqual(texts[0], 'g (Suc x) y = y')
+        self.assertIsNone(texts[1])
+
+    def test_a_redundant_equation_is_refused(self):
+        """An equation the ones before it already cover decides nothing.
+
+        Isabelle refuses these too ("Equation is redundant (covered by
+        preceding clauses)"): the branch chain is a sequence of tests, so a
+        later equation may narrow an earlier one but not repeat it.
+        """
+        ty = TFun(NatType, NatType)
+        arg_types, res_type, r, eqs = self._plan('g', ty, [
+            'g (Suc n) = 0',
+            'g (Suc 0) = 1'])
+        with self.assertRaises(fungen.FunGenError):
+            fungen._complete_equations('g', arg_types, res_type, eqs,
+                                       [None, None])
+
+    def test_a_hole_at_another_constructor_is_filled(self):
+        """`g (Suc n) = n` leaves `0`, and `0` is a constructor of its own.
+
+        The catchall's survivor joins the equation set -- the definition is
+        `undefined` there, which is what Isabelle's sequential `fun` does with
+        a missing pattern -- and is reported as the missing one.  Its text is
+        None: there is no source text for an equation the emitter made.
+        """
+        ty = TFun(NatType, NatType)
+        arg_types, res_type, r, eqs = self._plan('g', ty, ['g (Suc n) = n'])
+        out, texts, missing = fungen._complete_equations(
+            'g', arg_types, res_type, eqs, ['g (Suc n) = n'])
+        self.assertEqual(len(out), 2)
+        self.assertEqual(len(missing), 1)
+        self.assertEqual(fungen._prints(fungen._eq_args(missing[0])[0]),
+                         '(0::nat)')
+        self.assertEqual(fungen._prints(missing[0].rhs), '(undefined::nat)')
+        self.assertIsNone(texts[1])
+
+    def test_a_hole_inside_a_constructor_is_left_alone(self):
+        """The chain cannot rule out a sibling that differs one level deeper.
+
+        `g 0` and `g (Suc (Suc n))` leave `Suc 0`.  Filling it would put
+        `g (Suc 0)` next to `g (Suc (Suc n))`, and a branch rules a sibling out
+        by a *top-level* constructor -- these two agree there, so the
+        refutation would have to peel the `Suc` with its injectivity first,
+        which it does not do.  The fill is dropped rather than emitted: an
+        emission that fails takes the whole definition back to axioms, losing
+        the equations and the relation the file already had.
+        """
+        ty = TFun(NatType, NatType)
+        arg_types, res_type, r, eqs = self._plan('g', ty, [
+            'g 0 = 0',
+            'g (Suc (Suc n)) = 2'])
+        out, texts, missing = fungen._complete_equations(
+            'g', arg_types, res_type, eqs, ['g 0 = 0', 'g (Suc (Suc n)) = 2'])
+        self.assertEqual(missing, [])
+        self.assertEqual(len(out), 2)
+        self.assertEqual(texts, ['g 0 = 0', 'g (Suc (Suc n)) = 2'])
+
     def test_coverage_walks_the_patterns(self):
         """The coverage proof splits the input along the *patterns*.
 

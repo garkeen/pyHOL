@@ -76,6 +76,38 @@ class FunGenLibraryTest(unittest.TestCase):
                 return item
         return None
 
+    def test_a_definition_with_a_hole_gets_its_items(self):
+        """The equation set is completed with `undefined`, so the rules exist.
+
+        `hd (x # xs) = x` says nothing about `[]`, and `the (SomeC x) = x`
+        nothing about `None`.  Isabelle's sequential `fun` completes such a set
+        with a catchall `f x1 ... xn = undefined` and splits it
+        (`Function/fun.ML`: `add_catchall`, then
+        `Function_Split.split_all_equations`), so the input no equation covered
+        becomes an equation of its own and the completeness and induction rules
+        are statable.  The same subtraction runs here, which is why `hd [] =
+        undefined`, `tl [] = undefined` and `the None = undefined` are
+        equations of these definitions rather than holes the generator walks
+        around -- and why both rules are emitted for them, and replayed here.
+        """
+        from core.verify import COMPUTATION_ORACLES, _replay
+        from core import context
+        from kernel import theory
+        for thy, name in [('list', 'hd_def_2'), ('list', 'tl_def_2'),
+                          ('list', 'last_def_2'), ('option', 'the_def_2'),
+                          ('list', 'hd_exhaustive'), ('list', 'tl_induct'),
+                          ('list', 'last_induct'), ('option', 'the_exhaustive'),
+                          ('option', 'the_induct')]:
+            item = self._by_name(name, thy)
+            self.assertIsNotNone(item, 'missing %s' % name)
+            self.assertEqual(item.ty, 'thm', '%s is not a theorem' % name)
+            self.assertTrue(item.steps, '%s has no proof' % name)
+            with theory.fresh_theory():
+                context.set_context(thy, limit=('thm', name),
+                                    vars=dict(item.vars) if item.vars else {})
+                gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
+            self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
+
     def test_every_item_parses(self):
         """No emitted item is left unparsed.
 

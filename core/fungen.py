@@ -117,8 +117,9 @@ def recursion_positions(arg_types, eq_lhs_args):
     equation keeps the first and decreases the second, which is what makes
     the descent lexicographic rather than a single measure.  Every
     equation has to carry a constructor pattern at every one of these
-    positions -- a plain variable there would be a pattern overlapping the
-    others', which needs pattern subtraction.
+    positions: a plain variable there would be a pattern overlapping the
+    others', and `_complete_equations` has already subtracted those apart
+    by the time the emission sees the set.
     """
     positions = set()
     for args in eq_lhs_args:
@@ -264,8 +265,9 @@ def _cond_of(pat, proj, tag):
     A pattern with no variable of its own is an equality.  Otherwise the
     variables are bound by one existential over their tuple, so the test
     is exactly as strong as the pattern and can be discharged (or refuted)
-    with a single `elim` -- no pattern subtraction is needed for a set of
-    equations whose patterns have distinct constructor roots.
+    with a single `elim`.  Refuting it is what needs the positions next to
+    it to differ in their constructor (`_condition_negation`), which
+    `_complete_equations` has already arranged where it could.
 
     The witness is named after the equation the pattern belongs to: the
     stable-ID layer keys a variable line by its name and type alone, so
@@ -573,6 +575,176 @@ def _registered_constrs(T):
             return None
         res.append({'name': c.name, 'type': _inst_type(cT, tyinst)})
     return res
+
+
+# ---------------------------------------------------------------------------
+# Pattern subtraction: the equation set, made pairwise disjoint.
+#
+# Isabelle turns a `fun`'s equations into a constructor-disjoint set before
+# anything else looks at them (Function/pattern_split.ML, `split_all_equations`
+# through `pattern_subtract_many`): every equation is rewritten into the splits
+# of its own pattern that the equations *before* it do not already cover.  Two
+# patterns that differ at some constructor are already disjoint and pass
+# through untouched, so a set that is disjoint to begin with comes out
+# identical -- which is what lets this run on every definition.
+#
+# Two things it buys.  A user may write overlapping equations, the specific one
+# first: the later equation then means "the equations before it did not match",
+# which is Isabelle's sequential reading of `fun` and also the reading the
+# branch chain emits (`_expand` used to refuse these outright).  And a
+# definition with a *hole* -- an input no equation covers -- is completed by
+# subtracting the equations from a catchall `f v1 ... vn = undefined`: what
+# survives is exactly the missing patterns, so `dbl 0` with
+# `dbl (Suc (Suc n))` leaves `dbl (Suc 0) = undefined` behind and the coverage
+# and induction rules become statable.  Isabelle reports the missing patterns
+# as a warning; here they are visible in the emitted equation itself.
+# ---------------------------------------------------------------------------
+
+def _fresh_var(used):
+    """A variable name no equation of the set mentions yet."""
+    k = 1
+    while 'v%d' % k in used:
+        k += 1
+    used.add('v%d' % k)
+    return 'v%d' % k
+
+
+def _pattern_splits(t, t2, used):
+    """The substitutions of pattern `t` under which it differs from `t2`.
+
+    Each entry is a map from a variable of `t` to the term it takes there.
+    `[]` says `t2` covers `t` completely and nothing is left; `[{}]` says the
+    two cannot match the same input and nothing has to change; an entry that
+    leaves some variables unmentioned narrows `t` at *one* argument only, so
+    the entries are a union and not a product -- that is what
+    `pattern_split.ML`'s `flat (map2 ...)` amounts to, and it is the right
+    reading: `f v1 v2` differs from `f (Suc x) y` exactly when `v1` is not a
+    `Suc`, whatever `v2` is.
+
+    The three cases are that function's `pattern_subtract_subst`: a variable
+    of `t2` covers everything below it; a variable of `t` is split by its
+    type's constructors, one split per constructor; and two constructor
+    applications with different heads cannot overlap, while equal heads
+    subtract their arguments pairwise.
+    """
+    if t2.is_var():
+        return []
+    if t.is_var():
+        res = []
+        for constr in _registered_constrs(t.T) or []:
+            arg_types, _ = constr['type'].strip_type()
+            args = [Var(_fresh_var(used), T) for T in arg_types]
+            term = Const(constr['name'], constr['type'])(*args)
+            for sub in _pattern_splits(term, t2, used):
+                env = {t.name: term}
+                env.update(sub)
+                res.append(env)
+        return res
+    h, args = t.strip_comb()
+    h2, args2 = t2.strip_comb()
+    if h == h2 and len(args) == len(args2):
+        res = []
+        for a, a2 in zip(args, args2):
+            res.extend(_pattern_splits(a, a2, used))
+        return res
+    return [{}]
+
+
+def _subtract_pattern(eq, other, used):
+    """`eq`'s equations once `other`'s pattern is taken out of it.
+
+    An empty list says `other` covers `eq` completely -- the equation states
+    nothing about inputs the earlier one does not already decide.
+    """
+    h, args = eq.lhs.strip_comb()
+    out = []
+    for a, b in zip(args, _eq_args(other)):
+        for env in _pattern_splits(a, b, used):
+            piece = Eq(h(*[_subst(x, env) for x in args]),
+                       _subst(eq.rhs, env))
+            if piece not in out:
+                out.append(piece)
+    return out
+
+
+def _chain_separable(arg_types, eqs):
+    """Whether the branch chain can rule these equations out of one another.
+
+    A branch refutes an earlier equation's test with the *top-level*
+    constructor the two patterns disagree on at some position they both
+    constrain (`_condition_negation`).  Two patterns that differ only deeper --
+    `dbl (Suc 0)` against `dbl (Suc (Suc n))`, the shape a hole in a `nat`
+    leaves behind -- would need the constructor's injectivity to be peeled
+    first, which the refutation does not do, so such a set cannot be emitted.
+    """
+    lhs = [_eq_args(eq) for eq in eqs]
+    positions = recursion_positions(arg_types, lhs)
+    for i in range(len(eqs)):
+        here = _pattern_positions(lhs[i], positions)
+        for j in range(i):
+            for pos in _pattern_positions(lhs[j], positions):
+                if (pos in here
+                        and _constr_name(lhs[j], pos)
+                        != _constr_name(lhs[i], pos)):
+                    break
+            else:
+                return False
+    return True
+
+
+def _complete_equations(name, arg_types, res_type, eqs, texts):
+    """The equations made disjoint, with the holes filled by `undefined`.
+
+    Returns `(eqs, texts, missing)`.  `texts` stays aligned with the equations:
+    one that came through untouched keeps the source's own text, and one the
+    subtraction narrowed -- or the catchall contributed -- has none, so the
+    caller prints it from the term.  `missing` holds the equations the catchall
+    kept, the inputs the definition leaves undefined, and is empty exactly when
+    the definition's own equations are exhaustive.
+
+    The catchall is appended and never subtracted *from*: it is last, and an
+    equation is only narrowed by the equations before it, so the user's
+    equations keep their region and the catchall keeps what they do not cover.
+    """
+    used = set()
+    for eq in eqs:
+        for v in eq.get_vars():
+            used.add(v.name)
+    f_const = Const(name, TFun(*(list(arg_types) + [res_type])))
+    vs = [Var(_fresh_var(used), T) for T in arg_types]
+    catchall = Eq(f_const(*vs), Const('undefined', res_type))
+    seq = list(eqs) + [catchall]
+    out, out_text, missing = [], [], []
+    for k, eq in enumerate(seq):
+        pieces = [eq]
+        for prev in seq[:k]:
+            pieces = [p for piece in pieces
+                      for p in _subtract_pattern(piece, prev, used)]
+        if k < len(eqs):
+            if not pieces:
+                raise FunGenError(
+                    'fun %s: equation %d is covered by the equations before '
+                    'it; it decides no input they do not already decide'
+                    % (name, k + 1))
+            out.extend(pieces)
+            out_text.extend([texts[k]] if pieces == [eq] else [None] * len(pieces))
+        else:
+            # The catchall's survivors join the set -- they are the equations
+            # the definition is proved through -- and are reported as well:
+            # they are the inputs the user's equations never mentioned.
+            out.extend(pieces)
+            out_text.extend([None] * len(pieces))
+            missing.extend(pieces)
+    if missing and not _chain_separable(arg_types, out):
+        # The missing pattern differs from the equation next to it only
+        # *inside* a constructor, so the branch chain cannot rule one out of
+        # the other and the emission would fail -- and a definition whose
+        # emission fails falls back to axioms, losing the equations and the
+        # relation it already had.  The fill is dropped instead: the
+        # definition keeps everything it had, and only the coverage and
+        # induction rules are missing.
+        return list(eqs), list(texts), []
+    return out, out_text, missing
 
 
 def _relation(T):
@@ -2340,8 +2512,8 @@ def _coverage_entry(cname, arg_types, eqs, lhs):
     The split walks the *patterns*, not the input: `type_cases` on the
     tuple, then on each position whose patterns are not all variables, and
     down into the arguments of the constructor a branch chose.  A leaf
-    realises exactly one equation -- a definition's patterns are pairwise
-    disjoint, which `_expand` has already checked -- so that equation's
+    realises exactly one equation -- `_complete_equations` has subtracted the
+    patterns apart before the emission sees them -- so that equation's
     disjunct is reached with `disjI`, its pattern's variables are given as
     the witnesses the split recorded, and `eq_refl` closes.
 
@@ -2991,54 +3163,23 @@ def _expand(data, declared=None):
         raise FunGenError('fun %s: a definition without constructor patterns '
                           'is not emitted yet' % name)
     r = positions[0]
-    # Each equation matches one constructor at the recursion position, and
-    # the roots have to be pairwise distinct: the branch chain decides by
-    # `t = C _` alone, so two equations with the same root would need the
-    # more specific pattern to be subtracted from the more general one
-    # (Isabelle's sequential mode does exactly that).  The tests of the
-    # earlier branches are refuted with the datatype's distinctness axioms,
-    # which is why a non-nullary pattern's test is an existential over one
-    # witness tuple: `elim` takes it apart in one step.
-    # Every equation matches where it carries a constructor; the branch
-    # chain decides equation j against equation i at the first position
-    # where both carry one and they differ, so that position has to exist
-    # for every earlier equation.  Two equations that agree everywhere (or
-    # one of which is the general pattern of the other) would need pattern
-    # subtraction, which this emitter does not do.
-    roots = []
-    for i, args in enumerate(lhs):
-        root = []
-        for pos in positions:
-            cname_i = _constr_name(args, pos)
-            constrs = _constr_names(arg_types[pos])
-            if constrs is None:
-                raise FunGenError(
-                    'fun %s: recursion on argument %d is not supported: %s '
-                    'is not a datatype' % (name, pos + 1, _printt(arg_types[pos])))
-            if cname_i in constrs:
-                root.append((pos, cname_i))
-        roots.append(root)
-    for i in range(len(eqs)):
-        for j in range(i):
-            missing = [pos for pos, _ in roots[j]
-                       if not any(pos == p2 for p2, _ in roots[i])]
-            if missing:
-                raise FunGenError(
-                    'fun %s: equation %d matches on argument %d and equation '
-                    '%d leaves it a variable; the later branch cannot be '
-                    'separated from the earlier one without pattern '
-                    'subtraction, which this emitter does not do'
-                    % (name, j + 1, missing[0] + 1, i + 1))
-            diff = [pos for pos, c in roots[j]
-                    if not any(pos == p2 and c == c2 for p2, c2 in roots[i])]
-            if not diff:
-                raise FunGenError(
-                    'fun %s: equations %d and %d match the same constructors '
-                    'in every position they both constrain (%s); overlapping '
-                    'patterns need pattern subtraction, which this emitter '
-                    'does not do' % (name, j + 1, i + 1,
-                                     ", ".join(_prints(_eq_args(eqs[j])[pos])
-                                               for pos, _ in roots[j]) or "-"))
+    # The recursion position has to be a datatype: the split below takes the
+    # patterns apart by its constructors.  This is the only check the emitter
+    # still makes on the shape of the equations -- whether they overlap is no
+    # longer refused, it is *subtracted* (`_complete_equations`), which is
+    # also what fills a definition's holes with `undefined`.
+    for pos in positions:
+        if _constr_names(arg_types[pos]) is None:
+            raise FunGenError(
+                'fun %s: recursion on argument %d is not supported: %s '
+                'is not a datatype' % (name, pos + 1, _printt(arg_types[pos])))
+    # `_missing` is what the definition leaves undefined: the catchall's
+    # survivors, which are also equations of the group emitted below, so the
+    # record of them is the `= undefined` equation itself and not a report.
+    eqs, eq_texts, _missing = _complete_equations(
+        name, arg_types, res_type, eqs,
+        [rule['prop'] for rule in data['rules']])
+    lhs = [_eq_args(eq) for eq in eqs]
     f_const = Const(name, TFun(*(list(arg_types) + [res_type])))
     # A recursive call may stand in any equation, and several calls in one
     # equation are fine as long as they ask for the same thing: the body
@@ -3126,7 +3267,7 @@ def _expand(data, declared=None):
     entries.append(_entry(_rel_wf_entry(cname, arg_types, r, order, relation,
                                         wf_lemma)))
     for i, eq in enumerate(eqs):
-        eq_text = _equation_text(name, ty, data['rules'][i]['prop'], eq)
+        eq_text = _equation_text(name, ty, eq_texts[i], eq)
         text = ['theorem %s_def_%d' % (cname, i + 1),
                 '  fixes %s' % _typenames(sorted(eq.get_vars(),
                                                  key=lambda v: v.name)),
@@ -3222,7 +3363,18 @@ def _equation_text(name, ty, text, eq):
     `butlast ([]::'a list) = ([]::'a list)`), and an item the loader
     cannot type is dropped, which would leave the file with a definition
     whose first equation is missing.
+
+    An equation the emitter made rather than read -- a pattern subtraction
+    left it narrower than the source, or the catchall contributed it -- has no
+    source text, and is printed from its term.
     """
+    if text is None:
+        # An equation the emitter made rather than read.  Its head cannot be
+        # printed: the constant being defined is not in the theory yet, and the
+        # printer looks its signature up.  So the text is assembled the way
+        # `_ascribed_eq` assembles it, with whatever ascriptions the source
+        # would have had to write to pin the definition's type variables down.
+        text = _ascribed_eq(name, eq, _missing_type_vars(ty, '', eq))
     missing = _missing_type_vars(ty, text, eq)
     if not missing:
         return text

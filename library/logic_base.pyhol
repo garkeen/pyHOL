@@ -22,6 +22,14 @@ const Some :: ('a ⇒ bool) ⇒ 'a
 
 const The :: ('a ⇒ bool) ⇒ 'a
 
+-- What a definition leaves unspecified.  Isabelle declares this the same way
+-- (`axiomatization undefined :: 'a`), and no rewrite rule may be stated for
+-- it: a `fun` whose equations do not cover their input is `undefined` there
+-- (core/fungen.py fills the missing patterns with it), so a proof unfolds a
+-- definition *to* it and never through it.
+
+const undefined :: 'a
+
 def exists1 :: ('a ⇒ bool) ⇒ bool = (exists1 P) ⟷ (∃x. P x ∧ (∀y. P y ⟶ y = x))
 
 axiom conjI
