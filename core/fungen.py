@@ -1719,7 +1719,7 @@ def _distinct_fact(prover, T, t1, t2, g):
     return fact
 
 
-def _refute_equality(prover, T, t1, t2, hyp, g):
+def _refute_equality(prover, T, t1, t2, hyp, g, extended=False):
     """Close goal `g` from `hyp`, the equality of the patterns `t1` and `t2`.
 
     `g` is a `false` goal and the equality is one that cannot hold.  Different
@@ -1735,22 +1735,21 @@ def _refute_equality(prover, T, t1, t2, hyp, g):
     shallow as `nat` always leaves.  Isabelle gets there through
     `pat_completeness`'s general case analysis; here it is this recursion, so a
     pair it cannot peel is refused rather than emitted.
+
+    `extended` says whether the `false` row this closes grew a hypothesis
+    after it was intro'ed, which is what `elim` does to it.  That decides
+    whether the closing step lays out a new line: a closure carries the
+    *facts'* hypotheses, so it lands on the row it was handed exactly when
+    those are all the row assumes.  Measured on an `elim`ed row (hypotheses
+    the exists and its body, the facts' the body) it laid one out; on an
+    intro'ed one (hypothesis and facts' both the equality) it laid none.
     """
     h1, a1 = t1.strip_comb()
     h2, a2 = t2.strip_comb()
     if h1.name != h2.name:
         neq = _distinct_fact(prover, T, t1, t2, g)
-        # Measured: whether this step lays out a new line depends on the row
-        # it lands on -- closing a `false` row that came out of an `elim`
-        # created one, closing the row the `intro` above had handed it
-        # created none.  The count below is the one a `fun`'s own branches
-        # need (their refutations of an exists test come from an `elim`);
-        # a refutation of a *plain* equality test that is followed by more
-        # steps of the same proof comes out one short, which is why such a
-        # definition cannot be emitted yet (see
-        # PROGRAM_VERIFICATION_PORT.md §5.8 item 53).
         prover.step(u'\u2190 rule negE_gen goal=%d facts=[%d,%d]'
-                    % (g, neq, hyp))
+                    % (g, neq, hyp), new=1 if extended else 0)
         return
     k = next(i for i, (x, y) in enumerate(zip(a1, a2))
              if _patterns_differ(x, y))
@@ -1766,7 +1765,7 @@ def _refute_equality(prover, T, t1, t2, hyp, g):
         cur = prover.step(u'\u2192 forward conjD1 goal=%d facts=[%d]'
                           % (g, cur))
     arg_types, _ = h1.get_type().strip_type()
-    _refute_equality(prover, arg_types[k], a1[k], a2[k], cur, g)
+    _refute_equality(prover, arg_types[k], a1[k], a2[k], cur, g, extended)
 
 
 def _pattern_neq(prover, T, t1, t2, g):
@@ -1841,7 +1840,7 @@ def _refute_test(prover, arg_types, pos, eqs, i, j, test, g):
     # leaves exactly the equality to refute, and `negE_gen` closes the goal
     # with it (the counter moves on even though nothing is left to prove).
     eq, g2 = ids[1], ids[2]
-    _refute_equality(prover, T, pat_i, cj_inst, eq, g2)
+    _refute_equality(prover, T, pat_i, cj_inst, eq, g2, extended=True)
     return c
 
 
