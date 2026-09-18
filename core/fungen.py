@@ -4001,7 +4001,14 @@ def expand_item(data, declared=None):
     A definition that carries a relation or a measure is the exception:
     it has no current mechanism to keep, so its errors are let out (`_has_
     clauses`).
+
+    A mutual block (`fun ... and ...`) returns None and has no mechanism
+    to keep either: the encoding that would emit it covers the whole
+    group, and a function whose equations call the others has no
+    structural answer (`core/items.py` reports the block).
     """
+    if data.get('groups') is not None:
+        return None
     try:
         return _expand(data, declared)
     except FunGenError:

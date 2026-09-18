@@ -437,7 +437,7 @@ class Fun(Item):
     """
     def __init__(self):
         self.ty = 'def.ind'
-        self.name = None  # name of the constant
+        self.name = None  # name of the constant (the group's first)
         self.type = None  # type of the constant
         self.rules = []  # list of equality rules
         self.cname = None  # expanded name of the constant (for linking)
@@ -445,6 +445,7 @@ class Fun(Item):
         self.relation = None  # the relation it descends through, if given
         self.wf_lemma = None  # name of the theorem proving `wf <relation>`
         self.descent = []  # names of the theorems discharging the calls
+        self.groups = None  # the parsed groups, when mutually recursive
         self.error = None
 
     def __eq__(self, other):
@@ -452,6 +453,14 @@ class Fun(Item):
             self.rules == other.rules and self.cname == other.cname and self.error == other.error
 
     def parse(self, data):
+        # One function is the flat shape it always was; a mutual group
+        # (`fun ... and ...`) is one item carrying `groups`, since the
+        # functions are emitted together.  The group dicts have the same
+        # keys as the flat shape, so both go through one path below.
+        if data.get('groups') is not None:
+            self._parse_groups(data['groups'])
+            return
+
         self.name = data['name']
 
         try:
@@ -501,6 +510,74 @@ class Fun(Item):
             self.error = error
             self.trace = traceback.format_exc()
 
+    def _parse_groups(self, groups):
+        """Read a mutual block (`fun ... and ...`), one item for the group.
+
+        Every group's type is in scope while its equations are read: a
+        recursive call crosses the group, which is what makes the block a
+        single item.  Nothing is emitted yet -- what justifies the
+        recursion is the sum encoding, which covers the group as a whole
+        -- so the item reports that instead of falling back on axioms;
+        `get_extension` refuses for the same reason (`check_fun_recursion`
+        cannot check calls that cross functions, so there is no
+        structural answer to fall back on either).
+
+        """
+        self.name = ' and '.join(group['name'] for group in groups)
+        self.type = groups[0]['type']
+        self.rules = groups[0]['rules']
+        self.groups = groups
+        try:
+            for group in groups:
+                if group.get('measure') or group.get('relation') or \
+                        group.get('wf') or group.get('descent'):
+                    raise ItemException(
+                        "Fun %s: a mutual block carries the termination "
+                        "clauses of the whole group, not of one function; "
+                        "none are supported yet" % group['name'])
+
+            defs = {group['name']: parser.parse_type(group['type'])
+                    for group in groups}
+            self.cname = theory.thy.get_overload_const_name(
+                groups[0]['name'], defs[groups[0]['name']])
+
+            parsed = []
+            for group in groups:
+                rules = []
+                for rule in group['rules']:
+                    with context.fresh_context(defs=defs):
+                        prop = context.parse_term(rule['prop'])
+
+                    if not prop.is_equals():
+                        raise ItemException(
+                            "Fun %s: rule is not an equality" % group['name'])
+
+                    f, args = prop.lhs.strip_comb()
+                    if f != Const(group['name'], defs[group['name']]):
+                        raise ItemException(
+                            "Fun %s: wrong head of lhs" % group['name'])
+                    lhs_vars = set(v.name for v in prop.lhs.get_vars())
+                    rhs_vars = set(v.name for v in prop.rhs.get_vars())
+                    if not rhs_vars.issubset(lhs_vars):
+                        raise ItemException(
+                            "Fun %s: extra variables in rhs: %s" % (
+                                group['name'],
+                                ", ".join(v for v in rhs_vars - lhs_vars)))
+                    rules.append({'prop': prop})
+                parsed.append({'name': group['name'], 'type': defs[group['name']],
+                               'rules': rules})
+            self.parsed_groups = parsed
+            self.rules = parsed[0]['rules']
+
+            raise ItemException(
+                "Fun %s: a mutual definition is not emitted yet; its "
+                "equations come from the sum encoding, so there are no "
+                "axioms to fall back on" % self.name)
+
+        except Exception as error:
+            self.error = error
+            self.trace = traceback.format_exc()
+
     def _parse_clauses(self, data):
         """Read the `measure` / `relation` / `wf` / `descent` clauses.
 
@@ -515,6 +592,15 @@ class Fun(Item):
             fungen.fun_clauses(data, eqs, self.name, self.type)
 
     def get_extension(self):
+        if self.groups is not None:
+            # A mutual block is emitted by the sum encoding (`fungen`).
+            # There is nothing to fall back on: the structural check that
+            # makes a set of axioms consistent asks about one function's
+            # subterms, and a call that crosses the group is not a subterm
+            # of anything.
+            raise ItemException(
+                'Fun %s: a mutual definition is emitted, not axiomatized; '
+                'the generator did not produce it' % self.name)
         assert self.error is None, "get_extension"
         if self.measures or self.relation is not None:
             # The equations of such a definition are *derived*, from the
@@ -536,6 +622,8 @@ class Fun(Item):
         return res
 
     def get_display(self):
+        if self.groups is not None:
+            return self._display_groups()
         if self.error:
             disp_type = display_raw(self.type)
             disp_rules = [rule['prop'] for rule in self.rules]
@@ -563,26 +651,74 @@ class Fun(Item):
             'relation': joined([disp_relation] if disp_relation else None),
         }
 
+    def _display_groups(self):
+        """Display a mutual block: one entry per function.
+
+        The rules are shown as written -- the block's text is what the
+        file says, and the item carries them per group under `groups` as
+        well, for an editor that knows the block (editing one is not
+        supported yet, `parse_edit`).  Until the encoding lands the item
+        is always an error, so there is no parsed form to print instead.
+
+        """
+        def joined(texts):
+            return texts if settings.highlight else '\n'.join(texts)
+
+        disp_groups = []
+        for group in self.groups:
+            rules = [rule['prop'] for rule in group.get('rules', [])]
+            disp_groups.append({
+                'name': group['name'],
+                'type': group['type'],
+                'rules': joined(rules),
+            })
+        return {
+            'ty': 'def.ind',
+            'name': self.name,
+            'type': self.groups[0]['type'],
+            'rules': disp_groups[0]['rules'],
+            'groups': disp_groups,
+            'measure': None,
+            'relation': None,
+        }
+
     def parse_edit(self, edit_data):
-        rules = []
-        for prop in edit_data['rules'].split('\n'):
-            rules.append({'prop': prop})
-        edit_data['rules'] = rules
-        for key in ('measure', 'relation', 'descent'):
-            text = edit_data.get(key)
-            if isinstance(text, str):
-                texts = [part.strip() for part in text.split('\n')
-                         if part.strip()]
-                edit_data[key] = ['"%s"' % t.strip('"') for t in texts]
-            elif text:
-                edit_data[key] = ['"%s"' % t.strip('"') for t in text]
-        wf = edit_data.get('wf')
-        if isinstance(wf, str):
-            wf = wf.strip()
-            edit_data['wf'] = ['"%s"' % wf] if wf else []
-        self.parse(edit_data)
+        groups = edit_data.get('groups')
+        if groups is None:
+            groups = [edit_data]
+        for group in groups:
+            rules = []
+            for prop in group['rules'].split('\n'):
+                rules.append({'prop': prop})
+            group['rules'] = rules
+            for key in ('measure', 'relation', 'descent'):
+                text = group.get(key)
+                if isinstance(text, str):
+                    texts = [part.strip() for part in text.split('\n')
+                             if part.strip()]
+                    group[key] = ['"%s"' % t.strip('"') for t in texts]
+                elif text:
+                    group[key] = ['"%s"' % t.strip('"') for t in text]
+            wf = group.get('wf')
+            if isinstance(wf, str):
+                wf = wf.strip()
+                group['wf'] = ['"%s"' % wf] if wf else []
+        if len(groups) == 1:
+            self.parse(edit_data)
+        else:
+            edit_data['groups'] = groups
+            self.parse(edit_data)
 
     def export_json(self):
+        if self.groups is not None:
+            return {
+                'ty': 'def.ind',
+                'name': self.name,
+                'groups': [{'name': group['name'], 'type': group['type'],
+                            'rules': [{'prop': rule['prop']}
+                                      for rule in group.get('rules', [])]}
+                           for group in self.groups],
+            }
         with global_setting(unicode=True):
             res = {
                 'ty': 'def.ind',

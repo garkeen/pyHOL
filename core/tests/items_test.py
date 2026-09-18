@@ -371,5 +371,92 @@ class StructRecursionTest(unittest.TestCase):
         self.assertIsNone(item.error)
 
 
+class MutualFunTest(unittest.TestCase):
+    """`fun ... and ...`: one item for the group, nothing registered yet.
+
+    The block is parsed -- and its equations are read with every function
+    of the group in scope, which is what a call across the group needs --
+    but it is not emitted: the sum encoding that justifies the recursion
+    covers the group as a whole.  Until that lands the block reports
+    itself and registers nothing, least of all axioms, which no
+    structural check could make consistent for a call that crosses
+    functions.
+
+    """
+
+    def _block(self, groups=None):
+        return items.parse_item({
+            "ty": "def.ind",
+            "groups": groups or [
+                {"name": "even2", "type": "nat => bool",
+                 "rules": [{"prop": "even2 0 = true"},
+                           {"prop": "even2 (Suc n) = odd2 n"}]},
+                {"name": "odd2", "type": "nat => bool",
+                 "rules": [{"prop": "odd2 0 = false"},
+                           {"prop": "odd2 (Suc n) = even2 n"}]},
+            ]})
+
+    def testGroupIsOneItemAndReportsTheGap(self):
+        basic.load_theory('nat', limit=('def', 'one'))
+        item = self._block()
+        self.assertIsNotNone(item.error)
+        self.assertIn('not emitted yet', str(item.error))
+        self.assertEqual(item.name, 'even2 and odd2')
+        self.assertEqual([g['name'] for g in item.groups], ['even2', 'odd2'])
+        self.assertEqual(len(item.parsed_groups), 2)
+
+    def testGroupRegistersNothing(self):
+        # No constant and no equation theorem: the block has neither.
+        basic.load_theory('nat', limit=('def', 'one'))
+        self._block()
+        with self.assertRaises(theory.TheoryException):
+            theory.get_theorem('even2_def_1')
+        with self.assertRaises(theory.TheoryException):
+            theory.get_theorem('odd2_def_2')
+
+    def testGroupRefusesAxioms(self):
+        basic.load_theory('nat', limit=('def', 'one'))
+        item = self._block()
+        with self.assertRaises(items.ItemException) as ctx:
+            item.get_extension()
+        self.assertIn('emitted, not axiomatized', str(ctx.exception))
+
+    def testGroupRulesBelongToTheirFunction(self):
+        # Equations are still each function's own: the head of a rule's
+        # left hand side is the function it defines.  (Reading the
+        # *right* hand side is where the sibling comes in.)
+        basic.load_theory('nat', limit=('def', 'one'))
+        item = self._block(groups=[
+            {"name": "even3", "type": "nat => bool",
+             "rules": [{"prop": "odd3 0 = true"}]},
+            {"name": "odd3", "type": "nat => bool",
+             "rules": [{"prop": "odd3 (Suc n) = even3 n"}]}])
+        self.assertIsNotNone(item.error)
+        self.assertIn('wrong head of lhs', str(item.error))
+
+    def testGroupTakesNoClauses(self):
+        # A mutual block's termination covers the group, so a per
+        # function `measure` / `relation` is not read (and not silently
+        # ignored either).
+        basic.load_theory('nat', limit=('def', 'one'))
+        item = self._block(groups=[
+            {"name": "even4", "type": "nat => bool",
+             "measure": ["n"],
+             "rules": [{"prop": "even4 (Suc n) = even4 n"}]}])
+        self.assertIsNotNone(item.error)
+        self.assertIn('mutual block', str(item.error))
+
+    def testSingleFunctionKeepsTheFlatShape(self):
+        # The one-function case is untouched: same data keys, same
+        # attributes, no `groups`.
+        basic.load_theory('nat', limit=('def', 'one'))
+        item = items.parse_item({
+            "name": "f2", "type": "nat => nat",
+            "rules": [{"prop": "f2 0 = 0"}], "ty": "def.ind"})
+        self.assertIsNone(item.error)
+        self.assertIsNone(item.groups)
+        self.assertEqual(item.name, 'f2')
+
+
 if __name__ == "__main__":
     unittest.main()

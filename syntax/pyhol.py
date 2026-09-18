@@ -275,16 +275,20 @@ def _export_def(item):
 
 
 def _export_fun(item):
-    name = item['name']
-    ty = item['type']
-    rules = item.get('rules', [])
+    # A mutual group is one item with several `groups`; the first is
+    # introduced by `fun`, the rest by `and`.  The single function case
+    # (no `groups` key) is the same text it always was.
+    groups = item.get('groups') or [item]
 
-    lines = ['fun %s :: %s' % (name, ty)]
-    for clause in ('measure', 'relation', 'wf', 'descent'):
-        for text in item.get(clause) or []:
-            lines.append('  %s %s' % (clause, text))
-    for rule in rules:
-        lines.append('  | %s' % rule['prop'])
+    lines = []
+    for k, group in enumerate(groups):
+        lines.append('%s %s :: %s' % ('fun' if k == 0 else 'and',
+                                      group['name'], group['type']))
+        for clause in ('measure', 'relation', 'wf', 'descent'):
+            for text in group.get(clause) or []:
+                lines.append('  %s %s' % (clause, text))
+        for rule in group.get('rules', []):
+            lines.append('  | %s' % rule['prop'])
     return lines
 
 
@@ -897,42 +901,59 @@ def _parse_prop_and_attrs(s):
 
 
 def _parse_fun(lines, i):
+    """Parse a `fun` block, with `and` continuing it into a mutual group.
+
+    One function keeps the flat shape (`name`/`type`/`rules`/clauses at
+    the top level); a group is one item carrying `groups`, because the
+    functions are emitted together -- the encoding that makes their
+    recursion well-founded covers the whole group, and the equations of
+    one function mention the others.
+
+    """
     line = lines[i].rstrip()
     # fun name :: type
     m = re.match(r'^fun\s+(\S+)\s+::\s+(.+)$', line)
     if not m:
         return None, i + 1
-    name = m.group(1)
-    ty = _norm_arrows(m.group(2).strip())
 
-    # The clauses a `fun` may carry before its equations: the relation or
-    # measures its recursion descends through, and the lemmas that
-    # discharge the obligations when the emitter cannot.  Their text is
-    # kept as written; `core/items.py` splits and checks it, so that a
-    # malformed clause is an item error and not a silently missing
-    # measure.
-    clauses = {}
-    rules = []
-    i += 1
-    while i < len(lines):
-        line = lines[i].rstrip()
-        if not line or line.startswith('--'):
-            i += 1
-            continue
-        if line.startswith('  |'):
-            rule_prop = _norm_arrows(line[3:].strip())
-            rules.append({'prop': rule_prop})
-            i += 1
-            continue
-        m = re.match(r'^\s*(measure|relation|wf|descent)\s+(.*)$', line)
-        if not m:
-            break
-        clauses.setdefault(m.group(1), []).append(m.group(2).strip())
+    groups = []
+    while m is not None:
+        group = {'name': m.group(1), 'type': _norm_arrows(m.group(2).strip()),
+                 'rules': []}
+
+        # The clauses a `fun` may carry before its equations: the relation
+        # or measures its recursion descends through, and the lemmas that
+        # discharge the obligations when the emitter cannot.  Their text is
+        # kept as written; `core/items.py` splits and checks it, so that a
+        # malformed clause is an item error and not a silently missing
+        # measure.
         i += 1
+        while i < len(lines):
+            line = lines[i].rstrip()
+            if not line or line.startswith('--'):
+                i += 1
+                continue
+            if line.startswith('  |'):
+                rule_prop = _norm_arrows(line[3:].strip())
+                group['rules'].append({'prop': rule_prop})
+                i += 1
+                continue
+            m = re.match(r'^\s*(measure|relation|wf|descent)\s+(.*)$', line)
+            if not m:
+                break
+            group.setdefault(m.group(1), []).append(m.group(2).strip())
+            i += 1
 
-    data = {'ty': 'def.ind', 'name': name, 'type': ty, 'rules': rules}
-    data.update(clauses)
-    return data, i
+        groups.append(group)
+        # and name :: type
+        m = (re.match(r'^and\s+(\S+)\s+::\s+(.+)$', lines[i].rstrip())
+             if i < len(lines) else None)
+
+    if len(groups) == 1:
+        data = {'ty': 'def.ind'}
+        data.update(groups[0])
+        return data, i
+    return {'ty': 'def.ind', 'groups': groups}, i
 
 
 def _parse_inductive(lines, i):

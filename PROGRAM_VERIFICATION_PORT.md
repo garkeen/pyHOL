@@ -145,15 +145,33 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
   这正是互递归终止证明能拆成两份递归调用的原因。和元素的分情形走**定义自身的析取**而不是
   `type_cases`（原因见 §5.8 第 51 条）。
 
-**未做**（按依赖顺序）：
+**已落地：`fun … and …` 的语法与条目 schema**
 
-1. 语法与条目 schema：`_parse_fun`（`syntax/pyhol.py:899`）只读一个 `fun NAME :: TYPE` +
-   `|` 方程 + 子句，`_export_fun` 亦然，没有 `and`；要么加 `fun … and …` 的块，要么给
-   互递归新条目类型，牵动 `items.py` 的解析/扩展、`basic.py` 的分发与增量缓存。
-2. 编码本身：`mk_inj`/`mk_proj`（沿平衡树走 `Left`/`Right` 与析构子）、`mk_sumcases`、
+- `_parse_fun`（`syntax/pyhol.py`）把 `and NAME :: TYPE` 当作同一个块的续行：一个函数仍是
+  原来的扁平形状（`name`/`type`/`rules`/子句在顶层，缓存与所有读 `data['name']` 的地方不变），
+  两个以上则是一个条目带 `groups`（每个 group 的键与扁平形状同款）。`_export_fun` 反向输出
+  （`fun` 起头、`and` 续行），**单函数导出逐字节不变**。`syntax/tests/pyhol_test.py` 锁住
+  往返与"单函数不长出 `groups`"。
+- `items.Fun` 读 `groups`：**所有 group 的类型都在作用域里**（跨函数的递归调用才解析得了），
+  每条的方程仍检查"等式的头是本函数的常量""右端不多变量"。条目名字取 `even and odd`
+  （状态表里一眼看出是个块）。
+- **不发射**：块自己报告 `not emitted yet`，`get_extension` 也显式拒绝（`emitted, not
+  axiomatized`）——`check_fun_recursion` 的结构判据问的是"某个函数的子项"，跨函数的调用不是
+  任何东西的子项，所以这里**没有**可退守的公理路径（`core/tests/items_test.py` 的
+  `MutualFunTest` 六例：报错、不注册、拒公理、头不对要拒、块不接 `measure`/`relation`、
+  单函数形状不变）。`fungen.expand_item` 见到 `groups` 直接返回 None（唯一的判据在条目层）。
+- 实测：临时 `.pyhol` 里放一个 `even2 and odd2` 块，加载后是**一条 error 条目**、理论里既没有
+  `even2` 常量也没有 `even2_def_1`（验完已删除该临时文件）。
+- 块的 `measure`/`relation`/`wf`/`descent` 子句暂不接受（终止是对整个组证一次，写法与
+  单函数不同），报错而不是静默忽略。
+
+**未做**：
+
+1. 编码本身：`mk_inj`/`mk_proj`（沿平衡树走 `Left`/`Right` 与析构子）、`mk_sumcases`、
    每个函数用投影定义、方程翻译成 `fsum` 的方程、终止关系搬到和上（用 `wf_either_rel`）、
    再把方程 / cases / elims / induct 投影回各函数——**投影那步是 holpy 侧的真正工作量**：
    伊莎贝尔用 `EqSubst`+`simp_tac`，这里得写成显式步骤（形态与现有 `_def_entry` 模板同款）。
+   `basic._load_group` 的分发也在这步接上（现在靠 `expand_item` 返回 None 走到条目层的报错）。
 
 **验收**：一个两函数互递归的样本（如 `even`/`odd` 的互递归版）拿到方程、`_exhaustive`、
 `_cases`、`_elims`、`_induct` 五样，且归纳规则能在库里用一次。
