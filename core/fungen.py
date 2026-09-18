@@ -1740,9 +1740,15 @@ def _refute_equality(prover, T, t1, t2, hyp, g):
     h2, a2 = t2.strip_comb()
     if h1.name != h2.name:
         neq = _distinct_fact(prover, T, t1, t2, g)
-        # `negE_gen` closes the goal and leaves one item behind (the goal with
-        # the rewritten hypothesis), so the counter moves on even though
-        # nothing is left to prove.
+        # Measured: whether this step lays out a new line depends on the row
+        # it lands on -- closing a `false` row that came out of an `elim`
+        # created one, closing the row the `intro` above had handed it
+        # created none.  The count below is the one a `fun`'s own branches
+        # need (their refutations of an exists test come from an `elim`);
+        # a refutation of a *plain* equality test that is followed by more
+        # steps of the same proof comes out one short, which is why such a
+        # definition cannot be emitted yet (see
+        # PROGRAM_VERIFICATION_PORT.md §5.8 item 53).
         prover.step(u'\u2190 rule negE_gen goal=%d facts=[%d,%d]'
                     % (g, neq, hyp))
         return
@@ -3699,7 +3705,19 @@ def _expand(data, declared=None):
             if c not in tuples:
                 tuples.append(c)
         calls.append(tuples)
-    _require_in_scope(arg_types, r, None if any(calls) else [])
+    # A recursion position without a subterm relation in scope (a datatype
+    # no constructor recurses into, the sum a mutual definition is encoded
+    # in) is not the end of the story: the measures below are decided by
+    # their own cells, and a definition the measures carry needs no
+    # subterm relation at all.  The gate that used to be here asked for
+    # one whenever there was a call at all, which made exactly those
+    # definitions unemittable; the question is deferred to the call after
+    # the search, which knows what the definition ends up descending
+    # through.
+    try:
+        _require_in_scope(arg_types, r, None if any(calls) else [])
+    except FunGenError:
+        pass
 
     dmap = _destructor_maps(arg_types, positions, lhs)
     rules = [_reduce_used(_body_term(name, arg_types, res_type, eqs, positions,

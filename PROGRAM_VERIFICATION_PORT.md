@@ -173,6 +173,27 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
    伊莎贝尔用 `EqSubst`+`simp_tac`，这里得写成显式步骤（形态与现有 `_def_entry` 模板同款）。
    `basic._load_group` 的分发也在这步接上（现在靠 `expand_item` 返回 None 走到条目层的报错）。
 
+**编码的探路结果**（已在会话里实测，缺最后一块）：
+
+- **编码后的定义就是一条普通的 `fun`**，不需要新的证明机制：`even`/`odd` 编成
+  `fun even_odd_sum :: (nat,nat) either ⇒ bool`（四条方程 `Left 0`/`Left (Suc n)`/
+  `Right 0`/`Right (Suc n)`，递归调用写成 `even_odd_sum (Right n)` 这种）。结果是
+  `bool` 只有一种，结果侧不用取和；参数侧每函数一个槽位。
+- **终止走度量引擎**，不用显式 `relation`：`_measure_order` 自己找出
+  `[Measure(0, size)]`（`either_size id id`，两个调用分别要 `nat_size n < nat_size (Suc n)`），
+  和上的子项关系不需要——`either` 本来就没有 `either_wf_subterm`。为此把 `_expand` 里
+  「有调用就要求子项关系」的**前置门放宽**成 try/except（真问题交给搜索之后那次按 order
+  的检查）；两个 fungen 回归（core 28 例、library 16 例，后者重放 13 个理论）都过。
+- **一次 `_expand` 出 14 条**：`even_odd_sum_m1/H/rel/in`、常量定义、`rel_wf`、四条方程、
+  `_exhaustive`、`_cases`、`_elims`、`_induct` 全都在，说明方程/覆盖/归纳那套模板对
+  「和类型上的定义」直接可用。
+- **9 条重放里 6 条 VALID**（含 `_exhaustive`/`_cases`/`_induct`）；失败的是两条**递归方程**
+  （`Left (Suc n)`、`Right (Suc n)`）以及依赖它们的 `_elims`。原因不在编码，而在发射器的
+  ID 算术：见 §5.8 第 53 条（同头嵌套模式的反驳那一步创建条目不固定）。**下一步就是修它**——
+  把 `_refute_equality` 收口的那一步换成形态可静态计数的写法（`resolve` 需要事实与定理同朝向，
+  得先把等式事实翻到定理那一侧），修完这两条方程应当直接过，投影（每函数 `def` + 方程定理 +
+  四条规则的投影）也可以照着同一个模式做。
+
 **验收**：一个两函数互递归的样本（如 `even`/`odd` 的互递归版）拿到方程、`_exhaustive`、
 `_cases`、`_elims`、`_induct` 五样，且归纳规则能在库里用一次。
 
@@ -437,6 +458,21 @@ auto2 建立在 Isabelle 的 Imperative_HOL 上：带类型 ref/array、`lim`、
     `← rule wf_induct goal=<!x. P (Left x)> facts=[<wf R1>]` 一步把 `?P` 配成 `%z. P (Left z)`，
     留下 `<步进>` 子目标——比 `rewrite wf_def` 再 `inst` 写 λ 项省事（λ 项还带类型注解的坑）。
     前提是定理结论本身是 ∀（`?P ?x` 与 `!x. 目标 x` 之间的匹配），否则 §5.4 第 29 条适用。
+53. **发射器的 ID 算术在同头嵌套模式的反驳上会差一条**（`core/fungen.py` 的
+    `_refute_equality` 收口那步）。两个同构造子、参数不同的模式（`Left (Suc n)` 对 `Left 0`）
+    先用单射性剥一层，再用不相交性关掉：收口是
+    `← rule negE_gen goal=<false> facts=[<¬u>、<u>]`。**实测**这一步落不落新行取决于它落的
+    那一行：关掉 `elim` 出来的 `false` 行会落一条，关掉上面 `intro` 交下来的那行不落。
+    发射器一律按「落一条」计数，这正好是 `fun` 自己分支需要的（存在式测试的反驳都走 `elim`），
+    但**普通等式测试**（前面的方程在该位置是闭模式，如 `0`）的反驳走的是 `intro` 那条，
+    于是它后面还有步的证明整体差一条、重放报 `goal sid N not found`。
+    症状与判别：`replay failed at step: cut`（差在 cut 的 `goal=` 上）或
+    `step: rule` 后跟 `When matching ?x with false`。
+    修的方向：把收口换成计数确定的写法——`← resolve <不相交性定理> goal=<false>
+    facts=[<等式事实>]`（`resolve` 实测恒落一条），代价是要把等式事实**翻到定理那一侧**
+    （`_distinct_fact` 现在按测试的朝向翻，`resolve` 要按定理的朝向），
+    即多一步 `→ rewrite eq_sym_eq target=fact`（同样恒落一条）。
+    和类型的编码正撞在这条上（每条边两个方程共享构造子），修完才能发射编码后的定义。
 
 ---
 
