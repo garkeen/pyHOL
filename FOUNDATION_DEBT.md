@@ -89,12 +89,13 @@ STEP_FAILED），实验后要清理。
   序（Isabelle `Orderings.thy`/`Order_Relation.thy`、Mathlib `Order/Defs/`）——
   **谓词层已完成**：`'a::C` 类型类糖（一个类可贡献多条前提）+ `library/order.pyhol` 的
   `preorder`/`order`/`linorder`/`linorder_lt` 谓词、层级与严格序引理、`nat` 实例
-  都已就位（见 `PROGRAM_VERIFICATION_PORT.md` §11）；auto2 `Lists_Ex.thy` 的列表层
+  都已就位（见 `PROGRAM_VERIFICATION_PORT.md` §1.5）；auto2 `Lists_Ex.thy` 的列表层
   （`strict_sorted`、`ordered_insert`、`remove_elt_list`）与 Isabelle 的 `sorted`
-  （≤ 版）连同各自的成员/集合/保序引理已在 `library/lists_ex.pyhol`（同文档
-  §12–13）；`lt`/`le` 桥接引理（§14.6）与 `int`/`real` 的序类实例（§13.3，
+  （≤ 版）连同各自的成员/集合/保序引理已在 `library/lists_ex.pyhol`；`lt`/`le` 桥接引理
+  （`library/order.pyhol` 的 `linorder_lt_le`）与 `int`/`real` 的序类实例（`library/int.pyhol`、
+  `library/real.pyhol`，
   两个理论因此各多一条 `imports order`）都已完成，只差 Quicksort 专用的
-  `sublist` 刻画（§13.3）与
+  `sublist` 刻画（归阶段 5，见 `PROGRAM_VERIFICATION_PORT.md` §4）与
   格（`Lattices.thy`/`Complete_Lattices.thy`/`Conditionally_Complete_Lattices.thy`/
   `Lattices_Big.thy`、Mathlib `Order/Lattice.lean`/`Order/CompleteLattice/`）、
   关系（`Relation.thy`/`Transitive_Closure.thy`/`Equiv_Relations.thy`、
@@ -103,14 +104,14 @@ STEP_FAILED），实验后要清理。
   仍缺。
 - **P2 数据结构**：list 补全（已补 take/drop/sublist/last/butlast/map/filter/foldr/foldl/
   concat/zip/itrev/list_update/list_swap/remdups 的定义与 take/drop/map 骨架引理，见
-  `PROGRAM_VERIFICATION_PORT.md` §8；`sorted`/`strict_sorted`/`insort` 需序，归入 P1 序）；
+  `PROGRAM_VERIFICATION_PORT.md` §1.4 与 `library/list.pyhol`；`sorted`/`strict_sorted`/`insort` 需序，归入 P1 序）；
   `option` 已建（`library/option.pyhol`）；`sum`（`Sum_Type.thy`）；
   `record`（`Record.thy`、HOL Light `Library/records.ml`）；`map`（`Map.thy`）；
   `finset`/`multiset`（`multiset` 已建：`library/multiset.pyhol`，用计数函数
   `'a ⇒ nat` 表示，避开缺失的类型定义原语；`mset`/单点/并/置换律已证）；`vector`/`tree`。
   有限集（`set` 理论）：`finite_induct`/`finite_insert`/`finite_subset`/`finite_union_imp`/
   `finite_inter`/`finite_image`/`finite_delete`/`finite_diff` 与 `lfp_*` 均已证
-  （见 `PROGRAM_VERIFICATION_PORT.md` §9），**P0 有限集债清除**。
+  （见 `library/set.pyhol`），**P0 有限集债清除**。
   基数层（同文档 §10，2026-09-13 续轮）：在 `card_empty`/`card_insert` 两条公理上
   证出 `card_image_inj`/`card_mono`/`card_image_le`/`card_subset_eq`、
   鸽子洞引理 `surjective_imp_injective` 与 `surjective_iff_injective`——

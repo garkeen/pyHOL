@@ -113,7 +113,7 @@ python -m repl.client --port 5599 --stdin < batch.txt
   REPL 里根本证不了。注意 **z3 的可用改写规则取决于"此刻理论里有什么"**
   （`z3wrapper.norm_term` 走 `has_theorem` 判断），所以在 REPL 里证过的 z3 步骤
   不一定在库回放时也成立——必须用 `.cache/validate_one.py <理论> --force` 复核
-  （实例见 PROGRAM_VERIFICATION_PORT.md §13.3 的 `real_inv_0`）。
+  （实例见 `library/real.pyhol` 的 `real_inv_0` NOTE）。
 
 ### 3.2 `#[N]` 注解只是显示，但会强制 sid
 

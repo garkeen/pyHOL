@@ -14,7 +14,7 @@ logic_base
        ├─ nat
        │    ├─ set
        │    │    ├─ list
-       │    │    │    ├─ int  (另需 order，见 PROGRAM_VERIFICATION_PORT §13.3)
+       │    │    │    ├─ int  (另需 order，见 `library/int.pyhol` 的 imports)
        │    │    │    │    ├─ rat
        │    │    │    │    │    └─ real  (另需 order，同上)
        │    │    │    │    │         ├─ realset
@@ -35,7 +35,7 @@ logic_base
        │    │    └─ (mem 另需 nat)
        │    ├─ class
        │    ├─ order（序谓词 preorder/order/linorder/linorder_lt + nat 实例，
-       │    │         见 PROGRAM_VERIFICATION_PORT §11；int/real 实例见 §13.3）
+       │    │         见 PROGRAM_VERIFICATION_PORT §1.5）
        │    │    └─ lists_ex（strict_sorted / ordered_insert / remove_elt_list / sorted；另需 list，见 §12–13）
        ├─ sat (另需 int)  └─ smt
        └─ hoare (另需 int)
@@ -50,7 +50,7 @@ real 下游：metric←misc←(floor,card)；integral←(real,metric)；transcen
 ## 2. 各理论债务快照
 
 **int / real 两行已于 2026-09-14 用 `validate_one --force` 刷新**（序层实例落地，
-见 PROGRAM_VERIFICATION_PORT §13.3）；其余各行仍是 2026-09-09 的基线，刷新要跑
+见 `library/real.pyhol`）；其余各行仍是 2026-09-09 的基线，刷新要跑
 `python validate_library.py`。
 
 | 理论 | 直接依赖 | 反向传递依赖数 | VALID | UNPROVED | DEP_FAILED | STEP_FAILED | AXIOM |
@@ -110,7 +110,7 @@ real 下游：metric←misc←(floor,card)；integral←(real,metric)；transcen
 | list | 0 | 0 | - |
 | int | 181 | 0 | - |
 | rat | 4 | 0 | - |
-| real | 122 | 28 | （本行是 2026-09-09 基线：`real_le_trans`、`real_le_mul`、`real_lt_le` 等序引理已于 2026-09-14 证掉，见 PROGRAM_VERIFICATION_PORT §13.3；引用计数需刷新。仍 UNPROVED 的序外条目：real_mul_linv(18)、real_inv_0(14) —— 它们的 z3 证明受"该项在文件中的位置"影响，见 §13.3）real_mult_comm(58), real_mul_lid(51), real_not_lt(39), real_of_nat_eq(13), real_of_nat_lt(10), sqrt_works_gen_2(10), real_of_nat_le(8), real_of_nat_add(8) |
+| real | 122 | 28 | （本行是 2026-09-09 基线：`real_le_trans`、`real_le_mul`、`real_lt_le` 等序引理已于 2026-09-14 证掉，见 `library/real.pyhol`；引用计数需刷新。仍 UNPROVED 的序外条目：real_mul_linv(18)、real_inv_0(14) —— 它们的 z3 证明受"该项在文件中的位置"影响，见 `library/real.pyhol` 的 NOTE）real_mult_comm(58), real_mul_lid(51), real_not_lt(39), real_of_nat_eq(13), real_of_nat_lt(10), sqrt_works_gen_2(10), real_of_nat_le(8), real_of_nat_add(8) |
 | iterate | 52 | 33 | finite_natseg(31), iterate_empty(7), card_natseg(5), natseg_add_split(4), iterate_union(4), iterate_eq(4), iterate_superset(4), support_support(3), iterate_closed(3), iterate_related(3), iterate_eq_neutral(3), iterate_closed_nonempty(3), iterate_related_nonempty(3), iterate_delete(3) |
 | sums | 55 | 25 | nsum_const(5), sum_clauses_right(5), sum_lmul(4), sum_const(4), nsum_le(3), nsum_sing(3), sum_le(3), nsum_lmul(2), nsum_lt(2), nsum_swap(2), sum_lt(2), sum_abs(2), sum_swap(2), real_of_nat_sum(2) |
 | products | 14 | 8 | nproduct_sing(2), nproduct_pos_lt(1), nproduct_eq_0(1), nproduct_le(1), nproduct_mul(1), nproduct_const(1), product_pos_le(1), product_pos_lt(1) |
