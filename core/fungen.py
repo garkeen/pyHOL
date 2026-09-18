@@ -802,38 +802,119 @@ def _size_rule(sz, T, k):
     return None
 
 
-def _size_tables(arg_types, def_names):
-    """The size information the measure engine needs.
+def _size_family(T, def_names):
+    """(size function, its parameters' types, its family) for an instance.
 
-    Returns `(sizes, size_of)`.  `sizes` maps a size function's name to
-    its constructors' equations and recursive positions -- what the
-    normalization unfolds `size (C ...)` with; `size_of` answers a type
-    with its size function, or None.  A datatype whose equations do not
-    all exist contributes no column, and the size function's own
-    definition is left out: its measure would be the constant being
-    defined.
+    The size of a datatype instance is `<ty>_size`, when the datatype layer
+    generated one and it is not the definition being expanded (a size's own
+    measure would be the constant being defined).  The family is read from
+    the datatype's *declaration* -- its constructors at the datatype's own
+    type variables -- because that is what datgen wrote the equations from;
+    `param_types` is the same description read at this instance, so the k-th
+    measure the size takes has type `TFun(param_types[k], nat)`.
+
+    None when the type is not a datatype, has no generated family, or one of
+    the family's equations is missing from the theory: an equation the
+    normalization cannot find is a rewrite step the emitted proof could not
+    take.
     """
-    sizes, size_of = {}, {}
-    for T in arg_types:
-        sz = _size_name(T)
-        if sz is None or sz in def_names:
-            continue
-        constrs = _registered_constrs(T)
-        if not constrs:
-            continue
-        table = {}
-        for k, c in enumerate(constrs):
-            arg_types_c = c['type'].strip_type()[0]
-            rule = _size_rule(sz, T, k + 1)
-            if rule is None:
-                table = None
-                break
-            pos = [j for j, Ty in enumerate(arg_types_c) if Ty == T]
-            table[c['name']] = (rule, pos)
-        if table:
-            sizes[sz] = table
-            size_of[T] = sz
-    return sizes, size_of
+    from kernel import theory
+    if not T.is_tconst():
+        return None
+    sz = _size_name(T)
+    if sz is None or sz in def_names:
+        return None
+    declared = theory.thy.get_datatype_constrs(T.name)
+    if not declared:
+        return None
+    params = [a.name for a in declared[0].get_type().strip_type()[1].args]
+    constrs = [{'name': c.name, 'type': c.get_type()} for c in declared]
+    used, spec = measure.size_spec(T.name, params, constrs)
+    table = {}
+    for k, c in enumerate(constrs):
+        rule = _size_rule(sz, T, k + 1)
+        if rule is None:
+            return None
+        table[c['name']] = (rule, spec[c['name']])
+    return sz, [T.args[params.index(a)] for a in used], (len(used), table)
+
+
+def _param_measure(T, sizes, def_names):
+    """The measure a size of T takes for a parameter of this type, or None.
+
+    Deterministic and *named*: `id` for the natural numbers, `zero_measure`
+    for a type variable (nothing measures it, and leaving its contribution
+    out still counts the container's own constructors), and a datatype's
+    own size otherwise -- with its parameters filled in the same way, so
+    `seq_size zero_measure` and `list_size tri_size` come out of the same
+    recursion.  A parameter measure is a term, never a lambda: the size's
+    equation applies it (`f x`), and a lambda there would be a beta redex
+    in the goal the engine compares (`core/measure.py`).
+
+    None when a parameter of the size has no measure at all, in which case
+    the size itself is not offered.
+    """
+    if T == NatType:
+        return Const('id', TFun(NatType, NatType))
+    if T.is_tvar():
+        return Const('zero_measure', TFun(T, NatType))
+    fam = _size_family(T, def_names)
+    if fam is None:
+        return None
+    sz, ptypes, (arity, table) = fam
+    sizes[sz] = (arity, table)
+    mterms = []
+    for Ty in ptypes:
+        sub = _param_measure(Ty, sizes, def_names)
+        if sub is None:
+            return None
+        mterms.append(sub)
+    size_T = TFun(*(list(m.get_type() for m in mterms) + [T, NatType]))
+    return Const(sz, size_T)(*mterms) if mterms else Const(sz, TFun(T, NatType))
+
+
+def _measure_registry(cname, arg_types, def_names):
+    """(the sizes in scope, the candidate measures).
+
+    This is Isabelle's `measure_function` set (`measure_functions.ML`)
+    resolved into terms: a position is measured by the identity when it is
+    a natural number, and by the datatype's size -- with a measure per type
+    parameter, `seq_size zero_measure` or `list_size tri_size` -- when it
+    is a datatype instance.  A position whose type has neither contributes
+    no column.
+
+    Every candidate is named by the argument position it measures, before
+    the search runs: the name has to be known while the cells are built
+    (`<c>_m2` is what the relation and the obligations both write), and
+    naming by position keeps it the same whether the search keeps the
+    measure or not.
+    """
+    sizes, measures = {}, []
+    for pos, T in enumerate(arg_types):
+        if T == NatType:
+            m = measure.Measure(pos, arg_types, 'nat')
+        else:
+            if not T.is_tconst():
+                continue
+            fam = _size_family(T, def_names)
+            if fam is None:
+                continue
+            sz, ptypes, (arity, table) = fam
+            sizes[sz] = (arity, table)
+            mterms = []
+            for Ty in ptypes:
+                sub = _param_measure(Ty, sizes, def_names)
+                if sub is None:
+                    mterms = None
+                    break
+                mterms.append(sub)
+            if mterms is None:
+                continue
+            m = measure.Measure(pos, arg_types, 'size', size_name=sz,
+                                mterms=mterms)
+        m.def_name = '%s_m%d' % (cname, pos + 1)
+        measures.append(m)
+    return sizes, measures
 
 
 def _measure_defs(cname, arg_types, order):
@@ -915,14 +996,14 @@ def _tupled_measure(t, arg_types):
     return Lambda(p, app.beta_norm())
 
 
-def _measure_tables(arg_types, def_names, measures):
+def _measure_tables(sizes, measures):
     """(size tables, reduction rules) for a set of measures.
 
-    `def_names` are the names whose own definition must not be unfolded
-    (the function being defined, whose measure would be itself); the
-    reduction table is what `measure.cell` unfolds the measures with.
+    `sizes` is what `_measure_registry` collected -- the families of every
+    size the candidates mention, the composed measures' parameters
+    included -- and the reduction table is what `measure.cell` unfolds the
+    measures and their parameter measures with.
     """
-    sizes, _ = _size_tables(arg_types, def_names)
     mdefs = {}
     for m in measures:
         mdefs.update(m.tables())
@@ -1062,11 +1143,8 @@ def _measure_order(arg_types, def_names, cname, eqs, calls, dmap):
     naming by position keeps it the same whether the search keeps the
     measure or not.
     """
-    sizes, size_of = _size_tables(arg_types, def_names)
-    measures = measure.candidate_measures(arg_types, size_of.get)
-    for m in measures:
-        m.def_name = '%s_m%d' % (cname, m.pos + 1)
-    _, mdefs = _measure_tables(arg_types, def_names, measures)
+    sizes, measures = _measure_registry(cname, arg_types, def_names)
+    _, mdefs = _measure_tables(sizes, measures)
     rows = [(tupled_arg(c), _tuple_of(eqs[i]))
             for i, cs in enumerate(calls) for c in cs]
     return measure.infer(measures, rows, dmap, sizes, mdefs), sizes, mdefs
@@ -3333,7 +3411,8 @@ def _expand(data, declared=None):
         # needs the same machinery to be in scope, and it is not tried
         # against anything else: the user asked for *this* measure.
         order = _given_measures(arg_types, cname, measures)
-        sizes, mdefs = _measure_tables(arg_types, (name, cname), order)
+        sizes, mdefs = _measure_tables(
+            _measure_registry(cname, arg_types, (name, cname))[0], order)
         used = set()
         _require_in_scope(arg_types, r, order)
     else:

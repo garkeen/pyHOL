@@ -329,6 +329,56 @@ class FunGenLibraryTest(unittest.TestCase):
                                     self._by_name('qdbl_def_2',
                                                   'measure_example').steps])
 
+    def test_a_size_recurses_into_its_parameters(self):
+        """A size takes one measure per type parameter, and the search
+        fills them in.
+
+        Isabelle's `size_list f` is the shape: the equation for `#` sums
+        the element's measure (`?f ?x`) and the tail's size, so a measure
+        of a container is built out of measures of its contents.  The
+        candidate is found by the search, not written by the user:
+        `srev_list` is a definition over `'a seq`, whose parameter `'a` no
+        measure covers, and the engine measures the sequence by
+        `seq_size zero_measure` -- the constructors alone, with the
+        element's contribution left out -- which is enough to carry the
+        recursion.
+        """
+        from core.verify import COMPUTATION_ORACLES, _replay
+        from core import context
+        from kernel import theory
+        # The texts are read inside a context: printing a term needs the
+        # constants' signatures, which `theory.fresh_theory` provides.
+        with theory.fresh_theory():
+            context.set_context('wfrec_example',
+                                limit=('thm', 'srev_list_rel_wf'))
+            self.assertEqual(
+                str(theory.get_theorem('list_size_def_2').prop),
+                'list_size ?f (?x # ?xs) = 1 + ?f ?x + list_size ?f ?xs')
+            self.assertEqual(str(theory.get_theorem('list_size_less').prop),
+                             'list_size ?f ?xs < list_size ?f (?x # ?xs)')
+            self.assertEqual(str(theory.get_theorem('srev_list_m1_def').prop),
+                             'srev_list_m1 ?p = seq_size zero_measure ?p')
+        for name in ['list_size_def_2', 'list_size_less']:
+            item = self._by_name(name, 'list')
+            self.assertIsNotNone(item, 'missing %s' % name)
+            with theory.fresh_theory():
+                context.set_context('list', limit=('thm', name),
+                                    vars=dict(item.vars) if item.vars else {})
+                gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
+            self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
+        for name in ['seq_size_def_2', 'seq_size_less', 'seq_size_induct',
+                     'srev_list_m1', 'srev_list_rel_wf',
+                     'srev_list_induct']:
+            item = self._by_name(name, 'wfrec_example')
+            self.assertIsNotNone(item, 'missing %s' % name)
+            if item.ty != 'thm':
+                continue
+            with theory.fresh_theory():
+                context.set_context('wfrec_example', limit=('thm', name),
+                                    vars=dict(item.vars) if item.vars else {})
+                gaps = _replay(item, name, trust=COMPUTATION_ORACLES)
+            self.assertEqual(gaps, 0, '%s has %d open goal(s)' % (name, gaps))
+
     def test_size_carries_multi_recursive_datatypes(self):
         """A constructor that recurses more than once.
 

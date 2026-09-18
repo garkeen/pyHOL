@@ -49,7 +49,7 @@ Isabelle's search takes the first usable column and never looks back; a
 decision procedure can afford to backtrack, so `infer` searches all
 orders and returns None when no chain of the candidate measures works.
 """
-from kernel.type import TFun, TConst, BoolType
+from kernel.type import TFun, TConst, TVar, BoolType
 
 NatType = TConst('nat')
 from kernel.term import Var, Const, Lambda, Abs
@@ -58,10 +58,16 @@ from kernel import term_ord
 # The arithmetic rules the normalization runs, in one `rewrite` step each.
 # They are the polynomial normal form's rules, run as a terminating
 # rewrite system rather than through a conversion:
-#   * `Suc` and the literals: `1 + x` and `x + 1` are `Suc`, a `Suc`
-#     summand moves out of the sum, sums right-associate, and a numeral
-#     (`of_nat (bit0 1)` is how `2` is written) comes apart into that
-#     same spine, so ground arithmetic folds;
+#   * the sum: `0 + x`, `x + 0`, `1 + x` and `x + 1` are `Suc` in the
+#     making, a `Suc` summand moves out of the sum, and sums
+#     right-associate.  The zero laws are what a *size* needs: a size
+#     equation sums its arguments' measures, and one of them is
+#     `zero_measure` (`0`) when the type nothing measures contributes
+#     nothing;
+#   * `Suc` and the literals: a numeral (`of_nat (bit0 1)` is how `2` is
+#     written) comes apart into that same spine, so ground arithmetic
+#     folds, and `id x` -- the identity measure a size parameter may be --
+#     is its argument;
 #   * the AC order: a sum's atoms are sorted by swapping an inverted
 #     adjacent pair, which is a bubble sort -- one `add_left_comm` per
 #     swap, and `add_comm` where the two are both atoms;
@@ -80,8 +86,10 @@ from kernel import term_ord
 # be tried in to reach the normal form (a `Suc` summand comes out before
 # the sum is reassociated, a sum factor distributes before the product
 # is reassociated), not an arbitrary list.
-ARITH = ['add_1_left', 'add_1_right', 'add_Suc_left', 'add_Suc_right',
-         'add_assoc', 'add_left_comm', 'add_comm',
+ARITH = ['nat_plus_def_1', 'add_0_right',
+         'add_1_left', 'add_1_right', 'add_Suc_left', 'add_Suc_right',
+         'add_assoc', 'add_left_comm', 'add_comm', 'id_def',
+         'zero_measure_def',
          'nat_of_nat_def', 'nat_one_def', 'bit0_def', 'bit1_def',
          'nat_times_def_1', 'mult_0_right', 'mult_1_left', 'mult_1_right',
          'nat_times_def_2', 'mult_Suc_right', 'distrib_r', 'distrib_l',
@@ -192,12 +200,16 @@ class Measure:
     """
 
     def __init__(self, pos, arg_types, kind, size_name=None, def_name=None,
-                 given=None):
+                 given=None, mterms=()):
         self.pos = pos
         self.arg_types = arg_types
         self.kind = kind
         self.size_name = size_name
         self.given = given
+        # The measures a size takes as parameters (`size_list tri_size`):
+        # named functions, never lambdas, because the size's own equation
+        # applies them and a lambda application would be a beta redex.
+        self.mterms = list(mterms)
         # The constant the emitter defines for this measure.  A measure is
         # a *named* function, not a lambda written into the relation: the
         # rules that use it (`mlex_less`, `mlex_leq`) state their premises
@@ -233,7 +245,8 @@ class Measure:
         if self.kind == 'nat':
             return proj
         T = self.arg_types[self.pos]
-        return Const(self.size_name, TFun(T, NatType))(proj)
+        size_T = TFun(*(list(m.get_type() for m in self.mterms) + [T, NatType]))
+        return Const(self.size_name, size_T)(*(list(self.mterms) + [proj]))
 
     def term(self, p):
         """The measure as a lambda over the tuple term p."""
@@ -258,30 +271,52 @@ class Measure:
         return {self.def_name: self.body}
 
 
-def candidate_measures(arg_types, size_of):
-    """The measures a definition's argument types admit.
 
-    `size_of` maps a type to its size function's name or None, which is
-    the datatype layer's business.  Every position is offered, not just
-    the one the patterns are on: which column carries the descent is what
-    the search decides.
+def size_spec(name, params, constrs):
+    """(used parameters, {constructor: summands}) for a datatype's size.
+
+    The one description both sides use: datgen writes the equations from
+    it and the normalization unfolds size applications with it.  `constrs`
+    are the datatype's constructors, each carrying its argument types.
+
+    `used` is the type variables the size takes a measure for, in the
+    datatype's own order -- one per variable that occurs as a whole
+    constructor-argument type.  A variable the datatype only mentions
+    inside a function type or inside another datatype's application gets
+    no parameter, and arguments of that type contribute nothing to the
+    sum: a size measures what it can measure.
     """
-    res = []
-    for pos, T in enumerate(arg_types):
-        if T == NatType:
-            res.append(Measure(pos, arg_types, 'nat'))
-        elif size_of(T) is not None:
-            res.append(Measure(pos, arg_types, 'size', size_of(T)))
-    return res
+    T = TConst(name, *[TVar(a) for a in params])
+    arg_types = [c['type'].strip_type()[0] for c in constrs]
+    used = [a for a in params if any(TVar(a) in Ts for Ts in arg_types)]
+    slots = {a: k for k, a in enumerate(used)}
+    table = {}
+    for c, Ts in zip(constrs, arg_types):
+        summands = []
+        for j, Ty in enumerate(Ts):
+            if Ty == T:
+                summands.append(('rec', j))
+            elif Ty.is_tvar() and Ty.name in slots:
+                summands.append(('param', slots[Ty.name], j))
+        table[c['name']] = summands
+    return used, table
 
 
-# ---------------------------------------------------------------------------
-# Normalization: destructors, size equations, and the arithmetic rules.
-# ---------------------------------------------------------------------------
+def size_body(size_name, mterms, T, args, summands):
+    """`1 + <the constructor's summands>`, with the measures applied.
 
-def _size_body(size_name, T, args, positions):
-    """`1 + size r_1 + ... + size r_n` for the recursive arguments."""
-    parts = [Const(size_name, TFun(T, NatType))(args[j]) for j in positions]
+    This is the right hand side of one equation of a size family, and the
+    term the normalization replaces a size application with -- built the
+    same way in both places (datgen writes the equation, the engine
+    unfolds it), so the two cannot drift.
+    """
+    size_T = TFun(*(list(m.get_type() for m in mterms) + [T, NatType]))
+    parts = []
+    for sm in summands:
+        if sm[0] == 'rec':
+            parts.append(Const(size_name, size_T)(*(list(mterms) + [args[sm[1]]])))
+        else:
+            parts.append(mterms[sm[1]](args[sm[2]]))
     res = Const('one', NatType)
     for p in parts:
         res = Const('plus', TFun(NatType, NatType, NatType))(res, p)
@@ -364,6 +399,11 @@ def _numeral_rewrite(t, name):
 def _plus_rewrite(rule, x, y):
     """The replacement of `x + y` under one sum rule, or None."""
     one = Const('one', NatType)
+    zero = Const('zero', NatType)
+    if rule == 'nat_plus_def_1':
+        return y if x == zero else None
+    if rule == 'add_0_right':
+        return x if y == zero else None
     if rule == 'add_1_left':
         return _suc(y) if x == one else None
     if rule == 'add_1_right':
@@ -483,14 +523,21 @@ def _rewrite(t, rule, dmap, sizes, mdefs):
         if r == rule and inner.is_const() and inner.name == cname \
                 and len(iargs) > j:
             return iargs[j]
-    if len(args) == 1 and name in sizes:
-        inner, iargs = args[0].strip_comb()
-        if inner.is_const() and inner.name in sizes[name]:
-            r, positions = sizes[name][inner.name]
-            if r == rule:
-                return _size_body(name, args[0].get_type(), iargs, positions)
+    if name in sizes:
+        arity, table = sizes[name]
+        if len(args) == arity + 1:
+            inner, iargs = args[arity].strip_comb()
+            if inner.is_const() and inner.name in table:
+                r, summands = table[inner.name]
+                if r == rule:
+                    return size_body(name, list(args[:arity]),
+                                     args[arity].get_type(), iargs, summands)
     if NUMERAL.get(name) == rule:
         return _numeral_rewrite(t, name)
+    if rule == 'id_def' and len(args) == 1 and name == 'id':
+        return args[0]
+    if rule == 'zero_measure_def' and len(args) == 1             and name == 'zero_measure':
+        return Const('zero', NatType)
     if rule in _PLUS_RULES and len(args) == 2 and _is_plus(t):
         return _plus_rewrite(rule, args[0], args[1])
     if rule in _TIMES_RULES and len(args) == 2 and _is_times(t):
@@ -505,7 +552,8 @@ def _rewrite(t, rule, dmap, sizes, mdefs):
     return None
 
 
-_PLUS_RULES = frozenset(['add_1_left', 'add_1_right', 'add_Suc_left',
+_PLUS_RULES = frozenset(['nat_plus_def_1', 'add_0_right',
+                         'add_1_left', 'add_1_right', 'add_Suc_left',
                          'add_Suc_right', 'add_assoc', 'add_left_comm',
                          'add_comm'])
 _TIMES_RULES = frozenset(['nat_times_def_1', 'mult_0_right', 'mult_1_left',
@@ -522,7 +570,7 @@ def _rules(dmap, sizes, mdefs):
     whose order is this order."""
     res = ['%s_def' % n for n in mdefs]
     res += [r for _, _, r in dmap.values()]
-    res += [r for table in sizes.values() for r, _ in table.values()]
+    res += [r for _, table in sizes.values() for r, _ in table.values()]
     return res + list(ARITH)
 
 
@@ -612,7 +660,7 @@ def _known_rules(dmap, sizes, mdefs):
     res = set(ARITH)
     for _, _, rule in dmap.values():
         res.add(rule)
-    for table in sizes.values():
+    for arity, table in sizes.values():
         for rule, _ in table.values():
             res.add(rule)
     res.update('%s_def' % name for name in mdefs)

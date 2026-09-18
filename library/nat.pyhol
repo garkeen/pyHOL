@@ -351,6 +351,15 @@ proof
   nat_norm goal=0
 qed
 
+-- The measure of a type nothing measures.  A size takes one measure per
+-- type parameter (`seq_size f`), and a definition over `'a seq` has no
+-- measure for `'a` -- but the size of the *sequence* is still a measure
+-- when the parameter's contribution is left out, which is what
+-- `zero_measure` says.  A constant for the same reason `id` is one: a
+-- lambda would be a beta redex inside the size's own equation.
+
+def zero_measure :: 'a ⇒ nat = zero_measure x = 0
+
 theorem add_cancel_left
   fixes x :: nat, y :: nat, z :: nat
   prop x + y = x + z --> y = z

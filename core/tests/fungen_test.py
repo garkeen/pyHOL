@@ -549,6 +549,50 @@ class FunGenTest(unittest.TestCase):
                               % item.error)
             self.assertIsNotNone(item.measures or item.relation)
 
+    def test_a_size_with_its_parameters_filled_in(self):
+        """The candidate measures a container's type admits.
+
+        A size takes one measure per type parameter, so the measure of a
+        `nat list` is `list_size id` and of an `'a list` is
+        `list_size zero_measure` -- the search builds them by itself, out
+        of the sizes its argument types' datatypes have.  A datatype with
+        no parameter (the `tri` of measure_example) keeps the plain size,
+        which is why nothing about the existing measures changes.
+        """
+        basic.load_theory('list')
+        list_of_nat = TConst('list', NatType)
+        list_of_var = TConst('list', TVar('a'))
+        _, measures = fungen._measure_registry(
+            'f', [list_of_nat, list_of_var], ('f', 'f'))
+        self.assertEqual(len(measures), 2)
+        self.assertEqual([m.kind for m in measures], ['size', 'size'])
+        self.assertEqual([m.size_name for m in measures],
+                         ['list_size', 'list_size'])
+        self.assertEqual([m.def_name for m in measures], ['f_m1', 'f_m2'])
+        self.assertEqual([t.name for m in measures for t in m.mterms],
+                         ['id', 'zero_measure'])
+        # The family the cells unfold the size with: one measure argument,
+        # and the constructor's own summands.
+        sizes, _ = fungen._measure_registry(
+            'f', [list_of_nat], ('f', 'f'))
+        arity, table = sizes['list_size']
+        self.assertEqual(arity, 1)
+        self.assertEqual(table['nil'][1], [])
+        self.assertEqual(table['cons'][1], [('param', 0, 0), ('rec', 1)])
+
+    def test_a_position_nothing_measures_contributes_no_column(self):
+        """An argument whose type has no size at all is left out.
+
+        A function type has no measure, and neither does an `'a` that no
+        container wraps: the search then has no column for that position,
+        and `infer` reports no order rather than an unsound one.
+        """
+        func_T = TFun(NatType, NatType)
+        _, measures = fungen._measure_registry(
+            'f', [NatType, func_T], ('f', 'f'))
+        self.assertEqual([m.pos for m in measures], [0])
+        self.assertEqual(measures[0].kind, 'nat')
+
 
 def printer_type(ty):
     from syntax import printer

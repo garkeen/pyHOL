@@ -32,6 +32,15 @@ const undefined :: 'a
 
 def exists1 :: ('a ⇒ bool) ⇒ bool = (exists1 P) ⟷ (∃x. P x ∧ (∀y. P y ⟶ y = x))
 
+-- The identity, as a *named* function.  A size takes a measure of its
+-- type parameter (`size_list f`), and that measure has to be a constant
+-- rather than a lambda: the size's equation applies it, and a lambda
+-- application would be a beta redex in the goal the measure engine
+-- compares (core/measure.py).  `id` is what a natural-number parameter is
+-- measured by.
+
+def id :: 'a ⇒ 'a = id x = x
+
 axiom conjI
   fixes A :: bool, B :: bool
   prop A ⟶ B ⟶ A ∧ B

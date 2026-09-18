@@ -628,32 +628,62 @@ def expand_item(data, content):
         return None
 
 
-def size_fun_lines(name, args, constrs, rec_pos):
+def _measure_arg_names(constrs, count):
+    """Names for the size's measure parameters.
+
+    They have to be free in every equation, so they are checked against
+    the constructor arguments' own names: a datatype with an argument
+    called `f` gets `f1` for the measure (which is also what the name is
+    when the size takes more than one measure).
+    """
+    used = set()
+    for c in constrs:
+        used.update(constr_args(c)[1])
+    names = ['f'] if count == 1 else ['f%d' % (k + 1) for k in range(count)]
+    return [nm if nm not in used else nm + '_' for nm in names]
+
+
+def size_fun_lines(name, args, constrs, params, spec):
     """The `<ty>_size` definition, as `fun` item lines.
 
     One equation per constructor, in declaration order: 1 for the
-    constructor plus the size of each of its recursive arguments.  A
-    source definition on purpose -- the equations are then derived from the
-    relation's well-foundedness like any other `fun`, instead of being
+    constructor plus one summand per contributing argument, in argument
+    order.  An argument of the datatype's own type contributes the size of
+    that argument; an argument of a type variable the datatype uses as a
+    whole argument contributes a *measure* of it, so the size takes one
+    measure parameter per such variable -- Isabelle's `size_list f` and
+    `size_option f`.  An argument the size cannot measure, one of a
+    function type or of another datatype's application, contributes
+    nothing.
+
+    A source definition on purpose -- the equations are then derived from
+    the relation's well-foundedness like any other `fun`, instead of being
     asserted, and the destructor family the emitter needs is part of the
-    same block.  A constructor with no argument of the datatype's own
-    (`Some`, `Pair`) contributes the constant 1, and one with several
-    (`Plus a1 a2`) contributes each of them, which is what makes the size
-    a measure for definitions that recurse on any of them.
+    same block.  A constructor with several arguments of the datatype
+    contributes each of them, which is what makes the size a measure for
+    definitions that recurse on any of them.
     """
     T = TConst(name, *[TVar(a) for a in args])
     sz = '%s_size' % name
-    lines = ['fun %s :: %s ⇒ nat' % (sz, fungen._printt(T))]
-    for constr, poses in zip(constrs, rec_pos):
+    mnames = _measure_arg_names(constrs, len(params))
+    mtypes = [TFun(TVar(a), NatType) for a in params]
+    printed = ' '.join(nm for nm in mnames)
+    lines = ['fun %s :: %s' % (sz, fungen._printt(
+        TFun(*(mtypes + [T, NatType]))))]
+    for constr in constrs:
         argT, argnames = constr_args(constr)
         pat = Const(constr['name'], constr['type'])(
             *[Var(nm, Ty) for nm, Ty in zip(argnames, argT)])
-        rhs = ('1' if not poses else
-               '1 + ' + ' + '.join('%s %s' % (sz, argnames[j])
-                                   for j in poses))
-        lines.append('  | %s %s = %s'
-                     % (sz, fungen._arg_text(pat) if argnames
-                        else fungen._prints(pat), rhs))
+        parts = []
+        for sm in spec[constr['name']]:
+            if sm[0] == 'rec':
+                parts.append(' '.join([sz] + mnames + [argnames[sm[1]]]))
+            else:
+                parts.append('%s %s' % (mnames[sm[1]], argnames[sm[2]]))
+        rhs = '1' if not parts else '1 + ' + ' + '.join(parts)
+        lhs = ' '.join([sz] + mnames + [fungen._arg_text(pat) if argnames
+                                        else fungen._prints(pat)])
+        lines.append('  | %s = %s' % (lhs, rhs))
     return lines
 
 
@@ -704,40 +734,49 @@ def _apply_closing(prover, closing, g):
     prover.step('\u2190 rule %s goal=%d' % (closing.theorem, g), new=0)
 
 
-def size_less_lines(name, args, recursive, rec_pos, suffix=''):
+def size_less_lines(name, args, constr, rec_pos, params, spec, suffix=''):
     """`<ty>_size` strictly decreases from a constructor argument, or None.
 
     The one fact a size is for: a recursive argument of the pattern is
     smaller than the pattern.  With the generated equation the right hand
-    side unfolds to `1 + size x_1 + ... + size x_n`, which the measure
-    engine's own comparison machinery proves (core/measure.py): the `1`
-    becomes a `Suc`, one `add_Suc_left` per remaining summand pulls that
-    `Suc` to the top, `less_Suc_lesseq` makes the comparison weak, and the
-    remaining `size x_k <= size x_1 + ... + size x_n` is closed atom by
-    atom.  A single recursive argument is the four steps it always was.
+    side unfolds to `1 + <the summands>`, which the measure engine's own
+    comparison machinery proves (core/measure.py): the `1` becomes a
+    `Suc`, one `add_Suc_left` per summand pulls that `Suc` to the top,
+    `less_Suc_lesseq` makes the comparison weak, and the remaining
+    `size x_k <= 1 + ...` is closed atom by atom.  A single recursive
+    argument is the four steps it always was.
+
+    The size's measure parameters are ordinary fixed variables of the
+    statement (`f :: 'a ⇒ nat`), so the lemma holds for every measure the
+    instantiating type admits.
 
     None means the comparison is not provable here -- the lemmas it needs
-    (more of them the more recursive arguments the constructor has) are not
-    in scope yet, or the shape is outside the comparison's reach.  Emitting
-    the item anyway would leave the file with a proof that does not replay,
-    so the caller drops the whole family instead.
+    (more of them the more summands the constructor has) are not in scope
+    yet, or the shape is outside the comparison's reach.  Emitting the
+    item anyway would leave the file with a proof that does not replay, so
+    the caller drops the whole family instead.
     """
     from core import measure
     T = TConst(name, *[TVar(a) for a in args])
-    argT, argnames = constr_args(recursive)
-    vars_ = [Var(nm, Ty) for nm, Ty in zip(argnames, argT)]
-    pat = Const(recursive['name'], recursive['type'])(*vars_)
+    argT, argnames = constr_args(constr)
     sz = '%s_size' % name
-    positions = [j for j, Ty in enumerate(argT) if Ty == T]
-    rule = size_rule_name(sz, recursive)
-    sizes = {sz: {recursive['name']: (rule, positions)}}
+    mnames = _measure_arg_names([constr], len(params))
+    mtypes = [TFun(TVar(a), NatType) for a in params]
+    mfixes = [(nm, Ty) for nm, Ty in zip(mnames, mtypes)]
+    mterms = [Var(nm, Ty) for nm, Ty in mfixes]
+    vars_ = [Var(nm, Ty) for nm, Ty in zip(argnames, argT)]
+    pat = Const(constr['name'], constr['type'])(*vars_)
+    size_T = TFun(*(mtypes + [T, NatType]))
+    rule = size_rule_name(sz, constr)
+    sizes = {sz: (len(params), {constr['name']: (rule, spec[constr['name']])})}
     res = measure._comparison(
-        'less', Const(sz, TFun(T, NatType))(vars_[rec_pos]),
-        Const(sz, TFun(T, NatType))(pat), {}, sizes, {}, props=False)
+        'less', Const(sz, size_T)(*(list(mterms) + [vars_[rec_pos]])),
+        Const(sz, size_T)(*(list(mterms) + [pat])), {}, sizes, {}, props=False)
     if res is None:
         return None
     steps, closing = res
-    cited = [s for s in steps if s != rule] + _closing_theorems(closing)
+    cited = [s.split(' loc=')[0] for s in steps if s != rule] \
+        + _closing_theorems(closing)
     if not all(_in_scope(c) for c in cited):
         return None
     prover = _Proof()
@@ -745,11 +784,14 @@ def size_less_lines(name, args, recursive, rec_pos, suffix=''):
     for step in steps:
         g = prover.step('← rewrite %s goal=%d' % (step, g))
     _apply_closing(prover, closing, g)
+    fixes = ['%s :: %s' % (v.name, fungen._printt(v.T)) for v in vars_] \
+        + ['%s :: %s' % (nm, fungen._printt(Ty)) for nm, Ty in mfixes]
+    args_text = ' '.join(mnames)
     return ['theorem %s_size_less%s' % (name, suffix),
-            '  fixes %s' % ', '.join('%s :: %s' % (v.name, fungen._printt(v.T))
-                                     for v in vars_),
-            '  prop %s %s < %s %s' % (sz, argnames[rec_pos], sz,
-                                      fungen._arg_text(pat)),
+            '  fixes %s' % ', '.join(fixes),
+            '  prop %s %s %s < %s %s %s'
+            % (sz, args_text, argnames[rec_pos], sz, args_text,
+               fungen._arg_text(pat)),
             'proof'] + prover.text() + ['qed']
 
 
@@ -765,25 +807,20 @@ def size_equation_index(constr):
 def expand_size(data):
     """The datatype's size family, or None.
 
-    A datatype with a recursive constructor argument gets a size: the
-    equations are derived by the emitter, and the one fact a size is for --
-    a recursive argument is smaller than the pattern it came from -- comes
-    with it.  A constructor may take any number of arguments of the
-    datatype itself; the equation sums all of them, which is the size
-    Isabelle's datatype package gives such a constructor and what lets a
-    definition recursing on any of them carry the size as its measure.
-    The size function's own recursion descends through the datatype's
-    subterm relation, which is a disjunction when a constructor has several
-    recursive arguments (see fungen's `_decrease_steps`).
-
-    A datatype *without* a recursive argument gets none: its equations
-    would all be the constant 1, which no comparison can make strictly
-    decrease, so the column would never discharge a call.  (`option`,
-    `prod` and `state` are the library's three: their constructors hold the
-    parameter, or a function, never the datatype itself.)  Isabelle gives
-    those a size anyway, because its `size` recurses into the argument
-    *types*; that needs a `size` class and instances, which this size --
-    counting the datatype's own positions only -- does not.
+    A datatype whose constructors hold an argument the size can measure
+    gets one: the equations are derived by the emitter, and the one fact a
+    size is for -- a recursive argument is smaller than the pattern it came
+    from -- comes with it.  What it measures is an argument of the
+    datatype's own type (any number of them; the equation sums all of
+    them) and an argument of a type variable the datatype uses as a whole
+    argument, which is measured by a *parameter* of the size: that is
+    Isabelle's `size_list f` / `size_option f`, and it is what makes a
+    container of a measurable type measurable in turn.  A datatype with no
+    such argument gets none: its equations would all be the constant 1,
+    which no comparison can make strictly decrease, so the column would
+    never discharge a call.  (`state` is the library's one: its
+    constructors hold functions and the natural numbers, never the
+    datatype itself and never a type variable.)
 
     None means the family cannot be built here: the datatype recurses but
     the equations do not expand (the comparison lemmas of `nat` are not in
@@ -797,20 +834,24 @@ def expand_size(data):
     constrs = _parsed_constrs(data)
     if not constrs:
         return None
+    from core import measure
     T = TConst(name, *[TVar(a) for a in data['args']])
-    rec_pos = []
     for k, c in enumerate(constrs):
         c['index'] = k
-        argT, _ = constr_args(c)
-        rec_pos.append([j for j, Ty in enumerate(argT) if Ty == T])
-    item = fungen._entry(size_fun_lines(name, data['args'], constrs, rec_pos))
+    params, spec = measure.size_spec(name, data['args'], constrs)
+    if not any(spec[c['name']] for c in constrs):
+        # Every equation would be the constant 1, which no comparison can
+        # make strictly decrease: the column would never discharge a call.
+        return None
+    item = fungen._entry(size_fun_lines(name, data['args'], constrs, params, spec))
     derived = fungen.expand_item(item)
     if derived is None:
         return None
-    recursive = [(c, j) for c, poses in zip(constrs, rec_pos) for j in poses]
+    recursive = [(c, j) for c in constrs for j in range(len(constr_args(c)[0]))
+                 if constr_args(c)[0][j] == T]
     for k, (c, p) in enumerate(recursive):
         suffix = '' if len(recursive) == 1 else '_%d' % (k + 1)
-        lines = size_less_lines(name, data['args'], c, p, suffix)
+        lines = size_less_lines(name, data['args'], c, p, params, spec, suffix)
         if lines is None:
             return None
         derived.append(fungen._entry(lines))
