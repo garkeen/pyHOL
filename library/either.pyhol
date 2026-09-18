@@ -1,0 +1,34 @@
+theory either
+imports nat
+description "Disjoint sums: the type, its case combinator and the relation one relation per side builds -- the encoding a mutual definition goes through."
+
+-- Isabelle calls this type `'a + 'b` (`Sum_Type.thy`) and HOL Light calls
+-- it `sum`; both names are taken here (`sum` is the set sum of
+-- library/sums.pyhol, whose `sum_cases` would silently shadow a datatype's
+-- own case rule), so the type is `either` with `Left`/`Right`, and the
+-- injections a mutual definition is encoded through are `Left`/`Right`.
+
+header "The type"
+
+datatype either 'a 'b =
+  | Left (left :: 'a) :: ('a,'b) either
+  | Right (right :: 'b) :: ('a,'b) either
+
+header "The case combinator"
+
+-- Isabelle's `sum_case`: the two branches as functions, so a definition
+-- over the sum is written without case analysis.  The mutual encoding
+-- folds it over the balanced tree of the arguments (`mk_sumcases`).
+
+fun either_case :: ('a ⇒ 'c) ⇒ ('b ⇒ 'c) ⇒ ('a,'b) either ⇒ 'c
+  | either_case f g (Left x) = f x
+  | either_case f g (Right y) = g y
+
+header "The relation"
+
+-- One relation per side, lifted into one on the sum.  A mutual
+-- definition's termination proof goes through this: each function
+-- descends by its own relation and the encoding needs a single relation
+-- on the encoded arguments, whose well-foundedness is `wf_either_rel`.
+
+def either_rel :: ('a ⇒ 'a ⇒ bool) ⇒ ('b ⇒ 'b ⇒ bool) ⇒ ('a,'b) either ⇒ ('a,'b) either ⇒ bool = either_rel R1 R2 p q ⟷ (?x. ?y. p = Left x ∧ q = Left y ∧ R1 x y) ∨ (?x. ?y. p = Right x ∧ q = Right y ∧ R2 x y)

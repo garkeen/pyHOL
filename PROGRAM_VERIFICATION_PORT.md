@@ -55,7 +55,7 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 | 3 | 算术引擎：AC / 乘法 / 减法归约（`core/measure.py`） | 完成 |
 | 4 | 模式减法 / 带洞定义（`pattern_split.ML`） | 完成 |
 | 5 | 组合度量：`size_list f` 这类候选（`measure_functions.ML`） | 完成 |
-| 6 | 互递归 `fun … and …` | 未做，见 §3 |
+| 6 | 互递归 `fun … and …` | 部分完成：`library/either.pyhol`（和类型地基）已落地；语法与编码见 §3 |
 | 7 | `f.cases` / `f.elims` / `fun_cases` | 部分完成：`<c>_cases` 与 `<c>_elims` 已发射；`fun_cases` 那层与布尔特化见 §3 |
 | 8 | `partial_function` | 未做，见 §3 |
 | 9 | `size_change`（scnp 终止证明器） | 未做，见 §3 |
@@ -112,17 +112,42 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 
 ### 阶段 6：互递归 `fun … and …`
 
-**依赖**：先有 `sum` 类型（holpy 没有；`datatype 'a + 'b = Inl 'a | Inr 'b` 用现成的 datatype 机制即可定义，
-`core/datgen.py` 会自动给它子项关系、析构子与 size）。
+锚点是伊莎贝尔的 `mutual.ML`（318 行）与 `sum_tree.ML`（62 行）：把 N 个函数编码成单个
+`fsum : ST ⇒ RST`——参数侧各函数参数元组类型取和、结果侧返回类型去重后取和——交给现有的
+单函数机制定义并证明，再把方程 / 归纳 / cases 投影回各函数（`mk_partial_rules_mutual`）。
+那棵树**不镜像调用图**，只按 `fixes` 顺序对半切，形状只由 N 决定（平衡树而非右嵌套平铺
+是为了深度 O(log N)）。
 
-**做法**（照 `mutual.ML`）：把 N 个函数编码成单个 `fsum : ST ⇒ RST`——参数侧各函数参数元组类型取和、
-结果侧返回类型去重后取和——交给现有的单函数机制定义并证明，再把方程 / 归纳 / cases 投影回各函数
-（`mk_partial_rules_mutual` 那一步）。`sum_tree.ML` 的 62 行是纯构造（`mk_inj`/`mk_proj`/`mk_sumcases` +
-平衡树访问），可直接照搬；那棵树**不镜像调用图**，只按 `fixes` 顺序对半切，形状只由 N 决定
-（用平衡树而非右嵌套平铺是为了深度 O(log N)）。
+**已落地：和类型地基 `library/either.pyhol`**（不叫 `sum`：那个名字是 `library/sums.pyhol`
+的集合求和，它手写的 `sum_cases` 会让同名 datatype 的 cases 公理被加载器静默跳过；
+`'a + 'b` 这种中缀写法解析不了——`_parse_datatype` 把第一个 token 当类型名）。
 
-**验收**：一个两函数互递归的样本（如 `even`/`odd` 的互递归版）拿到方程、`_exhaustive`、`_induct` 三样，
-且归纳规则能在库里用一次。
+- `datatype either 'a 'b = Left 'a | Right 'b`：datgen 自动给出析构子（`either_Left_1`/`either_Right_1`
+  与各自的规则）、子项关系（**没有** `either_wf_subterm`：没有构造子递归地取自己，`subterm_pairs`
+  为空，这是对的）与 size 族（`either_size`；也没有 `either_size_less`，同理）。
+- `either_case`：伊莎贝尔的 `sum_case`，展开成五条派生条目 + 四条规则，全部重放 VALID——
+  顺便它是**三参数**定义的第一个样例，暴露出 `_require_in_scope` 要 `fst_def_1`（多参数走元组），
+  所以理论的 imports 必须带 `prod`（这里用 `imports nat`，它已经带上）。
+- `either_rel`：每侧一个关系提升成一个和上的关系，`mk_sumcases` 那条路要用。
+
+**未做**（按依赖顺序）：
+
+1. `either_rel` 的两条改写引理（`either_rel R1 R2 (Left x) (Left y) ⟷ R1 x y`，右侧同理）
+   与 **`wf_either_rel`**（`wf R1 ⟹ wf R2 ⟹ wf (either_rel R1 R2)`）——编码的终止证明走它。
+   配方（照 `wf_base.pyhol` 的 `wf_subset`）：展开 `wf_def` → `intro P` + 步进假设 →
+   `type_cases p`（和类型两支）→ 每支把该侧 `wf` 事实展开、`inst "%a. P (Left a)"`、
+   `cut` 出步进假设的实例、用 `either_rel` 的引理把 `R1 b a` 化成和上的关系，
+   最后 `apply_prev` 收口。
+2. 语法与条目 schema：`_parse_fun`（`syntax/pyhol.py:899`）只读一个 `fun NAME :: TYPE` +
+   `|` 方程 + 子句，`_export_fun` 亦然，没有 `and`；要么加 `fun … and …` 的块，要么给
+   互递归新条目类型，牵动 `items.py` 的解析/扩展、`basic.py` 的分发与增量缓存。
+3. 编码本身：`mk_inj`/`mk_proj`（沿平衡树走 `Left`/`Right` 与析构子）、`mk_sumcases`、
+   每个函数用投影定义、方程翻译成 `fsum` 的方程、终止关系搬到和上（第 1 条）、
+   再把方程 / cases / elims / induct 投影回各函数——**投影那步是 holpy 侧的真正工作量**：
+   伊莎贝尔用 `EqSubst`+`simp_tac`，这里得写成显式步骤（形态与现有 `_def_entry` 模板同款）。
+
+**验收**：一个两函数互递归的样本（如 `even`/`odd` 的互递归版）拿到方程、`_exhaustive`、
+`_cases`、`_elims`、`_induct` 五样，且归纳规则能在库里用一次。
 
 ### 阶段 7：`f.cases` / `f.elims` / `fun_cases`
 
