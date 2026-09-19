@@ -55,16 +55,21 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 | 3 | 算术引擎：AC / 乘法 / 减法归约（`core/measure.py`） | 完成 |
 | 4 | 模式减法 / 带洞定义（`pattern_split.ML`） | 完成 |
 | 5 | 组合度量：`size_list f` 这类候选（`measure_functions.ML`） | 完成 |
-| 6 | 互递归 `fun … and …` | 验收达成：五样齐、一般形状（N 个函数、多参数、多调用、结果类型不同、参数类型不同）全部实测重放 VALID；块的 `measure` 子句也支持（每函数一条链），`relation` 没有可命名的关系因而明确报错。见 §3 |
+| 6 | 互递归 `fun … and …` | 验收达成：五样齐、一般形状（N 个函数、多参数、多调用、结果类型不同、参数类型不同）全部实测重放 VALID；块的 order 两条路都支持——每函数一条 `measure` 链，或**组自己的 `relation`**（写在编码的和类型上，配 `wf`/`descent`），块的子句也先做补全（洞补 `= undefined`、重叠做相减）。见 §3 |
 | 7 | `f.cases` / `f.elims` / `fun_cases` | 部分完成：`<c>_cases` 与 `<c>_elims` 已发射；`fun_cases` 那层与布尔特化见 §3 |
 | 8 | `partial_function` | 未做，见 §3 |
 | 9 | `size_change`（scnp 终止证明器） | 未做，见 §3 |
 
 ### 1.3 已知缺口
 
-- **互递归 datatype**：`datatype` 语法只有单块的构造子表（`syntax/pyhol.py` 的
-  `_parse_datatype` 不认 `and`），互相递归的类型声明写不出来。这是语法/`datgen` 层的缺口，
-  与 `fun … and …` 的编码无关（编码本身不假设叶子类型的形状）。
+- **家族上的递归 `fun`（互递归 datatype 的下降）**：`datatype … and …` 已经能写、能注册
+  （家族声明、每成员的互归纳规则 / cases / 区别性 / 单射性 / 析构子，见 §3 阶段 6 缺口三），
+  但**家族的 subterm 关系与 size 没有生成**：跨成员的下降不是单个成员上的结构递归，
+  要建在和类型上（与 `fun` 的编码同款），而家族的 size 本身是互递归的。两者的落点都在
+  "家族"这一层，**尚未移植**；因此**递归**的 `fun` 落在家族类型上时仍走公理
+  （非递归定义、`type_cases` 分裂、互归纳证明都可用）。
+  `library/tests/{mutual_datatype_test.py,items_test.py::DatatypeFamilyTest}` 把这条边界
+  钉成用例（`<成员>_size` / `<成员>_wf_subterm` 不存在）。
 - **度量路径里嵌套模式的调用重命名不完整**（发射器缺陷，`core/fungen.py` 的
   `ren_call` 一带）。最小复现：`fun tdepth :: tri list ⇒ nat | tdepth (TriS t # xs) =
   Suc (tdepth (t # xs))`——模式里元素被拆开、递归调用重新组装列表——发出的证明目标条件
@@ -282,22 +287,67 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 - 同一前提里多条链的第二步必须指**上一步新开的目标**（曾复用旧 ID 而失败）；变量多于一个的
   `intro` 用逗号分隔（`names.split(',')`）。
 
-**库样本与测试**：`library/mutual_example.pyhol`（`even2`/`odd2`，`even2_or_odd2` 用一次互归纳）
-与 `library/mutual_examples.pyhol`（四种形状各一个块：三函数+双调用子句 / 双参数字典序 /
-两种结果类型 / 参数类型不同且含 datatype），`library/tests/{mutual_example,mutual_examples,
+**库样本与测试**：`library/mutual_example.pyhol`（`even2`/`odd2`，`even2_or_odd2` 用一次互归纳）、
+`library/mutual_examples.pyhol`（四种形状各一个块：三函数+双调用子句 / 双参数字典序 /
+两种结果类型 / 参数类型不同且含 datatype，另有块级 `measure` 的 `coll`/`done_coll`）、
+`library/mutual_completion.pyhol`（块的子句需要补全：洞与重叠）、
+`library/mutual_relation.pyhol`（块的 `relation`），
+`library/tests/{mutual_example,mutual_examples,mutual_completion,mutual_relation,
 prod_size}_test.py` 与 `core/tests/fungen_test.py` 的 `MutualEncodingTest`（和树、路径、
-注入/投影、谓词树、列、重复命题的 ID、缺和类型时报错）。
+注入/投影、谓词树、列、重复命题的 ID、缺和类型时报错、洞/重叠、relation 的规则）。
 
-**实测**：`mutual_examples` 94 条、`mutual_example` 22 条、`prod_size` 6 条全部重放 VALID
-（`validate_one` 全量 force）；回归 `core/{fungen,measure,items,basic}_test.py` 与
-`library/tests/{mutual_example,mutual_examples,prod_size,fungen}_test.py` 共 118 例全过；
-`either`/`option`/`measure_example`/`wfrec_example` 全量重放 VALID；`nat` 的 66 条非 VALID
-与改动前逐条一致（改动前用 `git stash` 跑同一命令做基线，两次都是 66 条）。
+**实测**：`mutual_examples` 115 条、`mutual_completion` 48 条、`mutual_relation` 31 条、
+`mutual_example` 22 条、`prod_size` 6 条全部重放 VALID（`validate_one` 全量 force）；
+回归 `core/{fungen,measure,items,basic}_test.py` 与 `syntax/tests`、
+`library/tests/{mutual_example,mutual_examples,mutual_completion,mutual_relation,prod_size,
+fungen,either,option,prod,relation,set,order}_test.py` 全过；`list`/`lists_ex` 14 例全过；
+`nat` 的 66 条非 VALID 与改动前逐条一致（改动前用 `git stash` 跑同一命令做基线，两次都是 66 条）。
 
 **验收**：一个两函数互递归的样本（如 `even`/`odd` 的互递归版）拿到方程、`_exhaustive`、
 `_cases`、`_elims`、`_induct` 五样，且归纳规则能在库里用一次——**达成**，并且是在一般实现
 上达成的：N、参数个数、每条子句的调用数、结果类型是否相同、各函数的参数类型是否相同，都由
 输入算出来（`library/mutual_examples.pyhol` 每种都有样本，全部重放 VALID）。
+
+#### 缺口一（已补）：块的子句先做补全
+
+块的每个叶子（每个函数）在发射前先跑 `_complete_equations`（`fungen._complete_group`），
+与单函数路径同一套：被前一条覆盖的规则做**模式相减**、洞补 `= undefined`。编码用的
+`rules`、投影要引的 `_def_<offset+k+1>` 映射、以及全部投影条目（各函数方程、
+`_exhaustive`/`_cases`/`_elims`/`_induct` 的前提与调用）都从补全后的列表读，
+`_equation_text` 拿到的也是补全后的文本（相减/补洞出来的方程 `text=None`，从项打印并
+按需补类型标注）。样本 `library/mutual_completion.pyhol`：`hsum`/`htake` 带洞
+（补出 `hsum (Suc 0) = undefined`，它有自己的方程、coverage 析取项、elims 分支、
+induct 前提），`osum`/`otake` 重叠（`osum n 0` 被相减成 `osum (Suc n) 0 = Suc n`）。
+一条子句被前面的完全覆盖时与单函数路径一样诚实报错（`covered by the equations before it`）。
+
+#### 缺口二（已补）：块的 `relation`/`wf`/`descent`
+
+`fungen._block_order` 现在读两条路：每函数一条 `measure` 链（原有），或**组自己的
+`relation`**（新）——写在编码的和类型上（`((A1×A2),(B1×B2)) either ⇒ … ⇒ bool`，
+与 Isabelle 互递归 `function` 同款；两侧类型不同，跨函数的调用只能在和类型上比较），
+由 `fun_clauses` 用编码函数的类型来读并直接进 `syn`，交给 `_expand` 的 relation 路径：
+**不建列、不发 `<f>_m<k>`**，义务由文件给的 `descent` 引理在**编码调用**上结清
+（`R (Right (Pair n m)) (Left (Pair (Suc m) n))`），`wf` 引理证明整条关系良基。
+两者同时给 → 拒绝（"a relation or measures, not both"）；`relation` 缺 `wf`/`descent` →
+拒绝（与单函数同一套规则）。`core/items.py` 不再拒块的这几个子句。
+
+样本 `library/mutual_relation.pyhol`：`swapf`/`swapg` 每次调用**对调**两个参数，
+和减一而任一单个参数都不减——推断度量（逐位比较）带不动它，和类型也不是结构递归，
+不给 relation 就直接拒绝（`core/tests/fungen_test.py` 断住这条）；
+`core/tests/fungen_test.py` 另有缺 `wf`/缺 `descent`/两者都给的用例。
+
+#### 缺口三（部分）：`datatype … and …`
+
+已落地：语法（`and` 续块，单类型仍扁平、多类型一个 item 带 `groups`；**只有 `and` 续块**）、
+注册（成员一起登记，构造子可拿兄弟当参数）、每个成员的构造子区别性 / 单射性 / `_cases` /
+析构子，以及**互归纳**：每个成员一条 `<ty>_induct`，语句带全家族的谓词 `P1…Pn`，
+`MNode l f` 分支拿到 `P2 f`（兄弟类型那条假设）。家族规则不挂 `var_induct`
+（`induct` 方法要把唯一谓词实例化成目标，家族规则没有那唯一谓词）。
+样本 `library/mutual_datatype.pyhol`（`mtree`/`mforest`）里两条定理各用一条家族规则证完。
+
+未落地（不做简化，登记在 §1.3）：**家族的 subterm 关系与 size**——跨成员的下降不是
+单个成员上的结构递归，关系要建在和类型上；家族的 size 本身是互递归的。两者都属"家族"
+这一层，尚未移植，因此**递归**的 `fun` 落在家族上时仍走公理。
 
 ### 阶段 7：`f.cases` / `f.elims` / `fun_cases`
 
@@ -589,6 +639,29 @@ auto2 建立在 Isabelle 的 Imperative_HOL 上：带类型 ref/array、`lim`、
     `intro n1 m2` 会被当成一个名字，报 `strip_all_implies: not enough names input`。
 57. **链式 `=` 在 holpy 里是右结合**：`pos (Suc n) = cnt n = 0` 解析成 `(pos (Suc n) = cnt n)
     = 0`，报 `Unable to unify bool with nat`。要写括号：`pos (Suc n) = (cnt n = 0)`。
+58. **生成的规则语句里，自由变量与子句模式变量同名会被捕获**（`<c>_exhaustive` 的 `p`）。
+    语句是 `p = P₁ ∨ …`，每个析取项绑定该子句的模式变量——一条模式里叫 `p` 的方程，
+    它的析取项 `∃p. p = …` 里的 `p` 就是**外层那个自由 `p`**。同名同类型时静默写错命题
+    （条目重放失败），同名不同类型时直接在 `abstract_over` 抛 `TypeError/TermException`
+    （发射器把它读成"超出支持范围"，整条定义掉回公理）。
+    复现：`fun covr :: (nat × nat, nat × nat) either ⇒ nat | covr (Left p) = fst p | …`。
+    修法：语句里的自由名从方程变量里让开（`_exhaustive_var`），读它的
+    `_cases_entry`/`_elims_entry`/`_induct_entry` 都按同一个名字发 `param_<name>`；
+    `_coverage_entry` 另外 `_reserve` 方程变量，免得证明里分配的 `u1/u2` 撞上同名模式变量。
+    `core/tests/fungen_test.py::CoverageVariableTest` 断住这两条。
+59. **只有 `and` 能续块**。`datatype` 的续块头一度写成"`datatype` 或 `and` 都算"，
+    于是两个连着写的 `datatype`（`string.pyhol`：`char` 后面跟 `string`）被读成一个家族，
+    第二个类型成了第一个的成员、构造子也并到一起。`syntax/tests/pyhol_test.py` 里有回归
+    （`testTwoDatatypesInARowAreNotAFamily`）。教训对所有"续块"语法都适用：续块头要单独认。
+60. **家族规则的结论不指明是哪个谓词**，所以 `rule <ty>_induct` 不能自动匹配——
+    `?P1 ?x` 与目标之间要做高阶匹配。要么把两个谓词都写出来
+    （`param_P1="%t. …" param_P2="%f. …" param_x=t`），要么先 `intro` 再 `rule`
+    配手写的 λ 项。另外这类规则**不挂 `var_induct`**（`induct` 方法只实例化唯一谓词）。
+61. **分支里引入的变量名要挑没出现过的**：变量行的定理是 `VAR(name, type)`，
+    同名同类型就是**同一条**稳定 ID——内层再 `intro` 同一个名字不落新行，
+    之后所有字面 ID 都会错位（`_Names` 就是为此存在的）。
+    写手写证明时同理：`library/mutual_datatype.pyhol` 的两个归纳证明用
+    `l1`/`f1`、`t2`/`f2` 而不是 `l`/`f`，就是为了让每一步的号与读到的号一致。
 
 ---
 
