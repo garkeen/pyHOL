@@ -1194,15 +1194,22 @@ def _subterm(T):
 # Emission helpers.
 # ---------------------------------------------------------------------------
 
-def _const_as_var(name, t):
-    """`t` with every occurrence of the constant `name` written as a variable."""
-    if t.is_const() and t.name == name:
-        return Var(name, t.T)
+def _const_as_var(names, t):
+    """`t` with every occurrence of the named constants written as variables.
+
+    `names` is one name or a collection of them: a mutual definition's
+    terms mention the whole group, and none of those constants is in the
+    theory yet when the items are written (`_prints_def`).
+    """
+    if isinstance(names, str):
+        names = {names}
+    if t.is_const() and t.name in names:
+        return Var(t.name, t.T)
     if t.is_comb():
-        fun_t, arg_t = _const_as_var(name, t.fun), _const_as_var(name, t.arg)
+        fun_t, arg_t = _const_as_var(names, t.fun), _const_as_var(names, t.arg)
         return t if fun_t is t.fun and arg_t is t.arg else fun_t(arg_t)
     if t.is_abs():
-        body_t = _const_as_var(name, t.body)
+        body_t = _const_as_var(names, t.body)
         return t if body_t is t.body else Abs(t.var_name, t.var_T, body_t)
     return t
 
