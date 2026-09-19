@@ -4288,6 +4288,22 @@ def _expand_mutual(data, declared=None):
                     gid += 1
             lines.append('qed')
             entries.append(_entry(lines))
+        # The coverage and case rules are about this function's *patterns*,
+        # not about how it is defined: the same templates the single
+        # function path uses prove them off the group's own equations.
+        lhs_j = [_eq_args(eq) for eq in g['eqs']]
+        if ('%s_exhaustive' % cname_j) not in (declared or set()):
+            try:
+                entries.append(_entry(_coverage_entry(
+                    cname_j, g['arg_types'], g['eqs'], lhs_j)))
+                if ('%s_cases' % cname_j) not in (declared or set()):
+                    try:
+                        entries.append(_entry(_cases_entry(
+                            cname_j, g['arg_types'], g['eqs'], lhs_j)))
+                    except FunGenError:
+                        pass
+            except FunGenError:
+                pass
         try:
             entries.append(_entry(_mutual_induct_entry(
                 groups, cname_j, sum_name, j, premises, Tups, preds,

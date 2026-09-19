@@ -25,7 +25,9 @@ API = ['even2_odd2_sum_def_1', 'even2_odd2_sum_def_2',
        'even2_odd2_sum_exhaustive', 'even2_odd2_sum_cases',
        'even2_odd2_sum_elims', 'even2_odd2_sum_induct',
        'even2_def_1', 'even2_def_2', 'even2_induct',
+       'even2_exhaustive', 'even2_cases',
        'odd2_def_1', 'odd2_def_2', 'odd2_induct',
+       'odd2_exhaustive', 'odd2_cases',
        # the rule used once: every number is even or odd
        'even2_or_odd2']
 

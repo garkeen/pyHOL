@@ -222,7 +222,21 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 带后缀的名字）。库样本 `library/mutual_example.pyhol`（`even2`/`odd2`）与
 `library/tests/mutual_example_test.py` 已落地：**15 条定理重放全部 VALID**。
 
+**每个函数的五样里已到四样**（`library/mutual_example.pyhol` 上实测，20 条定理全 VALID）：
+方程（`<f>_def_i`）、`<f>_exhaustive`、`<f>_cases`、`<f>_induct` —— 覆盖与 case 两条**直接复用
+单函数模板**（`_coverage_entry`/`_cases_entry`：它们只跟"这一函数的模式"打交道，与函数怎么定义无关），
+归纳那条按上面的配方投影。
+
 **还没做**：
+
+- **`<f>_elims` 的投影**：不能像前两条那样直接复用 `_elims_entry`——它有两个单函数路径才有的依赖：
+  (a) 打印器的 `_prints_def` 只把**被定义的那个名字**换成同名变量，而投影的方程右端会出现**同组另一个
+  函数**的名字（`y = odd2 n`），那个常量此刻还没注册，解析报 `Const odd2 not found`；(b) 它"折叠回
+  柯里化常量"的那一步用的是 `<cname>_def sym=true`，投影里对应的那一步该用**被调函数**的定义
+  （`odd2_def`）。两条出路：给 `_elims_entry` 加"多名字打印器 + 折叠定理名"的参数，或照这条配方
+  另写模板——`intro` 后把 `f x̄ = y` 用 `<f>_def` 摊成编码形式 → `rule <sum>_elims` → 自己的子句
+  那几支 `intro` + `forward <T>_<C>_inject` 取回模式等式 + 用被调函数的 `_def sym=true` 把右端折回 +
+  `apply_prev` 该子句的前提收口；别的函数的子句用不相交性关掉（`Right x = Left …` 要先 `eq_sym_eq` 翻向）。
 
 - **归纳规则已用了一次**（验收的最后一条已过）：`library/mutual_example.pyhol` 末尾的
   `even2_or_odd2 : !n::nat. even2 n ∨ odd2 n` 就是 `rule even2_induct param_P1=…
