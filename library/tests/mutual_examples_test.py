@@ -40,6 +40,11 @@ TWO_ARGS = ['zipf_zipg_sum_def_2', 'zipf_zipg_sum_induct',
 MIXED = ['cnt_pos_sum_def_2', 'cnt_pos_sum_def_4',
          'cnt_def_1', 'cnt_def_2', 'pos_def_1', 'pos_def_2',
          'cnt_elims', 'pos_elims', 'cnt_induct', 'pos_induct']
+HETERO = ['half_tally_sum_def_2', 'half_tally_sum_induct',
+          'half_def_2', 'tally_def_2', 'half_elims', 'tally_elims',
+          'half_induct', 'tally_induct',
+          # the measures: each leaf's own at its own argument position
+          'half_m1_def', 'tally_m1_def', 'half_tally_sum_m1_def']
 
 
 class MutualExamplesTest(unittest.TestCase):
@@ -58,7 +63,7 @@ class MutualExamplesTest(unittest.TestCase):
 
     def testProjectedItemsAreThere(self):
         basic.load_theory('mutual_examples')
-        for name in THREE + TWO_ARGS + MIXED:
+        for name in THREE + TWO_ARGS + MIXED + HETERO:
             self.assertIsNotNone(theory.get_theorem(name), name)
 
     def testThreeFunctionsShareOneTree(self):
@@ -100,6 +105,23 @@ class MutualExamplesTest(unittest.TestCase):
         self.assertIn('fst', text)
         text = str(theory.get_theorem('zipf_m2_def').prop)
         self.assertIn('snd', text)
+
+    def testLeavesWithDifferentArgumentTypesKeepTheirOwnMeasures(self):
+        """The tree's leaves need not have the same argument type.
+
+        `half` takes a number and `tally` a list, so the column that
+        measures them is the identity on one side and the list's size on
+        the other -- each leaf's own measure at its own argument position.
+        """
+        basic.load_theory('mutual_examples')
+        self.assertEqual(str(theory.get_theorem('half_m1_def').prop),
+                         'half_m1 ?p = ?p')
+        text = str(theory.get_theorem('tally_m1_def').prop)
+        self.assertIn('list_size', text)
+        text = str(theory.get_theorem('half_tally_sum_m1_def').prop)
+        self.assertIn('either_case', text)
+        self.assertIn('half_m1', text)
+        self.assertIn('tally_m1', text)
 
     def testResultTypesAreSummed(self):
         """`cnt` is `nat` and `pos` is `bool`: the encoded function returns

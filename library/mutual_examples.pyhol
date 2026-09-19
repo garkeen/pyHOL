@@ -1,5 +1,5 @@
 theory mutual_examples
-imports either
+imports either, list
 description "Mutual blocks the encoding has to cover beyond the smallest sample: three functions (the sum is a tree, not one `either`), two arguments each (the descent is lexicographic, so the sum's measure is one column per argument position), and two result types (the encoded function returns the sum of them, and each function is read back out through the result projection)."
 
 -- `fun ... and ... and ...`: three functions is a tree of two `either`s
@@ -43,3 +43,17 @@ fun cnt :: nat ⇒ nat
 and pos :: nat ⇒ bool
   | pos 0 = true
   | pos (Suc n) = (cnt n = 0)
+
+-- Different argument types, and a datatype among them: the tree's leaves
+-- are a `nat` and a `nat list`, so the columns measure each leaf by its
+-- own -- the identity for the number, the list's size for the list -- and
+-- a leaf with no argument at some position contributes `zero_measure`
+-- there.
+
+fun half :: nat ⇒ nat
+  | half 0 = 0
+  | half (Suc 0) = 0
+  | half (Suc (Suc n)) = Suc (half n)
+and tally :: nat list ⇒ nat
+  | tally [] = 0
+  | tally (x # xs) = Suc (tally xs)

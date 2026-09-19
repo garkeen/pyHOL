@@ -215,40 +215,71 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
   静默跳过（`except TheoryException: pass`），于是 `even_def` 解析到 nat 的那条、整个证明
   悄悄跑偏。样本与生成器都要避开重名（生成器的编码名用 `<a>_<b>_sum` 并查重）。
 **已落地：发射器 `fungen._expand_mutual`**（`expand_item` 的 `groups` 分支接上它）——编码与
-投影都按上面的配方写成模板：一组函数编成一条普通 `fun`（结果类型相同就不在结果侧取和），
-交给现成的单函数机制（它自己给出 `rel_wf`、四条方程与 `exhaustive`/`cases`/`elims`/`induct`），
-再把定义、方程与互归纳规则投影回每个函数；每步的条目计数按形状静态算出（归纳模板里的变量名
-每条前提各批一次），投影引用的定理名取自实际发射出的条目（`get_overload_const_name` 可能给出
-带后缀的名字）。库样本 `library/mutual_example.pyhol`（`even2`/`odd2`）与
-`library/tests/mutual_example_test.py` 已落地：**15 条定理重放全部 VALID**。
+投影都按上面的配方写成模板：一组函数编成一条普通 `fun`，交给现成的单函数机制（它自己给出
+`rel_wf`、方程与 `exhaustive`/`cases`/`elims`/`induct`），再把定义、方程与互归纳规则投影回
+每个函数；每步的条目计数按形状静态算出（归纳模板里的变量名每条前提各批一次），投影引用的
+定理名取自实际发射出的条目（`get_overload_const_name` 可能给出带后缀的名字）。库样本
+`library/mutual_example.pyhol`（`even2`/`odd2`）与 `library/tests/mutual_example_test.py`
+已落地：22 条定理重放全部 VALID（下面那段里"结果类型相同就不在结果侧取和"只是当时的样子，
+现在按去重后的结果类型取和）。
 
-**样本（两个函数、每个一个参数、每条子句一次调用）上五样齐了**——`library/mutual_example.pyhol`
-实测 22 条定理全 VALID：每个函数都有方程（`<f>_def_i`）、`<f>_exhaustive`、`<f>_cases`、
-`<f>_elims`、`<f>_induct`。**按 `AGENTS.md` §0，这不算验收达成**：形状是写死的（见下面
-"未实现"三条），一般情形（N 个函数、多参数、多调用）还没做。
-覆盖与 case 两条**直接复用单函数模板**（`_coverage_entry`/`_cases_entry`：它们只跟"这一函数的模式"
-打交道，与函数怎么定义无关）；`<f>_elims` 另写了一条模板（`_mutual_elims_entry`）：方程用 `<f>_def`
-摊成编码形式 → `rule <sum>_elims` → 自己的子句那几支 `intro` 出模式变量与两个假设、`forward
-<sum>_<side>_inject` 剥回模式等式、`rewrite <被调函数>_def sym=true` 把右端折回本函数的写法、
-`apply_prev` 用该子句的前提收口；别组子句用不相交性关掉（朝向不符时先 `eq_sym_eq` 翻）。
-写这条时踩到的两个坑（都已修）：剥单射性要用**和类型**的 `either_Left/Right_inject`（不是参数类型的
-构造子单射性）；`intro` 会把前提那一行refine 掉，后面的步骤必须指**它新开的那个目标**，否则
-`illegal dependence`。
+**一般化已落地（提交 `3fc6adb6`）**：形状全部从输入算，登记的"未实现"三条与结果类型那条
+特判一次清掉。
 
-**还没做**：
+- **N 个函数：平衡和树**（`_sum_tree`，`sum_tree.ML` 的 `mk_tree`；`_sum_split` 对半切）。
+  注入 `_sum_inject`、投影 `_sum_proj`（沿路径取和类型的析构子）、谓词树 `_sum_cases`
+  （`mk_sumcases`：`either_case P1 (either_case P2 P3)`）、每步归约序列 `_sum_case_steps`
+  都沿路径走，路径深度 O(log N)。三分组实测：`(nat, (nat, nat) either) either`，最后一片
+  的两种归约各两步。
+- **结果侧去重后取和**：结果类型多于一种时 `RST` 是"去重结果类型的和树"，每个函数的定义是
+  结果投影 `proj (fsum (inj x̄))`，子句右端放到自己那侧（`res_inj`），表达式里的调用写
+  被调方的投影（`res_proj`），方程的证明多一串析构归约。`same_res` 那条特判删了。
+- **终止：每个参数位置一列**（`_sum_column`）。每列是各函数自己在该位置的度量用 `either_case`
+  串起来（没有该位置的叶子给 `zero_measure`），于是跨函数的调用比较的是"被调方在调用点上的
+  度量 < 调用方在模式上的度量"——单函数路径的字典序链在整组上的对应物，比"元组 size"强
+  （`zipf (Suc n) m = zipg n (Suc m)` 元组 size 不减，照样接受）。度量引擎为此认识 case
+  组合子的归约（`measure.CaseRule`：组合子名/构造子/规则名由发射器给，引擎不认识任何具体
+  名字），度量的定义正文由发射器给文本（`Measure.text`：正文提到同一批发射的常量，打印时
+  它们还不在理论里）。
+- **一条子句多个递归调用**：`_mutual_calls` 从**编码后的**右端读调用（顺序与去重都与编码
+  规则的前提一致），`_induct_premises`/`_induct_prop_text` 给每个调用一条 IH，投影证明逐条
+  归约 IH 再 `apply_prev`。
+- **`<f>_elims` 多参数**：门删了。多参数剥回来就是元组等式、前提要的也是元组（同一形状）。
+  模板顺带换成单函数那条骨架（自身的 `<f>_exhaustive` 分案 + `<f>_def` 桥 + 本子句方程 +
+  `cut` 定向），于是"别组子句用不相交性关掉"那段论证不再需要。
+- **库缺口**：新增 `library/prod_size.pyhol`（`prod` 的 size 族）。`prod` 的声明在
+  `logic_base`/`wf_base` 上，作用域里没有算术，datgen 造不出 size 族，而"元组类型的参数"
+  仍需要它（不看编码：单函数 `fun f :: (nat,nat) prod ⇒ nat` 也一样）；`imports nat, prod`
+  之后 size 的方程 `prod_size f g (Pair a b) = 1 + f a + g b` 才写得下（与
+  `measure.size_body` 逐字一致，否则归约与定理会对不上）。
 
-- **未实现（不是特性）**：`<f>_elims` 的多参数情形、N≠2 的块、一条子句多个递归调用。
-  按 `AGENTS.md` §0 登记在此。一般情形的做法：多参数剥回来的就是元组等式（前提也是元组、
-  形状一致，门可直接删，但双参数样本先卡在下一条）；N≠2 走平衡和树（`sum_tree.ML` 的
-  `mk_inj`/`mk_proj`/`mk_sumcases`，形状只由 N 决定）；多调用在前提里每个调用给一条 IH。
-- **未实现（库缺口，挡住多参数那条）**：元组的度量。编码后函数的参数是"元组的和"，度量要用
-  元组类型的大小，而 holpy 没有 `prod_size`——`library/prod.pyhol` 只 `imports logic_base,
-  wf_base`，作用域里没有算术，datgen 造 size 族要 `+`，跳过之后再没有谁补。实测：双参数
-  互递归样本报 `either_wf_subterm is not in scope, so recursion on ((nat,nat) prod, (nat,nat)
-  prod) either …`。修法：给 `prod` 补 size 族，或让度量搜索能取元组分量（`λp. fst p` 候选）。
+**顺带修掉两处与形状无关的问题**：
+
+- **稳定 ID 数的是命题不是行**（`stable_state._ensure_sid`）。一次子句的两个调用走到同一个
+  比较时（`cycle3c (Suc n) = cycle3a n + cycle3c n`：两个调用在 `n` 上的度量相同），第二条
+  链要写前一次的 ID，并且到那一步就自动关门（`auto_close` 行，不占新号）、后面不必再证。
+  `measure.Step` 带上每步之后的项（`str` 子类，旧的 `%s`/比较都不变），`_Proof.step(prop=…)`
+  记命题→ID。这是**单函数路径也有的老问题**（`fun g :: nat ⇒ nat ⇒ nat | g (Suc n) m = g n m
+  + g n (Suc m)` 同样踩），只是没有人写到过。
+- 同一前提里多条链的第二步必须指**上一步新开的目标**（曾复用旧 ID 而失败）；变量多于一个的
+  `intro` 用逗号分隔（`names.split(',')`）。
+
+**库样本与测试**：`library/mutual_example.pyhol`（`even2`/`odd2`，`even2_or_odd2` 用一次互归纳）
+与 `library/mutual_examples.pyhol`（四种形状各一个块：三函数+双调用子句 / 双参数字典序 /
+两种结果类型 / 参数类型不同且含 datatype），`library/tests/{mutual_example,mutual_examples,
+prod_size}_test.py` 与 `core/tests/fungen_test.py` 的 `MutualEncodingTest`（和树、路径、
+注入/投影、谓词树、列、重复命题的 ID、缺和类型时报错）。
+
+**实测**：`mutual_examples` 94 条、`mutual_example` 22 条、`prod_size` 6 条全部重放 VALID
+（`validate_one` 全量 force）；回归 `core/{fungen,measure,items,basic}_test.py` 与
+`library/tests/{mutual_example,mutual_examples,prod_size,fungen}_test.py` 共 118 例全过；
+`either`/`option`/`measure_example`/`wfrec_example` 全量重放 VALID；`nat` 的 66 条非 VALID
+与改动前逐条一致（改动前用 `git stash` 跑同一命令做基线，两次都是 66 条）。
 
 **验收**：一个两函数互递归的样本（如 `even`/`odd` 的互递归版）拿到方程、`_exhaustive`、
-`_cases`、`_elims`、`_induct` 五样，且归纳规则能在库里用一次。
+`_cases`、`_elims`、`_induct` 五样，且归纳规则能在库里用一次——**达成**，并且是在一般实现
+上达成的：N、参数个数、每条子句的调用数、结果类型是否相同、各函数的参数类型是否相同，都由
+输入算出来（`library/mutual_examples.pyhol` 每种都有样本，全部重放 VALID）。
 
 ### 阶段 7：`f.cases` / `f.elims` / `fun_cases`
 
@@ -525,6 +556,21 @@ auto2 建立在 Isabelle 的 Imperative_HOL 上：带类型 ref/array、`lim`、
     按规律它的计数也该随「被反驳的测试是不是存在式」变，但没有触发它的样例，暂按原样（计数 1）。
     症状与判别：`replay failed at step: cut`（差在 cut 的 `goal=` 上）或后续
     `goal sid N not found`。
+54. **稳定 ID 数的是命题，不是行**（`method/stable_state.py` 的 `_ensure_sid`：按定理去重，
+    `th2sid`）。因此同一份证明里第二次落同一条命题**不占新号**，写出来的 ID 还是第一次那个，
+    而且这一步常常顺带 `auto_close`（行还在，规则变 `auto_close`）。发射器要按这个算号：
+    `measure.Step` 带每步之后的项、`_Proof.step(prop=…)` 记命题→ID（`core/fungen.py`）。
+    症状：`goal sid N not found`（N 比实际大 1 或更多）或 `need a fact to rewrite`（指到了
+    一条已 auto_close 的行）。**触发条件与形状无关**，两个递归调用走到同一个比较就会踩
+    （`f (Suc n) = g n + h n`；互递归里的 `cycle3c (Suc n) = cycle3a n + cycle3c n`）——
+    单函数路径同样有这个坑（`g (Suc n) m = g n m + g n (Suc m)`）。
+55. **同一条链的第二步要指上一步新开的目标**。`← rewrite <thm> goal=G` 落下的新目标有它
+    自己的号（G 那一行被 refine 掉），第二步再写 `goal=G` 是 `need a fact to rewrite`——
+    路径深度 ≥2（三层以上的和树、两步以上的归约链）才会踩。
+56. **`intro` 的多个变量用逗号分隔**（`data['names'].split(',')`），空格写的
+    `intro n1 m2` 会被当成一个名字，报 `strip_all_implies: not enough names input`。
+57. **链式 `=` 在 holpy 里是右结合**：`pos (Suc n) = cnt n = 0` 解析成 `(pos (Suc n) = cnt n)
+    = 0`，报 `Unable to unify bool with nat`。要写括号：`pos (Suc n) = (cnt n = 0)`。
 
 ---
 
