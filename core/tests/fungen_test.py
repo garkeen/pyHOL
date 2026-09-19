@@ -912,6 +912,106 @@ class MutualEncodingTest(unittest.TestCase):
             self.assertIn('is not in scope', str(ctx.exception))
             self.assertIn('either', str(ctx.exception))
 
+    def _hole_block(self):
+        """A block whose first function says nothing about `Suc 0`."""
+        return {'ty': 'def.ind', 'groups': [
+            {'name': 'hsum9', 'type': 'nat => nat',
+             'rules': [{'prop': 'hsum9 0 = 0'},
+                       {'prop': 'hsum9 (Suc (Suc n)) = htake9 n'}]},
+            {'name': 'htake9', 'type': 'nat => nat',
+             'rules': [{'prop': 'htake9 0 = 0'},
+                       {'prop': 'htake9 (Suc n) = hsum9 n'}]}]}
+
+    def _overlap_block(self):
+        """A block whose first clause eats into the second."""
+        return {'ty': 'def.ind', 'groups': [
+            {'name': 'osum9', 'type': 'nat => nat => nat',
+             'rules': [{'prop': 'osum9 0 m = m'},
+                       {'prop': 'osum9 n 0 = n'},
+                       {'prop': 'osum9 (Suc n) (Suc m) = otake9 n m'}]},
+            {'name': 'otake9', 'type': 'nat => nat => nat',
+             'rules': [{'prop': 'otake9 0 m = 0'},
+                       {'prop': 'otake9 n 0 = 0'},
+                       {'prop': 'otake9 (Suc n) (Suc m) = osum9 n m'}]}]}
+
+    def test_a_hole_gets_a_clause_of_its_own(self):
+        """The block's clauses are completed before anything is projected.
+
+        `hsum9` says nothing about `Suc 0`.  The completion fills it with
+        an `= undefined` clause (`_complete_equations`, the routine a lone
+        definition goes through as well), so the projections have an
+        equation of their own to read off -- rather than the block being
+        refused, or an item being emitted that names another clause's
+        equation.
+        """
+        basic.load_theory('either')
+        entries = fungen._expand_mutual(self._hole_block(), set())
+        by_name = {e['name']: e for e in entries}
+        self.assertEqual(by_name['hsum9_def_3']['prop'],
+                         'hsum9 (Suc 0) = (undefined::nat)')
+        self.assertEqual(by_name['htake9_def_2']['prop'],
+                         'htake9 (Suc n) = hsum9 n')
+        # The four rules follow the completed set: the fill is a clause of
+        # the coverage disjunction and of the elimination rule's branches,
+        # and the induction rule carries its premise like any other
+        # clause's.
+        self.assertIn('p = Suc 0', by_name['hsum9_exhaustive']['prop'])
+        self.assertIn('x1 = Suc 0', by_name['hsum9_elims']['prop'])
+        self.assertIn('y = undefined', by_name['hsum9_elims']['prop'])
+        self.assertIn('P1 (Suc 0)', by_name['hsum9_induct']['prop'])
+        for name in ('hsum9_exhaustive', 'hsum9_cases', 'hsum9_elims',
+                     'hsum9_induct', 'htake9_exhaustive', 'htake9_cases',
+                     'htake9_elims', 'htake9_induct'):
+            self.assertIn(name, by_name)
+
+    def test_an_overlap_is_narrowed_not_refused(self):
+        """`osum9 n 0` is covered at `osum9 0 0` by the clause before it.
+
+        The clause is *subtracted* (`osum9 (Suc n) 0 = Suc n`) rather than
+        refused, and the narrowed equation is the block's own: it is the
+        one emitted, the one the encoded definition has, and the one every
+        projected rule of that clause is read off.
+        """
+        basic.load_theory('either')
+        entries = fungen._expand_mutual(self._overlap_block(), set())
+        by_name = {e['name']: e for e in entries}
+        # The subtraction widens the pattern to `Suc <fresh>` and puts the
+        # same term into the right hand side: the equation the clause now
+        # states is about the inputs the earlier clause left it.
+        self.assertRegex(by_name['osum9_def_2']['prop'],
+                         r'^osum9 \(Suc (v\d+)\) \(0::nat\) = Suc \1$')
+        self.assertRegex(by_name['otake9_def_2']['prop'],
+                         r'^otake9 \(Suc (v\d+)\) \(0::nat\) = \(0::nat\)$')
+        # Three clauses each, and the encoded definition is the same three
+        # equations of the group laid out one after the other -- the last
+        # encoded equation is the sixth, and there is no seventh.
+        self.assertIn('osum9_def_3', by_name)
+        self.assertIn('osum9_otake9_sum_def_6', by_name)
+        self.assertNotIn('osum9_otake9_sum_def_7', by_name)
+
+    def test_a_clause_the_earlier_ones_cover_is_refused(self):
+        """There is no equation to emit for it.
+
+        `otake9 n m` states nothing about inputs `otake9 0 m` does not
+        already decide, and the completion says so -- the same refusal the
+        single-function path makes, rather than an item whose proof would
+        have to name another clause's equation.
+        """
+        basic.load_theory('either')
+        block = {'ty': 'def.ind', 'groups': [
+            {'name': 'osum9', 'type': 'nat => nat => nat',
+             'rules': [{'prop': 'osum9 0 m = m'},
+                       {'prop': 'osum9 n 0 = n'},
+                       {'prop': 'osum9 (Suc n) (Suc m) = otake9 n m'}]},
+            {'name': 'otake9', 'type': 'nat => nat => nat',
+             'rules': [{'prop': 'otake9 0 m = 0'},
+                       {'prop': 'otake9 n m = 0'},
+                       {'prop': 'otake9 (Suc n) (Suc m) = osum9 n m'}]}]}
+        with self.assertRaises(fungen.FunGenError) as ctx:
+            fungen._expand_mutual(block, set())
+        self.assertIn('covered by the equations before it',
+                      str(ctx.exception))
+
 
 def printer_type(ty):
     from syntax import printer

@@ -4428,7 +4428,28 @@ def _mutual_groups(data):
                     'arg_types': list(arg_types), 'res_type': res_type,
                     'rules': g['rules'],
                     'cname': theory.thy.get_overload_const_name(g['name'], ty)})
+    for g in res:
+        _complete_group(g)
     return res
+
+
+def _complete_group(g):
+    """A leaf's equations made disjoint, exactly as a lone definition's are.
+
+    The block's clauses are completed by `_complete_equations`: a rule
+    another rule overlaps is *subtracted* rather than refused, and a hole
+    is filled by an `= undefined` equation.  The completed set is what the
+    encoding is built from and what every projected item is read off --
+    the equations, the coverage and case rules, the elimination and
+    induction rules -- which is what the single-function path does.  A
+    clause the subtraction narrowed keeps an equation of its own, and a
+    hole gets one, instead of the projections having to name another
+    clause's equation.
+    """
+    eqs, texts, _missing = _complete_equations(
+        g['name'], g['arg_types'], g['res_type'], g['eqs'],
+        [rule['prop'] for rule in g['rules']])
+    g['eqs'], g['eq_texts'] = eqs, texts
 
 
 def _mutual_sum_name(names):
@@ -4799,6 +4820,10 @@ def _expand_mutual(data, declared=None):
         t = walk(eq.rhs, inside=False)
         return res_inj[j](t) if summed else t
 
+    # The encoded clauses come from the *completed* equations (see
+    # `_complete_group`), in the group's source order, group by group: the
+    # k-th clause of the group is the encoded `_def_<offset + k + 1>`, which
+    # is the equation every projected item of that clause is proved from.
     rules = []
     offsets = []
     for j, g in enumerate(groups):
@@ -4837,14 +4862,33 @@ def _expand_mutual(data, declared=None):
     # above can hand out a name of its own, and the projections have to
     # quote the one that is in the theory.
     cname = None
+    emitted_defs = []
     for e in entries:
         m = re.match(r'^(.*)_def_[0-9]+$', e['name'])
         if m:
             cname = m.group(1)
-            break
+            emitted_defs.append(e['name'])
     if cname is None:
         raise FunGenError('fun %s: the encoded definition has no equations'
                           % groups[0]['name'])
+    emitted_names = {e['name'] for e in entries}
+
+    # The projections hang one `def_k` on each of the group's *completed*
+    # clauses, and each of those is proved from that clause's encoded
+    # equation -- the encoded `_def_<offset + k + 1>` laid out above.  The
+    # two counts agree because the completed clauses are pairwise disjoint,
+    # so the encoded definition takes them as they are (`_complete_equations`
+    # inside `_expand` finds nothing left to subtract or to fill).  A
+    # disagreement would mean the clause-to-equation mapping is off, and
+    # every projected proof would quote the wrong equation, so it is
+    # reported rather than emitted.
+    nedges = sum(len(g['eqs']) for g in groups)
+    if len(emitted_defs) != nedges:
+        raise FunGenError(
+            'fun %s: the %d completed clauses came out as %d encoded '
+            'equations, so a clause cannot be told which equation is its '
+            'own' % (' and '.join(g['name'] for g in groups), nedges,
+                     len(emitted_defs)))
 
     preds = ['P%d' % (k + 1) for k in range(n)]
     calls = [[_mutual_calls(eq, lambda rhs: walk(rhs), fsum, Tups)
@@ -4863,16 +4907,20 @@ def _expand_mutual(data, declared=None):
                 " ".join(x.name for x in xs), _prints_def(sum_name, body))]))
     for j, g in enumerate(groups):
         cname_j = cnames[j]
-        # The equations: the definition unfolds the head, the group's own
-        # equation is the encoded one, and a call to another function is
-        # folded back through that function's definition -- which is also
-        # what makes the two sides meet, so the last of these closes the
-        # goal.  With a result sum the folded side is the encoded one (the
-        # call reads as the projection of the callee), so the fold runs
-        # the other way.
+        # The equations of the *completed* clauses, in the same order and
+        # with the same numbering as the encoded ones above: the definition
+        # unfolds the head, the group's own equation is the encoded one, and
+        # a call to another function is folded back through that function's
+        # definition -- which is also what makes the two sides meet, so the
+        # last of these closes the goal.  With a result sum the folded side
+        # is the encoded one (the call reads as the projection of the
+        # callee), so the fold runs the other way.  A clause the subtraction
+        # narrowed, or a hole that was filled, has an equation of its own
+        # whose text the emitter makes (`_equation_text` prints it from the
+        # term).
         for k, eq in enumerate(g['eqs']):
             eq_text = _equation_text(g['name'], g['ty'],
-                                     g['rules'][k]['prop'], eq)
+                                     g['eq_texts'][k], eq)
             lines = ['theorem %s_def_%d' % (cname_j, k + 1),
                      '  fixes %s' % _typenames(sorted(eq.get_vars(),
                                                       key=lambda v: v.name)),
@@ -4900,10 +4948,12 @@ def _expand_mutual(data, declared=None):
         # not about how it is defined: the same templates the single
         # function path uses prove them off the group's own equations.
         lhs_j = [_eq_args(eq) for eq in g['eqs']]
+        exhaustive = False
         if ('%s_exhaustive' % cname_j) not in (declared or set()):
             try:
                 entries.append(_entry(_coverage_entry(
                     cname_j, g['arg_types'], g['eqs'], lhs_j)))
+                exhaustive = True
                 if ('%s_cases' % cname_j) not in (declared or set()):
                     try:
                         entries.append(_entry(_cases_entry(
@@ -4911,21 +4961,30 @@ def _expand_mutual(data, declared=None):
                     except FunGenError:
                         pass
             except FunGenError:
+                # The split enumerates each position's constructors, so it
+                # only closes where the clauses cover every input; a hole
+                # leaves the two items out (the same rule the single
+                # function path follows) -- and the elimination rule below
+                # is read off that disjunction, so it goes with them.
                 pass
-        if ('%s_elims' % cname_j) not in (declared or set()):
+        # Every projected rule is read off items the *encoded* group has to
+        # have emitted: the elimination rule off this function's exhaustive
+        # rule, the induction rule off the encoded induction.
+        if exhaustive and ('%s_elims' % cname_j) not in (declared or set()):
             try:
                 entries.append(_entry(_mutual_elims_entry(groups, j, cname_j)))
             except FunGenError:
                 pass
-        try:
-            entries.append(_entry(_mutual_induct_entry(
-                groups, cname_j, sum_name, j, premises, Tups, preds,
-                st_text, inj[j])))
-        except FunGenError:
-            # The rule is not part of the definition, like the coverage and
-            # induction rules of a single function: a group it cannot be
-            # stated for keeps the items it has.
-            pass
+        if ('%s_induct' % cname) in emitted_names:
+            try:
+                entries.append(_entry(_mutual_induct_entry(
+                    groups, cname_j, sum_name, j, premises, Tups, preds,
+                    st_text, inj[j])))
+            except FunGenError:
+                # The rule is not part of the definition, like the coverage
+                # and induction rules of a single function: a group it
+                # cannot be stated for keeps the items it has.
+                pass
     return entries
 
 

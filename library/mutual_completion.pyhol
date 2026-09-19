@@ -1,0 +1,39 @@
+theory mutual_completion
+imports either
+description "Mutual blocks whose clauses need completing before anything is emitted: a hole (an input no clause mentions, filled with an `= undefined` clause) and an overlap (a clause an earlier one eats into, subtracted rather than refused).  Split from `mutual_examples` so that each file's full replay stays inside the validation budget."
+
+-- A hole: `hsum` says nothing about `Suc 0`.  The block's clauses are
+-- completed before anything is emitted (`_complete_equations`, the same
+-- routine a lone definition goes through), so the missing input becomes a
+-- clause of its own -- `hsum (Suc 0) = undefined` -- and every projected
+-- item is read off the completed set: that clause has an equation, a
+-- premise in the coverage and case rules, a branch in the elimination
+-- rule and a premise in the induction rule like any other.
+--
+-- The encoding sees the completed set too: `hsum_htake_sum_def_3` is the
+-- fill's own encoded equation, and the definitions of the group are the
+-- three-clause `hsum` and the two-clause `htake`.
+
+fun hsum :: nat ⇒ nat
+  | hsum 0 = 0
+  | hsum (Suc (Suc n)) = htake n
+and htake :: nat ⇒ nat
+  | htake 0 = 0
+  | htake (Suc n) = hsum n
+
+-- An overlap: `osum n 0` and `otake n 0` are covered by the clauses
+-- before them at `0 0`, so they are *narrowed* rather than refused
+-- (`osum (Suc n) 0 = Suc n`) -- the narrowed equation is the one the
+-- block has, and the projections are read off it, exactly as they are for
+-- a lone definition whose later equation its predecessor eats into.  The
+-- narrowed clause is the block's second, so it is the encoded
+-- `_def_2`/`_def_5` and the second equation of each function.
+
+fun osum :: nat ⇒ nat ⇒ nat
+  | osum 0 m = m
+  | osum n 0 = n
+  | osum (Suc n) (Suc m) = otake n m
+and otake :: nat ⇒ nat ⇒ nat
+  | otake 0 m = 0
+  | otake n 0 = 0
+  | otake (Suc n) (Suc m) = osum n m
