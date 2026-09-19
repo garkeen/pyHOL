@@ -2149,6 +2149,15 @@ def _destructor_maps(arg_types, positions, lhs=None):
                 leaves = _pattern_leaves(args[r])
             except FunGenError:
                 continue          # the pattern is a variable: no tuple
+            # The leaves' own types: a pattern can nest another datatype
+            # (`Left (Suc n)` -- the sum a mutual definition is encoded in
+            # puts the definition's own argument type inside the recursion
+            # position), and the body functional writes the call's arguments
+            # through that inner type's destructors too (`Pre (Suc n)`), so
+            # their rules have to be in the map for the reduction to reach
+            # them.
+            for v in leaves:
+                res.update(_destructor_map(v.T))
             if len(leaves) > 1:
                 res.update(_destructor_map(
                     tupled_type([v.T for v in leaves])))
