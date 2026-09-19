@@ -4005,6 +4005,301 @@ def _require_parsable_defs(entries, name):
                               % (name, item.name, item.error))
 
 
+# ---------------------------------------------------------------------------
+# Mutual definitions: the sum encoding (Isabelle's mutual.ML / sum_tree.ML).
+#
+# A group of mutually recursive functions is defined as *one* function over
+# the sum of the argument tuples (`either`), the single-function machinery
+# above does the work, and each function is read back off it.  Two functions
+# are the case written here.  The group's termination goes through the
+# measures the search finds over the sum: a call that crosses the group is
+# not a subterm of anything in the sum type, which is exactly why the
+# encoding needs them and the datatype's subterm relation does not do.
+#
+# What each function gets back: its definition (`f x = fsum (Left x)`), its
+# equations (a rewrite chain onto the encoded ones), and the mutual
+# induction rule -- the encoded induction instantiated at `either_case P1
+# P2` and reduced back to the group's own predicates.
+# ---------------------------------------------------------------------------
+
+def _mutual_groups(data):
+    """The groups of a mutual block, with types and equations read.
+
+    Every group's type is in scope while its equations are read: a call
+    crosses the group, and those names are what tells the parser which
+    constant a call is to.
+    """
+    from syntax import parser
+    from core import context
+    groups = data['groups']
+    defs = {g['name']: parser.parse_type(g['type']) for g in groups}
+    res = []
+    for g in groups:
+        ty = defs[g['name']]
+        with context.fresh_context(defs=defs):
+            eqs = [context.parse_term(rule['prop']) for rule in g['rules']]
+        arg_types, res_type = _strip_type(ty, len(_eq_args(eqs[0])))
+        res.append({'name': g['name'], 'ty': ty, 'eqs': eqs,
+                    'arg_types': list(arg_types), 'res_type': res_type,
+                    'rules': g['rules']})
+    return res
+
+
+def _mutual_sum_name(names):
+    """A name for the encoded function that nothing else uses.
+
+    The encoding is a definition like any other and its items are named
+    after it, so the name is derived from the group (`even_odd_sum`) and
+    moved out of the way of anything the file already states.
+    """
+    name = '_'.join(names) + '_sum'
+    while _name_taken('%s_def' % name) or _name_taken('%s_induct' % name):
+        name += '_'
+    return name
+
+
+def _mentions(t, name):
+    """Whether `t` applies the constant `name` anywhere."""
+    if t.is_comb():
+        if t.fun.is_const() and t.fun.name == name:
+            return True
+        return _mentions(t.fun, name) or _mentions(t.arg, name)
+    return False
+
+
+def _induct_premises(parsed, preds):
+    """The mutual induction rule's premises, one per clause of the group.
+
+    The encoded rule's premises read in the group's own terms: a clause
+    that calls `j` gives `!<its variables>. P_j (the call's arguments) -->
+    P_i (this clause's pattern)`, and one that does not gives just
+    `P_i (pattern)`.  They are returned in the order the clauses were
+    written (group by group), which is the order the encoded rule has them
+    in -- and the order the proof's `intro` turns them into facts.
+
+    A clause with more than one call has no single hypothesis; such a
+    group is refused rather than emitted with a rule that does not say
+    what it seems to.
+    """
+    res = []
+    for i, g in enumerate(parsed):
+        for eq in g['eqs']:
+            pat = tupled_arg(_eq_args(eq))
+            calls = []
+            for j, other in enumerate(parsed):
+                f_const = Const(other['name'], other['ty'])
+                calls.extend((j, args) for args in
+                             _calls(eq.rhs, f_const, len(other['arg_types'])))
+            if not calls:
+                res.append((i, pat, None, None, []))
+                continue
+            if len(calls) > 1:
+                raise FunGenError(
+                    'fun %s: a clause with %d recursive calls has no single '
+                    'induction hypothesis to give it' % (g['name'], len(calls)))
+            j, args = calls[0]
+            res.append((i, pat, j, tupled_arg(args),
+                        _pattern_leaves(pat)))
+    return res
+
+
+def _induct_prop_text(premises, preds, Tups, j):
+    """The statement of one function's mutual induction rule."""
+    parts = []
+    for i, pat, callee, call, vars_ in premises:
+        if callee is None:
+            parts.append('%s %s' % (preds[i], _arg_text(pat)))
+        else:
+            parts.append('(!%s. %s %s --> %s %s)' % (
+                " ".join(v.name for v in vars_),
+                preds[callee], _arg_text(call),
+                preds[i], _arg_text(pat)))
+    parts.append('(!a::%s. %s a)' % (_printt(Tups[j]), preds[j]))
+    return ' ⟶ '.join(parts)
+
+
+def _mutual_induct_entry(parsed, cname, sum_name, j, premises, Tups, preds,
+                         st_text, jin):
+    """The `<f>_induct` item of one function of a mutual group.
+
+    The proof instantiates the encoded induction at `either_case P1 P2`
+    -- the predicate that is `P1` on the left half of the sum and `P2` on
+    the right -- and reduces each `either_case` application with its own
+    equation: the encoded premises come out as the group's per-function
+    ones (the k-th of them is the k-th fact of the `intro` above), and the
+    conclusion `P_j (Left a)` is `P_j a` again.
+
+    Every step's line count is fixed by the shape, so the IDs below are
+    computed rather than searched for.  The names the premises introduce
+    are allocated afresh: two lines introduing the same name and type
+    would be the same row, and every ID after the second one would be off.
+    """
+    pred_fixes = ", ".join('%s :: %s => bool' % (preds[k], _printt(Tups[k]))
+                           for k in range(len(parsed)))
+    lines = ['theorem %s_induct' % cname,
+             '  fixes %s' % pred_fixes,
+             '  prop %s' % _induct_prop_text(premises, preds, Tups, j),
+             'proof']
+    p = _Proof()
+    n_prem = len(premises)
+    p.step('← intro goal=0', new=n_prem + 1)
+    outer = n_prem + 1
+    p.step('← intro a goal=%d' % outer, new=2)
+    inner = outer + 2
+    p.step('cut "!p::%s. either_case %s p" goal=%d' % (
+        st_text, " ".join(preds), inner))
+    cut_fact = inner + 1
+    prem_ids = p.ids('← rule %s_induct goal=%d' % (sum_name, cut_fact), n_prem)
+    names_used = _Names()
+    for k, (i, pat, callee, call, vars_) in enumerate(premises):
+        goal = prem_ids[k]
+        if callee is None:
+            p.step('← rewrite either_case_def_%d goal=%d' % (i + 1, goal),
+                   new=0)
+            continue
+        fresh = [Var(names_used.alloc(v.name), v.T) for v in vars_]
+        created = p.ids('← intro %s goal=%d' % (
+            " ".join(v.name for v in fresh), goal), len(vars_) + 2)
+        hyp, sub = created[-2], created[-1]
+        red_hyp = p.ids('→ rewrite either_case_def_%d target=fact goal=%d '
+                        'facts=[%d]' % (callee + 1, sub, hyp), 1)[0]
+        red = p.ids('← rewrite either_case_def_%d goal=%d' % (i + 1, sub), 1)[0]
+        renaming = {v.name: f for v, f in zip(vars_, fresh)}
+        inst_ = p.ids('← inst %s goal=%d facts=[%d]' % (
+            _arg_text(_subst(call, renaming)), red, k + 1), 1)[0]
+        p.ids('← apply_prev goal=%d facts=[%d,%d]' % (red, inst_, red_hyp), 1)
+    # The conclusion is closed at the goal the `intro` above opened (the
+    # outer one is its parent, and the cut hangs off the inner one).
+    inst = p.ids('← inst "%s" goal=%d facts=[%d]' % (
+        _prints(jin(Var('a', Tups[j]))), inner, cut_fact), 1)[0]
+    p.ids('→ rewrite either_case_def_%d target=fact goal=%d facts=[%d]'
+          % (j + 1, inner, inst), 0)
+    lines.extend(p.text())
+    lines.append('qed')
+    return lines
+
+
+def _expand_mutual(data, declared=None):
+    """Item dicts for a mutual block, or None when it is out of reach.
+
+    The group is encoded into one function over the sum of its argument
+    tuples, the single-function machinery above emits *that* (equations,
+    coverage, cases, elimination and induction rules, all proved), and
+    each function's own items are projected off it.
+    """
+    from kernel import theory
+    groups = _mutual_groups(data)
+    if len(groups) != 2:
+        raise FunGenError(
+            'fun %s: a mutual block of %d functions is not emitted yet '
+            '(the sum encoding is written for two)'
+            % (groups[0]['name'], len(groups)))
+    Tups = [tupled_type(g['arg_types']) for g in groups]
+    Rs = [g['res_type'] for g in groups]
+    same_res = (Rs[0] == Rs[1])
+    ST = TConst('either', Tups[0], Tups[1])
+    RST = Rs[0] if same_res else TConst('either', Rs[0], Rs[1])
+    sum_name = _mutual_sum_name([g['name'] for g in groups])
+    fsum = Const(sum_name, TFun(ST, RST))
+    inj = [Const('Left', TFun(Tups[0], ST)), Const('Right', TFun(Tups[1], ST))]
+    # The result side is summed only when the two functions return
+    # different types: with one type there is nothing to tell apart.
+    res_inj = ([None, None] if same_res else
+               [Const('Left', TFun(Rs[0], RST)),
+                Const('Right', TFun(Rs[1], RST))])
+
+    def encode_call(j, args):
+        t = fsum(inj[j](tupled_arg(args)))
+        return t if same_res else res_inj[j](t)
+
+    def walk(t):
+        if t.is_abs():
+            return Abs(t.var_name, t.var_T, walk(t.body))
+        if t.is_comb():
+            h, args = t.strip_comb()
+            if h.is_const():
+                for j, g in enumerate(groups):
+                    if h.name == g['name'] and len(args) == len(g['arg_types']):
+                        return encode_call(j, args)
+            return walk(h)(*[walk(a) for a in args])
+        return t
+
+    rules = []
+    offsets = []
+    for j, g in enumerate(groups):
+        offsets.append(sum(len(groups[m]['eqs']) for m in range(j)))
+        for eq in g['eqs']:
+            lhs = fsum(inj[j](tupled_arg(_eq_args(eq))))
+            rules.append({'prop': _prints_def(sum_name, Eq(lhs, walk(eq.rhs)))})
+    syn = {'ty': 'def.ind', 'name': sum_name, 'type': _printt(TFun(ST, RST)),
+           'rules': rules}
+    entries = _expand(syn, declared)
+    # The names the encoded items actually got: the overload resolution
+    # above can hand out a name of its own, and the projections have to
+    # quote the one that is in the theory.
+    cname = None
+    for e in entries:
+        m = re.match(r'^(.*)_def_[0-9]+$', e['name'])
+        if m:
+            cname = m.group(1)
+            break
+    if cname is None:
+        raise FunGenError('fun %s: the encoded definition has no equations'
+                          % groups[0]['name'])
+
+    preds = ['P%d' % (k + 1) for k in range(len(groups))]
+    premises = _induct_premises(groups, preds)
+    st_text = _printt(ST)
+    cnames = [theory.thy.get_overload_const_name(g['name'], g['ty'])
+              for g in groups]
+    for j, g in enumerate(groups):
+        xs = [Var('x%d' % (k + 1), g['arg_types'][k])
+              for k in range(len(g['arg_types']))]
+        entries.append(_entry([
+            'def %s :: %s = %s %s = %s' % (
+                g['name'], _printt(g['ty']), g['name'],
+                " ".join(x.name for x in xs),
+                _prints_def(sum_name, fsum(inj[j](tupled_arg(xs)))))]))
+    for j, g in enumerate(groups):
+        cname_j = cnames[j]
+        # The equations: the definition unfolds the head (and any call the
+        # clause makes to itself), the group's own equation is the encoded
+        # one, and a call to the other function is folded back through that
+        # function's definition -- which is also what makes the two sides
+        # meet, so the last of these closes the goal.
+        for k, eq in enumerate(g['eqs']):
+            eq_text = _equation_text(g['name'], g['ty'],
+                                     g['rules'][k]['prop'], eq)
+            lines = ['theorem %s_def_%d' % (cname_j, k + 1),
+                     '  fixes %s' % _typenames(sorted(eq.get_vars(),
+                                                      key=lambda v: v.name)),
+                     '  prop %s' % eq_text,
+                     '  [hint_rewrite]',
+                     'proof',
+                     '  ← rewrite %s_def goal=0' % g['name']]
+            gid = 1
+            lines.append('  ← rewrite %s_def_%d goal=%d'
+                         % (cname, offsets[j] + k + 1, gid))
+            gid += 1
+            for m, other in enumerate(groups):
+                if m != j and _mentions(eq.rhs, other['name']):
+                    lines.append('  ← rewrite %s_def goal=%d'
+                                 % (other['name'], gid))
+                    gid += 1
+            lines.append('qed')
+            entries.append(_entry(lines))
+        try:
+            entries.append(_entry(_mutual_induct_entry(
+                groups, cname_j, sum_name, j, premises, Tups, preds,
+                st_text, inj[j])))
+        except FunGenError:
+            # The rule is not part of the definition, like the coverage and
+            # induction rules of a single function: a group it cannot be
+            # stated for keeps the items it has.
+            pass
+    return entries
+
+
 def _has_clauses(data):
     """Whether the definition carries a relation or a measure.
 
@@ -4034,7 +4329,14 @@ def expand_item(data, declared=None):
     structural answer (`core/items.py` reports the block).
     """
     if data.get('groups') is not None:
-        return None
+        try:
+            return _expand_mutual(data, declared)
+        except FunGenError:
+            return None
+        except Exception:
+            if os.environ.get('HOLPY_FUNGEN_DEBUG'):
+                raise
+            return None
     try:
         return _expand(data, declared)
     except FunGenError:
