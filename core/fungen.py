@@ -4038,6 +4038,7 @@ def _mutual_groups(data):
     """
     from syntax import parser
     from core import context
+    from kernel import theory
     groups = data['groups']
     defs = {g['name']: parser.parse_type(g['type']) for g in groups}
     res = []
@@ -4048,7 +4049,8 @@ def _mutual_groups(data):
         arg_types, res_type = _strip_type(ty, len(_eq_args(eqs[0])))
         res.append({'name': g['name'], 'ty': ty, 'eqs': eqs,
                     'arg_types': list(arg_types), 'res_type': res_type,
-                    'rules': g['rules']})
+                    'rules': g['rules'],
+                    'cname': theory.thy.get_overload_const_name(g['name'], ty)})
     return res
 
 
@@ -4186,6 +4188,110 @@ def _mutual_induct_entry(parsed, cname, sum_name, j, premises, Tups, preds,
     return lines
 
 
+def _mutual_elims_entry(parsed, j, sum_name, ST):
+    """The `<f>_elims` item of one function of a mutual group.
+
+    The encoded elimination rule read in this function's own terms.  The
+    equation `f x̄ = y` is carried through the definition -- `f x̄` becomes
+    the injected sum element -- and the rule then says which clause fired:
+    each of *this* function's clauses gives back the pattern's variables
+    (the sum's injectivity peels one level) and the right hand side in this
+    function's own terms (folded through the definition of whichever
+    function the clause calls -- the encoded rule states that side as the
+    plain sum element).  A clause of another function of the group cannot
+    fire here, its pattern sitting on the other half of the sum, and is
+    closed by the datatype's distinctness.
+
+    One argument per function is what is written: with several, the peeled
+    equality is about the tupled argument and the premise wants the
+    components.
+    """
+    g = parsed[j]
+    if len(g['arg_types']) != 1:
+        raise FunGenError(
+            'fun %s: the elimination rule of a mutual group is emitted for '
+            'one argument per function yet' % g['name'])
+    T = g['arg_types'][0]
+    eqs = g['eqs']
+    lhs = [_eq_args(eq) for eq in eqs]
+    taken = set()
+    for eq in eqs:
+        for v in eq.get_vars():
+            taken.add(v.name)
+    x = Var(_fresh_name('x1', taken), T)
+    y = Var(_fresh_name('y', taken), g['res_type'])
+    P = Var(next(c for c in _pred_names() if c not in taken), BoolType)
+    all_names = [other['name'] for other in parsed]
+    side = ['Left', 'Right']
+    inj_rule = '%s_%s_inject' % (ST.name, side[j])
+    lines = ['theorem %s_elims' % g['cname'],
+             '  fixes %s' % _typenames([x, y, P]),
+             '  prop %s' % _prints(_const_as_var(
+                 all_names,
+                 _elims_prop(g['name'], g['arg_types'], g['res_type'], eqs,
+                             lhs, [x], y, P))),
+             'proof']
+    p = _Proof()
+    # The equation first, this function's clauses next (one premise each,
+    # in the order they are written), the goal last.
+    p.step('← intro goal=0', new=len(eqs) + 2)
+    goal = len(eqs) + 2
+    eq_fact = p.ids('→ rewrite %s_def target=fact goal=%d facts=[1]'
+                    % (g['name'], goal), 1)[0]
+    prem = p.ids('← rule %s_elims goal=%d facts=[%d]'
+                 % (sum_name, goal, eq_fact),
+                 sum(len(other['eqs']) for other in parsed))
+    names = _Names()
+    n = 0
+    for i, other in enumerate(parsed):
+        for k, eq_k in enumerate(other['eqs']):
+            sub = prem[n]
+            n += 1
+            pattern = _eq_args(eq_k)
+            vars_ = _pattern_vars_in(pattern)
+            fresh = [Var(names.alloc(v.name), v.T) for v in vars_]
+            made = p.ids('← intro%s goal=%d'
+                         % ((' ' + " ".join(v.name for v in fresh)) if fresh
+                            else '', sub), len(fresh) + 3)
+            # The hypotheses and the goal the `intro` opens: the premise row
+            # itself is refined by it, and a step targeting the refined-away
+            # row is a dependence the engine refuses.
+            pat_hyp, rhs_hyp, sub = made[-3], made[-2], made[-1]
+            if i != j:
+                # The other half of the sum: the equation cannot hold.  The
+                # file states one orientation per constructor pair, so the
+                # hypothesis is flipped into the axiom's reading when it
+                # reads the other way round.
+                # The clause's own side of the sum against this
+                # function's: the hypothesis reads `this x = other PAT`.
+                th_name, th = _distinct_neq(ST.name, side[i], side[j])
+                if th is None:
+                    raise FunGenError(
+                        'fun %s: the sum has no distinctness axiom for %s '
+                        'and %s' % (g['name'], side[i], side[j]))
+                left, _ = _neq_sides(th)
+                lc, _ = left.strip_comb()
+                fact = pat_hyp
+                if lc.name != side[j]:
+                    fact = p.ids('→ rewrite eq_sym_eq target=fact goal=%d '
+                                 'facts=[%d]' % (sub, pat_hyp), 1)[0]
+                p.ids('← resolve %s goal=%d facts=[%d]' % (th_name, sub, fact), 1)
+                continue
+            peeled = p.ids('→ forward %s goal=%d facts=[%d]'
+                           % (inj_rule, sub, pat_hyp), 1)[0]
+            folded = rhs_hyp
+            for m, callee in enumerate(parsed):
+                if _mentions(eq_k.rhs, callee['name']):
+                    folded = p.ids('→ rewrite %s_def sym=true target=fact '
+                                   'goal=%d facts=[%d]'
+                                   % (callee['name'], sub, rhs_hyp), 1)[0]
+            p.ids('← apply_prev goal=%d facts=[%d,%d,%d]'
+                  % (sub, k + 2, peeled, folded), 1)
+    lines.extend(p.text())
+    lines.append('qed')
+    return lines
+
+
 def _expand_mutual(data, declared=None):
     """Item dicts for a mutual block, or None when it is out of reach.
 
@@ -4257,8 +4363,7 @@ def _expand_mutual(data, declared=None):
     preds = ['P%d' % (k + 1) for k in range(len(groups))]
     premises = _induct_premises(groups, preds)
     st_text = _printt(ST)
-    cnames = [theory.thy.get_overload_const_name(g['name'], g['ty'])
-              for g in groups]
+    cnames = [g['cname'] for g in groups]
     for j, g in enumerate(groups):
         xs = [Var('x%d' % (k + 1), g['arg_types'][k])
               for k in range(len(g['arg_types']))]
@@ -4309,6 +4414,12 @@ def _expand_mutual(data, declared=None):
                             cname_j, g['arg_types'], g['eqs'], lhs_j)))
                     except FunGenError:
                         pass
+            except FunGenError:
+                pass
+        if ('%s_elims' % cname_j) not in (declared or set()):
+            try:
+                entries.append(_entry(_mutual_elims_entry(
+                    groups, j, sum_name, ST)))
             except FunGenError:
                 pass
         try:

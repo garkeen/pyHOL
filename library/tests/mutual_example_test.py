@@ -7,8 +7,8 @@ mutual induction rule back.
 
 Active: the theory replays VALID, every projected item is there -- the
 encoded function's own rules and, per function, the definition, the
-equations and the induction rule -- and the rule is used once
-(`even2_or_odd2`).
+equations and the four rules (`_exhaustive`, `_cases`, `_elims`,
+`_induct`) -- and the induction rule is used once (`even2_or_odd2`).
 """
 
 import unittest
@@ -25,9 +25,9 @@ API = ['even2_odd2_sum_def_1', 'even2_odd2_sum_def_2',
        'even2_odd2_sum_exhaustive', 'even2_odd2_sum_cases',
        'even2_odd2_sum_elims', 'even2_odd2_sum_induct',
        'even2_def_1', 'even2_def_2', 'even2_induct',
-       'even2_exhaustive', 'even2_cases',
+       'even2_exhaustive', 'even2_cases', 'even2_elims',
        'odd2_def_1', 'odd2_def_2', 'odd2_induct',
-       'odd2_exhaustive', 'odd2_cases',
+       'odd2_exhaustive', 'odd2_cases', 'odd2_elims',
        # the rule used once: every number is even or odd
        'even2_or_odd2']
 
