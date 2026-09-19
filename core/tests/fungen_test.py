@@ -876,19 +876,72 @@ class MutualEncodingTest(unittest.TestCase):
             fungen._expand_mutual(block)
         self.assertIn('odd9', str(ctx.exception))
 
-    def test_a_block_refuses_a_relation(self):
-        """A group has no relation of its own to name.
+    def test_a_block_gives_its_relation_the_same_lemmas(self):
+        """A block's relation is the file's, over the sum, with its proofs.
 
-        `relation` in a single function names a relation on that
-        function's own arguments; a group's calls cross the functions, so
-        what carries it is a measure over the sum the encoding builds --
-        the block says so instead of dropping the clause.
+        The relation is not the emitter's to prove: `wf` names the theorem
+        proving it well founded and `descent` the lemmas discharging the
+        calls' obligations -- the same two clauses a single function's
+        relation takes, and they are required rather than dropped.  The
+        relation itself is typed at the sum the encoding builds, which is
+        the type the block's calls are compared at.
         """
-        block = self._pair(even9={'relation': ['"%p q. p < q"'],
-                                  'wf': ['"even9_rel_wf"']})
+        block = self._pair(even9={'relation': ['"%p q. p < q"']})
         with self.assertRaises(fungen.FunGenError) as ctx:
             fungen._expand_mutual(block)
-        self.assertIn('relation', str(ctx.exception))
+        self.assertIn('wf', str(ctx.exception))
+        block = self._pair(even9={'relation': ['"%p q. p < q"'],
+                                  'wf': ['"even9_rel_wf9"']})
+        with self.assertRaises(fungen.FunGenError) as ctx:
+            fungen._expand_mutual(block)
+        self.assertIn('descent', str(ctx.exception))
+        # With both, the proof is the file's own: a lemma the theory does
+        # not have yet is reported before anything is emitted.
+        block = self._pair(even9={'relation': ['"%p q. p < q"'],
+                                  'wf': ['"even9_rel_wf9"'],
+                                  'descent': ['"even9_dec9"']})
+        with self.assertRaises(fungen.FunGenError) as ctx:
+            fungen._expand_mutual(block)
+        self.assertIn('even9_dec9', str(ctx.exception))
+        self.assertIn('stated before the definition', str(ctx.exception))
+
+    def test_a_block_the_measures_cannot_carry_needs_a_relation(self):
+        """The swap decreases the sum of the arguments, and no column sees it.
+
+        The search compares the arguments one position at a time, and the
+        sum the encoding builds is not a datatype anything recurses into,
+        so a block like this one has nothing to descend through unless the
+        file states its own order -- which is what
+        `library/mutual_relation.pyhol` does.  The failure is reported
+        rather than the block being emitted with an unproved descent.
+        """
+        basic.load_theory('either')
+        block = {'ty': 'def.ind', 'groups': [
+            {'name': 'sw9', 'type': 'nat => nat => nat',
+             'rules': [{'prop': 'sw9 0 n = n'},
+                       {'prop': 'sw9 (Suc m) n = sw8 n m'}]},
+            {'name': 'sw8', 'type': 'nat => nat => nat',
+             'rules': [{'prop': 'sw8 0 n = n'},
+                       {'prop': 'sw8 (Suc m) n = sw9 n m'}]}]}
+        with self.assertRaises(fungen.FunGenError) as ctx:
+            fungen._expand_mutual(block, set())
+        self.assertIn('no well-founded relation to descend through',
+                      str(ctx.exception))
+
+    def test_a_block_takes_a_relation_or_measures_not_both(self):
+        """Either the columns carry the recursion, or the file's relation.
+
+        A block that gives both would have the measures built, their proof
+        obligations discharged, and the relation never consulted -- so it
+        is refused rather than measured half from the file and half from
+        the relation.
+        """
+        block = self._pair(even9={'measure': ['"%n. n"'],
+                                  'relation': ['"%p q. p < q"']},
+                           odd9={'measure': ['"%n. n"']})
+        with self.assertRaises(fungen.FunGenError) as ctx:
+            fungen._expand_mutual(block)
+        self.assertIn('not both', str(ctx.exception))
 
     def test_a_block_without_the_sum_reports_what_is_missing(self):
         """The encoding is an increment on the sum datatype.
@@ -1011,6 +1064,61 @@ class MutualEncodingTest(unittest.TestCase):
             fungen._expand_mutual(block, set())
         self.assertIn('covered by the equations before it',
                       str(ctx.exception))
+
+
+class CoverageVariableTest(unittest.TestCase):
+    """`<c>_exhaustive` names its own variable around the equations.
+
+    The statement is `p = P_1 ∨ ...`, one disjunct per equation, each
+    binding that equation's pattern variables.  An equation whose pattern
+    has a variable called `p` was captured by its own disjunct's binder --
+    `∃p. p = Suc p`, a statement about the wrong `p` (and, when the two
+    `p`s have different types, an `abstract_over` crash that left the
+    whole definition axiomatized).  The rules read off the exhaustive rule
+    forward it as `param_<name>`, so the name is decided in one place.
+    """
+
+    def setUp(self):
+        basic.load_theory('nat')
+
+    def test_the_name_moves_out_of_the_equations_way(self):
+        ty = TFun(NatType, NatType)
+        with context.fresh_context(defs={'covp': ty}):
+            eqs = [context.parse_term(prop) for prop in
+                   ['covp 0 = 0', 'covp (Suc p) = covp p']]
+        self.assertEqual(fungen._exhaustive_var(eqs), 'p1')
+        lhs = [fungen._eq_args(eq) for eq in eqs]
+        prop = fungen._prints(fungen._coverage_prop(lhs, Var('p1', NatType)))
+        self.assertIn('p1 = 0', prop)
+        self.assertIn('(∃p. p1 = Suc p)', prop)
+        # An equation set that does not use `p` keeps the plain name, so
+        # the items of every existing definition are unchanged.
+        with context.fresh_context(defs={'covq': ty}):
+            eqs2 = [context.parse_term(prop) for prop in
+                    ['covq 0 = 0', 'covq (Suc n) = covq n']]
+        self.assertEqual(fungen._exhaustive_var(eqs2), 'p')
+
+    def test_a_definition_whose_pattern_uses_p_is_emitted(self):
+        """The whole definition comes out, rules included.
+
+        Before, the two `p`s had the same type here and the statement was
+        quietly about the wrong variable -- the item then failed its
+        replay; with the pattern on a pair the types differ and the
+        emission raised inside `abstract_over`, which the caller reads as
+        "outside the supported increment" and falls back to axioms.
+        """
+        item = {'ty': 'def.ind', 'name': 'covr',
+                'type': '(nat × nat, nat × nat) either => nat',
+                'rules': [{'prop': 'covr (Left p) = fst p'},
+                          {'prop': 'covr (Right p) = fst p'}]}
+        basic.load_theory('either')
+        entries = fungen.expand_item(item, set())
+        self.assertIsNotNone(entries)
+        by_name = {e['name']: e for e in entries}
+        for name in ('covr_exhaustive', 'covr_cases', 'covr_elims',
+                     'covr_induct'):
+            self.assertIn(name, by_name)
+        self.assertIn('(∃p. p1 = Left p)', by_name['covr_exhaustive']['prop'])
 
 
 def printer_type(ty):

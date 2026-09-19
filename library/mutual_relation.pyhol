@@ -1,0 +1,103 @@
+theory mutual_relation
+imports either, wf
+description "A mutual block that descends through a relation of the file's own over the sum the encoding builds: the relation, the theorem proving it well founded, and one descent lemma per call are the file's, and the obligations the encoding hands them are stated on the encoded calls."
+
+-- What a side of the sum carries, read off it: the two arguments the
+-- element's function was called at, added.  A relation over the sum has
+-- to be phrased with something like this, since the two sides are
+-- different types (`A1 × A2`) `either` (`B1 × B2`) and a call that
+-- crosses the group is compared at the sum.
+
+fun msum :: (nat × nat, nat × nat) either ⇒ nat
+  | msum (Left p) = fst p + snd p
+  | msum (Right p) = fst p + snd p
+
+-- The relation is a measure in disguise (`msum` of the side the element
+-- came from), so its well-foundedness is `wf_measure`'s: what the file has
+-- to state is the relation itself.
+
+theorem msum_lt_wf
+  prop wf (%p::(nat × nat, nat × nat) either. %q. msum p < msum q)
+proof
+  ← rewrite measure_def sym=true goal=0
+    #[1] wf (measure msum)
+  ← rule wf_measure goal=1
+qed
+
+-- The two obligations the block's calls produce.  Each states the relation
+-- at the encoded call and at the clause's own pattern -- the call is the
+-- first argument of the relation, the pattern the second, the same shape a
+-- single function's descent lemma has; here the two are on different sides
+-- of the sum, because each call crosses the group.
+--
+-- What they say is `n + m < Suc m + n` (the swap decreases the *sum* of
+-- the arguments by one, whichever pair the call has), which is why no
+-- inferred measure carries the block: the search compares the arguments
+-- one position at a time, and neither position decreases on its own.
+
+theorem swapf_dec_1
+  fixes m :: nat, n :: nat
+  prop msum (Right (Pair n m)) < msum (Left (Pair (Suc m) n))
+proof
+  ← rewrite msum_def_2 goal=0
+    #[1] fst (Pair n m) + snd (Pair n m) < msum (Left (Pair (Suc m) n))
+  ← rewrite msum_def_1 goal=1
+    #[2] fst (Pair n m) + snd (Pair n m) < fst (Pair (Suc m) n) + snd (Pair (Suc m) n)
+  ← rewrite fst_def_1 goal=2
+    #[3] n + snd (Pair n m) < Suc m + snd (Pair (Suc m) n)
+  ← rewrite snd_def_1 goal=3
+    #[4] n + m < Suc m + n
+  ← rewrite add_Suc_left goal=4
+    #[5] n + m < Suc (m + n)
+  cut "n + m = m + n" goal=5
+    #[6] n + m = m + n
+  ← rule add_comm goal=6
+  ← rewrite source=prev goal=5 facts=[6]
+    #[7] m + n < Suc (m + n)
+  ← rewrite less_Suc_lesseq goal=7
+    #[8] m + n <= m + n
+  ← rule lesseq_refl goal=8
+qed
+
+theorem swapg_dec_1
+  fixes m :: nat, n :: nat
+  prop msum (Left (Pair n m)) < msum (Right (Pair (Suc m) n))
+proof
+  ← rewrite msum_def_1 goal=0
+    #[1] fst (Pair n m) + snd (Pair n m) < msum (Right (Pair (Suc m) n))
+  ← rewrite msum_def_2 goal=1
+    #[2] fst (Pair n m) + snd (Pair n m) < fst (Pair (Suc m) n) + snd (Pair (Suc m) n)
+  ← rewrite fst_def_1 goal=2
+    #[3] n + snd (Pair n m) < Suc m + snd (Pair (Suc m) n)
+  ← rewrite snd_def_1 goal=3
+    #[4] n + m < Suc m + n
+  ← rewrite add_Suc_left goal=4
+    #[5] n + m < Suc (m + n)
+  cut "n + m = m + n" goal=5
+    #[6] n + m = m + n
+  ← rule add_comm goal=6
+  ← rewrite source=prev goal=5 facts=[6]
+    #[7] m + n < Suc (m + n)
+  ← rewrite less_Suc_lesseq goal=7
+    #[8] m + n <= m + n
+  ← rule lesseq_refl goal=8
+qed
+
+-- The block itself.  Its descent is the one the two lemmas above state:
+-- the two arguments swap, so the sum decreases by one while neither
+-- argument does -- no inferred measure carries it (the search compares the
+-- arguments one position at a time), which is what makes it a relation the
+-- file states rather than one the emitter finds.  `wf` names the theorem
+-- proving the relation well founded, `descent` the lemmas discharging the
+-- calls' obligations; the relation is stated once for the group, in the
+-- block's first part.
+
+fun swapf :: nat ⇒ nat ⇒ nat
+  relation "%p q. msum p < msum q"
+  wf "msum_lt_wf"
+  descent "swapf_dec_1", "swapg_dec_1"
+  | swapf 0 n = n
+  | swapf (Suc m) n = swapg n m
+and swapg :: nat ⇒ nat ⇒ nat
+  | swapg 0 n = n
+  | swapg (Suc m) n = swapf n m

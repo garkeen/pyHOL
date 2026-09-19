@@ -2869,10 +2869,7 @@ def _cases_entry(cname, arg_types, eqs, lhs):
     # The predicate's name and the case variable's have to be names no
     # equation uses: they are free in the statement, and a pattern variable
     # of the same name would shadow them inside its premise.
-    taken = set()
-    for eq in eqs:
-        for v in eq.get_vars():
-            taken.add(v.name)
+    taken = _equation_names(eqs)
     pred_name = next(c for c in _pred_names() if c not in taken)
     pname = _fresh_name('p', taken)
     P = Var(pred_name, TFun(Tup, BoolType))
@@ -2888,8 +2885,8 @@ def _cases_entry(cname, arg_types, eqs, lhs):
     # they are facts: one per equation, in source order, at IDs 1..ng.
     g = prover.ids('\u2190 intro goal=0', ng + 1)[-1]
     prem = list(range(1, ng + 1))
-    d = prover.step('\u2192 forward %s_exhaustive param_p=%s goal=%d'
-                    % (cname, pname, g))
+    d = prover.step('\u2192 forward %s_exhaustive param_%s=%s goal=%d'
+                    % (cname, _exhaustive_var(eqs), pname, g))
 
     def one(goal, exf, k):
         """Equation k: `exf` states its disjunct, `goal` is `P p`."""
@@ -3018,8 +3015,8 @@ def _elims_entry(name, cname, arg_types, res_type, eqs, lhs):
     # already an item lays out no line at all.
     h1 = prover.step('\u2192 rewrite %s_def target=fact goal=%d facts=[%d]'
                      % (cname, g, h))
-    d = prover.step('\u2192 forward %s_exhaustive param_p="%s" goal=%d'
-                    % (cname, _arg_text(T), g))
+    d = prover.step('\u2192 forward %s_exhaustive param_%s="%s" goal=%d'
+                    % (cname, _exhaustive_var(eqs), _arg_text(T), g))
 
     def one(goal, exf, k):
         """Clause k: `exf` states `T = pattern`, `goal` is `P`."""
@@ -3075,6 +3072,30 @@ def _elims_entry(name, cname, arg_types, res_type, eqs, lhs):
     return lines
 
 
+def _equation_names(eqs):
+    """The names the equations' variables use."""
+    taken = set()
+    for eq in eqs:
+        for v in eq.get_vars():
+            taken.add(v.name)
+    return taken
+
+
+def _exhaustive_var(eqs):
+    """The name `<c>_exhaustive` gives its own variable.
+
+    The statement is `p = P_1 ∨ ...`, one disjunct per equation binding
+    that equation's pattern variables -- so an equation whose pattern has a
+    variable called `p` would be captured by its own disjunct's binder
+    (`∃p. p = Suc p` is not the disjunct meant), and the name is moved out
+    of the equations' way.  The rules read off `<c>_exhaustive`
+    (`_cases_entry`, `_elims_entry`, `_induct_entry`) forward it as
+    `param_<name>`, so they ask for the name here rather than spelling one
+    out: it depends on the equations.
+    """
+    return _fresh_name('p', _equation_names(eqs))
+
+
 def _coverage_entry(cname, arg_types, eqs, lhs):
     """The `<c>_exhaustive` item: every input is one of the patterns.
 
@@ -3093,13 +3114,19 @@ def _coverage_entry(cname, arg_types, eqs, lhs):
     induction rule and pattern completeness are two consumers of it.
     """
     Tup = tupled_type(arg_types)
-    p = Var('p', Tup)
+    pname = _exhaustive_var(eqs)
+    p = Var(pname, Tup)
     lines = ['theorem %s_exhaustive' % cname,
-             '  fixes p :: %s' % _printt(Tup),
+             '  fixes %s :: %s' % (pname, _printt(Tup)),
              '  prop %s' % _prints(_coverage_prop(lhs, p)),
              'proof']
     prover = _Proof()
     names = _Names()
+    # The split introduces a name per constructor argument, and the
+    # allocator counts (`u1`, `u2`, ...): a variable of the equations with
+    # one of those names would be shadowed by the very line that is
+    # supposed to be a fresh one, so the counter starts past them.
+    _reserve(names, *_equation_names(eqs))
 
     def leaf(goal, alive, envs):
         cands = [i for i in range(len(eqs)) if alive[i]]
@@ -3457,8 +3484,8 @@ def _induct_entry(name, cname, arg_types, res_type, eqs, positions, calls,
     pname = names.alloc('p')
     ids = prover.ids('← intro %s goal=%d' % (pname, g), 3)
     ih, g = ids[1], ids[2]
-    d0 = prover.step('→ forward %s_exhaustive param_p=%s goal=%d'
-                     % (cname, pname, g))
+    d0 = prover.step('→ forward %s_exhaustive param_%s=%s goal=%d'
+                     % (cname, _exhaustive_var(eqs), pname, g))
     split(g, d0, 0, ng)
     prover.step('← rule %s_rel_wf goal=%d' % (cname, wf_goal))
     lines.extend(prover.text())
@@ -4344,17 +4371,27 @@ def _sum_column(k, leaf_ms, Tups, sum_name):
         body_text=lambda q: '%s %s' % (text(idxs), q.name))
 
 
-def _given_block_measures(groups, data):
-    """The measures a mutual block was given, or None when it was not.
+def _block_order(groups, data):
+    """The order a mutual block was given, or `(None, None)`.
 
-    One chain per function, written inside that function's own part of the
-    block, before its equations (`measure "%m n. m + n"`), each chain over
-    that function's own arguments -- read exactly as a single function's
-    measures are (`_tupled_measure`), so the user's measures and the
-    inferred ones are the same objects from the columns on.  A group's
-    columns do not mix the two: a block that gives measures gives one chain
-    per function, or it is refused rather than measured half from the file
-    and half from the registry.
+    Either measures -- one chain per function, written inside that
+    function's own part of the block, before its equations (`measure
+    "%m n. m + n"`), each chain over that function's own arguments -- read
+    exactly as a single function's measures are (`_tupled_measure`), so
+    the user's measures and the inferred ones are the same objects from
+    the columns on; a group's columns do not mix the two: a block that
+    gives measures gives one chain per function, or it is refused rather
+    than measured half from the file and half from the registry.
+
+    Or a relation of the group's own, with the same `wf`/`descent`
+    lemmas a single function's relation takes.  It is a relation on the
+    *sum* the encoding builds -- the only type a call that crosses the
+    functions can be compared at, and the same thing Isabelle's mutual
+    `function` takes -- so the obligations handed to the `descent` lemmas
+    read `R (Right n) (Left (Suc (Suc n)))`: the encoded call first, the
+    clause's own pattern second.  Like a single function, a block takes
+    either a relation or measures, never both, and a relation is stated
+    once for the group (in any one function's part of the block).
 
     The clauses are read off the block's own text (`data['groups']`), the
     types and constant names off the parsed groups; the two are the same
@@ -4363,34 +4400,44 @@ def _given_block_measures(groups, data):
     from core import context
     from core import items
     raw = data['groups']
+    names = ' and '.join(g['name'] for g in groups)
+    # The clauses go to the encoded definition as they were written: it is
+    # `fun_clauses` that reads them, with the same reader a single
+    # function's clauses go through, so they are collected here and not
+    # pre-parsed.  What this function decides is which of the two orders
+    # the block asked for, and that is a question about their text.
+    written = {key: list(data.get(key) or [])
+               for key in ('relation', 'wf', 'descent')}
+    for g in raw:
+        for key in written:
+            written[key].extend(g.get(key) or [])
     try:
-        clauses = {key: items._clause_values(data.get(key) or [])
-                   for key in ('relation', 'wf', 'descent')}
-        for g in raw:
-            for key in clauses:
-                clauses[key].extend(items._clause_values(g.get(key) or []))
+        clauses = {key: items._clause_values(written[key])
+                   for key in written}
+        per_function = [items._clause_values(g.get('measure') or [])
+                        for g in raw]
     except items.ItemException as error:
-        raise FunGenError('fun %s: %s'
-                          % (' and '.join(g['name'] for g in groups), error))
+        raise FunGenError('fun %s: %s' % (names, error))
     if any(clauses.values()):
-        raise FunGenError(
-            'fun %s: a mutual block descends through measures over the sum '
-            'it is encoded in (`measure`, one chain per function); a '
-            '`relation` names a relation on one definition and its own '
-            'arguments, and a group has none of its own -- its calls cross '
-            'the functions, which is exactly why the encoding measures the '
-            'sum instead' % ' and '.join(g['name'] for g in groups))
-    per_function = [items._clause_values(g.get('measure') or [])
-                    for g in raw]
+        if any(per_function):
+            raise FunGenError(
+                'fun %s: a relation or measures, not both -- a relation says '
+                'what the block descends through and states its own '
+                'obligations, a measure chain is carried by the columns the '
+                'emitter builds' % names)
+        if len(clauses['relation']) != 1:
+            raise FunGenError(
+                'fun %s: one relation for the group, %d given'
+                % (names, len(clauses['relation'])))
+        return None, written
     if not any(per_function):
-        return None
+        return None, None
     missing = [g['name'] for g, texts in zip(groups, per_function)
                if not texts]
     if missing:
         raise FunGenError(
             'fun %s: a mutual block that gives measures gives one chain per '
-            'function; %s carries none'
-            % (' and '.join(g['name'] for g in groups), ', '.join(missing)))
+            'function; %s carries none' % (names, ', '.join(missing)))
     defs = {g['name']: g['ty'] for g in groups}
     res = []
     for g, texts in zip(groups, per_function):
@@ -4403,7 +4450,7 @@ def _given_block_measures(groups, data):
                 def_name='%s_m%d' % (g['cname'], k + 1),
                 given=_tupled_measure(t, g['arg_types'])))
         res.append(measures)
-    return res
+    return res, None
 
 
 def _mutual_groups(data):
@@ -4696,8 +4743,8 @@ def _mutual_elims_entry(groups, j, cname):
     # lays out no line at all.
     h1 = prover.step('→ rewrite %s_def target=fact goal=%d facts=[%d]'
                      % (g['name'], g0, h))
-    d = prover.step('→ forward %s_exhaustive param_p="%s" goal=%d'
-                    % (cname, _arg_text(T), g0))
+    d = prover.step('→ forward %s_exhaustive param_%s="%s" goal=%d'
+                    % (cname, _exhaustive_var(g['eqs']), _arg_text(T), g0))
 
     def one(goal, exf, k):
         """Clause k: `exf` states `T = pattern`, `goal` is `Q`."""
@@ -4833,21 +4880,30 @@ def _expand_mutual(data, declared=None):
             rules.append({'prop': _prints_def(
                 sum_name, Eq(lhs, encoded_rhs(j, eq)))})
 
-    # The measures: one column per argument position, each the leaves' own
-    # measure of that position tied together by the case combinator, and
-    # the leaves' measures themselves -- named functions the columns are
-    # written with, so their definitions are emitted first.
+    # The order the block descends through: measures, one column per
+    # argument position -- each the leaves' own measure of that position
+    # tied together by the case combinator -- with the leaves' measures
+    # themselves as named functions the columns are written with, so their
+    # definitions are emitted first; or a relation of the file's own, which
+    # needs no column and no measure function, and whose `wf`/`descent`
+    # lemmas go to the encoded definition instead (the same dictionary a
+    # single function's clauses are read from).
     def_names = tuple(g['name'] for g in groups) + \
         tuple(g['cname'] for g in groups)
-    given = _given_block_measures(groups, data)
+    given, relation = _block_order(groups, data)
     if given is not None:
         leaf_ms, leaf_sizes = given, {}
+    elif relation is not None:
+        leaf_ms, leaf_sizes = [[] for _ in groups], {}
     else:
         leaf_ms, leaf_sizes = _leaf_measures(groups, def_names)
-    columns = [_sum_column(k, leaf_ms, Tups, sum_name)
-               for k in range(max(len(g['arg_types']) for g in groups))]
-    case_mdefs = {m.def_name: m.body for ms in leaf_ms for m in ms}
-    case_mdefs[_SUM_CASE] = _sum_case_rule()
+    if relation is None:
+        columns = [_sum_column(k, leaf_ms, Tups, sum_name)
+                   for k in range(max(len(g['arg_types']) for g in groups))]
+        case_mdefs = {m.def_name: m.body for ms in leaf_ms for m in ms}
+        case_mdefs[_SUM_CASE] = _sum_case_rule()
+    else:
+        columns, case_mdefs = (), {}
     entries = []
     for g, ms in zip(groups, leaf_ms):
         for text in _measure_defs(g['cname'], g['arg_types'], ms):
@@ -4855,6 +4911,13 @@ def _expand_mutual(data, declared=None):
 
     syn = {'ty': 'def.ind', 'name': sum_name,
            'type': _printt(TFun(ST, RST)), 'rules': rules}
+    if relation is not None:
+        # The clauses are read by `fun_clauses` with the encoded
+        # definition's own type, so the relation is typed at the sum by
+        # the same code that types a single function's at its own tuple.
+        syn['relation'] = relation['relation']
+        syn['wf'] = relation['wf']
+        syn['descent'] = relation['descent']
     entries += _expand(syn, declared, columns, leaf_sizes, case_mdefs,
                        {m.def_name: TFun(Tups[i], NatType)
                         for i, ms in enumerate(leaf_ms) for m in ms})

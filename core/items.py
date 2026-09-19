@@ -534,17 +534,6 @@ class Fun(Item):
         self.rules = groups[0]['rules']
         self.groups = groups
         try:
-            for group in groups:
-                if group.get('relation') or group.get('wf') or \
-                        group.get('descent'):
-                    raise ItemException(
-                        "Fun %s: a mutual block descends through measures "
-                        "over the sum it is encoded in; `measure` is "
-                        "written once per function (inside that function's "
-                        "own part of the block), and `relation` has no "
-                        "relation of the group's own to name"
-                        % group['name'])
-
             defs = {group['name']: parser.parse_type(group['type'])
                     for group in groups}
             self.cname = theory.thy.get_overload_const_name(

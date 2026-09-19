@@ -438,16 +438,18 @@ class MutualFunTest(unittest.TestCase):
         self.assertIsNotNone(item.error)
         self.assertIn('wrong head of lhs', str(item.error))
 
-    def testGroupTakesMeasuresButNoRelation(self):
-        # A mutual block's descent is measured over the sum it is encoded
-        # in, one chain per function: `measure` is read (the emitter's,
-        # `fungen._given_block_measures`, is where it is used).  A
-        # `relation` has no relation of the group's own to name, and the
-        # item says so rather than dropping it.
+    def testGroupTakesMeasuresAndARelation(self):
+        # A mutual block's descent is one chain per function (`measure`,
+        # read by `fungen._block_order`) or a relation of the group's own
+        # over the sum it is encoded in, with the `wf`/`descent` lemmas a
+        # single function's relation takes.  The item reads either set of
+        # clauses and leaves them to the emitter; what it reports here is
+        # only that the encoding is out of reach (this file has `nat`, not
+        # the sum datatype).
         basic.load_theory('nat', limit=('def', 'one'))
         item = self._block(groups=[
             {"name": "even4", "type": "nat => bool",
-             "measure": ["n"],
+             "measure": ['"%n. n"'],
              "rules": [{"prop": "even4 (Suc n) = even4 n"}]}])
         self.assertIsNotNone(item.error)
         self.assertIn('sum encoding', str(item.error))
@@ -455,10 +457,12 @@ class MutualFunTest(unittest.TestCase):
         basic.load_theory('nat', limit=('def', 'one'))
         item = self._block(groups=[
             {"name": "even5", "type": "nat => bool",
-             "relation": ["%p q. p < q"],
+             "relation": ['"%p q. p < q"'],
+             "wf": ['"even5_lt_wf"'],
+             "descent": ['"even5_dec"'],
              "rules": [{"prop": "even5 (Suc n) = even5 n"}]}])
         self.assertIsNotNone(item.error)
-        self.assertIn("relation", str(item.error))
+        self.assertIn('sum encoding', str(item.error))
 
     def testSingleFunctionKeepsTheFlatShape(self):
         # The one-function case is untouched: same data keys, same
