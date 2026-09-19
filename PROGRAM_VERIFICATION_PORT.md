@@ -55,7 +55,7 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 | 3 | 算术引擎：AC / 乘法 / 减法归约（`core/measure.py`） | 完成 |
 | 4 | 模式减法 / 带洞定义（`pattern_split.ML`） | 完成 |
 | 5 | 组合度量：`size_list f` 这类候选（`measure_functions.ML`） | 完成 |
-| 6 | 互递归 `fun … and …` | 部分完成：`library/either.pyhol`（和类型地基）已落地；语法与编码见 §3 |
+| 6 | 互递归 `fun … and …` | 完成：五样齐（方程 / `_exhaustive` / `_cases` / `_elims` / `_induct`），一般形状（N 个函数、多参数、多调用、结果类型不同）见 §3；块自己的 `measure` 子句与互递归 datatype 仍未实现（§3 已登记） |
 | 7 | `f.cases` / `f.elims` / `fun_cases` | 部分完成：`<c>_cases` 与 `<c>_elims` 已发射；`fun_cases` 那层与布尔特化见 §3 |
 | 8 | `partial_function` | 未做，见 §3 |
 | 9 | `size_change`（scnp 终止证明器） | 未做，见 §3 |
@@ -165,13 +165,25 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 - 块的 `measure`/`relation`/`wf`/`descent` 子句暂不接受（终止是对整个组证一次，写法与
   单函数不同），报错而不是静默忽略。
 
-**未做**：
+**（当时）未做**——这一条后来做掉了（`mk_inj`/`mk_proj`/`mk_sumcases`、投影定义、方程翻译、
+投影回各函数、`basic._load_group` 的分发，见下面"已落地"两段；终止走的是"每参数位置一列"的
+度量而不是 `wf_either_rel` 的和关系，理由见那段）：
 
 1. 编码本身：`mk_inj`/`mk_proj`（沿平衡树走 `Left`/`Right` 与析构子）、`mk_sumcases`、
    每个函数用投影定义、方程翻译成 `fsum` 的方程、终止关系搬到和上（用 `wf_either_rel`）、
    再把方程 / cases / elims / induct 投影回各函数——**投影那步是 holpy 侧的真正工作量**：
    伊莎贝尔用 `EqSubst`+`simp_tac`，这里得写成显式步骤（形态与现有 `_def_entry` 模板同款）。
    `basic._load_group` 的分发也在这步接上（现在靠 `expand_item` 返回 None 走到条目层的报错）。
+
+**未实现（不是特性，按 `AGENTS.md` §0 登记在此）**：
+
+- 互递归块的 `measure`/`relation`/`wf`/`descent` 子句（条目层报错而不是静默忽略，见上）。
+  一般情形的做法：`measure` 按函数逐个写（每片一条，与现在的列同一形状——`either_case`
+  串起来），走 `_measure_order` 的 `extra_measures` 入口；要定下来的是语法（块的多条
+  measure 子句怎么落到各函数上）。
+- 互递归 **datatype**：`datatype` 语法只有单块的构造子表（`syntax/pyhol.py` 的
+  `_parse_datatype` 不认 `and`），互相递归的类型声明写不出来——这是语法层的缺口，
+  与函数的编码无关。
 
 **编码的探路结果**（会话内实测，缺的只剩「把它写成生成器」）：
 
