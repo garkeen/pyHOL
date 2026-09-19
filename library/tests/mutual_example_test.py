@@ -5,9 +5,10 @@ of the argument tuples (`either`), the single-function machinery proves
 *that*, and each function gets its definition, its equations and the
 mutual induction rule back.
 
-Active: the theory replays VALID, and every projected item is there --
-the encoded function's own rules and, per function, the definition, the
-equations and the induction rule.
+Active: the theory replays VALID, every projected item is there -- the
+encoded function's own rules and, per function, the definition, the
+equations and the induction rule -- and the rule is used once
+(`even2_or_odd2`).
 """
 
 import unittest
@@ -24,7 +25,9 @@ API = ['even2_odd2_sum_def_1', 'even2_odd2_sum_def_2',
        'even2_odd2_sum_exhaustive', 'even2_odd2_sum_cases',
        'even2_odd2_sum_elims', 'even2_odd2_sum_induct',
        'even2_def_1', 'even2_def_2', 'even2_induct',
-       'odd2_def_1', 'odd2_def_2', 'odd2_induct']
+       'odd2_def_1', 'odd2_def_2', 'odd2_induct',
+       # the rule used once: every number is even or odd
+       'even2_or_odd2']
 
 
 class MutualExampleTest(unittest.TestCase):

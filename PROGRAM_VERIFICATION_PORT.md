@@ -224,9 +224,11 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 
 **还没做**：
 
-- **样本里用一次归纳规则**（验收的最后一条）：`rule even2_induct param_P1="(%n. even2 n ∨ odd2 n)"
-  param_P2="(%n. odd2 n ∨ even2 n)"` 之后再证四条前提（`even2 0 ∨ odd2 0`、`∀n. (odd2 n ∨ even2 n)
-  ⟶ (even2 (Suc n) ∨ odd2 (Suc n))` 等，第二三条要 `disjE` 分两支、每支把对应的方程重写上去）。
+- **归纳规则已用了一次**（验收的最后一条已过）：`library/mutual_example.pyhol` 末尾的
+  `even2_or_odd2 : !n::nat. even2 n ∨ odd2 n` 就是 `rule even2_induct param_P1=…
+  param_P2=…` 加四条前提的证明（第二、四条前提要 `disjE` 分两支、每支把对应的方程重写上去，
+  剩下的交给 `assumption`）；它重放 VALID，而且两侧的证明互相依赖——这正是互归纳规则的前提
+  共享整个组的原因。
 - 两处诚实的门：N≠2 的块、一条子句里多个递归调用，都抛 `FunGenError`（块退成 error 条目，
   不发出说不清的规则）。要开这两种形状时再说：前者是平衡树（`sum_tree.ML` 的 `mk_inj`/`mk_proj`），
   后者是前提里把多个 IH 合取起来。
