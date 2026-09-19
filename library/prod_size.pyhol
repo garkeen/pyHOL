@@ -1,0 +1,24 @@
+theory prod_size
+imports nat, prod
+description "The size of a product: the family the datatype layer generates for a datatype, stated here because `prod`'s own declaration has no arithmetic in scope."
+
+-- The measure engine reads a datatype argument's size off the theory
+-- (`fungen._size_family` looks up `<ty>_size` and its equations), and a
+-- product's size is what a measure over a *tupled* argument needs:
+-- `prod_size id id` measures `(nat, nat) prod`, so a recursion whose
+-- argument is a tuple -- every mutual definition's encoded argument is --
+-- has something to descend through.  The datatype layer would have
+-- generated this family with the datatype (`datgen.expand_size`, Isabelle
+-- declares `prod` where `+` is available), but `prod` is under `nat`
+-- here: its declaration imports `logic_base`/`wf_base` only, so the
+-- family is stated where the arithmetic is in scope instead.
+--
+-- The equation is the one `datgen.size_fun_lines` writes from
+-- `measure.size_spec`: one for the constructor plus one summand per
+-- measure parameter.  It has to be exactly that term -- the engine
+-- unfolds a size application with `size_body` while the emitted proof
+-- rewrites with this theorem, and the two are the same step only if the
+-- right hand sides agree.
+
+fun prod_size :: ('a ⇒ nat) ⇒ ('b ⇒ nat) ⇒ ('a,'b) prod ⇒ nat
+  | prod_size f g (Pair a b) = 1 + f a + g b

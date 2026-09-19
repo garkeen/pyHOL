@@ -15,6 +15,7 @@ from core import basic
 from core import context
 from core import fungen
 from core.measure import Closing
+from kernel import theory
 
 NatType = TConst('nat')
 
@@ -736,6 +737,141 @@ class FunGenTest(unittest.TestCase):
             'f', [NatType, func_T], ('f', 'f'))
         self.assertEqual([m.pos for m in measures], [0])
         self.assertEqual(measures[0].kind, 'nat')
+
+
+class MutualEncodingTest(unittest.TestCase):
+    """The sum tree a mutual block is encoded in.
+
+    The shape is a function of the number of functions alone: a balanced
+    binary tree over the argument tuples, so the path to a leaf -- and
+    with it every projection the emitter writes over it -- is O(log n)
+    steps deep.  These are the transformations the projections are built
+    from, tested on their own; whether the emitted proofs replay is what
+    library/tests/mutual_examples_test.py checks.
+    """
+
+    def setUp(self):
+        basic.load_theory('either')
+
+    def _type_text(self, T):
+        from syntax import printer
+        from syntax.settings import global_setting
+        with global_setting(unicode=True):
+            return printer.print_type(T)
+
+    def test_the_tree_is_balanced(self):
+        # One leaf is its own type, two share one `either`, three are one
+        # `either` with a pair inside it, four are a pair of pairs.
+        nats = [NatType] * 4
+        self.assertEqual(fungen._sum_type(nats[:1]), NatType)
+        self.assertEqual(self._type_text(fungen._sum_type(nats[:2])),
+                         '(nat, nat) either')
+        self.assertEqual(self._type_text(fungen._sum_type(nats[:3])),
+                         '(nat, (nat, nat) either) either')
+        self.assertEqual(self._type_text(fungen._sum_type(nats[:4])),
+                         '((nat, nat) either, (nat, nat) either) either')
+
+    def test_the_path_to_a_leaf_is_the_turns_taken(self):
+        # The depths are one of two values and differ by at most one: the
+        # tree is balanced, so the deepest leaf is O(log n) steps down.
+        for n in range(2, 9):
+            depths = sorted(len(fungen._sum_path(i, n)) for i in range(n))
+            self.assertEqual(len(depths), n)
+            self.assertLessEqual(depths[-1] - depths[0], 1)
+            self.assertEqual(depths[-1], min(depths[0] + 1,
+                                             (n - 1).bit_length()))
+            paths = [tuple(fungen._sum_path(i, n)) for i in range(n)]
+            self.assertEqual(len(set(paths)), n)
+
+    def test_an_injection_goes_down_the_path(self):
+        # `inj_2` of a three-leaf tree is `Right` then `Left`: the leaf sits
+        # on the right of the outer sum and on the left of the inner one.
+        nats = [NatType] * 3
+        n = Var('n', NatType)
+        injected = fungen._sum_inject(2, nats)(n)
+        self.assertEqual(fungen._sum_path(2, 3), [True, True])
+        text = fungen._prints(injected)
+        self.assertIn('(Right::nat ⇒ (nat, nat) either) n)', text)
+        self.assertTrue(text.startswith('(Right::'), text)
+        # ... and taking it apart gives the leaf's own term back
+        self.assertEqual(fungen._sum_leaf(injected, nats), (2, n))
+
+    def test_the_predicate_tree_follows_the_same_shape(self):
+        # `mk_sumcases`: `P1` on the first leaf's side, the pair inside the
+        # second level for the other two.
+        nats = [NatType] * 3
+        preds = [Var('P%d' % (i + 1), TFun(NatType, TConst('bool')))
+                 for i in range(3)]
+        text = fungen._prints(fungen._sum_cases(preds, nats))
+        self.assertEqual('either_case P1 (either_case P2 P3)', text)
+
+    def test_the_case_steps_walk_the_path(self):
+        # Reducing the tree at a leaf's element is one case equation per
+        # level, the left one at a left turn and the right one otherwise.
+        self.assertEqual(fungen._sum_case_steps(0, 2), ['either_case_def_1'])
+        self.assertEqual(fungen._sum_case_steps(1, 2), ['either_case_def_2'])
+        self.assertEqual(fungen._sum_case_steps(2, 3),
+                         ['either_case_def_2', 'either_case_def_2'])
+
+    def test_the_column_measures_each_leaf_by_its_own_measure(self):
+        """A column over the sum is the leaves' measures tied by the case
+        combinator, and a leaf without one contributes `zero_measure`."""
+        Tup = TConst('prod', NatType, NatType)
+        leaves = [fungen._measure_registry('f', [NatType], ('f', 'f'))[1],
+                  fungen._measure_registry('g', [NatType, NatType],
+                                           ('g', 'g'))[1]]
+        self.assertEqual([m.pos for m in leaves[0]], [0])
+        self.assertEqual([m.pos for m in leaves[1]], [0, 1])
+        col = fungen._sum_column(0, leaves, [NatType, Tup],
+                                 'f_g_sum')
+        self.assertEqual(col.def_name, 'f_g_sum_m1')
+        text = col.text(Var('p', fungen._sum_type([NatType, Tup])))
+        self.assertEqual(text, 'either_case (f_m1) (g_m1) p')
+        # The second position exists only for the second leaf.
+        col2 = fungen._sum_column(1, leaves, [NatType, Tup], 'f_g_sum')
+        text2 = col2.text(Var('p', fungen._sum_type([NatType, Tup])))
+        self.assertEqual(text2, 'either_case (zero_measure) (g_m2) p')
+
+    def test_a_repeated_proposition_keeps_its_id(self):
+        """Stable IDs number propositions, not lines.
+
+        A step whose result the proof already laid out takes no new number
+        and returns the ID the first one got -- which is the item the next
+        step has to address.  This is what a definition whose two calls
+        walk to the same comparison needs (`f (Suc n) = g n + h n` with
+        the same measure at `n` for both).
+        """
+        prover = fungen._Proof()
+        a = prover.step('← rule r goal=0', prop='A')
+        b = prover.step('← rule r goal=1', prop='B')
+        c = prover.step('← rule r goal=2', prop='A')
+        self.assertEqual((a, b, c), (1, 2, 1))
+        self.assertEqual(len(prover.text()), 3)
+        # Without the proposition the step is counted one number per line.
+        d = prover.step('← rule r goal=3')
+        self.assertEqual(d, 3)
+
+    def test_a_block_without_the_sum_reports_what_is_missing(self):
+        """The encoding is an increment on the sum datatype.
+
+        A file that does not carry it cannot encode a group, and the
+        report names what is missing rather than failing somewhere deep
+        inside the emission (which is where this used to end: a `Const
+        Left not found` from the printing of an equation).
+        """
+        with theory.fresh_theory():
+            basic.load_theory('nat', limit=('def', 'one'))
+            block = {'ty': 'def.ind', 'groups': [
+                {'name': 'even9', 'type': 'nat => bool',
+                 'rules': [{'prop': 'even9 0 = true'},
+                           {'prop': 'even9 (Suc n) = even9 n'}]},
+                {'name': 'odd9', 'type': 'nat => bool',
+                 'rules': [{'prop': 'odd9 0 = false'},
+                           {'prop': 'odd9 (Suc n) = odd9 n'}]}]}
+            with self.assertRaises(fungen.FunGenError) as ctx:
+                fungen._expand_mutual(block)
+            self.assertIn('is not in scope', str(ctx.exception))
+            self.assertIn('either', str(ctx.exception))
 
 
 def printer_type(ty):

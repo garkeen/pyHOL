@@ -1,0 +1,45 @@
+theory mutual_examples
+imports either
+description "Mutual blocks the encoding has to cover beyond the smallest sample: three functions (the sum is a tree, not one `either`), two arguments each (the descent is lexicographic, so the sum's measure is one column per argument position), and two result types (the encoded function returns the sum of them, and each function is read back out through the result projection)."
+
+-- `fun ... and ... and ...`: three functions is a tree of two `either`s
+-- (`(a, (b, c) either) either`), so the path to the last leaf is two steps
+-- deep and every projection over it -- the case equations of the
+-- induction rule, the injectivity peel of the elimination rule -- walks
+-- that path.
+
+fun cycle3a :: nat ⇒ nat
+  | cycle3a 0 = 0
+  | cycle3a (Suc n) = cycle3b n
+and cycle3b :: nat ⇒ nat
+  | cycle3b 0 = 1
+  | cycle3b (Suc n) = cycle3c n
+and cycle3c :: nat ⇒ nat
+  | cycle3c 0 = 2
+  | cycle3c (Suc n) = cycle3a n + cycle3c n
+
+-- Two arguments each: the recursion descends the first argument and the
+-- tuple's own size does not decrease (`(n, Suc m)` is no smaller than
+-- `(Suc n, m)`), so what carries the group is the lexicographic order --
+-- one column per argument position, each column the leaves' own measure
+-- of that position, tied together by the case combinator.
+
+fun zipf :: nat ⇒ nat ⇒ nat
+  | zipf 0 m = m
+  | zipf (Suc n) m = zipg n (Suc m)
+and zipg :: nat ⇒ nat ⇒ nat
+  | zipg 0 m = m
+  | zipg (Suc n) m = zipf n (Suc m)
+
+-- Two result types: the encoded function returns the sum of them, so a
+-- function's definition is the result projection of the encoded
+-- application and a clause's right hand side is put on its own side of
+-- that sum.  A call crossing the group is written as the callee's
+-- projection where it stands inside a bigger expression.
+
+fun cnt :: nat ⇒ nat
+  | cnt 0 = 0
+  | cnt (Suc n) = Suc (cnt n)
+and pos :: nat ⇒ bool
+  | pos 0 = true
+  | pos (Suc n) = (cnt n = 0)

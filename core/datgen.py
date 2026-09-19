@@ -775,7 +775,7 @@ def size_less_lines(name, args, constr, rec_pos, params, spec, suffix=''):
     if res is None:
         return None
     steps, closing = res
-    cited = [s.split(' loc=')[0] for s in steps if s != rule] \
+    cited = [str(s).split(' loc=')[0] for s in steps if str(s) != rule] \
         + _closing_theorems(closing)
     if not all(_in_scope(c) for c in cited):
         return None

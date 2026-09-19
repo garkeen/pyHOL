@@ -330,7 +330,13 @@ class Definition(Item):
             self.type = parser.parse_type(data['type'])
             self.cname = theory.thy.get_overload_const_name(self.name, self.type)
 
-            with context.fresh_context(defs={self.name: self.type}):
+            # The name this definition introduces, plus whatever the
+            # caller declared for the block being parsed: a definition
+            # emitted together with others names constants those items
+            # introduce and the theory does not have yet (`fungen` checks
+            # a mutual group's measures before the group is applied).
+            with context.fresh_context(defs=dict(context.ctxt.defs,
+                                                 **{self.name: self.type})):
                 self.prop = context.parse_term(data['prop'])
 
             # prop should be an equality

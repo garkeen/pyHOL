@@ -184,6 +184,23 @@ class Cell:
         return 'Cell(%s, %s)' % (self.kind, self.prop)
 
 
+class Step(str):
+    """One rewrite of a cell's walk: its text, and the term after it.
+
+    The text *is* the step -- a caller writes it into the proof as it
+    stands -- so a Step is that string with one thing more attached: the
+    proposition the step leaves.  The emitter needs it because stable IDs
+    number *propositions*, not lines (`method/stable_state.py`), so a walk
+    that reaches a proposition the proof already laid out writes that
+    proposition's own ID, and the walk is over.
+    """
+
+    def __new__(cls, text, term):
+        res = super().__new__(cls, text)
+        res.term = term
+        return res
+
+
 class Measure:
     """A candidate measure on the tupled argument of a definition.
 
@@ -200,12 +217,18 @@ class Measure:
     """
 
     def __init__(self, pos, arg_types, kind, size_name=None, def_name=None,
-                 given=None, mterms=()):
+                 given=None, mterms=(), body_text=None):
         self.pos = pos
         self.arg_types = arg_types
         self.kind = kind
         self.size_name = size_name
         self.given = given
+        # A measure whose body is built by a caller that also knows how to
+        # write that body out (`<c>_m1 p = either_case <f>_m1 <g>_m1 p`):
+        # the body mentions constants emitted in the same expansion, which
+        # are not registered while the definition's text is written, so the
+        # text is assembled rather than printed.
+        self.body_text = body_text
         # The measures a size takes as parameters (`size_list tri_size`):
         # named functions, never lambdas, because the size's own equation
         # applies them and a lambda application would be a beta redex.
@@ -251,6 +274,18 @@ class Measure:
     def term(self, p):
         """The measure as a lambda over the tuple term p."""
         return Lambda(p, self.body(p))
+
+    def text(self, p):
+        """The defining equation's right hand side, as text.
+
+        Printed from the body for every measure whose body is a term the
+        theory can already print; a composed measure carries its own text,
+        because its body names constants the same expansion emits.
+        """
+        from core import fungen
+        if self.body_text is not None:
+            return self.body_text(p)
+        return fungen._prints(self.body(p))
 
     def applied(self, tup):
         """`m tup`, ready to be reduced (`is_named` avoids the redex)."""
@@ -504,6 +539,43 @@ def _swap_redex(t, rule):
     return _atom_gt(x, y)
 
 
+class CaseRule:
+    """The reduction of a case combinator, one equation per constructor.
+
+    `either_case f g p` reduces to `f x` when `p` is `Left x` and to `g y`
+    when it is `Right y` -- so the reduction needs the scrutinee, which is
+    what separates it from a destructor (`dmap`) and from a size (`sizes`).
+    The table is a rule name and a branch index per constructor, and it is
+    the *emitter* that supplies it: what a case combinator is called and
+    which constructors it has is the encoding's business, not this
+    module's.
+
+    The result is beta-normalized, the way every goal rewrite is
+    (`tactic.rewrite_goal` normalizes after rewriting): a branch is a
+    function, so applying it leaves a redex the next step would not see.
+    """
+
+    def __init__(self, arity, table):
+        # arity: the number of arguments the combinator takes as a term
+        # (the branch functions plus the scrutinee).
+        self.arity = arity
+        # {constructor name: (rule name, index of the branch function)}
+        self.table = dict(table)
+
+    def rules(self):
+        """The combinator's rule names, in a fixed order."""
+        return sorted({r for r, _ in self.table.values()})
+
+    def rewrite(self, rule, args):
+        constr, iargs = args[-1].strip_comb()
+        if not constr.is_const() or constr.name not in self.table:
+            return None
+        rname, branch = self.table[constr.name]
+        if rname != rule or len(iargs) != 1:
+            return None
+        return args[branch](iargs[0]).beta_norm()
+
+
 def _rewrite(t, rule, dmap, sizes, mdefs):
     """The term after rewriting t at its root with `rule`, or None.
 
@@ -515,8 +587,12 @@ def _rewrite(t, rule, dmap, sizes, mdefs):
     """
     h, args = t.strip_comb()
     name = h.name
-    if len(args) == 1 and name in mdefs and rule == '%s_def' % name:
-        return mdefs[name](args[0])
+    entry = mdefs.get(name)
+    if isinstance(entry, CaseRule):
+        if len(args) == entry.arity:
+            return entry.rewrite(rule, args)
+    elif len(args) == 1 and entry is not None and rule == '%s_def' % name:
+        return entry(args[0])
     if len(args) == 1 and name in dmap:
         cname, j, r = dmap[name]
         inner, iargs = args[0].strip_comb()
@@ -568,7 +644,9 @@ def _rules(dmap, sizes, mdefs):
     """The rule names in priority order: the definition's own rules (the
     measures, the destructors, the size functions) first, then `ARITH`,
     whose order is this order."""
-    res = ['%s_def' % n for n in mdefs]
+    res = [r for n in mdefs
+           for r in (mdefs[n].rules() if isinstance(mdefs[n], CaseRule)
+                     else ['%s_def' % n])]
     res += [r for _, _, r in dmap.values()]
     res += [r for _, table in sizes.values() for r, _ in table.values()]
     return res + list(ARITH)
@@ -663,7 +741,11 @@ def _known_rules(dmap, sizes, mdefs):
     for arity, table in sizes.values():
         for rule, _ in table.values():
             res.add(rule)
-    res.update('%s_def' % name for name in mdefs)
+    for n, entry in mdefs.items():
+        if isinstance(entry, CaseRule):
+            res.update(entry.rules())
+        else:
+            res.add('%s_def' % n)
     return res
 
 
@@ -687,16 +769,21 @@ def reduce(t, dmap, sizes=None, mdefs=None):
             'measure.reduce: the normalization fired %s, which is not a '
             'rule the emitter declares (add it to ARITH if it is an '
             'arithmetic rule)' % rule)
-        steps.append(_step_text(rule, path))
         if rule in POSITIONAL:
             t = _apply_at(t, path, rule, dmap, sizes, mdefs)
         else:
             t = _apply_global(t, rule, dmap, sizes, mdefs)
+        steps.append(Step(_step_text(rule, path), t))
 
 
 # ---------------------------------------------------------------------------
 # Reading the normal form, and proving the comparison it leaves.
 # ---------------------------------------------------------------------------
+
+def _lesseq(left, right):
+    """`left <= right`, as the term the rule's conclusion is about."""
+    return Const('lesseq', TFun(NatType, NatType, BoolType))(left, right)
+
 
 def _spine(t):
     """(number of `Suc`s, the term under them) for a normal form."""
@@ -800,11 +887,16 @@ def _comparison(kind, left, right, dmap, sizes, mdefs, props=True):
         # comparison the rest of the walk is about.
         if k2 <= k1:
             return None
-        steps = steps + ['less_Suc_lesseq']
+        steps = steps + [Step('less_Suc_lesseq',
+                              _lesseq(left, _sucs(rsum, k2 - 1)))]
         k2 -= 1
     if k1 > k2:
         return None
-    steps = steps + ['le_suc'] * k1
+    # `le_suc` takes one `Suc` off each side, `k1` times over.
+    for i in range(k1):
+        steps = steps + [Step('le_suc',
+                              _lesseq(_sucs(lsum, k1 - i - 1),
+                                      _sucs(rsum, k2 - i - 1)))]
     closing = _prove_le(lsum, rsum, k2 - k1, props)
     if closing is None:
         return None

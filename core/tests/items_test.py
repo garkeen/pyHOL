@@ -372,16 +372,20 @@ class StructRecursionTest(unittest.TestCase):
 
 
 class MutualFunTest(unittest.TestCase):
-    """`fun ... and ...`: one item for the group, nothing registered yet.
+    """`fun ... and ...`: one item for the group, and no axioms of its own.
 
     The block is parsed -- and its equations are read with every function
     of the group in scope, which is what a call across the group needs --
-    but it is not emitted: the sum encoding that justifies the recursion
-    covers the group as a whole.  Until that lands the block reports
-    itself and registers nothing, least of all axioms, which no
-    structural check could make consistent for a call that crosses
-    functions.
+    or it reports itself and registers nothing, least of all axioms,
+    which no structural check could make consistent for a call that
+    crosses functions.
 
+    What *emits* a block is the loader, through the sum encoding
+    (`fungen._expand_mutual`); the item below is what a block becomes when
+    that encoding does not apply (the sum datatype out of scope, a group
+    whose clauses put it out of reach), and the tests here are about the
+    item's own contract: the group's names are in scope while it is read,
+    the equations belong to their function, and `get_extension` refuses.
     """
 
     def _block(self, groups=None):
