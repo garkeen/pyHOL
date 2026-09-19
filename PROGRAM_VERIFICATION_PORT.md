@@ -222,8 +222,10 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 带后缀的名字）。库样本 `library/mutual_example.pyhol`（`even2`/`odd2`）与
 `library/tests/mutual_example_test.py` 已落地：**15 条定理重放全部 VALID**。
 
-**验收的五样齐了**（`library/mutual_example.pyhol` 上实测，22 条定理全 VALID）：每个函数都有
-方程（`<f>_def_i`）、`<f>_exhaustive`、`<f>_cases`、`<f>_elims`、`<f>_induct`。
+**样本（两个函数、每个一个参数、每条子句一次调用）上五样齐了**——`library/mutual_example.pyhol`
+实测 22 条定理全 VALID：每个函数都有方程（`<f>_def_i`）、`<f>_exhaustive`、`<f>_cases`、
+`<f>_elims`、`<f>_induct`。**按 `AGENTS.md` §0，这不算验收达成**：形状是写死的（见下面
+"未实现"三条），一般情形（N 个函数、多参数、多调用）还没做。
 覆盖与 case 两条**直接复用单函数模板**（`_coverage_entry`/`_cases_entry`：它们只跟"这一函数的模式"
 打交道，与函数怎么定义无关）；`<f>_elims` 另写了一条模板（`_mutual_elims_entry`）：方程用 `<f>_def`
 摊成编码形式 → `rule <sum>_elims` → 自己的子句那几支 `intro` 出模式变量与两个假设、`forward
