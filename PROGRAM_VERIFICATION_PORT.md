@@ -214,10 +214,22 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 - **命名坑**：函数名与已有常量撞名（`nat` 自带 `even`/`odd`！）时，`def` 条目被加载器
   静默跳过（`except TheoryException: pass`），于是 `even_def` 解析到 nat 的那条、整个证明
   悄悄跑偏。样本与生成器都要避开重名（生成器的编码名用 `<a>_<b>_sum` 并查重）。
-- **还没做**：把上面三条写成 `fungen._expand_mutual`（`expand_item` 的 `groups` 分支接上它）、
-  再补三条规则的投影（`_exhaustive`/`_elims` 用同一套「实例化到注入 + 归约 + 另一侧用不相交性
-  排除」的写法；`_cases` 可以复用现成的 `_cases_entry`，它只依赖 `<c>_exhaustive` 与子句模式）、
-  最后接一个两函数互递归的库样本（五样规则齐、归纳规则用一次）与测试。
+**已落地：发射器 `fungen._expand_mutual`**（`expand_item` 的 `groups` 分支接上它）——编码与
+投影都按上面的配方写成模板：一组函数编成一条普通 `fun`（结果类型相同就不在结果侧取和），
+交给现成的单函数机制（它自己给出 `rel_wf`、四条方程与 `exhaustive`/`cases`/`elims`/`induct`），
+再把定义、方程与互归纳规则投影回每个函数；每步的条目计数按形状静态算出（归纳模板里的变量名
+每条前提各批一次），投影引用的定理名取自实际发射出的条目（`get_overload_const_name` 可能给出
+带后缀的名字）。库样本 `library/mutual_example.pyhol`（`even2`/`odd2`）与
+`library/tests/mutual_example_test.py` 已落地：**15 条定理重放全部 VALID**。
+
+**还没做**：
+
+- **样本里用一次归纳规则**（验收的最后一条）：`rule even2_induct param_P1="(%n. even2 n ∨ odd2 n)"
+  param_P2="(%n. odd2 n ∨ even2 n)"` 之后再证四条前提（`even2 0 ∨ odd2 0`、`∀n. (odd2 n ∨ even2 n)
+  ⟶ (even2 (Suc n) ∨ odd2 (Suc n))` 等，第二三条要 `disjE` 分两支、每支把对应的方程重写上去）。
+- 两处诚实的门：N≠2 的块、一条子句里多个递归调用，都抛 `FunGenError`（块退成 error 条目，
+  不发出说不清的规则）。要开这两种形状时再说：前者是平衡树（`sum_tree.ML` 的 `mk_inj`/`mk_proj`），
+  后者是前提里把多个 IH 合取起来。
 
 **验收**：一个两函数互递归的样本（如 `even`/`odd` 的互递归版）拿到方程、`_exhaustive`、
 `_cases`、`_elims`、`_induct` 五样，且归纳规则能在库里用一次。

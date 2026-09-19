@@ -1,0 +1,15 @@
+theory mutual_example
+imports either
+description "A mutual block: the group is encoded into one function over the sum of the argument tuples, and each function gets its equations and the mutual induction rule back."
+
+-- `fun ... and ...`: the two functions are defined together.  What
+-- justifies the recursion is the sum encoding -- one function over
+-- `(nat, nat) either`, whose descent is measured, not structural: a call
+-- that crosses the group is not a subterm of anything.
+
+fun even2 :: nat ⇒ bool
+  | even2 0 = true
+  | even2 (Suc n) = odd2 n
+and odd2 :: nat ⇒ bool
+  | odd2 0 = false
+  | odd2 (Suc n) = even2 n
