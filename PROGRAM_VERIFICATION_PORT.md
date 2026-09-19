@@ -173,30 +173,51 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
    伊莎贝尔用 `EqSubst`+`simp_tac`，这里得写成显式步骤（形态与现有 `_def_entry` 模板同款）。
    `basic._load_group` 的分发也在这步接上（现在靠 `expand_item` 返回 None 走到条目层的报错）。
 
-**编码的探路结果**（已在会话里实测，缺最后一块）：
+**编码的探路结果**（会话内实测，缺的只剩「把它写成生成器」）：
 
-- **编码后的定义就是一条普通的 `fun`**，不需要新的证明机制：`even`/`odd` 编成
+- **编码后的定义就是一条普通的 `fun`**：`even`/`odd` 编成
   `fun even_odd_sum :: (nat,nat) either ⇒ bool`（四条方程 `Left 0`/`Left (Suc n)`/
-  `Right 0`/`Right (Suc n)`，递归调用写成 `even_odd_sum (Right n)` 这种）。结果是
-  `bool` 只有一种，结果侧不用取和；参数侧每函数一个槽位。
-- **终止走度量引擎**，不用显式 `relation`：`_measure_order` 自己找出
-  `[Measure(0, size)]`（`either_size id id`，两个调用分别要 `nat_size n < nat_size (Suc n)`），
-  和上的子项关系不需要——`either` 本来就没有 `either_wf_subterm`。为此把 `_expand` 里
-  「有调用就要求子项关系」的**前置门放宽**成 try/except（真问题交给搜索之后那次按 order
-  的检查）；两个 fungen 回归（core 28 例、library 16 例，后者重放 13 个理论）都过。
-- **一次 `_expand` 出 14 条**：`even_odd_sum_m1/H/rel/in`、常量定义、`rel_wf`、四条方程、
-  `_exhaustive`、`_cases`、`_elims`、`_induct` 全都在，说明方程/覆盖/归纳那套模板对
-  「和类型上的定义」直接可用。
-- **9 条重放里 6 条 VALID**（含 `_exhaustive`/`_cases`/`_induct`）；两条**递归方程**
-  （`Left (Suc n)`、`Right (Suc n)`）连同依赖它们的 `_elims` 曾经卡在发射器的 ID 算术上
-  （§5.8 第 53 条）。**那一条已修**（收口步的计数按「行的假设集合是否被 `elim` 长出来」定，
-  `_refute_equality` 多了 `extended` 参数）——现在同一份材料能走到**度量义务**那一段
-  （`mlex_less` 之后的 `if_P` 重写报 `rewrite: unable to apply theorem`），
-  这是**新的**、与反驳无关的堵点：编码后的定义两处调用跨和的两侧，
-  义务里的 `if` 链形状与模板假设的不同。下一步从这里接：先看那条 `if_P` 面对的
-  目标里还有没有对应的 `if`（多半是被 `even_odd_sum_rel_def`/`cut_def` 那两条重写先动过了），
-  再决定是调模板还是调编码方程的写法。之后才是投影（每函数 `def` + 方程定理 +
-  四条规则的投影，形态与现有 `_def_entry`/`_induct_entry` 同款）。
+  `Right 0`/`Right (Suc n)`，递归调用写成 `even_odd_sum (Right n)` 这种）。结果类型只有一种时
+  结果侧不用取和；参数侧每函数一个槽位。
+- **终止走度量引擎**，不用显式 `relation`：`_measure_order` 自己找出 `[Measure(0, size)]`
+  （`either_size id id`）。为此放宽了 `_expand` 里「有调用就要求子项关系」的前置门。
+- **一次 `_expand` 出 14 条**（`m1/H/rel/in`、常量定义、`rel_wf`、四条方程、
+  `exhaustive`/`cases`/`elims`/`induct`），其中 **9 条定理重放全部 VALID** ✓（曾卡在两处，
+  都已修：收口步计数见 §5.8 第 53 条；模式叶子类型的析构子不在归约表里 ——
+  `Left (Suc n)` 里的 `nat` 也要，否则义务里留 `Pre (Suc n)` 与事实对不上）。
+- **投影的三条配方（都已验证，可直接抄成模板）**：
+  1. 每个函数的定义：`def f :: T = f x̄ = <sum> (inj x̄)`（`inj` 是 `Left`/`Right`）。
+  2. **方程**（`f_def_k`）：`← rewrite f_def goal=0`（把 `f p̄` 摊成 `<sum> (inj p̄)`，
+     顺带摊掉 RHS 里的自调用）→ `← rewrite <sum>_def_k goal=1` → RHS 里出现别的函数名时
+     再来一步 `← rewrite <g>_def goal=<当前目标>`，两条边相等时这一步**自动关门**
+     （实测：`even2 (Suc n) = odd2 n` 三步即完，不要额外的 `refl`）。
+  3. **互归纳规则**（`f_induct`）：前提是整个组的（按子句顺序），结论是本函数那一侧。
+     证明把编码的归纳在 `either_case P1 P2` 上实例化，再逐条把 `either_case` 用它的方程归约。
+     实测模板（`even2_induct`，id 就是发射器的静态计数）：
+     ```
+     ← intro goal=0                                  -- 前提（n 条）+ 目标
+     ← intro a goal=<目标>                            -- 变量行 + 目标（2 条）
+     cut "!p::ST. either_case P1 P2 p" goal=<目标>
+     ← rule <sum>_induct goal=<cut>                  -- 编码的 n 条前提成为子目标
+     每条前提：
+       非递归子句：← rewrite either_case_def_<i> goal=<前提>        （关门，0 条）
+       递归子句：  ← intro <模式变量> goal=<前提>                   （变量+假设+目标）
+                  → rewrite either_case_def_<被调侧> target=fact goal=<目标> facts=[<假设>]
+                  ← rewrite either_case_def_<本函数侧> goal=<目标>
+                  ← inst <模式变量> goal=<目标> facts=[<第 k 条前提事实>]
+                  ← apply_prev goal=<目标> facts=[<刚 inst 的>, <归约后的假设>]
+     结论：← inst "<inj_j> a" goal=<目标> facts=[<cut 出来那条 !p. …>]
+          → rewrite either_case_def_<本函数侧> target=fact goal=<目标> facts=[<刚 inst 的>]
+     ```
+     （实测 20 步、无效条目 0 条，`even2_induct` 重放 VALID ✓。变量名要**每条前提各一批**
+     ——同名同类型的变量行第二次不落行，后面的 id 全错。）
+- **命名坑**：函数名与已有常量撞名（`nat` 自带 `even`/`odd`！）时，`def` 条目被加载器
+  静默跳过（`except TheoryException: pass`），于是 `even_def` 解析到 nat 的那条、整个证明
+  悄悄跑偏。样本与生成器都要避开重名（生成器的编码名用 `<a>_<b>_sum` 并查重）。
+- **还没做**：把上面三条写成 `fungen._expand_mutual`（`expand_item` 的 `groups` 分支接上它）、
+  再补三条规则的投影（`_exhaustive`/`_elims` 用同一套「实例化到注入 + 归约 + 另一侧用不相交性
+  排除」的写法；`_cases` 可以复用现成的 `_cases_entry`，它只依赖 `<c>_exhaustive` 与子句模式）、
+  最后接一个两函数互递归的库样本（五样规则齐、归纳规则用一次）与测试。
 
 **验收**：一个两函数互递归的样本（如 `even`/`odd` 的互递归版）拿到方程、`_exhaustive`、
 `_cases`、`_elims`、`_induct` 五样，且归纳规则能在库里用一次。
