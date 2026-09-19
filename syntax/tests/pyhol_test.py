@@ -64,6 +64,74 @@ class PyholFunBlockTest(unittest.TestCase):
         self.assertEqual(d['content'][1]['name'], 'th')
 
 
+class PyholDatatypeFamilyTest(unittest.TestCase):
+    """`datatype ... and ...` parses into one item and exports back.
+
+    A family is a block of types the way a mutual `fun` is a block of
+    functions: one item carrying `groups`, because the types are declared
+    together and a constructor of one may hold another.
+    """
+
+    def testFamilyRoundTrip(self):
+        from syntax import pyhol
+        src = ("theory t\nimports\n\n"
+               "datatype mtree =\n"
+               "  | MLeaf :: mtree\n"
+               "  | MNode (l :: mtree) (f :: mforest) :: mtree\n"
+               "and mforest =\n"
+               "  | MNil :: mforest\n"
+               "  | MCons (t :: mtree) (f :: mforest) :: mforest\n")
+        item = pyhol.parse_pyhol(src)['content'][0]
+        self.assertEqual(item['ty'], 'type.ind')
+        self.assertEqual([g['name'] for g in item['groups']],
+                         ['mtree', 'mforest'])
+        self.assertEqual([len(g['constrs']) for g in item['groups']], [2, 2])
+        self.assertEqual(item['groups'][0]['constrs'][1],
+                         {'name': 'MNode', 'args': ['l', 'f'],
+                          'type': 'mtree ⇒ mforest ⇒ mtree'})
+
+        text = pyhol.export_pyhol(pyhol.parse_pyhol(src))
+        self.assertIn('datatype mtree =', text)
+        self.assertIn('and mforest =', text)
+        self.assertIn('| MCons (t :: mtree) (f :: mforest) :: mforest', text)
+        again = pyhol.parse_pyhol(text)['content'][0]
+        self.assertEqual(again, item)
+
+    def testTwoDatatypesInARowAreNotAFamily(self):
+        """Only `and` continues a block.
+
+        Two declarations in a row are two types on their own (`string`
+        declares `char` and then `string`): reading the second as a family
+        would declare it together with the first, and take its
+        constructors for the first's.
+        """
+        from syntax import pyhol
+        src = ("theory t\nimports\n\n"
+               "datatype char2 =\n"
+               "  | Char2 (v :: nat) :: char2\n\n"
+               "datatype string2 =\n"
+               "  | String2 (s :: char2 list) :: string2\n")
+        content = pyhol.parse_pyhol(src)['content']
+        self.assertEqual([it['name'] for it in content],
+                         ['char2', 'string2'])
+        self.assertNotIn('groups', content[0])
+        self.assertEqual([c['name'] for c in content[0]['constrs']],
+                         ['Char2'])
+        self.assertEqual([c['name'] for c in content[1]['constrs']],
+                         ['String2'])
+
+    def testASingleTypeKeepsTheFlatShape(self):
+        from syntax import pyhol
+        src = ("theory t\nimports\n\n"
+               "datatype tri2 =\n"
+               "  | T2 (a :: tri2) (b :: tri2) :: tri2\n")
+        item = pyhol.parse_pyhol(src)['content'][0]
+        self.assertNotIn('groups', item)
+        self.assertEqual(item['name'], 'tri2')
+        self.assertEqual(item['args'], [])
+        self.assertEqual(len(item['constrs']), 1)
+
+
 class PyholDirectionTest(unittest.TestCase):
     def testBackwardForwardInSyncWithStableState(self):
         from syntax import pyhol

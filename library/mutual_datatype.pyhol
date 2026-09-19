@@ -1,0 +1,83 @@
+theory mutual_datatype
+imports nat
+description "A family of mutually recursive types (`datatype ... and ...`): a tree whose nodes hold a forest, and a forest of trees.  The two types are declared together, so a constructor of one can hold the other, and their induction rules are mutual: each carries one predicate per member of the family, and a constructor's hypothesis is about the predicate of the member its argument has."
+
+-- `datatype ... and ...`: the two types are one declaration, the way a
+-- mutual `fun` block is one definition.  Every constructor returns its own
+-- member, and an argument may be a sibling of the family -- which is what
+-- makes the two recursive types one family.
+
+datatype mtree =
+  | MLeaf :: mtree
+  | MNode (l :: mtree) (f :: mforest) :: mtree
+and mforest =
+  | MNil :: mforest
+  | MCons (t :: mtree) (f :: mforest) :: mforest
+
+-- The induction rules are mutual: `mtree_induct` carries one predicate per
+-- member (`P1` for the trees, `P2` for the forests), so the branch for
+-- `MNode l f` may assume `P2 f` -- the statement about the *other* type,
+-- which is what a proof about a family needs.  The rule is applied by hand
+-- (`rule mtree_induct`); unlike a single datatype's it is not offered to
+-- the `induct` method, which instantiates one predicate with the goal.
+
+-- A proof by the family's induction: every tree is a constructor
+-- application.  The rule is applied with both predicates named
+-- (`param_P1`/`param_P2`) -- the conclusion `P1 ?x` does not say which
+-- predicate is being proved, so a mutual rule is instantiated by hand --
+-- and the four premises it leaves are the two constructors of each member:
+-- the forest ones are discharged as well, since the rule states the whole
+-- family's induction.
+--
+-- The names the branches introduce are the proof's own choice, and they
+-- are chosen fresh here (`l1`/`f1`, `t2`/`f2`): a variable's line is the
+-- same stable id as any earlier one of the same name and type, so an inner
+-- `f` would be the outer branch's `f` again and every id after it would
+-- shift.  The emitter's `_Names` allocates for the same reason.
+
+theorem mtree_ctor_form
+  prop !t::mtree. t = MLeaf ∨ (?l. ?f. t = MNode l f)
+proof
+  ← intro t goal=0
+  ← rule mtree_induct param_P1="%t::mtree. t = MLeaf ∨ (?l::mtree. ?f::mforest. t = MNode l f)" param_P2="%f::mforest. f = MNil ∨ (?t::mtree. ?g::mforest. f = MCons t g)" param_x=t goal=2
+  ← rule disjI1 goal=3
+  ← rule eq_refl goal=7
+  ← intro "l1, f1" goal=4
+  ← rule disjI2 goal=12
+  ← inst l1 goal=13
+  ← inst f1 goal=14
+  ← rule eq_refl goal=15
+  ← rule disjI1 goal=5
+  ← rule eq_refl goal=17
+  ← intro "t2, f2" goal=6
+  ← rule disjI2 goal=22
+  ← inst t2 goal=23
+  ← inst f2 goal=24
+  ← rule eq_refl goal=25
+qed
+
+-- The same statement for the forests, from the family's other rule.  The
+-- premises are the family's own, in the family's order, so the proof is
+-- the same one: what changes is the rule and the variable its conclusion
+-- names (`param_x`).
+
+theorem mforest_ctor_form
+  prop !f::mforest. f = MNil ∨ (?t. ?g. f = MCons t g)
+proof
+  ← intro f goal=0
+  ← rule mforest_induct param_P1="%t::mtree. t = MLeaf ∨ (?l::mtree. ?f::mforest. t = MNode l f)" param_P2="%f::mforest. f = MNil ∨ (?t::mtree. ?g::mforest. f = MCons t g)" param_x=f goal=2
+  ← rule disjI1 goal=3
+  ← rule eq_refl goal=7
+  ← intro "l1, f1" goal=4
+  ← rule disjI2 goal=12
+  ← inst l1 goal=13
+  ← inst f1 goal=14
+  ← rule eq_refl goal=15
+  ← rule disjI1 goal=5
+  ← rule eq_refl goal=17
+  ← intro "t2, g" goal=6
+  ← rule disjI2 goal=22
+  ← inst t2 goal=23
+  ← inst g goal=24
+  ← rule eq_refl goal=25
+qed

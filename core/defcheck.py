@@ -147,6 +147,69 @@ def _check_positive(name, U, cname, i):
     # Type variables contain no occurrence of name.
 
 
+def _family_predicates(family):
+    """The induction predicates of a datatype family, one per member.
+
+    `P1 :: t1 ⇒ bool`, ..., in the family's declaration order.  The
+    members share the family's type arguments (`check_datatype_partition`
+    refuses a family that does not), so one set of predicates serves every
+    member's rule.
+    """
+    return [Var("P%d" % (k + 1),
+                TFun(TConst(g['name'], *(TVar(a) for a in g['args'])),
+                     BoolType))
+            for k, g in enumerate(family)]
+
+
+def _induct_premises(family, preds):
+    """The premises of a family's induction rule.
+
+    One premise per constructor of *every* member, in the family's
+    declaration order: quantify the constructor's arguments, put a
+    hypothesis `P_m y` in front for each argument whose type is a member
+    `m` of the family, and conclude `P_i (C y_1 ... y_k)` for the member
+    `i` the constructor belongs to.
+    """
+    by_name = {g['name']: k for k, g in enumerate(family)}
+    res = []
+    for i, g in enumerate(family):
+        for constr in g['constrs']:
+            A = Const(constr['name'], constr['type'])
+            argT, _ = constr['type'].strip_type()
+            args_ = [Var(nm, T2) for nm, T2 in zip(constr['args'], argT)]
+            C = preds[i](A(*args_))
+            As = [preds[by_name[T2.name]](v)
+                  for v, T2 in zip(args_, argT)
+                  if T2.is_tconst() and T2.name in by_name]
+            ind_assum = Implies(*(As + [C]))
+            for arg in reversed(args_):
+                ind_assum = Forall(arg, ind_assum)
+            res.append(ind_assum)
+    return res
+
+
+def check_datatype_partition(groups):
+    """The members of a datatype family have to share their arguments.
+
+    One predicate per member serves every rule (`_family_predicates`), so
+    a member declared at other type arguments than its siblings could not
+    be covered: an argument of that member's type would need the predicate
+    at another instance, and a constructor holding it twice at two
+    different instances would need it twice.  Isabelle's mutual datatypes
+    carry the same restriction; a family that does not meet it is refused
+    here rather than being given a rule that cannot state it.
+    """
+    args = [g['args'] for g in groups]
+    if any(a != args[0] for a in args[1:]):
+        raise StructRecursionError(
+            'datatype %s: the members of a family have to take the same '
+            'type arguments (%s)'
+            % (' and '.join(g['name'] for g in groups),
+               ', '.join('%s: %s' % (g['name'],
+                                     ' '.join("'%s" % a for a in g['args'])
+                                     or 'none') for g in groups)))
+
+
 def check_datatype_positivity(name, constrs):
     """Check that the datatype name occurs strictly positive in the
     arguments of its constructors.  Raises StructRecursionError if not.
@@ -163,6 +226,32 @@ def check_datatype_positivity(name, constrs):
                 "datatype" % (name, constr['name']))
         for i, a in enumerate(args):
             _check_positive(name, a, constr['name'], i + 1)
+
+
+def check_family_positivity(groups):
+    """Strict positivity for every constructor of a datatype family.
+
+    groups is a list of `{'name', 'args', 'constrs'}`, the constructor
+    types parsed.  Each constructor has to return its own type, and every
+    argument has to be strictly positive in *every* member of the family:
+    a member occurring in the domain of a function argument is the
+    negative occurrence the single-type check refuses, and one nested
+    inside another type constructor (`t2 list`) is where the structural
+    recursion cannot descend.  A *sibling* of the family stands on its own
+    (the argument's type is the other member itself), which is what makes
+    the family a family.
+    """
+    members = [g['name'] for g in groups]
+    for g in groups:
+        for constr in g['constrs']:
+            args, result = constr['type'].strip_type()
+            if not result.is_tconst() or result.name != g['name']:
+                raise StructRecursionError(
+                    "datatype %s: constructor %s does not return the "
+                    "datatype" % (g['name'], constr['name']))
+            for i, a in enumerate(args):
+                for m in members:
+                    _check_positive(m, a, constr['name'], i + 1)
 
 
 def check_fun_recursion(name, type, rules):
@@ -251,7 +340,7 @@ def mk_axiom(prop):
     return Thm.axiom(prop)
 
 
-def datatype_axioms(name, args, constrs):
+def datatype_axioms(name, args, constrs, family=None):
     """Axiom extensions for a datatype: projection functions (state
     only), constructor distinctness, injectivity, induction, cases.
 
@@ -259,6 +348,13 @@ def datatype_axioms(name, args, constrs):
     args -- list of type-argument names.
     constrs -- list of parsed constructor dicts with 'name', 'type',
       'cname', 'args' fields.
+    family -- the whole family this datatype belongs to, as a list of
+      `{'name', 'args', 'constrs'}`, when it is one of several mutually
+      recursive types (a `datatype ... and ...` block); None or a
+      single-member list for a datatype on its own.  A family's induction
+      rule is *mutual*: one predicate per member, in the family's
+      declaration order, and a constructor's hypothesis is about the
+      predicate of the member its argument has (see `_induct_axiom`).
 
     """
     res = []
@@ -326,23 +422,41 @@ def datatype_axioms(name, args, constrs):
             th_name = "%s_%s_inject" % (name, constr['name'])
             res.append(extension.Theorem(th_name, mk_axiom(Implies(assum, concl))))
 
-    # The inductive theorem.
-    var_P = Var("P", TFun(T, BoolType))
-    ind_assums = []
-    for constr in constrs:
-        A = Const(constr['name'], constr['type'])
-        argT, _ = constr['type'].strip_type()
-        args_ = [Var(nm, T2) for nm, T2 in zip(constr['args'], argT)]
-        C = var_P(A(*args_))
-        As = [var_P(Var(nm, T2)) for nm, T2 in zip(constr['args'], argT) if T2 == T]
-        ind_assum = Implies(*(As + [C]))
-        for arg in reversed(args_):
-            ind_assum = Forall(arg, ind_assum)
-        ind_assums.append(ind_assum)
+    # The inductive theorem.  A family's rule is mutual: it carries one
+    # predicate per member (`P1 :: t1 ⇒ bool`, ...), and a constructor
+    # holding an argument of another member's type assumes *that* member's
+    # predicate there -- without it the rule would be unable to say
+    # anything about the sibling types, which is what the family is for.
+    # A datatype on its own keeps the one-predicate shape it always had.
+    if family is not None and len(family) > 1:
+        preds = _family_predicates(family)
+        T = TConst(name, *(TVar(a) for a in args))
+        var_P = preds[[g['name'] for g in family].index(name)]
+        ind_assums = _induct_premises(family, preds)
+    else:
+        var_P = Var("P", TFun(T, BoolType))
+        ind_assums = []
+        for constr in constrs:
+            A = Const(constr['name'], constr['type'])
+            argT, _ = constr['type'].strip_type()
+            args_ = [Var(nm, T2) for nm, T2 in zip(constr['args'], argT)]
+            C = var_P(A(*args_))
+            As = [var_P(Var(nm, T2))
+                  for nm, T2 in zip(constr['args'], argT) if T2 == T]
+            ind_assum = Implies(*(As + [C]))
+            for arg in reversed(args_):
+                ind_assum = Forall(arg, ind_assum)
+            ind_assums.append(ind_assum)
     ind_concl = var_P(Var("x", T))
     th_name = name + "_induct"
     res.append(extension.Theorem(th_name, mk_axiom(Implies(*(ind_assums + [ind_concl])))))
-    res.append(extension.Attribute(th_name, "var_induct"))
+    if family is None or len(family) == 1:
+        # The `var_induct` attribute is what the `induct` method looks
+        # for, and it instantiates the rule's one predicate with the goal.
+        # A family's rule carries one predicate per member, so there is no
+        # such single predicate to instantiate: the rule is applied by
+        # hand (`rule t1_induct`) and the attribute is not put on it.
+        res.append(extension.Attribute(th_name, "var_induct"))
 
     # The cases theorem: one branch per constructor, without
     # induction hypotheses (used by the datatype_cases tactic).

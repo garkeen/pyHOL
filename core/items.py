@@ -14,7 +14,9 @@ from syntax import printer
 from syntax import pprint
 from syntax.settings import settings, global_setting
 from core.defcheck import check_fun_recursion
-from core.defcheck import check_datatype_positivity
+from core.defcheck import (check_datatype_partition,
+                           check_datatype_positivity,
+                           check_family_positivity)
 
 
 class ItemException(Exception):
@@ -905,6 +907,8 @@ class Datatype(Item):
         self.name = None  # name of the type
         self.args = list()  # list of type arguments
         self.constrs = list()  # list of type constructors
+        self.groups = None  # a family, as written (`datatype ... and ...`)
+        self.parsed_groups = None  # a family's members, constructors parsed
         self.error = None
 
     def __eq__(self, other):
@@ -912,6 +916,8 @@ class Datatype(Item):
             self.constrs == other.constrs and self.error == other.error
 
     def parse(self, data):
+        if data.get('groups') is not None:
+            return self._parse_family(data['groups'])
         self.name = data['name']
         self.args = data['args']
         theory.thy.add_type_sig(self.name, len(self.args))
@@ -934,8 +940,52 @@ class Datatype(Item):
             self.error = error
             self.trace = traceback.format_exc()
 
+    def _parse_family(self, groups):
+        """`datatype t = ... and u = ...`: the types declared together.
+
+        Every member's signature is registered before the constructor
+        types are read -- a constructor of one member holds another, so
+        all the names have to be in scope -- and the constructors of a
+        member have to return that member itself.  The item keeps the
+        block as written (`groups`) and the parsed members
+        (`parsed_groups`); the flat keys describe the first member, which
+        is what a reader that does not know families shows.
+        """
+        self.name = ' and '.join(g['name'] for g in groups)
+        self.groups = groups
+        try:
+            for g in groups:
+                theory.thy.add_type_sig(g['name'], len(g['args']))
+            check_datatype_partition(groups)
+            parsed = []
+            for g in groups:
+                constrs = []
+                for constr in g['constrs']:
+                    constr_type = parser.parse_type(constr['type'])
+                    constrs.append({
+                        'name': constr['name'],
+                        'type': constr_type,
+                        'cname': theory.thy.get_overload_const_name(
+                            constr['name'], constr_type),
+                        'args': constr['args']
+                    })
+                parsed.append({'name': g['name'], 'args': list(g['args']),
+                               'constrs': constrs})
+            check_family_positivity(parsed)
+            self.parsed_groups = parsed
+            self.args = list(parsed[0]['args'])
+            self.constrs = list(parsed[0]['constrs'])
+        except Exception as error:
+            self.groups = groups
+            self.constrs = groups[0]['constrs']
+            self.args = groups[0]['args']
+            self.error = error
+            self.trace = traceback.format_exc()
+
     def get_extension(self):
         assert self.error is None, "get_extension"
+        if self.groups is not None:
+            return self._family_extension()
         res = []
 
         # Add to type and term signature.
@@ -949,6 +999,31 @@ class Datatype(Item):
 
         res.extend(defcheck.datatype_axioms(self.name, self.args, self.constrs))
 
+        return res
+
+    def _family_extension(self):
+        """The extensions of a family: every member, then its axioms.
+
+        The members are registered before anything is stated about them --
+        a constructor of one holds another, so the axioms of the family
+        are written with the whole block in scope -- and each member's
+        rule is stated with the family's own predicates (`datatype_axioms`
+        with `family`), which is what makes the induction mutual.
+        """
+        family = [{'name': g['name'], 'args': g['args'],
+                   'constrs': g['constrs']} for g in self.parsed_groups]
+        res = [extension.TConst(g['name'], len(g['args'])) for g in family]
+        for g in family:
+            theory.thy.add_datatype_constrs(
+                g['name'], [Const(c['name'], c['type'])
+                            for c in g['constrs']])
+        for g in family:
+            for constr in g['constrs']:
+                res.append(extension.Constant(constr['name'], constr['type'],
+                                              ref_name=constr['cname']))
+        for g in family:
+            res.extend(defcheck.datatype_axioms(
+                g['name'], g['args'], g['constrs'], family=family))
         return res
 
     def get_display(self):

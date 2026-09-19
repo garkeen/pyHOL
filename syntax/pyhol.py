@@ -148,19 +148,26 @@ def _export_const(item):
 
 
 def _export_datatype(item):
-    name = item['name']
-    args = item.get('args', [])
-    constrs = item.get('constrs', [])
+    # A family exports as the block it was written as: `datatype` for the
+    # first type, `and` for the rest.
+    groups = item.get('groups') or [item]
+    lines = []
+    for k, group in enumerate(groups):
+        name = group['name']
+        args = group.get('args', [])
+        constrs = group.get('constrs', [])
 
-    # Header line
-    if args:
-        header = "datatype %s %s =" % (name, ' '.join("'%s" % a for a in args))
-    else:
-        header = "datatype %s =" % name
+        # Header line
+        head = 'datatype' if k == 0 else 'and'
+        if args:
+            header = "%s %s %s =" % (head, name,
+                                     ' '.join("'%s" % a for a in args))
+        else:
+            header = "%s %s =" % (head, name)
 
-    lines = [header]
-    for constr in constrs:
-        lines.append('  | %s' % _format_constr(constr))
+        lines.append(header)
+        for constr in constrs:
+            lines.append('  | %s' % _format_constr(constr))
     return lines
 
 
@@ -667,37 +674,56 @@ def _parse_const(lines, i):
     return result, i + 1
 
 
+def _datatype_header(line, first=False):
+    """The header of a `datatype`/`and` declaration, or None.
+
+    A family is written like a block of functions: `datatype t = ... and u
+    = ...`, the `and` groups following the first the same way.  Only `and`
+    continues a block -- two `datatype` declarations in a row are two
+    types on their own, and reading the second as a family would declare
+    it together with the first.
+    """
+    head = 'datatype' if first else 'and'
+    return re.match(r'^%s\s+(\S+)\s*(.*?)\s*=\s*$' % head, line)
+
+
 def _parse_datatype(lines, i):
-    line = lines[i].rstrip()
-    # datatype name [args] =
-    # Parse header
-    m = re.match(r'^datatype\s+(\S+)\s*(.*?)\s*=\s*$', line)
-    if not m:
-        # Try without = on same line (constrs on next lines)
-        m = re.match(r'^datatype\s+(\S+)\s*(.*?)\s*=$', line)
+    """Parse a `datatype` block, with `and` continuing it into a family.
+
+    One type keeps the flat shape (`name`/`args`/`constrs` at the top
+    level); a family is one item carrying `groups`, because the types are
+    declared together -- a constructor of one may hold another, and the
+    induction rules are mutual over the whole family.
+    """
+    m = _datatype_header(lines[i].rstrip(), first=True)
     if not m:
         return None, i + 1
 
-    name = m.group(1)
-    args_str = m.group(2).strip()
-    args = _parse_type_args(args_str)
-
-    constrs = []
-    i += 1
-    while i < len(lines):
-        line = lines[i].rstrip()
-        if not line or line.startswith('--'):
-            i += 1
-            continue
-        if not line.startswith('  |'):
-            break
-        constr_line = line[3:].strip()
-        constr = _parse_constr_line(constr_line)
-        if constr:
-            constrs.append(constr)
+    groups = []
+    while m is not None:
+        group = {'name': m.group(1),
+                 'args': _parse_type_args(m.group(2).strip()),
+                 'constrs': []}
         i += 1
+        while i < len(lines):
+            line = lines[i].rstrip()
+            if not line or line.startswith('--'):
+                i += 1
+                continue
+            if not line.startswith('  |'):
+                break
+            constr = _parse_constr_line(line[3:].strip())
+            if constr:
+                group['constrs'].append(constr)
+            i += 1
+        groups.append(group)
+        m = (_datatype_header(lines[i].rstrip()) if i < len(lines) else None)
 
-    return {'ty': 'type.ind', 'name': name, 'args': args, 'constrs': constrs}, i
+    if len(groups) == 1:
+        data = {'ty': 'type.ind'}
+        data.update(groups[0])
+        return data, i
+    return {'ty': 'type.ind', 'groups': groups}, i
 
 
 def _parse_type_args(args_str):

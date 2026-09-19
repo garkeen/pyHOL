@@ -476,5 +476,119 @@ class MutualFunTest(unittest.TestCase):
         self.assertEqual(item.name, 'f2')
 
 
+class DatatypeFamilyTest(unittest.TestCase):
+    """`datatype ... and ...`: the members are declared together.
+
+    The item registers every member and states its axioms with the whole
+    family in scope -- the induction rules are mutual, one predicate per
+    member -- and refuses a family whose members do not fit together
+    (different type arguments, a negative occurrence).
+
+    The family's *subterm relation* and *size* are not generated: a
+    descent that crosses the family is not structural on one member, and
+    the relation that covers it is the family's own, over the sum of its
+    members (`PROGRAM_VERIFICATION_PORT.md`).  The tests here pin that
+    boundary as well: a `fun` recursing over a family keeps its axioms.
+    """
+
+    def _family(self, groups=None):
+        return items.parse_item({'ty': 'type.ind', 'groups': groups or [
+            {'name': 'tree7', 'args': [], 'constrs': [
+                {'name': 'Lf7', 'args': [], 'type': 'tree7'},
+                {'name': 'Nd7', 'args': ['l', 'f'],
+                 'type': 'tree7 ⇒ fr7 ⇒ tree7'}]},
+            {'name': 'fr7', 'args': [], 'constrs': [
+                {'name': 'Em7', 'args': [], 'type': 'fr7'},
+                {'name': 'Cn7', 'args': ['t', 'f'],
+                 'type': 'tree7 ⇒ fr7 ⇒ fr7'}]}]})
+
+    def testTheInductionRulesAreMutual(self):
+        """One predicate per member, in the family's order.
+
+        `tree7_induct` is about the trees, but its premises are the whole
+        family's -- the branch for `Nd7 l f` assumes `P2 f`, the statement
+        about the *forests* -- which is what makes the rule strong enough
+        for a family.  The rule of the other member is the same statement
+        with the other conclusion, so a proof can start from either.
+        """
+        basic.load_theory('nat')
+        item = self._family()
+        self.assertIsNone(item.error)
+        self.assertEqual(item.name, 'tree7 and fr7')
+        theory.thy.unchecked_extend(item.get_extension())
+        tree = str(theory.get_theorem('tree7_induct').prop)
+        forest = str(theory.get_theorem('fr7_induct').prop)
+        self.assertIn('P1 Lf7', tree)
+        self.assertIn('P1 l', tree)
+        self.assertIn('P2 f', tree)
+        self.assertIn('P1 (Nd7 l f)', tree)
+        self.assertTrue(tree.endswith('P1 ?x'), tree)
+        self.assertTrue(forest.endswith('P2 ?x'), forest)
+        self.assertIn('P2 (Cn7 t f)', forest)
+        # The per-member rules are the ones a single datatype gets.
+        self.assertIn('P1 (Nd7 l f)', str(theory.get_theorem('tree7_cases').prop))
+        self.assertIn('P2 (Cn7 t f)', str(theory.get_theorem('fr7_cases').prop))
+        self.assertIsNotNone(theory.get_theorem('tree7_Lf7_Nd7_neq'))
+        self.assertIsNotNone(theory.get_theorem('fr7_Cn7_inject'))
+
+    def testAMemberAtOtherTypeArgumentsIsRefused(self):
+        """One predicate per member serves every rule.
+
+        A member declared at other type arguments than its siblings could
+        not be covered by them, so the family is refused instead of being
+        given a rule that cannot state it.
+        """
+        basic.load_theory('nat')
+        item = self._family(groups=[
+            {'name': 'pa7', 'args': ['a'], 'constrs': [
+                {'name': 'Pa7', 'args': [], 'type': "'a pa7"}]},
+            {'name': 'pb7', 'args': ['a', 'b'], 'constrs': [
+                {'name': 'Pb7', 'args': [], 'type': "('a, 'b) pb7"}]}])
+        self.assertIsNotNone(item.error)
+        self.assertIn('same type arguments', str(item.error))
+
+    def testANegativeOccurrenceIsRefused(self):
+        basic.load_theory('nat')
+        item = self._family(groups=[
+            {'name': 'na7', 'args': [], 'constrs': [
+                {'name': 'Na7', 'args': ['f'], 'type': '(na7 ⇒ nat) ⇒ na7'}]},
+            {'name': 'nb7', 'args': [], 'constrs': [
+                {'name': 'Nb7', 'args': [], 'type': 'nb7'}]}])
+        self.assertIsNotNone(item.error)
+        self.assertIn('negative occurrence', str(item.error))
+
+    def testAFamilyGetsNoSubtermRelationAndNoSize(self):
+        """The boundary, pinned: what is not generated is not generated.
+
+        A family's subterm relation would be the family's own (a
+        `tree7`-subterm of an `fr7` term is a subterm too), and its size
+        would be mutual -- both belong to the family rather than to one
+        member, and neither is ported yet.  What a member does get is its
+        destructors, which is what pattern matching needs.
+        """
+        from core import datgen
+        basic.load_theory('nat')
+        data = {'ty': 'type.ind', 'groups': [
+            {'name': 'tree7', 'args': [], 'constrs': [
+                {'name': 'Lf7', 'args': [], 'type': 'tree7'},
+                {'name': 'Nd7', 'args': ['l', 'f'],
+                 'type': 'tree7 ⇒ fr7 ⇒ tree7'}]},
+            {'name': 'fr7', 'args': [], 'constrs': [
+                {'name': 'Em7', 'args': [], 'type': 'fr7'},
+                {'name': 'Cn7', 'args': ['t', 'f'],
+                 'type': 'tree7 ⇒ fr7 ⇒ fr7'}]}]}
+        # The loader registers the block first (`basic._load_group`), and
+        # what is generated is read against that state.
+        item = items.parse_item(data)
+        theory.thy.unchecked_extend(item.get_extension())
+        self.assertIsNone(datgen.expand_size(data))
+        names = [e['name'] for e in datgen.expand_item(data, [])]
+        self.assertEqual(names, ['tree7_Nd7_1', 'tree7_Nd7_1_rule',
+                                 'tree7_Nd7_2', 'tree7_Nd7_2_rule',
+                                 'fr7_Cn7_1', 'fr7_Cn7_1_rule',
+                                 'fr7_Cn7_2', 'fr7_Cn7_2_rule'])
+        self.assertNotIn('tree7_wf_subterm', names)
+
+
 if __name__ == "__main__":
     unittest.main()

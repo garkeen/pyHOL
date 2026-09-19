@@ -342,11 +342,16 @@ def wf_subterm_lines(name, args, constrs):
 
 def _parsed_constrs(data):
     """The datatype's constructors, with their types parsed."""
+    return _parse_raw_constrs(data['constrs'])
+
+
+def _parse_raw_constrs(raw):
+    """Constructor dicts with their types parsed."""
     from syntax import parser
     return [{'name': constr['name'],
              'type': parser.parse_type(constr['type']),
              'args': list(constr['args'])}
-            for constr in data['constrs']]
+            for constr in raw]
 
 
 # ---------------------------------------------------------------------------
@@ -830,6 +835,14 @@ def expand_size(data):
     loss, since nothing but the measures depends on the family -- and the
     caller retries after the next item.
     """
+    if data.get('groups') is not None:
+        # A family's size is itself mutual (`size_t1` calls `size_t2` and
+        # back), so it is a mutual `fun` block rather than one of these
+        # equations, and it is not generated yet
+        # (`PROGRAM_VERIFICATION_PORT.md`).  Nothing else depends on the
+        # family, and a member without a size is what a datatype like
+        # `state` already is.
+        return None
     name = data['name']
     constrs = _parsed_constrs(data)
     if not constrs:
@@ -859,6 +872,8 @@ def expand_size(data):
 
 
 def _expand(data, content):
+    if data.get('groups') is not None:
+        return _expand_family(data, content)
     name = data['name']
     constrs = _parsed_constrs(data)
     T = TConst(name, *[TVar(a) for a in data['args']])
@@ -878,4 +893,29 @@ def _expand(data, content):
     # The destructor family does not depend on the relation: a definition
     # that only pattern-matches needs the destructors too.
     items.extend(_destructor_items(T, name, constrs))
+    return items or None
+
+
+def _expand_family(data, content):
+    """The items a datatype family (`datatype ... and ...`) expands into.
+
+    The destructor family of every member, and nothing else.  A member's
+    destructors do not depend on the family: a pattern `C y_1 ... y_k` is
+    taken apart by its own constructor's rules, whatever the types of the
+    arguments are.
+
+    The subterm relation and the size are *not* generated: a descent that
+    crosses the family is not structural on one member, and the relation
+    that covers it is the family's own (over the sum of its members) --
+    the same shape the mutual `fun` encoding builds for functions, not
+    ported for datatypes yet (`PROGRAM_VERIFICATION_PORT.md`).  A `fun`
+    that recurses over a family therefore has nothing to descend through
+    and keeps its axioms, which is what a definition over a datatype
+    without a size already does.
+    """
+    items = []
+    for g in data['groups']:
+        T = TConst(g['name'], *[TVar(a) for a in g['args']])
+        items.extend(_destructor_items(T, g['name'],
+                                       _parse_raw_constrs(g['constrs'])))
     return items or None
