@@ -40,6 +40,10 @@ TWO_ARGS = ['zipf_zipg_sum_def_2', 'zipf_zipg_sum_induct',
 MIXED = ['cnt_pos_sum_def_2', 'cnt_pos_sum_def_4',
          'cnt_def_1', 'cnt_def_2', 'pos_def_1', 'pos_def_2',
          'cnt_elims', 'pos_elims', 'cnt_induct', 'pos_induct']
+GIVEN = ['coll_done_coll_sum_def_2', 'coll_done_coll_sum_def_3',
+         'coll_def_2', 'done_coll_def_2', 'coll_elims', 'done_coll_elims',
+         'coll_induct', 'done_coll_induct',
+         'coll_m1_def', 'done_coll_m1_def', 'coll_done_coll_sum_m1_def']
 HETERO = ['half_tally_sum_def_2', 'half_tally_sum_induct',
           'half_def_2', 'tally_def_2', 'half_elims', 'tally_elims',
           'half_induct', 'tally_induct',
@@ -63,7 +67,7 @@ class MutualExamplesTest(unittest.TestCase):
 
     def testProjectedItemsAreThere(self):
         basic.load_theory('mutual_examples')
-        for name in THREE + TWO_ARGS + MIXED + HETERO:
+        for name in THREE + TWO_ARGS + MIXED + HETERO + GIVEN:
             self.assertIsNotNone(theory.get_theorem(name), name)
 
     def testThreeFunctionsShareOneTree(self):
@@ -122,6 +126,23 @@ class MutualExamplesTest(unittest.TestCase):
         self.assertIn('either_case', text)
         self.assertIn('half_m1', text)
         self.assertIn('tally_m1', text)
+
+    def testABlockCanBeGivenItsMeasures(self):
+        """The descent can be the file's, not the search's.
+
+        `coll` keeps its first argument and adds to the sum, so no
+        inferred measure carries it; the block says what each function
+        descends through (`measure "%m n. m"` inside the function's own
+        part), and the columns are the two chains tied together -- the
+        same shape the inferred ones have.
+        """
+        basic.load_theory('mutual_examples')
+        self.assertEqual(str(theory.get_theorem('coll_m1_def').prop),
+                         'coll_m1 ?p = fst ?p')
+        text = str(theory.get_theorem('coll_done_coll_sum_m1_def').prop)
+        self.assertIn('either_case', text)
+        self.assertIn('coll_m1', text)
+        self.assertIn('done_coll_m1', text)
 
     def testResultTypesAreSummed(self):
         """`cnt` is `nat` and `pos` is `bool`: the encoded function returns

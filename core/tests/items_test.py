@@ -404,7 +404,7 @@ class MutualFunTest(unittest.TestCase):
         basic.load_theory('nat', limit=('def', 'one'))
         item = self._block()
         self.assertIsNotNone(item.error)
-        self.assertIn('not emitted yet', str(item.error))
+        self.assertIn('sum encoding', str(item.error))
         self.assertEqual(item.name, 'even2 and odd2')
         self.assertEqual([g['name'] for g in item.groups], ['even2', 'odd2'])
         self.assertEqual(len(item.parsed_groups), 2)
@@ -438,17 +438,27 @@ class MutualFunTest(unittest.TestCase):
         self.assertIsNotNone(item.error)
         self.assertIn('wrong head of lhs', str(item.error))
 
-    def testGroupTakesNoClauses(self):
-        # A mutual block's termination covers the group, so a per
-        # function `measure` / `relation` is not read (and not silently
-        # ignored either).
+    def testGroupTakesMeasuresButNoRelation(self):
+        # A mutual block's descent is measured over the sum it is encoded
+        # in, one chain per function: `measure` is read (the emitter's,
+        # `fungen._given_block_measures`, is where it is used).  A
+        # `relation` has no relation of the group's own to name, and the
+        # item says so rather than dropping it.
         basic.load_theory('nat', limit=('def', 'one'))
         item = self._block(groups=[
             {"name": "even4", "type": "nat => bool",
              "measure": ["n"],
              "rules": [{"prop": "even4 (Suc n) = even4 n"}]}])
         self.assertIsNotNone(item.error)
-        self.assertIn('mutual block', str(item.error))
+        self.assertIn('sum encoding', str(item.error))
+
+        basic.load_theory('nat', limit=('def', 'one'))
+        item = self._block(groups=[
+            {"name": "even5", "type": "nat => bool",
+             "relation": ["%p q. p < q"],
+             "rules": [{"prop": "even5 (Suc n) = even5 n"}]}])
+        self.assertIsNotNone(item.error)
+        self.assertIn("relation", str(item.error))
 
     def testSingleFunctionKeepsTheFlatShape(self):
         # The one-function case is untouched: same data keys, same

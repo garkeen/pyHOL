@@ -57,3 +57,18 @@ fun half :: nat ⇒ nat
 and tally :: nat list ⇒ nat
   | tally [] = 0
   | tally (x # xs) = Suc (tally xs)
+
+-- A block the measure search cannot carry, with the measures given: the
+-- descent is not structural and not lexicographic on the arguments (`coll`
+-- keeps the first argument and *adds* to the sum), but the file says what
+-- each function descends through, one chain per function, in the function's
+-- own part of the block.
+
+fun coll :: nat ⇒ nat ⇒ nat
+  measure "%m n. m"
+  | coll 0 n = n
+  | coll (Suc m) n = coll m (Suc (Suc n))
+and done_coll :: nat ⇒ nat ⇒ nat
+  measure "%m n. m"
+  | done_coll 0 n = n
+  | done_coll (Suc m) n = coll m n

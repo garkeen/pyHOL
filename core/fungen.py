@@ -4344,6 +4344,68 @@ def _sum_column(k, leaf_ms, Tups, sum_name):
         body_text=lambda q: '%s %s' % (text(idxs), q.name))
 
 
+def _given_block_measures(groups, data):
+    """The measures a mutual block was given, or None when it was not.
+
+    One chain per function, written inside that function's own part of the
+    block, before its equations (`measure "%m n. m + n"`), each chain over
+    that function's own arguments -- read exactly as a single function's
+    measures are (`_tupled_measure`), so the user's measures and the
+    inferred ones are the same objects from the columns on.  A group's
+    columns do not mix the two: a block that gives measures gives one chain
+    per function, or it is refused rather than measured half from the file
+    and half from the registry.
+
+    The clauses are read off the block's own text (`data['groups']`), the
+    types and constant names off the parsed groups; the two are the same
+    list in the same order.
+    """
+    from core import context
+    from core import items
+    raw = data['groups']
+    try:
+        clauses = {key: items._clause_values(data.get(key) or [])
+                   for key in ('relation', 'wf', 'descent')}
+        for g in raw:
+            for key in clauses:
+                clauses[key].extend(items._clause_values(g.get(key) or []))
+    except items.ItemException as error:
+        raise FunGenError('fun %s: %s'
+                          % (' and '.join(g['name'] for g in groups), error))
+    if any(clauses.values()):
+        raise FunGenError(
+            'fun %s: a mutual block descends through measures over the sum '
+            'it is encoded in (`measure`, one chain per function); a '
+            '`relation` names a relation on one definition and its own '
+            'arguments, and a group has none of its own -- its calls cross '
+            'the functions, which is exactly why the encoding measures the '
+            'sum instead' % ' and '.join(g['name'] for g in groups))
+    per_function = [items._clause_values(g.get('measure') or [])
+                    for g in raw]
+    if not any(per_function):
+        return None
+    missing = [g['name'] for g, texts in zip(groups, per_function)
+               if not texts]
+    if missing:
+        raise FunGenError(
+            'fun %s: a mutual block that gives measures gives one chain per '
+            'function; %s carries none'
+            % (' and '.join(g['name'] for g in groups), ', '.join(missing)))
+    defs = {g['name']: g['ty'] for g in groups}
+    res = []
+    for g, texts in zip(groups, per_function):
+        measures = []
+        for k, text in enumerate(texts):
+            with context.fresh_context(defs=defs):
+                t = context.parse_term(_typed_lambda(text, g['arg_types']))
+            measures.append(measure.Measure(
+                k, g['arg_types'], 'given',
+                def_name='%s_m%d' % (g['cname'], k + 1),
+                given=_tupled_measure(t, g['arg_types'])))
+        res.append(measures)
+    return res
+
+
 def _mutual_groups(data):
     """The groups of a mutual block, with types and equations read.
 
@@ -4752,7 +4814,11 @@ def _expand_mutual(data, declared=None):
     # written with, so their definitions are emitted first.
     def_names = tuple(g['name'] for g in groups) + \
         tuple(g['cname'] for g in groups)
-    leaf_ms, leaf_sizes = _leaf_measures(groups, def_names)
+    given = _given_block_measures(groups, data)
+    if given is not None:
+        leaf_ms, leaf_sizes = given, {}
+    else:
+        leaf_ms, leaf_sizes = _leaf_measures(groups, def_names)
     columns = [_sum_column(k, leaf_ms, Tups, sum_name)
                for k in range(max(len(g['arg_types']) for g in groups))]
     case_mdefs = {m.def_name: m.body for ms in leaf_ms for m in ms}
@@ -4894,7 +4960,11 @@ def expand_item(data, declared=None):
     if data.get('groups') is not None:
         try:
             return _expand_mutual(data, declared)
-        except FunGenError:
+        except FunGenError as error:
+            # The reason goes back into the item: a block the encoding is
+            # out of reach of would otherwise report only that it was not
+            # emitted, and the item layer is where the user reads it.
+            data['block_error'] = str(error)
             return None
         except Exception:
             if os.environ.get('HOLPY_FUNGEN_DEBUG'):

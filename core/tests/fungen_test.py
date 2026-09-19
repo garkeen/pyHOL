@@ -851,6 +851,45 @@ class MutualEncodingTest(unittest.TestCase):
         d = prover.step('← rule r goal=3')
         self.assertEqual(d, 3)
 
+    def _pair(self, **extra):
+        groups = [
+            {'name': 'even9', 'type': 'nat => bool',
+             'rules': [{'prop': 'even9 0 = true'},
+                       {'prop': 'even9 (Suc n) = even9 n'}]},
+            {'name': 'odd9', 'type': 'nat => bool',
+             'rules': [{'prop': 'odd9 0 = false'},
+                       {'prop': 'odd9 (Suc n) = odd9 n'}]}]
+        for g in groups:
+            g.update(extra.get(g['name'], {}))
+        return {'ty': 'def.ind', 'groups': groups}
+
+    def test_a_block_that_gives_measures_gives_one_chain_per_function(self):
+        """Half a block's measures are refused, not half-inferred.
+
+        The columns of a group combine the k-th measure of every function;
+        a function that carries none would contribute `zero_measure` there
+        -- sound, and almost never what the file meant -- so the block is
+        refused with the function's name.
+        """
+        block = self._pair(even9={'measure': ['"%n. n"']})
+        with self.assertRaises(fungen.FunGenError) as ctx:
+            fungen._expand_mutual(block)
+        self.assertIn('odd9', str(ctx.exception))
+
+    def test_a_block_refuses_a_relation(self):
+        """A group has no relation of its own to name.
+
+        `relation` in a single function names a relation on that
+        function's own arguments; a group's calls cross the functions, so
+        what carries it is a measure over the sum the encoding builds --
+        the block says so instead of dropping the clause.
+        """
+        block = self._pair(even9={'relation': ['"%p q. p < q"'],
+                                  'wf': ['"even9_rel_wf"']})
+        with self.assertRaises(fungen.FunGenError) as ctx:
+            fungen._expand_mutual(block)
+        self.assertIn('relation', str(ctx.exception))
+
     def test_a_block_without_the_sum_reports_what_is_missing(self):
         """The encoding is an increment on the sum datatype.
 

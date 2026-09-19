@@ -55,13 +55,16 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 | 3 | 算术引擎：AC / 乘法 / 减法归约（`core/measure.py`） | 完成 |
 | 4 | 模式减法 / 带洞定义（`pattern_split.ML`） | 完成 |
 | 5 | 组合度量：`size_list f` 这类候选（`measure_functions.ML`） | 完成 |
-| 6 | 互递归 `fun … and …` | 完成：五样齐（方程 / `_exhaustive` / `_cases` / `_elims` / `_induct`），一般形状（N 个函数、多参数、多调用、结果类型不同）见 §3；块自己的 `measure` 子句与互递归 datatype 仍未实现（§3 已登记） |
+| 6 | 互递归 `fun … and …` | 验收达成：五样齐、一般形状（N 个函数、多参数、多调用、结果类型不同、参数类型不同）全部实测重放 VALID；块的 `measure` 子句也支持（每函数一条链），`relation` 没有可命名的关系因而明确报错。见 §3 |
 | 7 | `f.cases` / `f.elims` / `fun_cases` | 部分完成：`<c>_cases` 与 `<c>_elims` 已发射；`fun_cases` 那层与布尔特化见 §3 |
 | 8 | `partial_function` | 未做，见 §3 |
 | 9 | `size_change`（scnp 终止证明器） | 未做，见 §3 |
 
 ### 1.3 已知缺口
 
+- **互递归 datatype**：`datatype` 语法只有单块的构造子表（`syntax/pyhol.py` 的
+  `_parse_datatype` 不认 `and`），互相递归的类型声明写不出来。这是语法/`datgen` 层的缺口，
+  与 `fun … and …` 的编码无关（编码本身不假设叶子类型的形状）。
 - **度量路径里嵌套模式的调用重命名不完整**（发射器缺陷，`core/fungen.py` 的
   `ren_call` 一带）。最小复现：`fun tdepth :: tri list ⇒ nat | tdepth (TriS t # xs) =
   Suc (tdepth (t # xs))`——模式里元素被拆开、递归调用重新组装列表——发出的证明目标条件
@@ -158,12 +161,13 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
 - **不发射**：块自己报告 `not emitted yet`，`get_extension` 也显式拒绝（`emitted, not
   axiomatized`）——`check_fun_recursion` 的结构判据问的是"某个函数的子项"，跨函数的调用不是
   任何东西的子项，所以这里**没有**可退守的公理路径（`core/tests/items_test.py` 的
-  `MutualFunTest` 六例：报错、不注册、拒公理、头不对要拒、块不接 `measure`/`relation`、
+  `MutualFunTest` 六例：报错、不注册、拒公理、头不对要拒、块不接 `relation`、
   单函数形状不变）。`fungen.expand_item` 见到 `groups` 直接返回 None（唯一的判据在条目层）。
 - 实测：临时 `.pyhol` 里放一个 `even2 and odd2` 块，加载后是**一条 error 条目**、理论里既没有
   `even2` 常量也没有 `even2_def_1`（验完已删除该临时文件）。
-- 块的 `measure`/`relation`/`wf`/`descent` 子句暂不接受（终止是对整个组证一次，写法与
-  单函数不同），报错而不是静默忽略。
+- 块的终止子句：`measure` 接受，写在**各函数自己那一段**里（`fun` 与它的等式之间），
+  一组函数各一条链（`_given_block_measures`）；`relation`/`wf`/`descent` 报错——
+  一个组没有"自己的关系"可命名，它的调用跨函数，承载它的是编码后和上的度量（见 §3 详述）。
 
 **（当时）未做**——这一条后来做掉了（`mk_inj`/`mk_proj`/`mk_sumcases`、投影定义、方程翻译、
 投影回各函数、`basic._load_group` 的分发，见下面"已落地"两段；终止走的是"每参数位置一列"的
@@ -175,15 +179,17 @@ partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / th
    伊莎贝尔用 `EqSubst`+`simp_tac`，这里得写成显式步骤（形态与现有 `_def_entry` 模板同款）。
    `basic._load_group` 的分发也在这步接上（现在靠 `expand_item` 返回 None 走到条目层的报错）。
 
-**未实现（不是特性，按 `AGENTS.md` §0 登记在此）**：
+**块自己的度量（已落地）**：`measure` 写在各函数自己那一段里（`fun` 与它的等式之间，
+  语法与单函数同款），一组函数各一条链，链内多条即多条度量；每条链在该函数自己的参数上，
+  读法复用单函数的 `_typed_lambda` + `_tupled_measure`，然后与推断出来的度量走同一个
+  `_sum_column`（第 k 列 = 各函数第 k 条度量用 `either_case` 串起来，缺的给 `zero_measure`），
+  所以用户给的与引擎推的是同一种对象。规则：给了就给全（少一条就报错并点名），没给就整体
+  推断（不混）。`relation`/`wf`/`descent` 在这个位置报错而不是静默忽略：单函数的 `relation`
+  命名的是"这个函数自己参数上的关系"，而一个组没有——组里的调用跨函数，跨函数的那一对
+  （`Left` 与 `Right`）在任何"每个函数各自的关系"里都不成立（`either_rel` 两侧分开正是这么定义
+  的）。承载整组的是"和上的度量"，这正是 `measure` 写的东西。样本：`coll`/`done_coll`
+  （第一个参数递减但元组 size 在涨，推断不出来）。
 
-- 互递归块的 `measure`/`relation`/`wf`/`descent` 子句（条目层报错而不是静默忽略，见上）。
-  一般情形的做法：`measure` 按函数逐个写（每片一条，与现在的列同一形状——`either_case`
-  串起来），走 `_measure_order` 的 `extra_measures` 入口；要定下来的是语法（块的多条
-  measure 子句怎么落到各函数上）。
-- 互递归 **datatype**：`datatype` 语法只有单块的构造子表（`syntax/pyhol.py` 的
-  `_parse_datatype` 不认 `and`），互相递归的类型声明写不出来——这是语法层的缺口，
-  与函数的编码无关。
 
 **编码的探路结果**（会话内实测，缺的只剩「把它写成生成器」）：
 

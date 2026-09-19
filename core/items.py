@@ -464,7 +464,7 @@ class Fun(Item):
         # functions are emitted together.  The group dicts have the same
         # keys as the flat shape, so both go through one path below.
         if data.get('groups') is not None:
-            self._parse_groups(data['groups'])
+            self._parse_groups(data['groups'], data)
             return
 
         self.name = data['name']
@@ -516,7 +516,7 @@ class Fun(Item):
             self.error = error
             self.trace = traceback.format_exc()
 
-    def _parse_groups(self, groups):
+    def _parse_groups(self, groups, data):
         """Read a mutual block (`fun ... and ...`), one item for the group.
 
         Every group's type is in scope while its equations are read: a
@@ -535,12 +535,15 @@ class Fun(Item):
         self.groups = groups
         try:
             for group in groups:
-                if group.get('measure') or group.get('relation') or \
-                        group.get('wf') or group.get('descent'):
+                if group.get('relation') or group.get('wf') or \
+                        group.get('descent'):
                     raise ItemException(
-                        "Fun %s: a mutual block carries the termination "
-                        "clauses of the whole group, not of one function; "
-                        "none are supported yet" % group['name'])
+                        "Fun %s: a mutual block descends through measures "
+                        "over the sum it is encoded in; `measure` is "
+                        "written once per function (inside that function's "
+                        "own part of the block), and `relation` has no "
+                        "relation of the group's own to name"
+                        % group['name'])
 
             defs = {group['name']: parser.parse_type(group['type'])
                     for group in groups}
@@ -575,10 +578,13 @@ class Fun(Item):
             self.parsed_groups = parsed
             self.rules = parsed[0]['rules']
 
+            reason = data.get('block_error')
             raise ItemException(
-                "Fun %s: a mutual definition is not emitted yet; its "
-                "equations come from the sum encoding, so there are no "
-                "axioms to fall back on" % self.name)
+                "Fun %s: a mutual definition is emitted through the sum "
+                "encoding, which this block is out of reach of%s; there are "
+                "no axioms to fall back on (no structural check makes a "
+                "call that crosses functions consistent)"
+                % (self.name, (' -- %s' % reason) if reason else ''))
 
         except Exception as error:
             self.error = error
