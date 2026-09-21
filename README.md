@@ -43,6 +43,9 @@ cd frontend && npm install && npm run dev
 python -m pytest core/tests/ theories/logic/tests/ -q
 python -m pytest method/tests/method_test.py -q
 
+# 跨层集成（较贵：重放 imperative 编译出的 VC；incremental 会 force 重验 logic_base/option）
+python -m pytest imperative/tests/imp_validate_test.py core/tests/incremental_validate_test.py -q
+
 # 全库定理验证（很贵！平时不要跑）
 python validate_library.py            # 按缓存跳过未改动的理论
 python validate_library.py --force    # 忽略缓存，全量重验

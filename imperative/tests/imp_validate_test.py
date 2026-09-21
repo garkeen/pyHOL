@@ -2,15 +2,12 @@
 #
 # Cross-layer by nature: .imp -> compile -> VC .pyhol -> validate_theory
 # (which replays through the method-layer steps->lines translation).
-# Per AGENTS.md ("跨模块的才放顶层") this integration test lives at the
-# top level, not in imperative/tests/ -- the unit compile tests stay there
-# without the method-layer assembly import, so the lint whitelist
-# (test_import_direction.py testTheoriesDoNotImportServer) can be empty.
-
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(__file__))
+# The method import below is the assembly step, not a layer dependency:
+# core/verify takes its replay function from an injection point
+# (set_replay_fn), and method.stable_state is what registers it.  Tests
+# are consumers and are exempt from the import-direction lints (see
+# core/tests/test_import_direction.py), so this file lives next to the
+# compiler it drives.
 
 import unittest
 

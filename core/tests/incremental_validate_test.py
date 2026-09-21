@@ -4,6 +4,12 @@ Real source files are never edited: a source change is simulated by
 mutating the parsed theory cache (which is exactly what differ, after a
 reload, when a file changes).  tearDown re-validates the theory from
 disk so the .json status cache is left truthful.
+
+The method-layer import below is the assembly step, not a layer
+dependency: core/verify takes its replay function from an injection
+point (set_replay_fn), and method.stable_state is what registers it.
+Tests are consumers and are exempt from the import-direction lints (see
+core/tests/test_import_direction.py).
 """
 
 import unittest

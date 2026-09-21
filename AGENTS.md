@@ -61,7 +61,9 @@ method/+backend/ 应用层：Method/ProofState/Flask API，点击式证明，不
 - 被动 assert：标非法输入。每个新入口至少一个“必须失败”的用例
   （抛指定异常、gap 不变、无副作用）。
 
-测试布局：测试跟模块走（`kernel/tests/`、`core/tests/`…），跨模块的才放顶层。
+测试布局：测试跟模块走（`kernel/tests/`、`core/tests/`…），顶层不放测试文件；
+跨层的集成测试按被测模块归位，测试里的装配 import（如 `method.stable_state`）
+归 import lint 的 tests 豁免覆盖。
 全量 library 验证（`validate_library.py`）很贵，平时只跑相关回归；
 验证结果走顶层 `.cache/` 缓存，命中即跳过重放，`--force` 才全量重验。
 

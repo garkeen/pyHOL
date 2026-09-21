@@ -62,10 +62,18 @@ class ImportDirectionTest(unittest.TestCase):
     def testCoreDoesNotImportMethod(self):
         """core/ must not import method.* (step 5: items/defcheck
         live in core; the core layer never depends on the
-        method/session layer above it)."""
+        method/session layer above it).
+
+        Tests are consumers and stay exempt, as in every other lint
+        here: core/verify takes its replay function from an injection
+        point (set_replay_fn), so a test that replays proofs must
+        import method.stable_state to register it.  That is assembly
+        inside a test, not the core layer depending upward."""
         offenders = []
         for path in py_files_under('core'):
             rel = os.path.relpath(path, ROOT).replace('\\', '/')
+            if '/tests/' in rel + '/':
+                continue
             mods = imports_of(path)
             bad = [m for m in mods if m == 'server' or m.startswith('method.')]
             if bad:
@@ -109,14 +117,16 @@ class ImportDirectionTest(unittest.TestCase):
         method registration goes through core.method; the method
         layer reads the registry, it is not a dependency of theories).
 
-        The whitelist is empty (was: imp_compile_test.py wiring the
-        method-layer replay). That cross-layer integration test moved
-        to the top level (test_imp_validate.py) per AGENTS.md
-        "跨模块的才放顶层"; the unit compile tests stayed in
-        imperative/tests/ without the assembly import."""
+        Tests are consumers and stay exempt, with no path whitelist:
+        imperative/tests/imp_validate_test.py drives validate_theory
+        end to end, which means importing method.stable_state to
+        register the replay function.  That is assembly inside a test;
+        a content file doing it is an offense."""
         offenders = []
         for path in py_files_under('theories', 'imperative'):
             rel = os.path.relpath(path, ROOT).replace('\\', '/')
+            if '/tests/' in rel + '/':
+                continue
             mods = imports_of(path)
             bad = [m for m in mods if m == 'server' or m.startswith('method.')]
             if bad:
