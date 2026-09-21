@@ -3,7 +3,7 @@
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 
-$py = Start-Process python -ArgumentList 'app.py' -WorkingDirectory $root -NoNewWindow -PassThru
+$py = Start-Process python -ArgumentList '-m', 'backend' -WorkingDirectory $root -NoNewWindow -PassThru
 $npm = Start-Process npm.cmd -ArgumentList 'run', 'dev' -WorkingDirectory (Join-Path $root 'frontend') -NoNewWindow -PassThru
 
 Write-Host ''

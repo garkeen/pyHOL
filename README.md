@@ -29,7 +29,7 @@ method/ + backend/ 应用层（Method/ProofState/Flask API）
 
 ```bash
 # 只起后端
-python app.py
+python -m backend
 # 只起前端
 cd frontend && npm install && npm run dev
 ```
