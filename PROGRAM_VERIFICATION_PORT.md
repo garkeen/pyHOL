@@ -415,7 +415,7 @@ python .cache/check_item.py relation per_union_is_trans    # 重放指定条目�
 - **语义引用是内建功能**：`goal=@`/`goal=@N`/`goal="<命题>"`、`facts=[@]`/`facts=[别名]`/
   `facts=["<命题>"]`、`let NAME <引用>`；REPL 在应用前解析成字面 ID 并回显 `resolved: ...`，
   `item NAME` 输出可粘贴条目。事实引用按依赖规则预检，指到父目标/兄弟分支会直接报 `cannot depend on`。
-  用法见 `repl-client.md` §4.1。
+  用法见 `repl/repl-client.md` §4.1。
 - **验收顺序**：定义先单独加载确认 → 逐条在 REPL 造证明 → 追加进文件 → 独立重放 → 补测试与回归 → 提交。
 - 单条命令/单个测试/单次验证 ≤ 2 分钟（`AGENTS.md` §2）；全量 library 验证走 `.cache/` 缓存。
 

@@ -109,7 +109,7 @@ method/+backend/ 应用层：Method/ProofState/Flask API，点击式证明，不
   REPL 会回显 `resolved: ...` 的字面形态，`export` / `item` 输出的也是字面 ID。
   事实引用按引擎的依赖规则（`ItemID.can_depend_on`）预检：指到父目标或兄弟
   分支会直接报 `cannot depend on`，而不是回放时才 `illegal dependence`。
-  细节见 `repl-client.md` §4.1。
+  细节见 `repl/repl-client.md` §4.1。
 
   **两个坑**：`check` 只做 `compute_only`，说 VALID 不等于独立重放通过，
   最终必须用 `.cache/validate_one.py <理论>` 复核；临时脚本（每次新进程、

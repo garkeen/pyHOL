@@ -223,7 +223,7 @@ Vue 3 + Vite 单页应用，路由（`src/router.js`）：
 | `frontend/` | Vue 3 前端 |
 | `library/` | 理论库（`.pyhol` 文件） |
 | `imperative/` | Hoare 逻辑程序验证（独立子模块，`.imp` 格式） |
-| `repl/` | 自洽 REPL（交互/脚本/常驻三模式，不依赖前后端；见 `repl-client.md`） |
+| `repl/` | 自洽 REPL（交互/脚本/常驻三模式，不依赖前后端；见 `repl/repl-client.md`） |
 | `util/` | 纯工具函数（name/typecheck/unionfind 等） |
 | `manual/` | 本手册 |
 
