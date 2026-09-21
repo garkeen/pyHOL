@@ -1,6 +1,8 @@
-# holpy
+# pyHOL
 
-holpy 是一个用 Python 实现的高阶逻辑（HOL）定理证明器，基于 Bohua Zhan 的原作，经多次重构。用户不用写结构化证明语言，通过点击式方法完成证明；底层是 LCF 风格内核，每一步都可独立校验。
+pyHOL 是基于 [holpy](https://github.com/bzhan/holpy)（Bohua Zhan 用 Python 实现的高阶逻辑（HOL）定理证明器）二次开发的项目，在原作基础上经过大规模重构而来。用户不用写结构化证明语言，通过点击式方法完成证明；底层是 LCF 风格内核，每一步都可独立校验。
+
+**致谢与出处**：原项目 [bzhan/holpy](https://github.com/bzhan/holpy) 是本项目的根基；本项目沿用并保留其原始许可证，详见下文 [License](#license) 与 [LICENSE](LICENSE) 文件。
 
 ## 架构总览
 
@@ -91,4 +93,4 @@ python validate_library.py --force    # 忽略缓存，全量重验
 
 ## License
 
-见 [LICENSE](LICENSE)。
+本项目基于 [bzhan/holpy](https://github.com/bzhan/holpy) 二次开发，沿用其原始许可证（BSD 三条款，Copyright (c) 2018, bhzhan），全文见 [LICENSE](LICENSE)，未做任何修改。
