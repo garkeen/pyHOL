@@ -1,6 +1,6 @@
-# HOLPY Frontend (Vue 3)
+# pyHOL Frontend (Vue 3)
 
-Vue 3 + Vite single-page app for holpy. Talks to the Flask backend in
+Vue 3 + Vite single-page app for pyHOL. Talks to the Flask backend in
 `../backend/` through `/api/*` (dev proxy target `http://127.0.0.1:5000`,
 see `vite.config.js`).
 

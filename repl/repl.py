@@ -1,4 +1,4 @@
-"""Interactive REPL for holpy proof development.
+"""Interactive REPL for pyHOL proof development.
 
 Self-contained: depends only on kernel / core / method / syntax.  It does
 not import the HTTP backend or the frontend.
@@ -540,7 +540,7 @@ class Repl:
         except Exception as e:
             self.failed = True
             print('STEP FAILED: %s' % _exc_str(e))
-            if os.environ.get('HOLPY_REPL_TRACE'):
+            if os.environ.get('PYHOL_REPL_TRACE'):
                 traceback.print_exc()
             print('  failing line: %s' % resolved)
             print('  live stable ids: %s'
@@ -900,7 +900,7 @@ class Repl:
 
 
 def main():
-    ap = argparse.ArgumentParser(description='holpy REPL')
+    ap = argparse.ArgumentParser(description='pyHOL REPL')
     ap.add_argument('--script', help='run commands from a file, then exit')
     ap.add_argument('--theory', help='load this theory at startup')
     ap.add_argument('--goal', help='start a goal at startup')
@@ -934,10 +934,10 @@ def main():
                 break
         sys.exit(1 if rp.failed or (rp.sps is not None and rp.sps.num_gaps) else 0)
 
-    print('holpy REPL -- type help, quit to exit')
+    print('pyHOL REPL -- type help, quit to exit')
     while True:
         try:
-            line = input('holpy> ')
+            line = input('pyHOL> ')
         except (EOFError, KeyboardInterrupt):
             print()
             break

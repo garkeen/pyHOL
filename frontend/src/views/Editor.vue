@@ -3,7 +3,7 @@
     <!-- Top menu bar -->
     <nav class="navbar navbar-expand navbar-dark bg-dark">
       <div class="container-fluid">
-        <span class="navbar-brand" style="padding-left: 44px">HOLPy</span>
+        <span class="navbar-brand" style="padding-left: 44px">pyHOL</span>
         <div class="ms-auto d-flex align-items-center gap-3">
           <span class="text-light" v-if="filename">{{ filename }}</span>
           <span class="text-light" v-if="saving">Saving...</span>

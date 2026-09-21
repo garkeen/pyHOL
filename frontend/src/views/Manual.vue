@@ -2,7 +2,7 @@
   <div class="manual-container">
     <nav class="navbar navbar-expand navbar-dark bg-dark">
       <div class="container-fluid">
-        <span class="navbar-brand" style="padding-left: 44px">HOLPy</span>
+        <span class="navbar-brand" style="padding-left: 44px">pyHOL</span>
         <div class="ms-auto d-flex align-items-center gap-3">
           <router-link :to="{name: 'main'}" class="btn btn-sm btn-outline-light">Home</router-link>
         </div>

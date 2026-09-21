@@ -52,7 +52,7 @@ class ClassSugarTest(unittest.TestCase):
         self.assertEqual(str(T), "('a, 'b) tree")
 
     def testPremiseInjection(self):
-        # `linorder` constrains both operations: holpy's `less` and `less_eq`
+        # `linorder` constrains both operations: pyHOL's `less` and `less_eq`
         # are independent overloaded constants, so the annotation states a
         # law predicate for each.
         prop = parser.with_class_premises("x <= x", "'a::linorder")

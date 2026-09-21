@@ -466,7 +466,7 @@ class FunGenLibraryTest(unittest.TestCase):
         Isabelle's datatype package gives `Plus a1 a2` the size
         `1 + size a1 + size a2`, and `lexicographic_order` finds it: a
         definition over such a datatype descends through the size and the
-        subterm relation is never consulted for it.  holpy derives that
+        subterm relation is never consulted for it.  pyHOL derives that
         size as an ordinary `fun`, so the size function itself is the one
         definition whose relation *is* the subterm relation -- a
         disjunction over the recursive arguments -- and its `wf` goes

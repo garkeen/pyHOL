@@ -81,14 +81,14 @@ class Tactic:
 
 #### 与 Isabelle/HOL 的对比
 
-| | holpy `rule` | Isabelle `rule` |
+| | pyHOL `rule` | Isabelle `rule` |
 |---|---|---|
 | goal 形态 | 可能是一个未 intro 的蕴含项 `B → C` | 永远是序贯 `B ⟹ C`（假设与结论分开） |
 | 匹配对象 | 尾 `C` vs **整个 goal 项** | 尾 `C` vs **goal 结论**（不含假设） |
 | 前提处理 | 未匹配前提全部变子目标 | 与假设可消解的前提自动消掉 |
 | 未 intro 的蕴含目标 | 匹配不上，强制先 intro | 概念上不存在（goal 已拆分） |
 
-即：Isabelle 里 `rule` 也是尾匹配、不拆右结合蕴含；但它的目标天然是 `As ⟹ C` 序贯，所以"已 intro 的前提"自动消解。holpy 的 `intro` 正是把 `B → C` 变成 Isabelle 式的假设 `B` + 结论 `C`，之后 `rule` 行为与 Isabelle 一致。区别只在 holpy 显式引入"未 intro 的蕴含目标"这一步。
+即：Isabelle 里 `rule` 也是尾匹配、不拆右结合蕴含；但它的目标天然是 `As ⟹ C` 序贯，所以"已 intro 的前提"自动消解。pyHOL 的 `intro` 正是把 `B → C` 变成 Isabelle 式的假设 `B` + 结论 `C`，之后 `rule` 行为与 Isabelle 一致。区别只在 pyHOL 显式引入"未 intro 的蕴含目标"这一步。
 
 #### accept 的整条命题匹配
 

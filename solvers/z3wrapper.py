@@ -287,8 +287,8 @@ def convert(t, var_names, assms, to_real, ctx):
             # nat DIV: z3's integer division agrees with the nat
             # semantics on nonnegative operands (assms enforce x >= 0).
             # Division by zero is unspecified in SMT-LIB; pin each
-            # instance to the holpy semantics (y DIV 0 = 0) with a
-            # ground implication, which is true in the holpy model and
+            # instance to the pyHOL semantics (y DIV 0 = 0) with a
+            # ground implication, which is true in the pyHOL model and
             # ignored by proofrec's assertion preprocessing.
             a, b = rec(t.arg1), rec(t.arg)
             zero = z3.IntVal(0, ctx)

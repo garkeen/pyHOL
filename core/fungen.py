@@ -2954,7 +2954,7 @@ def _elims_entry(name, cname, arg_types, res_type, eqs, lhs):
     left out: a proof that holds `f x̄ = y` learns from the rule which
     clause fired, what the arguments are at that clause (`T = P_k`, with
     the pattern's variables as the branch's own) and what the right hand
-    side is (`y = R_k`).  holpy has no `f.dom` -- partiality is not a
+    side is (`y = R_k`).  pyHOL has no `f.dom` -- partiality is not a
     predicate here -- so there is no domain condition to drop, and the
     rule is read back from `<c>_exhaustive` and the equation itself.
 
@@ -5068,7 +5068,7 @@ def expand_item(data, declared=None):
 
     None means the definition is outside the supported increment, so the
     caller keeps the current mechanism; nothing is silently approved.
-    Set HOLPY_FUNGEN_DEBUG to see the underlying exception instead.
+    Set PYHOL_FUNGEN_DEBUG to see the underlying exception instead.
 
     A definition that carries a relation or a measure is the exception:
     it has no current mechanism to keep, so its errors are let out (`_has_
@@ -5089,7 +5089,7 @@ def expand_item(data, declared=None):
             data['block_error'] = str(error)
             return None
         except Exception:
-            if os.environ.get('HOLPY_FUNGEN_DEBUG'):
+            if os.environ.get('PYHOL_FUNGEN_DEBUG'):
                 raise
             return None
     try:
@@ -5099,6 +5099,6 @@ def expand_item(data, declared=None):
             raise
         return None
     except Exception:
-        if os.environ.get('HOLPY_FUNGEN_DEBUG') or _has_clauses(data):
+        if os.environ.get('PYHOL_FUNGEN_DEBUG') or _has_clauses(data):
             raise
         return None

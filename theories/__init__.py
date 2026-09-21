@@ -1,4 +1,4 @@
-"""Domain extensions for holpy.
+"""Domain extensions for pyHOL.
 
 Each subpackage registers domain-specific conv, macro, and method classes
 via the decorators in kernel.theory / core.method / core.auto.

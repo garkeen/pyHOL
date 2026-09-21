@@ -2,7 +2,7 @@
 
 > 代码事实以 `kernel/macro.py`、`kernel/theory.py`（宏注册部分）、`core/macro/registry.py` 为准。
 
-宏（Macro）是 holpy 的核心抽象之一，是"初等证明步骤的缩写"。本章讲宏的机制、信任级别、与校验的关系。
+宏（Macro）是 pyHOL 的核心抽象之一，是"初等证明步骤的缩写"。本章讲宏的机制、信任级别、与校验的关系。
 
 ## 1. 为什么需要宏
 
@@ -183,14 +183,14 @@ class my_macro(Macro):
 
 ## 12. 与 HOL Light 的对比
 
-holpy 的宏系统是**自创**的，HOL Light 没有对应物：
+pyHOL 的宏系统是**自创**的，HOL Light 没有对应物：
 - HOL Light 的"证明"是 OCaml 运行时的调用序列，不序列化为可重验对象。
 - HOL Light 没有"宏/level/eval"这层。
-- holpy 的宏服务于"证明可独立校验 + web IDE"的目标。
+- pyHOL 的宏服务于"证明可独立校验 + web IDE"的目标。
 
 ## 13. 信任模型总结
 
-holpy 的"严肃性"来自：**一切最终可展开为 15 条原始规则 + 已证定理，且能独立重验**。
+pyHOL 的"严肃性"来自：**一切最终可展开为 15 条原始规则 + 已证定理，且能独立重验**。
 
 - 普通宏：永远展开，安全性最高。
 - 可信宏：用效率换信任，`level` 控制。

@@ -1,4 +1,4 @@
-"""Client for the resident holpy REPL server (repl.repl --serve).
+"""Client for the resident pyHOL REPL server (repl.repl --serve).
 
 One request per invocation: sends the given command lines, prints the
 captured output, and exits with a status code (0 = no failure and no open
@@ -19,7 +19,7 @@ ROOT = None
 
 
 def main():
-    ap = argparse.ArgumentParser(description='holpy REPL client')
+    ap = argparse.ArgumentParser(description='pyHOL REPL client')
     ap.add_argument('cmds', nargs='*', help='REPL command lines')
     ap.add_argument('--port', type=int, default=5599)
     ap.add_argument('--stdin', action='store_true',

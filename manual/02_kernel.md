@@ -2,7 +2,7 @@
 
 > 代码事实以 `kernel/` 目录为准。本章覆盖 `kernel/type.py`、`kernel/term.py`、`kernel/thm.py`、`kernel/proof.py`、`kernel/proofterm.py`、`kernel/theory.py`、`kernel/report.py`、`kernel/extension.py`。
 
-逻辑理论见 [`01_hol_logic.md`](01_hol_logic.md)。本章讲 holpy 如何用 Python 实现。
+逻辑理论见 [`01_hol_logic.md`](01_hol_logic.md)。本章讲 pyHOL 如何用 Python 实现。
 
 ## 1. 类型（kernel/type.py）
 

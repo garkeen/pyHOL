@@ -576,7 +576,7 @@ class FunGenTest(unittest.TestCase):
     def test_elims_entry_carries_the_equation_each_clause_way(self):
         """The elimination rule reads `f x̄ = y` clause by clause.
 
-        Isabelle's `f.elims` with the domain condition left out (holpy has
+        Isabelle's `f.elims` with the domain condition left out (pyHOL has
         no `f.dom`): the first premise is the equation a proof holds, and
         each clause's premise says what the arguments are there (`x1 =
         P_k`, with the pattern's own variables) and what the right hand

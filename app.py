@@ -1,4 +1,4 @@
-"""Main entry point for the holpy application."""
+"""Main entry point for the pyHOL application."""
 
 from backend import app
 

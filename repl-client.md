@@ -1,4 +1,4 @@
-# holpy REPL 使用与设计说明（给 AI / 自动化使用）
+# pyHOL REPL 使用与设计说明（给 AI / 自动化使用）
 
 本文件面向**用工具调用驱动的 AI**（不能保持交互式会话），也适用于人类。
 REPL 位于 `repl/`，只依赖 `kernel/core/method/syntax`，**不 import 前后端**。
@@ -12,7 +12,7 @@ REPL 位于 `repl/`，只依赖 `kernel/core/method/syntax`，**不 import 前�
 ## 1. 为什么需要非交互模式
 
 AI 通过工具调用执行命令、等待结果。一旦程序停在 `input()` 等输入，整个流程会卡死。
-因此 REPL 必须提供**非交互**路径；`holpy>` 交互提示符只给人用。
+因此 REPL 必须提供**非交互**路径；`pyHOL>` 交互提示符只给人用。
 `main()` 用 `sys.stdin.isatty()` 判断：stdin 不是终端时**永不进入交互循环**。
 
 三条可用路径（都不会阻塞）：

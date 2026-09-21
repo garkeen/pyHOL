@@ -1,10 +1,10 @@
-# holpy 手册
+# pyHOL 手册
 
 > 项目主页见顶层 [`../README.md`](../README.md)。本页只是手册 7 章的阅读索引。
 
 ## 阅读路线
 
-### 新手（学 HOL + 学 holpy）
+### 新手（学 HOL + 学 pyHOL）
 
 按顺序读：
 1. [`01_hol_logic.md`](01_hol_logic.md) -- HOL 逻辑基础（纯理论，无代码）

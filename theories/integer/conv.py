@@ -89,12 +89,12 @@ def int_eval(t):
         return base ** exp
     elif t.is_comb('nat_divide', 2):
         m, n = int_eval(t.arg1), int_eval(t.arg)
-        # holpy semantics: n DIV 0 = 0; floor division agrees with the
+        # pyHOL semantics: n DIV 0 = 0; floor division agrees with the
         # SMT-LIB div on the nonnegative operands this term family has.
         return 0 if n == 0 else m // n
     elif t.is_comb('nat_modulus', 2):
         m, n = int_eval(t.arg1), int_eval(t.arg)
-        # holpy semantics: n MOD 0 = n
+        # pyHOL semantics: n MOD 0 = n
         return m if n == 0 else m % n
     else:
         raise ConvException('int_eval: %s' % str(t))

@@ -1,4 +1,4 @@
-"""Tests for the holpy REPL.
+"""Tests for the pyHOL REPL.
 
 The REPL is exercised as a batch session (same code path as interactive
 use), asserting: a complete proof reaches VALID, a failing step leaves the

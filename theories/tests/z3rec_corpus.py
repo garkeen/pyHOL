@@ -37,7 +37,7 @@ ORACLES = frozenset(
 
 # (name, category, context vars, goal[, xfail reason])
 # xfail goals are known gaps: Z3 proves integer power through internal
-# ToReal/real-power steps whose faithful holpy translation needs a
+# ToReal/real-power steps whose faithful pyHOL translation needs a
 # real-power layer (translate + library schematics) not yet built.
 GOALS = [
     # --- propositional (SAT net) ---

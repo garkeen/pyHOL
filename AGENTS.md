@@ -1,6 +1,6 @@
-# holpy 工作区指令
+# pyHOL 工作区指令
 
-holpy 是用 Python 实现的 HOL 定理证明器（LCF 风格）。三层架构，单向依赖：
+pyHOL 是用 Python 实现的 HOL 定理证明器（LCF 风格）。三层架构，单向依赖：
 
 ```
 kernel/      逻辑内核：Type/Term/Thm/15 原语/ProofTerm/Theory，只此可造定理

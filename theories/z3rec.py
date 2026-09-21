@@ -174,7 +174,7 @@ def arity(l):
     return 1 + arity(l.body) if l.is_abs() else 0
 
 def translate_type(sort):
-    """Translate z3 type into holpy type."""
+    """Translate z3 type into pyHOL type."""
     T = sort.kind()
     if T == Z3_BOOL_SORT:
         return BoolType
@@ -227,8 +227,8 @@ def solve_cnf(F):
     return apply_theorem('negI', pt2.implies_intr(pt2.hyps[0])).on_prop(rewr_conv('double_neg'))
 
 def translate(term, bounds=deque(), subterms=[]):
-    """Transalte z3 term into holpy term.
-       bounds represents bounded variables, key is de-Bruijn index of the var, value is the bounded variable already in holpy.
+    """Transalte z3 term into pyHOL term.
+       bounds represents bounded variables, key is de-Bruijn index of the var, value is the bounded variable already in pyHOL.
     """
     if z3.is_func_decl(term): # z3 function, including name, sort of each arguments, constant is function with 0 arg.
         arity = term.arity()
@@ -2479,7 +2479,7 @@ def proofrec(proof, bounds=deque(), trace=False, debug=False, assertions=None):
 
 
 def solve_and_reconstruct(t, debug=False):
-    """Prove the holpy statement t with z3 and reconstruct a kernel
+    """Prove the pyHOL statement t with z3 and reconstruct a kernel
     proof of t ITSELF (the raw reconstruction only yields ⊢ false under
     the stripped sequent's hypotheses).  Returns the ProofTerm of t up
     to the statement level: close_sequent proves the stripped sequent

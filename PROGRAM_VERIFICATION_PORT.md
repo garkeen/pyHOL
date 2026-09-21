@@ -7,7 +7,7 @@
 
 ## 0. 任务边界
 
-- **要什么**：让 holpy 写得出来 auto2 `HOL/Program_Verification/` 的定义与命题。那份开发共
+- **要什么**：让 pyHOL 写得出来 auto2 `HOL/Program_Verification/` 的定义与命题。那份开发共
   **941 个声明**（datatype 20 / definition 161 / fun 105 / abbreviation 7 / function 5 /
   partial_function 30 / instantiation 6 / typedef 1 / inductive 2 / lemma 539 / theorem 65），
   分布在 28 个 `.thy`（Functional 13 个约 144KB，Imperative 15 个约 100KB + 1600 行 ML 分离逻辑胶水）。
@@ -171,7 +171,7 @@
 
 - **`<c>_cases`** 形状与 datatype 的 `<ty>_cases` 同款：`(⋀v̄₁. P P₁) ⟹ … ⟹ (⋀v̄ₙ. P Pₙ) ⟹ P p`，
   `P`/`p` 是自由变量。因此不需要新 tactic：`type_cases x cases_thm="<c>_cases"` 直接可用。
-- **`<c>_elims`** 是伊莎贝尔的 `f.elims` 去掉域条件（holpy 没有 `dom`）：
+- **`<c>_elims`** 是伊莎贝尔的 `f.elims` 去掉域条件（pyHOL 没有 `dom`）：
   `f x̄ = y ⟹ (⋀v̄₁. T = P₁ ⟹ y = R₁ ⟹ P) ⟹ … ⟹ P`。用法是 `rule <c>_elims facts=[<方程>]`。
 - 两条规则都比 datatype 的构造子更细：嵌套模式（`dbl (Suc (Suc n))`）与补 `undefined` 的洞都是一个分支。
 - 命名：谓词/分支变量避开方程自己的变量名（`filter` 的模式变量就叫 `P`，于是谓词取 `P1`）、避开
@@ -180,7 +180,7 @@
   `type_cases` 要一个**变量**，多参数定义得给元组变量。
 - 验收（已过）：`library/gcl.pyhol` 的 `scalar_of_nat_id`/`scalar_of_bool_id` 原是两条公理，现在用
   `type_cases` + `cases_thm` 证明；消去规则的用法见 `library/rules_example.pyhol` 的 `gz_value_shape`。
-- 余下（可选）：`fun_cases`（把 elim 特化到给定实例）在 holpy 里不必要——`rule` 直接吃
+- 余下（可选）：`fun_cases`（把 elim 特化到给定实例）在 pyHOL 里不必要——`rule` 直接吃
   `facts=[<方程>]`；布尔返回类型的两条特化规则同理（通用规则对布尔定义同样工作）。
 
 ### 2.4 阶段 8：`partial_function`
@@ -218,13 +218,13 @@ SCC 分解（`termination.ML:342` 的 `decompose_tac`）也都 grep 不到。
 7. 算法：`Lists_Ex` → `BST` → `RBTree`；`Quicksort`；`Interval_Tree` → `Rect_Intersect`；`Connectivity`；`Dijkstra`。
 
 这些定义大量是**索引驱动递归**（`part1`/`quicksort`/`idx_bubble_down_fun`/`rect_inter` 用
-`measure (λ(_,l,r,_). r - l)` 之类），终止性依赖用户给的引理——holpy 侧就是 `fun` 的
+`measure (λ(_,l,r,_). r - l)` 之类），终止性依赖用户给的引理——pyHOL 侧就是 `fun` 的
 `measure`/`relation` + `descent`（已支持），或 §1.3 的组合度量。
 
 ### 阶段 6：Imperative
 
 **最大的一块，也是唯一需要重建"堆模型"的阶段。** auto2 建立在 Isabelle 的 Imperative_HOL 上：
-带类型 ref/array、`lim`、堆单子（`return`/`bind`/`effect`/`execute`）。holpy 只有裸 `nat⇒nat` 堆
+带类型 ref/array、`lim`、堆单子（`return`/`bind`/`effect`/`execute`）。pyHOL 只有裸 `nat⇒nat` 堆
 （`library/mem.pyhol` 是雏形）。
 
 1. **堆模型**：`heap`/`addr`/`lim`/`refs`/`arrays` + `Ref`/`Array` + 堆单子。可选用无类型堆规避
@@ -241,7 +241,7 @@ SCC 分解（`termination.ML:342` 的 `decompose_tac`）也都 grep 不到。
 
 ---
 
-## 4. 写 holpy 证明：坑与配方
+## 4. 写 pyHOL 证明：坑与配方
 
 全部实测。按主题分组，编号只为引用方便。
 

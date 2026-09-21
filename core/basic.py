@@ -402,7 +402,7 @@ def load_theory_cache(filename):
 
             Definitions outside what the generator supports keep the
             current axiomatization: their equations show up as AXIOM in the
-            status table.  Set HOLPY_FUNGEN_DEBUG to see the exception.
+            status table.  Set PYHOL_FUNGEN_DEBUG to see the exception.
             """
             for item in group:
                 if item.get('ty') == 'def.ind':
@@ -410,7 +410,7 @@ def load_theory_cache(filename):
                     try:
                         derived = fungen.expand_item(item, declared)
                     except Exception:
-                        if os.environ.get('HOLPY_FUNGEN_DEBUG'):
+                        if os.environ.get('PYHOL_FUNGEN_DEBUG'):
                             raise
                         if fungen._has_clauses(item):
                             # A definition that carries a relation or a
@@ -486,7 +486,7 @@ def load_theory_cache(filename):
                 try:
                     derived = datgen.expand_size(datatype)
                 except Exception:
-                    if os.environ.get('HOLPY_DATGEN_DEBUG'):
+                    if os.environ.get('PYHOL_DATGEN_DEBUG'):
                         raise
                     derived = None
                 if derived is None or not _size_family_ready():
@@ -507,7 +507,7 @@ def load_theory_cache(filename):
             # last, since its equations are themselves a generated `fun`
             # and are expanded by the machinery above.  A file that states
             # the lemma itself gets nothing generated.  Set
-            # HOLPY_DATGEN_DEBUG to see a generator exception instead of
+            # PYHOL_DATGEN_DEBUG to see a generator exception instead of
             # the silent fallback.
             _load_group([item_data])
             if item_data.get('ty') == 'type.ind':

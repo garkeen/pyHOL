@@ -1,4 +1,4 @@
-# holpy 地基债务清单
+# pyHOL 地基债务清单
 
 手工维护。基线快照见 `.cache/*.json`（`validate_library.py` / `.cache/validate_one.py <theory>`）。
 
@@ -85,7 +85,7 @@ STEP_FAILED），实验后要清理。
   `set.pyhol` 补 `finite_induct`/`finite_insert`；`card.pyhol` 扩写有限集基数
   （现只有 11 条可数定理）；`countable` 定义。参考 HOL Light `Library/card.ml`、
   Isabelle `Finite_Set.thy`、Mathlib `Data/Finset/Card.lean`。
-- **P1 结构性大缺口（holpy 完全空白）**：
+- **P1 结构性大缺口（pyHOL 完全空白）**：
   序（Isabelle `Orderings.thy`/`Order_Relation.thy`、Mathlib `Order/Defs/`）——
   **谓词层已完成**：`'a::C` 类型类糖（一个类可贡献多条前提）+ `library/order.pyhol` 的
   `preorder`/`order`/`linorder`/`linorder_lt` 谓词、层级与严格序引理、`nat` 实例

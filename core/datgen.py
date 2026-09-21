@@ -576,7 +576,7 @@ def _destructor_items(T, name, constrs):
     A position whose items cannot be built is left out rather than
     failing the whole datatype block: the destructors are independent of
     each other and of the relation, and the definition that needs the
-    missing one reports it.  Set HOLPY_DATGEN_DEBUG to see the exception.
+    missing one reports it.  Set PYHOL_DATGEN_DEBUG to see the exception.
     """
     res = []
     for i, constr in enumerate(constrs):
@@ -595,7 +595,7 @@ def _destructor_items(T, name, constrs):
                     destructor_rule_lines(T, name, constrs, i, j,
                                           generated=lib)))
             except Exception as error:
-                if os.environ.get('HOLPY_DATGEN_DEBUG'):
+                if os.environ.get('PYHOL_DATGEN_DEBUG'):
                     print('datgen: %s %s %d skipped: %s: %s'
                           % (name, constr['name'], j + 1,
                              error.__class__.__name__, error))
@@ -620,7 +620,7 @@ def expand_item(data, content):
 
     None means nothing can be generated here -- no recursion position, the
     machinery not in scope, or the file stating the lemma itself -- and the
-    block is left exactly as written.  Set HOLPY_DATGEN_DEBUG to see the
+    block is left exactly as written.  Set PYHOL_DATGEN_DEBUG to see the
     underlying exception instead of the silent fallback.
     """
     try:
@@ -628,7 +628,7 @@ def expand_item(data, content):
     except fungen.FunGenError:
         return None
     except Exception:
-        if os.environ.get('HOLPY_DATGEN_DEBUG'):
+        if os.environ.get('PYHOL_DATGEN_DEBUG'):
             raise
         return None
 

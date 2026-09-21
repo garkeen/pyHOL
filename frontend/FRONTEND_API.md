@@ -1,4 +1,4 @@
-# HOLPy Frontend API & Feature Documentation
+# pyHOL Frontend API & Feature Documentation
 
 > 本文件与 `backend/ide.py`、`backend/ide_v2.py`、`backend/imperative.py`、`backend/manual.py`
 > 的实际路由保持一致。路由表以 Flask `app.url_map` 为准（`from backend import app`）。
@@ -430,7 +430,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ HOLPy  [file ▼] [New] [Items ▼]                    logic | Saving..│
+│ pyHOL  [file ▼] [New] [Items ▼]                    logic | Saving..│
 ├───────────────────────┬────────────────────────────┬───────────────┤
 │  Theory Panel (30%)   │  Proof Panel (50%)         │ History (20%) │
 │  文件操作 / 元数据      │  标题行（thm/gaps）          │ Open goals    │

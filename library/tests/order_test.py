@@ -53,7 +53,7 @@ class OrderTheoryTest(unittest.TestCase):
     def testItemLayerInjectsPremise(self):
         """`fixes x :: 'a::linorder` becomes a premise of the statement.
 
-        Both operations are constrained: holpy's `less` and `less_eq` are
+        Both operations are constrained: pyHOL's `less` and `less_eq` are
         independent overloaded constants, so a law predicate for each is
         injected (a statement about `<` needs the second one).
         """

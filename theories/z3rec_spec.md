@@ -1,13 +1,13 @@
-# holpy Z3 证明重建：实现现状与局限
+# pyHOL Z3 证明重建：实现现状与局限
 
 > 本文档描述已交付的 Z3 证明重建系统的**实际状态**（不再是设计规划）。
 > 每一节都对应仓库中已提交、已测试的代码。
 
 ## 1. 总览
 
-holpy 的 Z3 证明重建把 Z3 4.x 给出的证明 DAG 逐步翻译成核内 ProofTerm（LCF 风格，
+pyHOL 的 Z3 证明重建把 Z3 4.x 给出的证明 DAG 逐步翻译成核内 ProofTerm（LCF 风格，
 参照 Böhme/Weber 的 Isabelle SMT 重构架构），最终把"反证 refutation"闭合回
-原定理陈述。每一步都由 holpy kernel 检查；重建结果可以用
+原定理陈述。每一步都由 pyHOL kernel 检查；重建结果可以用
 `theory.check_proof(pt.export())` 做核级验收。
 
 入口与工作流（`solvers/z3wrapper.py` + `theories/z3rec.py`）：
@@ -26,12 +26,12 @@ holpy 的 Z3 证明重建把 Z3 4.x 给出的证明 DAG 逐步翻译成核内 Pr
 ### 2.1 翻译覆盖（双向）
 
 - **类型**：nat（全程擦除为 int）、int、real、bool、函数类型
-  （Z3 ArraySort ↔ holpy 函数类型）、数组 Select/Store ↔ 函数应用/fun_upd。
+  （Z3 ArraySort ↔ pyHOL 函数类型）、数组 Select/Store ↔ 函数应用/fun_upd。
 - **算子**：+ − × uminus、实数除、整数 DIV/MOD、power（nat/int/real 指数）、
   of_int/of_nat、min/max/abs、ITE、量词 ∀/∃、相等/比较、全部布尔连接词、
   distinct、TO_REAL。发送侧用底层 `Z3_mk_power` 构造整数幂节点
   （z3py 的 `**` 会产生 Real 排序异构节点，污染整数幂证明）。
-- **除零语义钉定**：SMT-LIB 中除零未定义，holpy 侧 `n DIV 0 = 0`、
+- **除零语义钉定**：SMT-LIB 中除零未定义，pyHOL 侧 `n DIV 0 = 0`、
   `n MOD 0 = n`；按实例用 ground implication 钉住，对 refutation 可靠。
 
 ### 2.2 判定网（覆盖 Z3 rewriter 278 条规则中的 ~177 条可判定规则）
@@ -87,7 +87,7 @@ holpy 的 Z3 证明重建把 Z3 4.x 给出的证明 DAG 逐步翻译成核内 Pr
 ## 3. 局限（诚实清单）
 
 1. **整数幂（已定位，未做）**：Z3 内部把整数幂求值走 ToReal/实数幂路由，
-   产生的证明步翻译到 holpy 需要"实数幂翻译层 + real power 库引理"，
+   产生的证明步翻译到 pyHOL 需要"实数幂翻译层 + real power 库引理"，
    目前留 gap（语料 4 个 xfail、int_power_1 xfail）。实数幂（pow4）正常。
 2. **内层量词闭合**：量词出现在目标内部、且 z3 用 skolem 化 + 情形分裂证明时
    （假设是含 skolem 常量的分支原子），skolem → ∀-intro 的推广闭合未实现。
@@ -100,7 +100,7 @@ holpy 的 Z3 证明重建把 Z3 4.x 给出的证明 DAG 逐步翻译成核内 Pr
 5. **branch_and_bound**（simplex.py）：整数 simplex 兜底，2000 节点上限，
    未处理无界区域的完全性；契约 = 耗尽时返回根树由 `branch_and_bound_pt`
    从叶子重解推导反证。
-6. **不支持的理论**：位向量、浮点、字符串/序列（holpy 无对应库，
+6. **不支持的理论**：位向量、浮点、字符串/序列（pyHOL 无对应库，
    z3wrapper 不翻译）。
 7. **omega 已知 bug**：常量相消不等式（如 `1 + x ≤ x`）会崩，
    `_refute_atom` 已用 simplex 兜底。
@@ -127,7 +127,7 @@ z3 4.16 实测环境：Python 3.12，Windows。
 
 - Sascha Böhme and Tjark Weber, "Fast LCF-Style Proof Reconstruction for Z3"
   （Isabelle/HOL + HOL4 方向的 LCF 风格 Z3 证明重建经典论文）。
-  holpy 的重建沿用其总体架构：Z3 证明 DAG 逐节点翻译为核内定理、
+  pyHOL 的重建沿用其总体架构：Z3 证明 DAG 逐节点翻译为核内定理、
   命题/一阶步骤用原语与示意图定理组合建模、理论步骤（rewrite/th-lemma）
   用示意图定理 + 化简器 + 算术判定过程承接。
   论文原文曾以 `Z3recpaper.md` 存档于仓库根目录，因本文档已是实现现状的

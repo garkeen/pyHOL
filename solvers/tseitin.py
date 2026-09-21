@@ -1,5 +1,5 @@
 """
-Tseitin encoding from formulae in holpy to CNF.
+Tseitin encoding from formulae in pyHOL to CNF.
 """
 
 from kernel.type import BoolType
